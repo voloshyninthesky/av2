@@ -7,9 +7,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { AudioEngine } from './audio.js';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js';
-import { UI } from './ui.js?v=20260721-4';
+import { AudioEngine } from './audio.js?v=20260721-14';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260721-15';
+import { UI } from './ui.js?v=20260721-15';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -19,6 +19,9 @@ window.addEventListener('unhandledrejection', (e) => { errlog.textContent += `RE
 const params = new URLSearchParams(location.search);
 const ui = new UI();
 const audio = new AudioEngine();
+const isMobileGameMode = () => window.innerWidth <= 720 ||
+  window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 
 // ============================================================
 // RENDERER / SCENE / CAMERA
@@ -53,15 +56,21 @@ const TARGET = new THREE.Vector3(0, 1.45, -0.3);
 function fitCameraToViewport() {
   const portrait = window.innerWidth / window.innerHeight < 1;
   if (portrait) {
-    CAM_START.set(0, 10.5, 23);
-    CAM_END.set(0, 4.2, 17.4);
-    camera.fov = 68;
-    controls.maxDistance = 26;
+    // Portrait intentionally crops the far stage wings and brings the player
+    // into the action, closer to a third-person mobile game camera.
+    CAM_START.set(0, 7.8, 20);
+    CAM_END.set(0, 2.9, 14.6);
+    camera.fov = 62;
+    controls.maxDistance = 22;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.toneMappingExposure = 0.98;
   } else {
     CAM_START.set(0, 9.5, 18.5);
     CAM_END.set(0, 3.1, 11.2);
     camera.fov = 55;
     controls.maxDistance = 16;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMappingExposure = 1.12;
   }
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -79,7 +88,6 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.enablePan = false;
 controls.minDistance = 5;
-controls.maxDistance = 16;
 controls.minPolarAngle = 0.7;
 controls.maxPolarAngle = 1.47;
 controls.autoRotateSpeed = 0.55;
@@ -311,6 +319,7 @@ const screenUniforms = {
   pan: { value: new THREE.Vector2(0.02, 0.008) },
   dim: { value: 0.94 },
 };
+let slideshowScreen = null;
 
 function buildScreen() {
   const g = new THREE.Group();
@@ -360,6 +369,7 @@ function buildScreen() {
   });
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 4.275), screenMat);
   screen.position.set(0, 5.35, -5.45);
+  slideshowScreen = screen;
   g.add(screen);
 
   // brand plate under the screen
@@ -375,14 +385,113 @@ function buildScreen() {
 
 // ---- slideshow state ----
 const ss = { texs: [], i: -1, t: 0, SLIDE: 5.5, FADE: 1.5, started: false };
+const slideshowNav = document.getElementById('slideshow-nav');
+const screenCorners = [
+  new THREE.Vector3(-3.8, -2.1375, 0),
+  new THREE.Vector3(3.8, -2.1375, 0),
+  new THREE.Vector3(3.8, 2.1375, 0),
+  new THREE.Vector3(-3.8, 2.1375, 0),
+];
+const screenCenterWorld = new THREE.Vector3();
+const screenNormalWorld = new THREE.Vector3();
+const screenQuaternionWorld = new THREE.Quaternion();
+
+function updateSlideshowNavLayout() {
+  if (slideshowNav.hidden || !slideshowScreen) return;
+  slideshowScreen.updateWorldMatrix(true, false);
+  slideshowScreen.getWorldPosition(screenCenterWorld);
+  slideshowScreen.getWorldQuaternion(screenQuaternionWorld);
+  screenNormalWorld.set(0, 0, 1).applyQuaternion(screenQuaternionWorld);
+  const towardCamera = camera.position.clone().sub(screenCenterWorld).normalize();
+  const facingCamera = screenNormalWorld.dot(towardCamera);
+  if (facingCamera <= 0.02) {
+    slideshowNav.style.visibility = 'hidden';
+    return;
+  }
+
+  const projected = screenCorners.map((corner) => {
+    const point = slideshowScreen.localToWorld(corner.clone()).project(camera);
+    return {
+      x: (point.x * 0.5 + 0.5) * window.innerWidth,
+      y: (-point.y * 0.5 + 0.5) * window.innerHeight,
+      z: point.z,
+    };
+  });
+  const xs = projected.map((point) => point.x);
+  const ys = projected.map((point) => point.y);
+  const left = Math.min(...xs);
+  const right = Math.max(...xs);
+  const top = Math.min(...ys);
+  const bottom = Math.max(...ys);
+  const width = right - left;
+  const height = bottom - top;
+  const onScreen = right > 0 && left < window.innerWidth && bottom > 0 && top < window.innerHeight;
+  const inFront = projected.every((point) => point.z > -1 && point.z < 1);
+  if (!onScreen || !inFront || width < 70 || height < 45) {
+    slideshowNav.style.visibility = 'hidden';
+    return;
+  }
+
+  slideshowNav.style.visibility = 'visible';
+  slideshowNav.style.left = `${left}px`;
+  slideshowNav.style.top = `${top}px`;
+  slideshowNav.style.width = `${width}px`;
+  slideshowNav.style.height = `${height}px`;
+}
+
+function setSlide(index) {
+  if (!ss.started || !ss.texs.length) return;
+  const count = ss.texs.length;
+  ss.i = ((index % count) + count) % count;
+  ss.t = 0;
+  screenUniforms.texA.value = ss.texs[ss.i];
+  screenUniforms.texB.value = ss.texs[(ss.i + 1) % count];
+  screenUniforms.progress.value = 0;
+  screenUniforms.slideT.value = 0;
+  screenUniforms.pan.value.set(
+    (ss.i % 2 ? -1 : 1) * 0.025,
+    ((ss.i % 3) - 1) * 0.012
+  );
+}
+
+function stepSlide(delta) {
+  if (!ss.started) return;
+  const visibleIndex = screenUniforms.progress.value > 0.5 ? ss.i + 1 : ss.i;
+  setSlide(visibleIndex + delta);
+}
+
+let slideSwipe = null;
+slideshowNav.addEventListener('pointerdown', (event) => {
+  slideSwipe = { x: event.clientX, y: event.clientY, id: event.pointerId };
+  slideshowNav.setPointerCapture?.(event.pointerId);
+});
+slideshowNav.addEventListener('pointerup', (event) => {
+  if (!slideSwipe || slideSwipe.id !== event.pointerId) return;
+  const dx = event.clientX - slideSwipe.x;
+  const dy = event.clientY - slideSwipe.y;
+  slideSwipe = null;
+  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.25) stepSlide(dx < 0 ? 1 : -1);
+});
+slideshowNav.addEventListener('pointercancel', () => { slideSwipe = null; });
 
 function loadSlideTextures() {
   const loader = new THREE.TextureLoader();
-  const files = ['img/1.jpg', 'img/2.jpg', 'img/3.jpg', 'img/4.jpg', 'img/5.jpg', 'img/6.jpg', 'img/7.jpg', 'img/8.jpg'];
-  return Promise.allSettled(
-    files.map((f) => new Promise((res, rej) =>
-      loader.load(f, (t) => { t.colorSpace = THREE.SRGBColorSpace; res(t); }, undefined, rej)))
-  ).then((rs) => rs.filter((r) => r.status === 'fulfilled').map((r) => r.value));
+  const fallbackFiles = ['img/wicked-ensemble.jpg', 'img/wicked-cast.jpg', 'img/wicked-duet.jpg', 'img/stage-guitar.jpg'];
+
+  // `slides.json` is the complete manifest of images in /img that belong in the slideshow.
+  // Keeping it separate lets the stage load every supplied slide without bundling a stale list in the app.
+  return fetch('img/slides.json', { cache: 'no-store' })
+    .then((response) => response.ok ? response.json() : fallbackFiles)
+    .then((files) => Array.isArray(files) && files.length ? files : fallbackFiles)
+    .catch(() => fallbackFiles)
+    .then((files) => Promise.allSettled(
+      files.map((file) => new Promise((res, rej) =>
+        loader.load(file, (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          res(texture);
+        }, undefined, rej)))
+    ))
+    .then((results) => results.filter((result) => result.status === 'fulfilled').map((result) => result.value));
 }
 
 function startSlideshow(photos) {
@@ -391,6 +500,7 @@ function startSlideshow(photos) {
   ss.t = ss.SLIDE; // begin fading from the title slide into the first photo
   screenUniforms.texB.value = ss.texs[1] || ss.texs[0];
   ss.started = true;
+  slideshowNav.hidden = false;
   window.__dbg = `slideshow started: ${ss.texs.length} slides`;
 
   // debug: fast-forward slideshow timeline (?sstime=SECONDS)
@@ -473,7 +583,8 @@ function buildLights() {
     spot.target.position.copy(s.target);
     if (s.shadow) {
       spot.castShadow = true;
-      spot.shadow.mapSize.set(1024, 1024);
+      const shadowSize = isMobileGameMode() ? 512 : 1024;
+      spot.shadow.mapSize.set(shadowSize, shadowSize);
       spot.shadow.bias = -0.0004;
       spot.shadow.camera.near = 2;
       spot.shadow.camera.far = 20;
@@ -766,9 +877,27 @@ mic.group.position.set(1.0, 0, 2.4);
 scene.add(mic.group);
 
 const mascot = buildMascot();
-mascot.group.scale.setScalar(0.68);
+const mascotBaseScale = 0.68;
+mascot.group.scale.setScalar(mascotBaseScale);
 mascot.group.position.set(0, 0, 0.35);
 scene.add(mascot.group);
+const mascotFallMeshes = [];
+const mascotFallMaterialStates = new Map();
+mascot.group.traverse((object) => {
+  if (!object.isMesh) return;
+  mascotFallMeshes.push({ object, renderOrder: object.renderOrder });
+  const materials = Array.isArray(object.material) ? object.material : [object.material];
+  for (const material of materials) {
+    if (!mascotFallMaterialStates.has(material)) {
+      mascotFallMaterialStates.set(material, {
+        transparent: material.transparent,
+        opacity: material.opacity,
+        depthTest: material.depthTest,
+        depthWrite: material.depthWrite,
+      });
+    }
+  }
+});
 
 const instruments = [drums, piano, guitar, mic];
 const whiteKeys = piano.keys.filter((k) => !k.userData.black).sort((a, b) => a.userData.whiteIdx - b.userData.whiteIdx);
@@ -806,27 +935,182 @@ function addLabels() {
 // ============================================================
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2(-10, -10);
-let pointerClient = { x: 0, y: 0 };
 let hovered = null;
 let started = false;
 
 const mascotMove = {
   keys: new Set(), destination: null, speed: 2.45, phase: 0,
-  bounds: { minX: -6.7, maxX: 6.7, minZ: -4.35, maxZ: 3.35 },
+  travelBounds: { minX: -8.35, maxX: 8.35, minZ: -4.65, maxZ: 4.35 },
+  stageEdge: { minX: -7.72, maxX: 7.72, frontZ: 3.78 },
+  spawn: new THREE.Vector3(0, 0, 0.35),
+  fall: null,
 };
+const mobileControls = document.getElementById('mobile-controls');
+const moveStick = document.getElementById('move-stick');
+const moveThumb = document.getElementById('move-thumb');
+const mobilePlay = document.getElementById('mobile-play');
+const zoomControls = document.getElementById('zoom-controls');
+const zoomIn = document.getElementById('zoom-in');
+const zoomOut = document.getElementById('zoom-out');
+const joystickInput = new THREE.Vector2();
+const cameraForwardXZ = new THREE.Vector3();
+const cameraRightXZ = new THREE.Vector3();
+const mobileFollowTarget = new THREE.Vector3();
+const mobileFollowDelta = new THREE.Vector3();
+let joystickPointer = null;
 const stageWalkPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const instrumentGroups = { drums: drums.group, piano: piano.group, guitar: guitar.group, mic: mic.group };
 
+function zoomScene(factor) {
+  if (!started || !controls.enabled || ui.modalOpen) return;
+  const offset = camera.position.clone().sub(controls.target);
+  const nextDistance = THREE.MathUtils.clamp(
+    offset.length() * factor,
+    controls.minDistance,
+    controls.maxDistance,
+  );
+  if (Math.abs(nextDistance - offset.length()) < 0.001) return;
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+  camera.position.copy(controls.target).add(offset.setLength(nextDistance));
+  controls.update();
+}
+
+zoomIn.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  zoomScene(0.82);
+});
+zoomOut.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  zoomScene(1.22);
+});
+
+function setJoystickFromPointer(event) {
+  const rect = moveStick.getBoundingClientRect();
+  const dx = event.clientX - (rect.left + rect.width / 2);
+  const dy = event.clientY - (rect.top + rect.height / 2);
+  const maxRadius = rect.width * 0.31;
+  const rawLength = Math.hypot(dx, dy);
+  const clamped = Math.min(maxRadius, rawLength);
+  const angle = Math.atan2(dy, dx);
+  const visualX = Math.cos(angle) * clamped;
+  const visualY = Math.sin(angle) * clamped;
+  const strength = rawLength < maxRadius * 0.14
+    ? 0
+    : Math.min(1, (rawLength / maxRadius - 0.14) / 0.86);
+  joystickInput.set(Math.cos(angle) * strength, Math.sin(angle) * strength);
+  moveThumb.style.transform = `translate(-50%, -50%) translate(${visualX}px, ${visualY}px)`;
+}
+
+function releaseJoystick(event) {
+  if (event && joystickPointer !== null && event.pointerId !== joystickPointer) return;
+  joystickPointer = null;
+  joystickInput.set(0, 0);
+  moveStick.classList.remove('engaged');
+  moveThumb.style.transform = 'translate(-50%, -50%)';
+}
+
+moveStick.addEventListener('pointerdown', (event) => {
+  if (!started || ui.modalOpen) return;
+  event.preventDefault();
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+  joystickPointer = event.pointerId;
+  moveStick.classList.add('engaged');
+  moveStick.setPointerCapture?.(event.pointerId);
+  setJoystickFromPointer(event);
+});
+moveStick.addEventListener('pointermove', (event) => {
+  if (event.pointerId === joystickPointer) setJoystickFromPointer(event);
+});
+moveStick.addEventListener('pointerup', releaseJoystick);
+moveStick.addEventListener('pointercancel', releaseJoystick);
+moveStick.addEventListener('lostpointercapture', releaseJoystick);
+
 function clampMascotPoint(point) {
-  point.x = THREE.MathUtils.clamp(point.x, mascotMove.bounds.minX, mascotMove.bounds.maxX);
-  point.z = THREE.MathUtils.clamp(point.z, mascotMove.bounds.minZ, mascotMove.bounds.maxZ);
+  point.x = THREE.MathUtils.clamp(point.x, mascotMove.travelBounds.minX, mascotMove.travelBounds.maxX);
+  point.z = THREE.MathUtils.clamp(point.z, mascotMove.travelBounds.minZ, mascotMove.travelBounds.maxZ);
   point.y = 0;
   return point;
 }
 
 function setMascotDestination(point) {
+  if (mascotMove.fall) return;
   mascotMove.destination = clampMascotPoint(point.clone());
   controls.autoRotate = false;
+}
+
+function beginMascotFall(direction) {
+  if (mascotMove.fall) return;
+  mascotMove.destination = null;
+  mascotMove.keys.clear();
+  releaseJoystick();
+  ui.hideChip();
+  hideVocalPad();
+  mascotMove.fall = {
+    t: 0,
+    duration: 2.7,
+    velocity: direction.clone().setY(0).normalize().multiplyScalar(0.48),
+    cameraPosition: camera.position.clone(),
+    cameraTarget: controls.target.clone(),
+    controlsEnabled: controls.enabled,
+    autoRotate: controls.autoRotate,
+  };
+  controls.enabled = false;
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+  for (const { object } of mascotFallMeshes) object.renderOrder = 18;
+  for (const material of mascotFallMaterialStates.keys()) {
+    material.transparent = true;
+    material.opacity = 0.92;
+    material.depthTest = false;
+    material.depthWrite = false;
+    material.needsUpdate = true;
+  }
+  mascot.group.rotation.x = 0;
+  navigator.vibrate?.([45, 35, 70]);
+}
+
+function respawnMascot() {
+  const completedFall = mascotMove.fall;
+  mascotMove.fall = null;
+  mascot.group.position.copy(mascotMove.spawn);
+  mascot.group.scale.setScalar(mascotBaseScale);
+  mascot.group.rotation.x = 0;
+  mascot.group.rotation.z = 0;
+  mascot.torso.rotation.z = 0;
+  mascot.head.rotation.z = 0;
+  mascot.legL.rotation.x = 0;
+  mascot.legR.rotation.x = 0;
+  mascot.armL.rotation.x = 0;
+  mascot.armR.rotation.x = 0;
+  for (const { object, renderOrder } of mascotFallMeshes) object.renderOrder = renderOrder;
+  for (const [material, state] of mascotFallMaterialStates) {
+    material.transparent = state.transparent;
+    material.opacity = state.opacity;
+    material.depthTest = state.depthTest;
+    material.depthWrite = state.depthWrite;
+    material.needsUpdate = true;
+  }
+  if (completedFall?.cameraPosition && completedFall?.cameraTarget) {
+    camera.position.copy(completedFall.cameraPosition);
+    controls.target.copy(completedFall.cameraTarget);
+    controls.enabled = completedFall.controlsEnabled;
+    controls.autoRotate = completedFall.autoRotate;
+    camera.lookAt(controls.target);
+    controls.update();
+  }
+  if (mascotLabel) {
+    mascotLabel.visible = true;
+    mascotLabel.position.set(mascotMove.spawn.x, 1.72, mascotMove.spawn.z);
+  }
+  if (isMobileGameMode()) {
+    mobileFollowTarget.set(mascotMove.spawn.x, 1.35, mascotMove.spawn.z - 0.25);
+    mobileFollowDelta.subVectors(mobileFollowTarget, controls.target);
+    controls.target.add(mobileFollowDelta);
+    camera.position.add(mobileFollowDelta);
+  }
+  ui.toast('Обережніше, не падай', 2200);
 }
 
 function walkMascotToInstrument(kind) {
@@ -851,13 +1135,144 @@ function nearestInstrument() {
   return nearest;
 }
 
+let performanceUntil = 0;
+
+function playInstrumentPerformance(kind) {
+  if (performance.now() < performanceUntil) return;
+  audio.init();
+  audio.resume();
+  chipFor(kind);
+  if (kind !== 'mic') hideVocalPad();
+  mobilePlay.classList.add('performing');
+
+  const later = (delay, fn) => setTimeout(() => {
+    if (started && !ui.modalOpen) fn();
+  }, delay);
+  const finish = (duration) => {
+    performanceUntil = performance.now() + duration;
+    setTimeout(() => mobilePlay.classList.remove('performing'), duration);
+  };
+
+  if (kind === 'drums') {
+    const beat = [
+      [0, 'kick'], [0, 'hihat'], [240, 'hihat'], [480, 'snare'], [480, 'hihat'],
+      [720, 'hihat'], [960, 'kick'], [960, 'hihat'], [1200, 'kick'], [1200, 'hihat'],
+      [1440, 'snare'], [1440, 'hihat'], [1680, 'tom2'], [1860, 'floor'], [2040, 'crash'],
+    ];
+    for (const [delay, part] of beat) later(delay, () => {
+      drums.hit(part);
+      if (part === 'kick') audio.kick();
+      else if (part === 'snare') audio.snare();
+      else if (part === 'hihat') audio.hihat(false, 0.78);
+      else if (part === 'crash') audio.crash();
+      else audio.tom(part === 'floor' ? 95 : 120);
+      addVibe(1.15);
+    });
+    navigator.vibrate?.([35, 205, 25, 205, 45]);
+    finish(2350);
+  } else if (kind === 'piano') {
+    const melody = [0, 2, 4, 7, 5, 4, 2, 0];
+    melody.forEach((keyIndex, step) => later(step * 245, () => {
+      const key = whiteKeys[keyIndex];
+      if (!key) return;
+      piano.press(key);
+      audio.piano(key.userData.freq, 0.82);
+      addVibe(1.35);
+    }));
+    finish(2200);
+  } else if (kind === 'guitar') {
+    const chords = [
+      [130.81, 196.0, 261.63, 329.63, 392.0, 523.25],
+      [98.0, 146.83, 196.0, 246.94, 293.66, 392.0],
+      [110.0, 164.81, 220.0, 261.63, 329.63, 440.0],
+      [87.31, 130.81, 174.61, 220.0, 261.63, 349.23],
+    ];
+    chords.forEach((chord, step) => later(step * 620, () => {
+      guitar.strum();
+      audio.strum(chord, 0.8);
+      addVibe(2.2);
+    }));
+    finish(2600);
+  } else if (kind === 'mic') {
+    showVocalPad();
+    const phrase = [
+      [261.63, 0], [293.66, 1], [329.63, 2], [392.0, 1],
+      [349.23, 0], [329.63, 2], [293.66, 1], [261.63, 0],
+    ];
+    phrase.forEach(([freq, vowel], step) => later(step * 285, () => {
+      mic.sing();
+      audio.vocalTone(freq, vowel);
+      addVibe(1.3);
+    }));
+    finish(2500);
+  }
+}
+
+function playNearestInstrument() {
+  if (!started || ui.modalOpen || mascotMove.fall) return;
+  const nearest = nearestInstrument();
+  const reach = isMobileGameMode() ? 2.55 : 2.15;
+  if (!nearest || nearest.distance > reach) {
+    ui.toast('Підійди ближче до інструмента', 1800);
+    return;
+  }
+  const look = new THREE.Vector3().subVectors(nearest.position, mascot.group.position);
+  mascot.group.rotation.y = Math.atan2(look.x, look.z);
+  playInstrumentPerformance(nearest.kind);
+}
+
+mobilePlay.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  mobilePlay.classList.add('pressed');
+  playNearestInstrument();
+  navigator.vibrate?.(22);
+});
+for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
+  mobilePlay.addEventListener(eventName, () => mobilePlay.classList.remove('pressed'));
+}
+
 function updateMascot(dt) {
-  if (!started || ui.modalOpen) return;
+  if (!started || ui.modalOpen || flyT >= 0) return;
+  if (mascotMove.fall) {
+    const fall = mascotMove.fall;
+    fall.t += dt;
+    const fallProgress = Math.min(1, fall.t / fall.duration);
+    mascot.group.position.addScaledVector(fall.velocity, dt);
+    mascot.group.position.y = -0.05 - 0.48 * fall.t - 0.38 * fall.t * fall.t;
+    mascot.group.scale.setScalar(mascotBaseScale * (1 - fallProgress * 0.24));
+    mascot.group.rotation.z += dt * 1.7;
+    mascot.group.rotation.x += dt * 0.82;
+    for (const material of mascotFallMaterialStates.keys()) {
+      material.opacity = THREE.MathUtils.lerp(0.92, 0.3, fallProgress);
+    }
+    const cameraDrop = THREE.MathUtils.smoothstep(fallProgress, 0, 1) * 3.35;
+    camera.position.copy(fall.cameraPosition);
+    camera.position.y -= cameraDrop;
+    controls.target.copy(fall.cameraTarget);
+    controls.target.y -= cameraDrop;
+    camera.lookAt(controls.target);
+    if (mascotLabel) {
+      mascotLabel.visible = fall.t < 0.42;
+      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+    }
+    if (fall.t >= fall.duration) respawnMascot();
+    return;
+  }
   const direction = new THREE.Vector3(
     (mascotMove.keys.has('ArrowRight') ? 1 : 0) - (mascotMove.keys.has('ArrowLeft') ? 1 : 0),
     0,
     (mascotMove.keys.has('ArrowDown') ? 1 : 0) - (mascotMove.keys.has('ArrowUp') ? 1 : 0),
   );
+
+  if (joystickInput.lengthSq() > 0) {
+    camera.getWorldDirection(cameraForwardXZ);
+    cameraForwardXZ.y = 0;
+    if (cameraForwardXZ.lengthSq() < 0.001) cameraForwardXZ.set(0, 0, -1);
+    cameraForwardXZ.normalize();
+    cameraRightXZ.crossVectors(cameraForwardXZ, camera.up).normalize();
+    direction.addScaledVector(cameraRightXZ, joystickInput.x);
+    direction.addScaledVector(cameraForwardXZ, -joystickInput.y);
+  }
 
   if (direction.lengthSq() > 0) mascotMove.destination = null;
   else if (mascotMove.destination) {
@@ -870,13 +1285,22 @@ function updateMascot(dt) {
 
   const walking = direction.lengthSq() > 0;
   if (walking) {
+    const moveStrength = Math.min(1, direction.length());
     direction.normalize();
-    mascot.group.position.addScaledVector(direction, mascotMove.speed * dt);
+    mascot.group.position.addScaledVector(direction, mascotMove.speed * dt * moveStrength);
     clampMascotPoint(mascot.group.position);
     const targetRotation = Math.atan2(direction.x, direction.z);
     const rotationDelta = Math.atan2(Math.sin(targetRotation - mascot.group.rotation.y), Math.cos(targetRotation - mascot.group.rotation.y));
     mascot.group.rotation.y += rotationDelta * Math.min(1, dt * 10);
     mascotMove.phase += dt * 10;
+    if (
+      mascot.group.position.x < mascotMove.stageEdge.minX ||
+      mascot.group.position.x > mascotMove.stageEdge.maxX ||
+      mascot.group.position.z > mascotMove.stageEdge.frontZ
+    ) {
+      beginMascotFall(direction);
+      return;
+    }
   }
 
   const stride = walking ? Math.sin(mascotMove.phase) * 0.58 : 0;
@@ -892,13 +1316,21 @@ function updateMascot(dt) {
   if (mascotLabel) {
     mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
   }
+
+  if (isMobileGameMode() && flyT < 0) {
+    mobileFollowTarget.set(mascot.group.position.x, 1.35, mascot.group.position.z - 0.25);
+    mobileFollowDelta.subVectors(mobileFollowTarget, controls.target)
+      .multiplyScalar(Math.min(1, dt * 2.2));
+    controls.target.add(mobileFollowDelta);
+    camera.position.add(mobileFollowDelta);
+  }
 }
 
 const INSTRUMENT_STYLE = {
-  drums: { glow: 0x9E33CA, tip: 'УДАРНІ <em>клік — грати · A S D F G</em>' },
-  piano: { glow: 0xD1A13B, tip: 'ФОРТЕПІАНО <em>клік — грати · 1–8</em>' },
-  guitar: { glow: 0xD1A13B, tip: 'ГІТАРА <em>клік — грати · ПРОБІЛ</em>' },
-  mic: { glow: 0x9E33CA, tip: 'ВОКАЛ <em>клік — вокальний чек</em>' },
+  drums: { glow: 0x9E33CA },
+  piano: { glow: 0xD1A13B },
+  guitar: { glow: 0xD1A13B },
+  mic: { glow: 0x9E33CA },
 };
 
 function setGlow(mesh, on) {
@@ -930,7 +1362,6 @@ function setGlow(mesh, on) {
 }
 
 function onPointerMove(e) {
-  pointerClient = { x: e.clientX, y: e.clientY };
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
 }
@@ -944,8 +1375,10 @@ canvas.addEventListener('pointerup', (e) => {
   const dx = e.clientX - downInfo.x, dy = e.clientY - downInfo.y;
   const dt = performance.now() - downInfo.t;
   downInfo = null;
-  if (Math.hypot(dx, dy) < 8 && dt < 600) handleClick(e);
+  const tapTolerance = isMobileGameMode() ? 16 : 8;
+  if (Math.hypot(dx, dy) < tapTolerance && dt < 600) handleClick(e);
 });
+canvas.addEventListener('pointercancel', () => { downInfo = null; });
 window.addEventListener('pointermove', onPointerMove, { passive: true });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -967,10 +1400,10 @@ function addVibe(n) {
 
 // ---- price carousel ----
 const PRICE_SLIDES = [
-  { kind: 'mic', title: 'ВОКАЛ', anchor: 'vocal' },
-  { kind: 'guitar', title: 'ГІТАРА', anchor: 'guitar' },
-  { kind: 'drums', title: 'БАРАБАНИ', anchor: 'drums' },
-  { kind: 'piano', title: 'ФОРТЕПІАНО', anchor: 'piano' },
+  { kind: 'mic', title: 'Уроки вокалу', anchor: 'vocal' },
+  { kind: 'guitar', title: 'Уроки гітари', anchor: 'guitar' },
+  { kind: 'drums', title: 'Уроки гри на барабанах', anchor: 'drums' },
+  { kind: 'piano', title: 'Уроки фортепіано', anchor: 'piano' },
 ];
 
 function chipFor(kind) {
@@ -981,16 +1414,89 @@ function chipFor(kind) {
   ui.showChip(
     `${slide.title} <span class="accent">від 50 зл</span>`,
     '',
-    'ЦІНИ ›',
+    'ДЕТАЛІ',
     () => ui.open('pricing', slide.anchor),
     { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
   );
 }
 
+// ---- microphone note pad ----
+const vocalPad = document.getElementById('vocal-pad');
+const vocalButtons = [...vocalPad.querySelectorAll('[data-vocal-freq]')];
+let vocalPadTimer = null;
+let heldVocal = null;
+let heldVocalButton = null;
+let heldVocalPointer = null;
+let heldVocalPulseTimer = null;
+
+function showVocalPad(autoHide = true) {
+  vocalPad.hidden = false;
+  clearTimeout(vocalPadTimer);
+  if (autoHide) vocalPadTimer = setTimeout(() => { vocalPad.hidden = true; }, 7600);
+}
+
+function hideVocalPad() {
+  clearTimeout(vocalPadTimer);
+  clearInterval(heldVocalPulseTimer);
+  audio.stopVocal(heldVocal);
+  heldVocalButton?.classList.remove('playing');
+  heldVocal = null;
+  heldVocalButton = null;
+  heldVocalPointer = null;
+  vocalPad.hidden = true;
+}
+
+function playVocalNote(freq, vowel, showPrice = false) {
+  audio.init();
+  audio.resume();
+  mic.sing();
+  audio.vocalTone(freq, vowel);
+  addVibe(4);
+  showVocalPad();
+  if (showPrice) chipFor('mic');
+}
+
+function releaseHeldVocal(event) {
+  if (event && heldVocalPointer !== null && event.pointerId !== heldVocalPointer) return;
+  clearInterval(heldVocalPulseTimer);
+  audio.stopVocal(heldVocal);
+  heldVocalButton?.classList.remove('playing');
+  heldVocal = null;
+  heldVocalButton = null;
+  heldVocalPointer = null;
+  showVocalPad();
+}
+
+for (const button of vocalButtons) {
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    releaseHeldVocal();
+    const freq = Number(button.dataset.vocalFreq);
+    const vowel = Number(button.dataset.vocalVowel);
+    audio.init();
+    audio.resume();
+    mic.sing();
+    heldVocal = audio.startVocal(freq, vowel);
+    heldVocalButton = button;
+    heldVocalPointer = event.pointerId;
+    button.setPointerCapture?.(event.pointerId);
+    button.classList.add('playing');
+    addVibe(3);
+    showVocalPad(false);
+    heldVocalPulseTimer = setInterval(() => mic.sing(), 480);
+    navigator.vibrate?.(16);
+  });
+  button.addEventListener('pointerup', releaseHeldVocal);
+  button.addEventListener('pointercancel', releaseHeldVocal);
+  button.addEventListener('lostpointercapture', releaseHeldVocal);
+}
+
 // ---- trigger instruments ----
 function trigger(mesh) {
   const u = mesh.userData;
+  audio.init();
   audio.resume();
+  if (u.instrument !== 'mic') hideVocalPad();
   switch (u.instrument) {
     case 'drums': {
       const part = u.part;
@@ -1016,18 +1522,21 @@ function trigger(mesh) {
       break;
     }
     case 'guitar': {
-      guitar.strum();
-      // Em9 strum
-      audio.strum([164.81, 246.94, 329.63, 392.0, 493.88, 659.25]);
-      addVibe(7);
+      if (u.stringFreq !== undefined) {
+        guitar.pluck(u.stringIndex);
+        audio.pluck(u.stringFreq);
+        addVibe(3);
+      } else {
+        guitar.strum();
+        // Em9 strum
+        audio.strum([164.81, 246.94, 329.63, 392.0, 493.88, 659.25]);
+        addVibe(7);
+      }
       chipFor('guitar');
       break;
     }
     case 'mic': {
-      mic.sing();
-      audio.micCheck();
-      addVibe(6);
-      chipFor('mic');
+      playVocalNote(u.vocalFreq ?? 329.63, u.vocalVowel ?? 1, true);
       break;
     }
   }
@@ -1055,17 +1564,7 @@ window.addEventListener('keydown', (e) => {
     mascotMove.keys.add(e.code);
   }
   if (e.code === 'KeyE' && !e.repeat) {
-    const nearest = nearestInstrument();
-    if (!nearest || nearest.distance > 2.15) {
-      ui.toast('Підійди ближче до інструмента й натисни <span class="hl">E</span>', 2200);
-      return;
-    }
-    const mesh = interactables.find((object) => object.userData.instrument === nearest.kind);
-    if (mesh) {
-      const look = new THREE.Vector3().subVectors(nearest.position, mascot.group.position);
-      mascot.group.rotation.y = Math.atan2(look.x, look.z);
-      trigger(mesh);
-    }
+    playNearestInstrument();
   }
 });
 
@@ -1124,7 +1623,7 @@ try {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight), 0.45, 0.5, 0.85);
+    new THREE.Vector2(window.innerWidth, window.innerHeight), isMobileGameMode() ? 0.28 : 0.45, 0.5, 0.85);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 } catch (e) {
@@ -1147,6 +1646,8 @@ function startExperience(withAudio = true) {
   started = true;
   if (withAudio) { audio.init(); audio.resume(); }
   intro.classList.add('gone');
+  mobileControls.classList.add('active');
+  zoomControls.hidden = false;
   flyT = 0;
 }
 
@@ -1160,7 +1661,9 @@ controls.addEventListener('start', () => {
 });
 controls.addEventListener('end', () => {
   clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => { if (!ui.modalOpen) controls.autoRotate = true; }, 9000);
+  if (!isMobileGameMode()) {
+    idleTimer = setTimeout(() => { if (!ui.modalOpen) controls.autoRotate = true; }, 9000);
+  }
 });
 
 // ticker
@@ -1200,7 +1703,9 @@ function animate() {
       flyT = -1;
       controls.enabled = true;
       ui.showHUD();
-      idleTimer = setTimeout(() => { if (!ui.modalOpen) controls.autoRotate = true; }, 6000);
+      if (!isMobileGameMode()) {
+        idleTimer = setTimeout(() => { if (!ui.modalOpen) controls.autoRotate = true; }, 6000);
+      }
     }
   } else if (controls.enabled) {
     controls.update();
@@ -1235,7 +1740,7 @@ function animate() {
   }
 
   // hover raycast
-  if (started && !ui.modalOpen) {
+  if (started && !ui.modalOpen && canHover.matches) {
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects(interactables, false);
     const hit = hits.length ? hits[0].object : null;
@@ -1245,18 +1750,13 @@ function animate() {
       if (hovered) setGlow(hovered, true);
       canvas.style.cursor = hovered ? 'pointer' : '';
     }
-    if (hovered) {
-      ui.setTooltip(INSTRUMENT_STYLE[hovered.userData.instrument].tip, pointerClient.x, pointerClient.y);
-    } else {
-      ui.setTooltip(null);
-    }
   } else {
     if (hovered) { setGlow(hovered, false); hovered = null; }
-    ui.setTooltip(null);
   }
 
   fireworks.update(dt);
   updateSlideshow(dt);
+  updateSlideshowNavLayout();
 
   if (composer) composer.render();
   else renderer.render(scene, camera);
@@ -1285,6 +1785,8 @@ Promise.race([
   if (params.has('nointro')) {
     started = true;
     intro.classList.add('gone');
+    mobileControls.classList.add('active');
+    zoomControls.hidden = false;
     camera.position.copy(CAM_END);
     camera.lookAt(TARGET);
     controls.enabled = true;

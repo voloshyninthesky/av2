@@ -67,10 +67,6 @@ export class UI {
       (dx < 0 ? this.el.chipNext : this.el.chipPrev).click();
     });
 
-    const directToast = () => this.toast('Instagram: <span class="hl">@artvibe.pl</span> — пиши у Direct, відповімо на всі питання', 5200);
-    document.getElementById('direct-btn-1').addEventListener('click', directToast);
-    document.getElementById('direct-btn-2').addEventListener('click', directToast);
-
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { this.closeAll(); this.el.help.hidden = true; }
     });

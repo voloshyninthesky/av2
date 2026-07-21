@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260721-3">
+<link rel="stylesheet" href="css/style.css?v=20260721-16">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -20,6 +20,8 @@
 <body>
 
 <canvas id="scene"></canvas>
+
+<div id="slideshow-nav" hidden aria-label="Свайп для перемикання слайдів"></div>
 
 <!-- ======= INTRO OVERLAY ======= -->
 <div id="intro" aria-label="Заставка">
@@ -78,6 +80,11 @@
 </div>
 <div id="drag-hint" class="mono hidden">перетягуй — огляд сцени · коліщатко — зум</div>
 
+<div id="zoom-controls" hidden aria-label="Масштаб сцени">
+  <button id="zoom-in" type="button" aria-label="Наблизити сцену" title="Наблизити">+</button>
+  <button id="zoom-out" type="button" aria-label="Віддалити сцену" title="Віддалити">−</button>
+</div>
+
 <!-- floating tooltip / chip / toast -->
 <div id="tooltip" class="mono" hidden></div>
 <div id="chip" hidden>
@@ -90,6 +97,25 @@
 </div>
 <div id="toast" class="mono" hidden></div>
 
+<div id="vocal-pad" hidden aria-label="Ноти вокалу">
+  <button type="button" data-vocal-freq="261.63" data-vocal-vowel="0" aria-label="Нота До">ДО</button>
+  <button type="button" data-vocal-freq="293.66" data-vocal-vowel="1" aria-label="Нота Ре">РЕ</button>
+  <button type="button" data-vocal-freq="329.63" data-vocal-vowel="2" aria-label="Нота Мі">МІ</button>
+  <button type="button" data-vocal-freq="349.23" data-vocal-vowel="0" aria-label="Нота Фа">ФА</button>
+  <button type="button" data-vocal-freq="392.00" data-vocal-vowel="1" aria-label="Нота Соль">СОЛЬ</button>
+</div>
+
+<div id="mobile-controls" aria-label="Ігрове керування">
+  <div id="move-stick" role="application" aria-label="Джойстик руху">
+    <span class="stick-arrows" aria-hidden="true">◆</span>
+    <span id="move-thumb"></span>
+  </div>
+  <button id="mobile-play" type="button" aria-label="Грати на найближчому інструменті">
+    <span class="play-key">E</span>
+    <span>ГРАТИ</span>
+  </button>
+</div>
+
 <!-- ======= HELP OVERLAY ======= -->
 <div id="help" class="overlay" hidden>
   <div class="panel help-panel">
@@ -99,9 +125,10 @@
       <li><span class="kbd">СТРІЛКИ</span> веди персонажа по сцені · <span class="kbd">E</span> зіграти на найближчому інструменті</li>
       <li><span class="kbd">миша</span> перетягуй — огляд сцени, коліщатко — зум</li>
       <li><span class="kbd">клік</span> по інструменту — зіграти звук</li>
+      <li><span class="kbd">свайп</span> по екрану сцени — перемикати слайди</li>
       <li><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span><span class="kbd">F</span><span class="kbd">G</span> бас · малий барабан · хет · том · креш</li>
       <li><span class="kbd">1</span>…<span class="kbd">8</span> білі клавіші піаніно (До–До)</li>
-      <li><span class="kbd">ПРОБІЛ</span> акорд на гітарі</li>
+      <li><span class="kbd">клік</span> по струнах — окремі ноти · <span class="kbd">ПРОБІЛ</span> — акорд</li>
       <li><span class="kbd">ESC</span> закрити вікно</li>
     </ul>
     <p class="mono help-note">наповни VIBE-ометр до 100% — буде сюрприз</p>
@@ -121,7 +148,7 @@
       <li><span class="step-tri"></span><div><b>Крок 4.</b> Напиши нам у директ, щоб записатися або задати додаткові питання.</div></li>
     </ol>
     <div class="panel-actions">
-      <button class="pill-btn gold big" id="direct-btn-1">НАПИШИ @ARTVIBE.PL ›</button>
+      <a class="pill-btn gold big" id="direct-btn-1" href="https://www.instagram.com/artvibe.pl/" target="_blank" rel="noopener noreferrer">НАПИШИ @ARTVIBE.PL ›</a>
     </div>
   </div>
 </div>
@@ -298,7 +325,7 @@
     <p class="mono price-foot">ціна — за абонемент · перша оплата на картку, далі — карткою або готівкою</p>
     <div class="panel-actions">
       <button class="pill-btn outline big" data-goto="steps">ЯК ЗАПИСАТИСЯ? ›</button>
-      <button class="pill-btn gold big" id="direct-btn-2">НАПИШИ @ARTVIBE.PL ›</button>
+      <a class="pill-btn gold big" id="direct-btn-2" href="https://www.instagram.com/artvibe.pl/" target="_blank" rel="noopener noreferrer">НАПИШИ @ARTVIBE.PL ›</a>
     </div>
   </div>
 </div>
@@ -312,6 +339,6 @@
 
 <div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
 
-<script type="module" src="js/main.js?v=20260721-7"></script>
+<script type="module" src="js/main.js?v=20260721-20"></script>
 </body>
 </html>

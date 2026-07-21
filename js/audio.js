@@ -9,6 +9,7 @@ export class AudioEngine {
     this.muted = false;
     this._noise = null;
     this._ksCache = new Map();
+    this._activeVocals = new Set();
   }
 
   init() {
@@ -212,6 +213,88 @@ export class AudioEngine {
   }
 
   // ---------------- MIC / VOCAL ----------------
+
+  startVocal(freq = 329.63, vowel = 1, vel = 1) {
+    if (!this.ctx) return null;
+    const t = this.ctx.currentTime;
+    const out = this.ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.26 * vel, t + 0.035);
+    out.connect(this.master);
+
+    const formants = [
+      [[800, 5, 1], [1200, 7, 0.45]],
+      [[500, 6, 1], [1750, 8, 0.45]],
+      [[350, 7, 1], [2100, 9, 0.4]],
+    ][Math.abs(vowel) % 3];
+    const filters = formants.map(([frequency, q, gain]) => {
+      const filter = this.ctx.createBiquadFilter();
+      const formantGain = this.ctx.createGain();
+      filter.type = 'bandpass';
+      filter.frequency.value = frequency;
+      filter.Q.value = q;
+      formantGain.gain.value = gain;
+      filter.connect(formantGain).connect(out);
+      return filter;
+    });
+
+    const vibrato = this.ctx.createOscillator();
+    const vibratoGain = this.ctx.createGain();
+    vibrato.frequency.value = 5.5;
+    vibratoGain.gain.value = 5.5;
+    vibrato.connect(vibratoGain);
+
+    const sources = [];
+    for (const [type, level, detune] of [['sawtooth', 0.55, -4], ['triangle', 0.42, 4]]) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      osc.detune.value = detune;
+      gain.gain.value = level;
+      vibratoGain.connect(osc.frequency);
+      osc.connect(gain);
+      for (const filter of filters) gain.connect(filter);
+      osc.start(t);
+      sources.push(osc);
+    }
+    vibrato.start(t);
+    sources.push(vibrato);
+
+    const voice = {
+      stopped: false,
+      safetyTimer: null,
+      stop: () => {
+        if (voice.stopped) return;
+        voice.stopped = true;
+        clearTimeout(voice.safetyTimer);
+        const now = this.ctx.currentTime;
+        if (out.gain.cancelAndHoldAtTime) out.gain.cancelAndHoldAtTime(now);
+        else {
+          out.gain.cancelScheduledValues(now);
+          out.gain.setValueAtTime(Math.max(0.0001, Math.min(0.26 * vel, out.gain.value || 0.26 * vel)), now);
+        }
+        out.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+        for (const source of sources) {
+          try { source.stop(now + 0.27); } catch { /* already stopped */ }
+        }
+        this._activeVocals.delete(voice);
+      },
+    };
+    voice.safetyTimer = setTimeout(() => voice.stop(), 10000);
+    this._activeVocals.add(voice);
+    return voice;
+  }
+
+  stopVocal(voice) {
+    voice?.stop?.();
+  }
+
+  vocalTone(freq = 329.63, vowel = 1) {
+    const voice = this.startVocal(freq, vowel);
+    if (voice) setTimeout(() => voice.stop(), 680);
+    return voice;
+  }
 
   micCheck() {
     if (!this.ctx) return;

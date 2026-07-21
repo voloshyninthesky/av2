@@ -38,7 +38,7 @@ export function buildDrumKit() {
   const chrome = metal(0xd9d9e2, 0.22);
   const darkMetal = metal(0x2c2c34, 0.4);
 
-  const parts = { cymbals: [], sticks: {} };
+  const parts = { cymbals: [] };
   const anim = { snare: 0, tom1: 0, tom2: 0, floor: 0, kick: 0, hihat: 0, crash: 0 };
 
   // ---- kick drum (axis towards audience, +z) ----
@@ -90,7 +90,9 @@ export function buildDrumKit() {
       new THREE.Vector3(0, -0.55, 0),
       new THREE.Vector3(Math.cos(a) * 0.3, -0.78, Math.sin(a) * 0.3), 0.014, darkMetal));
   }
-  snare.position.set(-0.78, 0.88, 0.42);
+  // Tuck the snare into the playable pocket between the kick, throne and
+  // hi-hat instead of leaving it out on the audience-facing front line.
+  snare.position.set(0.7, 0.88, -0.05);
   markInteract(snare, { instrument: 'drums', part: 'snare' });
   parts.snare = snare;
   kit.add(snare);
@@ -107,8 +109,8 @@ export function buildDrumKit() {
     t.rotation.x = tilt;
     return t;
   };
-  const tom1 = mkTom(0.26, 0.28, -0.3, 1.3, 0.12, -0.42);
-  const tom2 = mkTom(0.29, 0.3, 0.32, 1.32, 0.1, -0.42);
+  const tom1 = mkTom(0.26, 0.28, 0.3, 1.3, 0.12, -0.42);
+  const tom2 = mkTom(0.29, 0.3, -0.32, 1.32, 0.1, -0.42);
   markInteract(tom1, { instrument: 'drums', part: 'tom1' });
   markInteract(tom2, { instrument: 'drums', part: 'tom2' });
   parts.tom1 = tom1; parts.tom2 = tom2;
@@ -124,7 +126,7 @@ export function buildDrumKit() {
       new THREE.Vector3(Math.cos(a) * 0.3, -0.2, Math.sin(a) * 0.3),
       new THREE.Vector3(Math.cos(a) * 0.38, -0.72, Math.sin(a) * 0.38), 0.014, chrome));
   }
-  floorTom.position.set(0.95, 0.74, 0.42);
+  floorTom.position.set(-0.95, 0.74, 0.42);
   markInteract(floorTom, { instrument: 'drums', part: 'floor' });
   parts.floor = floorTom;
   kit.add(floorTom);
@@ -142,9 +144,9 @@ export function buildDrumKit() {
   const hihat = new THREE.Group();
   hihat.add(cylinderBetween(new THREE.Vector3(0, -1.0, 0), new THREE.Vector3(0, 0, 0), 0.018, darkMetal));
   const hatBot = mkCymbal(0.28); hatBot.position.y = 0;
-  const hatTop = mkCymbal(0.28); hatTop.position.y = 0.045; hatTop.rotation.z = 0.03;
+  const hatTop = mkCymbal(0.28); hatTop.position.y = 0.045; hatTop.rotation.z = -0.03;
   hihat.add(hatBot, hatTop);
-  hihat.position.set(-1.3, 1.02, 0.55);
+  hihat.position.set(1.08, 1.02, 0.3);
   markInteract(hihat, { instrument: 'drums', part: 'hihat' });
   parts.hihatTop = hatTop;
   kit.add(hihat);
@@ -152,29 +154,12 @@ export function buildDrumKit() {
   const crash = new THREE.Group();
   crash.add(cylinderBetween(new THREE.Vector3(0, -1.42, 0), new THREE.Vector3(0, 0, 0), 0.018, darkMetal));
   const crashCym = mkCymbal(0.36);
-  crashCym.rotation.z = 0.12;
+  crashCym.rotation.z = -0.12;
   crash.add(crashCym);
-  crash.position.set(1.42, 1.5, 0.1);
+  crash.position.set(-1.42, 1.5, 0.1);
   markInteract(crash, { instrument: 'drums', part: 'crash' });
   parts.crash = crashCym;
   kit.add(crash);
-
-  // ---- ghost drumsticks ----
-  const mkStick = (x, y, z) => {
-    const pivot = new THREE.Group();
-    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.42, 8), std(0xd9b382, { roughness: 0.7 }));
-    stick.position.y = -0.16;
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.026, 10, 8), std(0xd9b382));
-    tip.position.y = -0.37;
-    pivot.add(stick, tip);
-    pivot.position.set(x, y, z);
-    pivot.rotation.x = -0.85;
-    return pivot;
-  };
-  const stickL = mkStick(-0.62, 1.32, 0.42);  // over snare
-  const stickR = mkStick(0.28, 1.62, 0.3);    // over toms
-  parts.sticks = { l: stickL, r: stickR };
-  kit.add(stickL, stickR);
 
   // ---- throne ----
   const throne = new THREE.Group();
@@ -186,22 +171,17 @@ export function buildDrumKit() {
 
   kit.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
 
-  const restStick = { l: -0.85, r: -0.85 };
   let time = 0;
 
   return {
     group: kit,
     label: 'Ударні',
-    labelAnchor: new THREE.Vector3(-0.5, 2.75, 0),
+    labelAnchor: new THREE.Vector3(0.5, 2.75, 0),
     hit(part) { anim[part] = 1; },
     update(dt) {
       time += dt;
       const decay = Math.pow(0.0001, dt); // fast spring back
       for (const k in anim) anim[k] *= decay;
-
-      // stick swings
-      stickL.rotation.x = restStick.l - anim.snare * 0.65 + Math.sin(time * 2.1) * 0.05;
-      stickR.rotation.x = restStick.r - Math.max(anim.tom1, anim.tom2, anim.floor, anim.crash) * 0.7 + Math.sin(time * 1.7 + 1) * 0.05;
 
       // head punches
       const s1 = 1 + anim.snare * 0.08; parts.snare.scale.set(s1, 1 - anim.snare * 0.12, s1);
@@ -211,7 +191,7 @@ export function buildDrumKit() {
       const f1 = 1 + anim.floor * 0.07; parts.floor.scale.set(f1, 1 - anim.floor * 0.1, f1);
 
       parts.hihatTop.position.y = 0.045 - anim.hihat * 0.03;
-      parts.crash.rotation.z = 0.12 + Math.sin(time * 22) * anim.crash * 0.14;
+      parts.crash.rotation.z = -0.12 - Math.sin(time * 22) * anim.crash * 0.14;
       parts.crash.rotation.x = Math.sin(time * 17) * anim.crash * 0.08;
     },
   };
@@ -426,9 +406,13 @@ export function buildGuitar() {
     }
   }
 
-  // strings (vibrate on strum)
+  // Strings are individually playable. Generous transparent hit strips keep
+  // the real hairline geometry easy to tap on phones.
   const stringMat = metal(0xe8e8f0, 0.2);
   const strings = [];
+  const stringFrequencies = [82.41, 110.0, 146.83, 196.0, 246.94, 329.63];
+  const stringWobble = Array(6).fill(0);
+  const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
   for (let i = 0; i < 6; i++) {
     const xt = -0.028 + i * 0.0112;
     const xb = -0.042 + i * 0.0168;
@@ -438,8 +422,16 @@ export function buildGuitar() {
       0.0032, stringMat, 5);
     str.userData.baseX = str.position.x;
     str.userData.phase = i * 1.3;
+    str.userData.stringIndex = i;
+    str.userData.stringFreq = stringFrequencies[i];
     body.add(str);
     strings.push(str);
+
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.035, 1.62, 0.055), hitMat);
+    hit.position.set(-0.0875 + i * 0.035, 0.53, 0.105);
+    hit.userData.stringIndex = i;
+    hit.userData.stringFreq = stringFrequencies[i];
+    body.add(hit);
   }
 
   // purple pickguard
@@ -473,13 +465,17 @@ export function buildGuitar() {
     label: 'Гітара',
     labelAnchor: new THREE.Vector3(0, 2.05, 0),
     strum() { wobble = 1; },
+    pluck(index) { stringWobble[index] = 1; },
     update(dt) {
       time += dt;
       wobble *= Math.pow(0.02, dt);
       body.rotation.z = Math.sin(time * 26) * wobble * 0.05;
       body.rotation.x = -0.14 + Math.sin(time * 20) * wobble * 0.02;
-      for (const str of strings) {
-        str.position.x = str.userData.baseX + Math.sin(time * 55 + str.userData.phase) * wobble * 0.012;
+      for (let i = 0; i < strings.length; i++) {
+        const str = strings[i];
+        stringWobble[i] *= Math.pow(0.012, dt);
+        const movement = Math.max(wobble, stringWobble[i]);
+        str.position.x = str.userData.baseX + Math.sin(time * 55 + str.userData.phase) * movement * 0.012;
       }
       // gentle idle sway
       if (wobble < 0.01) body.rotation.z = Math.sin(time * 0.9) * 0.006;
@@ -551,10 +547,24 @@ export function buildMic() {
   pulse.position.y = 0.02;
   mic.add(pulse);
 
-  markInteract(headGroup, { instrument: 'mic' });
-  markInteract(base, { instrument: 'mic' });
-  markInteract(pole, { instrument: 'mic' });
-  mic.traverse((o) => { if (o.isMesh && o !== pulse) o.castShadow = true; });
+  const micHitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const lowHit = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.24, 0.65), micHitMat);
+  lowHit.position.y = 0.12;
+  mic.add(lowHit);
+  const midHit = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.76, 0.3), micHitMat);
+  midHit.position.y = 0.86;
+  mic.add(midHit);
+  const highHit = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), micHitMat);
+  highHit.position.y = 1.55;
+  mic.add(highHit);
+
+  markInteract(headGroup, { instrument: 'mic', vocalFreq: 392.0, vocalVowel: 2 });
+  markInteract(pole, { instrument: 'mic', vocalFreq: 329.63, vocalVowel: 1 });
+  markInteract(base, { instrument: 'mic', vocalFreq: 261.63, vocalVowel: 0 });
+  markInteract(highHit, { instrument: 'mic', vocalFreq: 392.0, vocalVowel: 2 });
+  markInteract(midHit, { instrument: 'mic', vocalFreq: 329.63, vocalVowel: 1 });
+  markInteract(lowHit, { instrument: 'mic', vocalFreq: 261.63, vocalVowel: 0 });
+  mic.traverse((o) => { if (o.isMesh && o !== pulse && o.material !== micHitMat) o.castShadow = true; });
 
   let bob = 0, pulseT = 0, time = 0;
 
