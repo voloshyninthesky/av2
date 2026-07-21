@@ -251,23 +251,31 @@ html, body {
 
 #chip {
   position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%);
-  z-index: 45; display: flex; align-items: center; gap: 16px;
+  z-index: 45; display: grid; grid-template-columns: 32px minmax(150px, 1fr) 32px auto;
+  align-items: center; gap: 10px;
   background: var(--cream); color: var(--ink);
-  border: 3px solid var(--ink); border-radius: 18px;
-  padding: 14px 18px; box-shadow: var(--shadow-pop);
+  border: 3px solid var(--ink); border-radius: 16px;
+  width: min(92vw, 520px); padding: 10px 12px; box-shadow: 7px 8px 0 rgba(158, 51, 202, .4);
   animation: chipIn .35s cubic-bezier(.2, 1.4, .4, 1);
-  max-width: min(92vw, 560px);
+  touch-action: pan-y;
 }
 @keyframes chipIn { from { transform: translate(-50%, 30px) scale(.9); opacity: 0; } }
-#chip-title { font-family: 'Unbounded'; font-weight: 900; font-size: 15px; letter-spacing: .06em; }
-#chip-title .accent { color: var(--purple); }
-#chip-desc { font-size: 11px; letter-spacing: .08em; color: rgba(23, 18, 28, .65); margin-top: 3px; }
+#chip-title { font-family: 'Unbounded'; font-weight: 900; font-size: 13px; line-height: 1.12; letter-spacing: .035em; }
+#chip-title .accent { display: block; margin-top: 3px; color: var(--purple); }
+#chip-desc { display: none; }
+.chip-arrow {
+  width: 32px; height: 32px; display: grid; place-items: center;
+  padding: 0 0 3px; border: 1px solid rgba(23, 18, 28, .28); border-radius: 50%;
+  background: transparent; color: var(--ink); font-size: 24px; line-height: 1; cursor: pointer;
+  transition: background .18s, color .18s, transform .18s;
+}
+.chip-arrow:hover, .chip-arrow:focus-visible { background: var(--purple); color: var(--cream); transform: scale(1.06); outline: none; }
 #chip-close {
   position: absolute; top: -12px; right: -12px;
   width: 26px; height: 26px; border-radius: 50%;
   background: var(--ink); color: var(--cream); border: none; cursor: pointer; font-size: 11px;
 }
-#chip .pill-btn { flex: none; }
+#chip .pill-btn { min-width: 90px; padding: 10px 16px; white-space: nowrap; }
 
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -388,8 +396,9 @@ html, body {
 }
 .price-card h3 {
   font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic;
-  font-size: clamp(28px, 4vw, 40px);
+  font-size: clamp(24px, 3.2vw, 36px); line-height: 1.05;
 }
+.price-kicker { display: block; margin-bottom: 5px; font-size: 9px; letter-spacing: .14em; opacity: .78; }
 .price-card .sketch { width: 64px; height: 88px; }
 .price-card.vocal { background: var(--purple); color: var(--cream); }
 .price-card.vocal h3 { color: var(--gold-light); }
@@ -400,6 +409,10 @@ html, body {
 
 .dur-group { padding: 10px 22px 14px; border-top: 1px dashed rgba(253, 251, 247, .35); }
 .price-card.guitar .dur-group { border-top-color: rgba(23, 18, 28, .3); }
+.section-label { padding: 13px 22px 4px; font-size: 10px; font-weight: 800; letter-spacing: .2em; opacity: .72; }
+.single-lessons { padding-bottom: 16px; }
+.single-lessons .price-row > span { display: grid; gap: 2px; font-weight: 800; }
+.single-lessons .price-row small { font-size: 9px; font-weight: 500; opacity: .72; }
 .dur-head { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 8px; }
 .dur {
   font-family: 'Unbounded'; font-weight: 900; font-size: 17px; letter-spacing: .05em;
@@ -413,6 +426,12 @@ html, body {
 }
 .price-row b { font-family: 'Unbounded'; font-weight: 700; font-size: 15px; }
 .price-foot { margin-top: 18px; font-size: 11px; letter-spacing: .08em; color: rgba(23, 18, 28, .55); }
+.promotions { margin-top: 24px; padding-top: 22px; border-top: 2px dashed rgba(23, 18, 28, .22); }
+.promotions > h3 { margin-bottom: 14px; color: var(--gold); font: 900 clamp(24px, 4vw, 36px)/1.05 'Playfair Display', serif; }
+.promo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.promo-grid p { min-height: 112px; margin: 0; padding: 18px; border: 2px solid var(--ink); border-radius: 16px; background: var(--purple); color: var(--cream); font-size: 13px; font-weight: 700; line-height: 1.35; }
+.promo-grid p:nth-child(2) { background: var(--gold); color: var(--ink); }
+.promo-grid b { display: block; margin-bottom: 6px; font: 900 17px 'Unbounded', sans-serif; }
 
 /* ---- help ---- */
 .help-panel { width: min(560px, 100%); }
@@ -433,6 +452,8 @@ html, body {
 /* ============ RESPONSIVE ============ */
 @media (max-width: 900px) {
   .price-cards { grid-template-columns: 1fr; }
+  .promo-grid { grid-template-columns: 1fr; }
+  .promo-grid p { min-height: 0; }
 }
 @media (max-width: 720px) {
   #hud { flex-wrap: wrap; }
@@ -445,8 +466,13 @@ html, body {
   .rule-num { text-shadow: 3px 3px 0 var(--ink); }
   .dur-group { padding: 8px 14px 12px; }
   .price-card header { padding: 14px 16px 8px; }
-  #chip { bottom: 18px; gap: 10px; padding: 12px 14px; }
-  #chip-desc { display: none; }
+  #chip {
+    bottom: 18px; grid-template-columns: 28px minmax(0, 1fr) 28px auto;
+    gap: 7px; width: calc(100vw - 24px); padding: 9px 10px;
+  }
+  #chip-title { font-size: 10px; }
+  .chip-arrow { width: 28px; height: 28px; font-size: 21px; }
+  #chip .pill-btn { min-width: 72px; padding: 9px 11px; font-size: 10px; }
 
   .intro-top { padding: 14px; }
   .tag { font-size: 9px; letter-spacing: .16em; padding: 5px 9px; }

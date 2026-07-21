@@ -14,6 +14,8 @@ export class UI {
       chipDesc: document.getElementById('chip-desc'),
       chipCta: document.getElementById('chip-cta'),
       chipClose: document.getElementById('chip-close'),
+      chipPrev: document.getElementById('chip-prev'),
+      chipNext: document.getElementById('chip-next'),
       toast: document.getElementById('toast'),
       vibe: document.getElementById('vibe'),
       vibeFill: document.getElementById('vibe-fill'),
@@ -51,8 +53,21 @@ export class UI {
     this.el.helpBtn.addEventListener('click', () => { this.el.help.hidden = !this.el.help.hidden; });
 
     this.el.chipClose.addEventListener('click', () => this.hideChip());
+    let swipeStart = null;
+    this.el.chip.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      swipeStart = { x: e.clientX, y: e.clientY };
+    });
+    this.el.chip.addEventListener('pointerup', (e) => {
+      if (!swipeStart) return;
+      const dx = e.clientX - swipeStart.x;
+      const dy = e.clientY - swipeStart.y;
+      swipeStart = null;
+      if (Math.abs(dx) < 44 || Math.abs(dx) < Math.abs(dy)) return;
+      (dx < 0 ? this.el.chipNext : this.el.chipPrev).click();
+    });
 
-    const directToast = () => this.toast('Шукай <span class="hl">Art Vibe Studio</span> в Instagram і пиши у директ — відповімо на всі питання', 5200);
+    const directToast = () => this.toast('Instagram: <span class="hl">@artvibe.pl</span> — пиши у Direct, відповімо на всі питання', 5200);
     document.getElementById('direct-btn-1').addEventListener('click', directToast);
     document.getElementById('direct-btn-2').addEventListener('click', directToast);
 
@@ -68,7 +83,7 @@ export class UI {
     m.hidden = false;
     this.current = name;
     if (anchor) {
-      const target = m.querySelector(`#card-${anchor}`);
+      const target = m.querySelector(`#card-${anchor}`) || m.querySelector(`[data-instruments~="${anchor}"]`);
       if (target) {
         requestAnimationFrame(() => {
           target.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -105,11 +120,16 @@ export class UI {
   }
 
   // ---- chip ----
-  showChip(titleHtml, desc, ctaText, onCta) {
+  showChip(titleHtml, desc, ctaText, onCta, navigation = null) {
     this.el.chipTitle.innerHTML = titleHtml;
     this.el.chipDesc.textContent = desc;
+    this.el.chipDesc.hidden = !desc;
     this.el.chipCta.textContent = ctaText;
     this.el.chipCta.onclick = () => { this.hideChip(); onCta && onCta(); };
+    this.el.chipPrev.hidden = !navigation;
+    this.el.chipNext.hidden = !navigation;
+    this.el.chipPrev.onclick = () => navigation?.onPrev?.();
+    this.el.chipNext.onclick = () => navigation?.onNext?.();
     this.el.chip.hidden = false;
     clearTimeout(this._chipTimer);
     this._chipTimer = setTimeout(() => this.hideChip(), 8000);

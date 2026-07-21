@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js';
-import { UI } from './ui.js';
+import { UI } from './ui.js?v=20260721-4';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -142,28 +142,62 @@ function curtainTexture() {
   return t;
 }
 
-function bannerTexture() {
+// title slide (first frame of the backdrop slideshow + fallback)
+function titleSlideTexture() {
   const c = document.createElement('canvas');
-  c.width = 1024; c.height = 256;
+  c.width = 1600; c.height = 900;
   const x = c.getContext('2d');
   x.fillStyle = '#160a20';
-  x.fillRect(0, 0, 1024, 256);
+  x.fillRect(0, 0, 1600, 900);
+  const glow = x.createRadialGradient(800, 430, 60, 800, 430, 700);
+  glow.addColorStop(0, 'rgba(158,51,202,.4)');
+  glow.addColorStop(1, 'rgba(158,51,202,0)');
+  x.fillStyle = glow;
+  x.fillRect(0, 0, 1600, 900);
   x.strokeStyle = '#D1A13B';
-  x.lineWidth = 5;
-  x.strokeRect(14, 14, 996, 228);
-  x.strokeStyle = 'rgba(209,161,59,.4)';
+  x.lineWidth = 6;
+  x.strokeRect(36, 36, 1528, 828);
+  x.strokeStyle = 'rgba(209,161,59,.35)';
   x.lineWidth = 2;
-  x.strokeRect(26, 26, 972, 204);
+  x.strokeRect(56, 56, 1488, 788);
   x.textAlign = 'center';
   x.fillStyle = '#D1A13B';
   x.shadowColor = '#9E33CA';
-  x.shadowBlur = 34;
-  x.font = 'italic 900 118px "Playfair Display", Georgia, serif';
-  x.fillText('ART VIBE', 512, 138);
-  x.shadowBlur = 12;
+  x.shadowBlur = 60;
+  x.font = 'italic 900 210px "Playfair Display", Georgia, serif';
+  x.fillText('ART VIBE', 800, 445);
+  x.shadowBlur = 22;
   x.fillStyle = '#c988f0';
-  x.font = '500 44px "Unbounded", sans-serif';
-  x.fillText('S T U D I O', 512, 208);
+  x.font = '500 62px "Unbounded", sans-serif';
+  x.fillText('S T U D I O', 800, 560);
+  x.shadowBlur = 0;
+  x.fillStyle = '#FDFBF7';
+  x.font = '700 38px "Unbounded", sans-serif';
+  x.fillText('ВЧИСЬ ТВОРИТИ І ТВОРИ НАВЧАЮЧИСЬ', 800, 690);
+  x.fillStyle = '#D1A13B';
+  x.font = '400 30px "JetBrains Mono", monospace';
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// small brand plate under the screen
+function plateTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 160;
+  const x = c.getContext('2d');
+  x.fillStyle = '#160a20';
+  x.fillRect(0, 0, 1024, 160);
+  x.strokeStyle = '#D1A13B';
+  x.lineWidth = 5;
+  x.strokeRect(8, 8, 1008, 144);
+  x.textAlign = 'center';
+  x.fillStyle = '#D1A13B';
+  x.font = '700 62px "Unbounded", sans-serif';
+  x.fillText('ART VIBE STUDIO', 512, 82);
+  x.fillStyle = '#c988f0';
+  x.font = '400 30px "JetBrains Mono", monospace';
+  x.fillText('2 0 2 5', 512, 132);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -239,13 +273,8 @@ function buildStage() {
   valanceTrim.position.set(0, 7.32, -4.06);
   g.add(valanceTrim);
 
-  // ART VIBE banner
-  const banner = new THREE.Mesh(
-    new THREE.PlaneGeometry(7.6, 1.9),
-    new THREE.MeshBasicMaterial({ map: bannerTexture(), fog: false })
-  );
-  banner.position.set(0, 5.4, -5.5);
-  g.add(banner);
+  // backdrop slideshow screen (replaces the old static banner)
+  g.add(buildScreen());
 
   // speaker stacks
   const spkMat = new THREE.MeshStandardMaterial({ color: 0x0d0a12, roughness: 0.55 });
@@ -276,6 +305,127 @@ function buildStage() {
   return g;
 }
 
+// ---- backdrop screen: shader slideshow w/ crossfade + Ken Burns ----
+const screenUniforms = {
+  texA: { value: null },
+  texB: { value: null },
+  progress: { value: 0 },
+  slideT: { value: 0 },
+  pan: { value: new THREE.Vector2(0.02, 0.008) },
+  dim: { value: 0.94 },
+};
+
+function buildScreen() {
+  const g = new THREE.Group();
+
+  const frameBack = new THREE.Mesh(
+    new THREE.PlaneGeometry(8.06, 4.68),
+    new THREE.MeshBasicMaterial({ color: 0x0d0714, fog: false })
+  );
+  frameBack.position.set(0, 5.35, -5.5);
+  g.add(frameBack);
+
+  const frameGold = new THREE.Mesh(
+    new THREE.PlaneGeometry(7.9, 4.52),
+    new THREE.MeshBasicMaterial({ color: 0xD1A13B, fog: false })
+  );
+  frameGold.position.set(0, 5.35, -5.48);
+  g.add(frameGold);
+
+  const titleTex = titleSlideTexture();
+  screenUniforms.texA.value = titleTex;
+  screenUniforms.texB.value = titleTex;
+
+  const screenMat = new THREE.ShaderMaterial({
+    uniforms: screenUniforms,
+    vertexShader: /* glsl */`
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */`
+      uniform sampler2D texA, texB;
+      uniform float progress, slideT, dim;
+      uniform vec2 pan;
+      varying vec2 vUv;
+      vec2 kenburns(vec2 uv, float t, vec2 p) {
+        float z = 1.0 + 0.09 * t;
+        return (uv - 0.5 - p * t) / z + 0.5;
+      }
+      void main() {
+        vec4 a = texture2D(texA, kenburns(vUv, slideT, pan));
+        vec4 b = texture2D(texB, kenburns(vUv, 0.0, -pan));
+        vec4 c = mix(a, b, smoothstep(0.0, 1.0, progress));
+        float vig = smoothstep(1.0, 0.45, distance(vUv, vec2(0.5)));
+        gl_FragColor = vec4(c.rgb * dim * (0.72 + 0.28 * vig), 1.0);
+      }`,
+  });
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 4.275), screenMat);
+  screen.position.set(0, 5.35, -5.45);
+  g.add(screen);
+
+  // brand plate under the screen
+  const plate = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.5, 0.55),
+    new THREE.MeshBasicMaterial({ map: plateTexture(), fog: false })
+  );
+  plate.position.set(0, 2.62, -5.45);
+  g.add(plate);
+
+  return g;
+}
+
+// ---- slideshow state ----
+const ss = { texs: [], i: -1, t: 0, SLIDE: 5.5, FADE: 1.5, started: false };
+
+function loadSlideTextures() {
+  const loader = new THREE.TextureLoader();
+  const files = ['img/1.jpg', 'img/2.jpg', 'img/3.jpg', 'img/4.jpg', 'img/5.jpg', 'img/6.jpg', 'img/7.jpg', 'img/8.jpg'];
+  return Promise.allSettled(
+    files.map((f) => new Promise((res, rej) =>
+      loader.load(f, (t) => { t.colorSpace = THREE.SRGBColorSpace; res(t); }, undefined, rej)))
+  ).then((rs) => rs.filter((r) => r.status === 'fulfilled').map((r) => r.value));
+}
+
+function startSlideshow(photos) {
+  ss.texs = [screenUniforms.texA.value, ...photos]; // title slide stays in rotation
+  ss.i = 0; // texs[0] (title) is currently shown
+  ss.t = ss.SLIDE; // begin fading from the title slide into the first photo
+  screenUniforms.texB.value = ss.texs[1] || ss.texs[0];
+  ss.started = true;
+  window.__dbg = `slideshow started: ${ss.texs.length} slides`;
+
+  // debug: fast-forward slideshow timeline (?sstime=SECONDS)
+  const ff = Number(params.get('sstime') || 0);
+  if (ff > 0) {
+    const cycle = ss.SLIDE + ss.FADE;
+    const wraps = Math.floor(ff / cycle);
+    ss.i = wraps % ss.texs.length;
+    screenUniforms.texA.value = ss.texs[ss.i];
+    screenUniforms.texB.value = ss.texs[(ss.i + 1) % ss.texs.length];
+    ss.t = ff % cycle;
+  }
+}
+
+function updateSlideshow(dt) {
+  if (!ss.started || ss.texs.length < 2) return;
+  ss.t += dt;
+  const cycle = ss.SLIDE + ss.FADE;
+  if (ss.t >= cycle) {
+    ss.t -= cycle;
+    ss.i = (ss.i + 1) % ss.texs.length;
+    screenUniforms.texA.value = ss.texs[ss.i];
+    screenUniforms.texB.value = ss.texs[(ss.i + 1) % ss.texs.length];
+    screenUniforms.pan.value.set(
+      (ss.i % 2 ? -1 : 1) * 0.025,
+      ((ss.i % 3) - 1) * 0.012
+    );
+  }
+  screenUniforms.progress.value = THREE.MathUtils.clamp((ss.t - ss.SLIDE) / ss.FADE, 0, 1);
+  screenUniforms.slideT.value = Math.min(1, ss.t / cycle);
+}
+
 // ---- truss + spotlights + visible cones ----
 const spotHeads = [];
 function buildLights() {
@@ -294,7 +444,7 @@ function buildLights() {
     { x: -1.55, color: 0xD1A13B, intensity: 800, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3 },
     { x: 1.55, color: 0xfff0d8, intensity: 700, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, shadow: true },
     { x: 4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7 },
-    { x: 0, color: 0x7a1fa2, intensity: 550, target: new THREE.Vector3(0, 4.6, -5.4), coneR: 2.6, y: 7.6, z: -2.5 },
+    { x: 0, color: 0x7a1fa2, intensity: 420, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5 },
   ];
 
   // broad warm front fill (no visible cone) so instruments read well
@@ -523,10 +673,10 @@ let hovered = null;
 let started = false;
 
 const INSTRUMENT_STYLE = {
-  drums: { glow: 0x9E33CA, tip: 'УДАРНІ <em>клік — бити · A S D F G</em>' },
-  piano: { glow: 0xD1A13B, tip: 'ПІАНІНО <em>клік по клавішах · 1–8</em>' },
-  guitar: { glow: 0xD1A13B, tip: 'ГІТАРА <em>клік — акорд · ПРОБІЛ</em>' },
-  mic: { glow: 0x9E33CA, tip: 'ВОКАЛ <em>клік — чек 1-2</em>' },
+  drums: { glow: 0x9E33CA, tip: 'УДАРНІ <em>клік — грати · A S D F G</em>' },
+  piano: { glow: 0xD1A13B, tip: 'ФОРТЕПІАНО <em>клік — грати · 1–8</em>' },
+  guitar: { glow: 0xD1A13B, tip: 'ГІТАРА <em>клік — грати · ПРОБІЛ</em>' },
+  mic: { glow: 0x9E33CA, tip: 'ВОКАЛ <em>клік — вокальний чек</em>' },
 };
 
 function setGlow(mesh, on) {
@@ -593,24 +743,26 @@ function addVibe(n) {
   }
 }
 
-// ---- chip content ----
-let drumsToastShown = false;
+// ---- price carousel ----
+const PRICE_SLIDES = [
+  { kind: 'mic', title: 'ВОКАЛ', anchor: 'vocal' },
+  { kind: 'guitar', title: 'ГІТАРА', anchor: 'guitar' },
+  { kind: 'drums', title: 'БАРАБАНИ', anchor: 'drums' },
+  { kind: 'piano', title: 'ФОРТЕПІАНО', anchor: 'piano' },
+];
+
 function chipFor(kind) {
   if (ui.modalOpen) return;
-  if (kind === 'guitar') {
-    ui.showChip(
-      'ГІТАРА <span class="accent">· від 190 зл</span>',
-      'абонементи 30 / 45 / 55 хв — 4, 6 або 8 уроків',
-      'ЦІНИ ›', () => ui.open('pricing', 'guitar'));
-  } else if (kind === 'mic') {
-    ui.showChip(
-      'ВОКАЛ <span class="accent">· від 190 зл</span>',
-      'абонементи 30 / 45 / 55 хв — 4, 6 або 8 уроків',
-      'ЦІНИ ›', () => ui.open('pricing', 'vocal'));
-  } else if (kind === 'drums' && !drumsToastShown) {
-    drumsToastShown = true;
-    ui.toast('Ударні — чисто для душі. У розкладі студії — <span class="hl">вокал і гітара</span>', 4200);
-  }
+  const index = Math.max(0, PRICE_SLIDES.findIndex((slide) => slide.kind === kind));
+  const slide = PRICE_SLIDES[index];
+  const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind);
+  ui.showChip(
+    `${slide.title} <span class="accent">від 50 зл</span>`,
+    '',
+    'ЦІНИ ›',
+    () => ui.open('pricing', slide.anchor),
+    { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
+  );
 }
 
 // ---- trigger instruments ----
@@ -637,6 +789,7 @@ function trigger(mesh) {
         piano.press(mesh);
         audio.piano(u.freq);
         addVibe(3.5);
+        chipFor('piano');
       }
       break;
     }
@@ -689,6 +842,7 @@ window.addEventListener('keydown', (e) => {
       audio.resume();
       audio.piano(key.userData.freq);
       addVibe(3.5);
+      chipFor('piano');
     }
   } else if (e.code === 'Space') {
     e.preventDefault();
@@ -847,6 +1001,7 @@ function animate() {
   }
 
   fireworks.update(dt);
+  updateSlideshow(dt);
 
   if (composer) composer.render();
   else renderer.render(scene, camera);
@@ -864,6 +1019,10 @@ Promise.race([
   document.fonts ? document.fonts.ready : Promise.resolve(),
   new Promise((r) => setTimeout(r, 3500)),
 ]).then(() => {
+  loadSlideTextures().then((photos) => {
+    if (photos.length) startSlideshow(photos);
+    else window.__dbg = 'no photos loaded';
+  }).catch((e) => { window.__dbg = `load err: ${e}`; });
   addLabels();
   renderer.compile(scene, camera);
   animate();
@@ -890,10 +1049,10 @@ Promise.race([
     setTimeout(() => {
       if (shot === 'help') ui.el.help.hidden = false;
       else if (shot === 'chip') {
-        ui.showChip('ГІТАРА <span class="accent">· від 190 зл</span>', 'абонементи 30 / 45 / 55 хв — 4, 6 або 8 уроків', 'ЦІНИ ›', () => {});
+        chipFor('guitar');
         clearTimeout(ui._chipTimer);
       }
-      else if (shot === 'toast') ui.toast('Ударні — чисто для душі. У розкладі студії — <span class="hl">вокал і гітара</span>', 60000);
+      else if (shot === 'toast') ui.toast('У студії доступні <span class="hl">вокал, гітара, барабани та фортепіано</span>', 60000);
       else ui.open(shot, params.get('anchor') || undefined);
     }, 400);
   }

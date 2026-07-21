@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=20260721-3">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -26,7 +26,6 @@
   <div class="intro-bg"></div>
   <div class="intro-top">
     <span class="tag mono">ART VIBE STUDIO</span>
-    <span class="tag mono">EST. 2025</span>
   </div>
   <div class="intro-center">
     <div class="intro-kicker mono">інтерактивна музична сцена</div>
@@ -50,7 +49,7 @@
   <div class="hud-left">
     <div class="logo-chip">
       <span class="logo-av">AV</span>
-      <span class="logo-text mono">ART VIBE STUDIO<br><em>2025</em></span>
+      <span class="logo-text mono">ART VIBE STUDIO</span>
     </div>
   </div>
 
@@ -83,8 +82,10 @@
 <div id="tooltip" class="mono" hidden></div>
 <div id="chip" hidden>
   <button id="chip-close" aria-label="Закрити">✕</button>
+  <button id="chip-prev" class="chip-arrow" aria-label="Попередній інструмент">‹</button>
   <div id="chip-title"></div>
   <div id="chip-desc" class="mono"></div>
+  <button id="chip-next" class="chip-arrow" aria-label="Наступний інструмент">›</button>
   <button id="chip-cta" class="pill-btn gold small">ЦІНИ ›</button>
 </div>
 <div id="toast" class="mono" hidden></div>
@@ -110,17 +111,16 @@
 <div id="modal-steps" class="overlay" hidden>
   <div class="panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>2025</span></div>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
     <h2 class="panel-title">Як записатися?</h2>
     <ol class="steps-list">
-      <li><span class="step-tri"></span><div><b>Крок 1.</b> Обери напрямок — <em>вокал</em> чи <em>гітара</em>.</div></li>
+      <li><span class="step-tri"></span><div><b>Крок 1.</b> Обери напрямок — <em>вокал</em>, <em>гітара</em>, <em>барабани</em> або <em>фортепіано</em>.</div></li>
       <li><span class="step-tri"></span><div><b>Крок 2.</b> Визнач, чи хочеш прийти на пробний урок, чи одразу придбати абонемент.</div></li>
       <li><span class="step-tri"></span><div><b>Крок 3.</b> Обери кількість уроків та їх тривалість.</div></li>
       <li><span class="step-tri"></span><div><b>Крок 4.</b> Напиши нам у директ, щоб записатися або задати додаткові питання.</div></li>
     </ol>
     <div class="panel-actions">
-      <button class="pill-btn outline big" data-goto="rules">ПРИЙМАЄШ — ГОРТАЙ ›</button>
-      <button class="pill-btn gold big" id="direct-btn-1">НАПИШИ НАМ У ДИРЕКТ ›</button>
+      <button class="pill-btn gold big" id="direct-btn-1">НАПИШИ @ARTVIBE.PL ›</button>
     </div>
   </div>
 </div>
@@ -129,7 +129,7 @@
 <div id="modal-rules" class="overlay" hidden>
   <div class="panel rules-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>2025</span></div>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
     <h2 class="panel-title">Правила<span class="dot">.</span></h2>
 
     <section class="rule-block">
@@ -192,14 +192,14 @@
 <div id="modal-pricing" class="overlay" hidden>
   <div class="panel pricing-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>2025</span></div>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
     <h2 class="panel-title">price list<span class="dot">.</span></h2>
 
     <div class="price-cards">
 
-      <article class="price-card vocal" id="card-vocal">
+      <article class="price-card vocal" id="card-vocal" data-instruments="vocal guitar">
         <header>
-          <h3>Вокал</h3>
+          <div><span class="price-kicker mono">ВОКАЛ · ГІТАРА</span><h3>Вокал або гітара</h3></div>
           <svg class="sketch" viewBox="0 0 120 160" aria-hidden="true">
             <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
               <path d="M60 18c-14 0-22 10-22 24v16c0 14 8 24 22 24s22-10 22-24V42c0-14-8-24-22-24z"/>
@@ -213,6 +213,13 @@
             </g>
           </svg>
         </header>
+        <div class="dur-group single-lessons">
+          <div class="dur-head"><span class="dur">Одноразовий урок</span></div>
+          <div class="price-row"><span>30 хв <small>пробний або для дітей до 7 років</small></span><b>50 зл</b></div>
+          <div class="price-row"><span>45 хв <small>для підлітків або дорослих</small></span><b>75 зл</b></div>
+          <div class="price-row"><span>55 хв <small>для дорослих</small></span><b>90 зл</b></div>
+        </div>
+        <div class="section-label mono">АБОНЕМЕНТИ</div>
         <div class="dur-group">
           <div class="dur-head"><span class="dur">30 хв</span><span class="dur-note">для дітей до 7 років</span></div>
           <div class="price-row"><span>4 уроки</span><b>190 зл</b></div>
@@ -233,9 +240,9 @@
         </div>
       </article>
 
-      <article class="price-card guitar" id="card-guitar">
+      <article class="price-card guitar" id="card-drums" data-instruments="drums piano">
         <header>
-          <h3>Гітара</h3>
+          <div><span class="price-kicker mono">БАРАБАНИ · ФОРТЕПІАНО</span><h3>Барабани або фортепіано</h3></div>
           <svg class="sketch" viewBox="0 0 120 160" aria-hidden="true">
             <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
               <path d="M50 78c-10-2-18 4-20 14-2 8 2 14 8 18-4 8-2 18 6 23 9 6 22 4 28-4 5-6 5-13 2-19 6-4 9-12 6-20-3-9-13-13-22-10"/>
@@ -250,6 +257,13 @@
             </g>
           </svg>
         </header>
+        <div class="dur-group single-lessons">
+          <div class="dur-head"><span class="dur">Одноразовий урок</span></div>
+          <div class="price-row"><span>30 хв <small>пробний або для дітей до 7 років</small></span><b>50 зл</b></div>
+          <div class="price-row"><span>45 хв <small>для підлітків або дорослих</small></span><b>70 зл</b></div>
+          <div class="price-row"><span>55 хв <small>для дорослих</small></span><b>85 зл</b></div>
+        </div>
+        <div class="section-label mono">АБОНЕМЕНТИ</div>
         <div class="dur-group">
           <div class="dur-head"><span class="dur">30 хв</span><span class="dur-note">для дітей до 7 років</span></div>
           <div class="price-row"><span>4 уроки</span><b>190 зл</b></div>
@@ -258,23 +272,32 @@
         </div>
         <div class="dur-group">
           <div class="dur-head"><span class="dur">45 хв</span><span class="dur-note"></span></div>
-          <div class="price-row"><span>4 уроки</span><b>290 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>420 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>540 зл</b></div>
+          <div class="price-row"><span>4 уроки</span><b>270 зл</b></div>
+          <div class="price-row"><span>6 уроків</span><b>390 зл</b></div>
+          <div class="price-row"><span>8 уроків</span><b>510 зл</b></div>
         </div>
         <div class="dur-group">
           <div class="dur-head"><span class="dur">55 хв</span><span class="dur-note"></span></div>
-          <div class="price-row"><span>4 уроки</span><b>350 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>510 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>650 зл</b></div>
+          <div class="price-row"><span>4 уроки</span><b>330 зл</b></div>
+          <div class="price-row"><span>6 уроків</span><b>480 зл</b></div>
+          <div class="price-row"><span>8 уроків</span><b>620 зл</b></div>
         </div>
       </article>
     </div>
 
+    <section class="promotions" aria-labelledby="promotions-title">
+      <h3 id="promotions-title">Спеціальні пропозиції</h3>
+      <div class="promo-grid">
+        <p><b>−15%</b> на другий напрямок у студії Art Vibe</p>
+        <p><b>−15%</b>, якщо декілька дітей із сімʼї відвідують Art Vibe Studio</p>
+        <p><b>Бонусний урок</b> безкоштовно за кожні пів року навчання з нами</p>
+      </div>
+    </section>
+
     <p class="mono price-foot">ціна — за абонемент · перша оплата на картку, далі — карткою або готівкою</p>
     <div class="panel-actions">
       <button class="pill-btn outline big" data-goto="steps">ЯК ЗАПИСАТИСЯ? ›</button>
-      <button class="pill-btn gold big" id="direct-btn-2">НАПИШИ НАМ У ДИРЕКТ ›</button>
+      <button class="pill-btn gold big" id="direct-btn-2">НАПИШИ @ARTVIBE.PL ›</button>
     </div>
   </div>
 </div>
@@ -288,6 +311,6 @@
 
 <div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
 
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js?v=20260721-4"></script>
 </body>
 </html>
