@@ -194,10 +194,7 @@ function plateTexture() {
   x.textAlign = 'center';
   x.fillStyle = '#D1A13B';
   x.font = '700 62px "Unbounded", sans-serif';
-  x.fillText('ART VIBE STUDIO', 512, 82);
-  x.fillStyle = '#c988f0';
-  x.font = '400 30px "JetBrains Mono", monospace';
-  x.fillText('2 0 2 5', 512, 132);
+  x.fillText('ART VIBE STUDIO', 512, 103);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -551,6 +548,137 @@ function makeLabel(text) {
   return spr;
 }
 
+// ---- compact young stage mascot ----
+function buildMascot() {
+  const group = new THREE.Group();
+  group.name = 'Ти';
+
+  const denim = new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82 });
+  const denimLight = new THREE.MeshStandardMaterial({ color: 0x7fa1bd, roughness: 0.82 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.88 });
+  const green = new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.7 });
+  const blue = new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72 });
+  const red = new THREE.MeshStandardMaterial({ color: 0xb93a3a, roughness: 0.76 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xf2c4a6, roughness: 0.82 });
+  const cream = new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75 });
+  const ink = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 });
+  const rose = new THREE.MeshStandardMaterial({ color: 0xb86d72, roughness: 0.8 });
+  const silver = new THREE.MeshStandardMaterial({ color: 0xd7d9dd, roughness: 0.22, metalness: 0.88 });
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.58, 14), cream);
+  torso.position.y = 1.08;
+  group.add(torso);
+  const rightJerseyPanel = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.49, 0.035), blue);
+  rightJerseyPanel.position.set(0.135, 1.08, 0.285);
+  group.add(rightJerseyPanel);
+  for (const y of [0.98, 1.08, 1.18]) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.038, 0.04), green);
+    stripe.position.set(-0.13, y, 0.29);
+    group.add(stripe);
+  }
+  const shoulderAccent = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.04), red);
+  shoulderAccent.position.set(-0.23, 1.28, 0.27);
+  group.add(shoulderAccent);
+  for (const side of [-1, 1]) {
+    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), yellow);
+    collar.position.set(side * 0.07, 1.31, 0.3);
+    collar.rotation.z = side * 0.58;
+    group.add(collar);
+  }
+  const waistband = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.028, 7, 22), denim);
+  waistband.rotation.x = Math.PI / 2;
+  waistband.position.y = 0.78;
+  group.add(waistband);
+
+  const head = new THREE.Group();
+  head.position.y = 1.56;
+  const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 14), hairMat);
+  hairBack.scale.set(1.08, 1.55, 0.82);
+  hairBack.position.set(0, -0.13, -0.05);
+  head.add(hairBack);
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.27, 18, 14), skin);
+  face.position.z = 0.035;
+  head.add(face);
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.287, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
+  hairCap.position.set(0, 0.04, 0.05);
+  head.add(hairCap);
+  for (const x of [-0.255, 0.255]) {
+    const lock = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), hairMat);
+    lock.scale.set(0.72, 3.3, 0.7);
+    lock.position.set(x, -0.28, 0.08);
+    head.add(lock);
+  }
+  for (const x of [-0.09, 0.09]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), ink);
+    eye.scale.set(1.4, 0.72, 0.7);
+    eye.position.set(x, 0.025, 0.286);
+    head.add(eye);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.012), hairMat);
+    brow.position.set(x, 0.085, 0.284);
+    brow.rotation.z = -Math.sign(x) * 0.1;
+    head.add(brow);
+  }
+  const lips = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.016, 0.014), rose);
+  lips.position.set(0, -0.085, 0.29);
+  head.add(lips);
+  for (const x of [-0.285, 0.285]) {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.009, 6, 14), silver);
+    hoop.position.set(x, -0.02, 0.035);
+    hoop.rotation.y = Math.PI / 2;
+    head.add(hoop);
+  }
+  group.add(head);
+
+  const makeLimb = (x, y, material, radius, length) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y, 0);
+    const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.92, length, 9), material);
+    limb.position.y = -length / 2;
+    pivot.add(limb);
+    group.add(pivot);
+    return pivot;
+  };
+
+  const armL = makeLimb(-0.34, 1.28, green, 0.085, 0.5);
+  const armR = makeLimb(0.34, 1.28, denimLight, 0.105, 0.56);
+  armL.rotation.z = -0.12;
+  armR.rotation.z = 0.12;
+  for (const arm of [armL, armR]) {
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), skin);
+    hand.position.y = -0.51;
+    arm.add(hand);
+  }
+  const jacketPanel = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.62, 0.11), denimLight);
+  jacketPanel.position.set(0.38, 0.96, 0.02);
+  jacketPanel.rotation.z = -0.08;
+  group.add(jacketPanel);
+  const legL = makeLimb(-0.15, 0.76, denim, 0.145, 0.64);
+  const legR = makeLimb(0.15, 0.76, denim, 0.145, 0.64);
+
+  for (const leg of [legL, legR]) {
+    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 0.38), ink);
+    sneaker.position.set(0, -0.64, 0.08);
+    sneaker.castShadow = true;
+    leg.add(sneaker);
+    for (const x of [-0.07, 0, 0.07]) {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.06, 0.012), cream);
+      stripe.position.set(x, -0.64, 0.276);
+      leg.add(stripe);
+    }
+  }
+
+  const badge = new THREE.Mesh(new THREE.CircleGeometry(0.055, 14), ink);
+  badge.position.set(-0.14, 1.22, 0.312);
+  group.add(badge);
+
+  group.traverse((object) => {
+    if (object.isMesh) object.castShadow = true;
+  });
+
+  return { group, torso, head, armL, armR, legL, legR };
+}
+
 // ============================================================
 // FIREWORKS (vibe reward)
 // ============================================================
@@ -637,6 +765,11 @@ const mic = buildMic();
 mic.group.position.set(1.0, 0, 2.4);
 scene.add(mic.group);
 
+const mascot = buildMascot();
+mascot.group.scale.setScalar(0.68);
+mascot.group.position.set(0, 0, 0.35);
+scene.add(mascot.group);
+
 const instruments = [drums, piano, guitar, mic];
 const whiteKeys = piano.keys.filter((k) => !k.userData.black).sort((a, b) => a.userData.whiteIdx - b.userData.whiteIdx);
 
@@ -650,6 +783,7 @@ for (const inst of instruments) {
 
 // labels
 const labels = [];
+let mascotLabel = null;
 function addLabels() {
   for (const inst of instruments) {
     const spr = makeLabel(inst.label);
@@ -661,6 +795,10 @@ function addLabels() {
     scene.add(spr);
     labels.push(spr);
   }
+  mascotLabel = makeLabel('Ти');
+  mascotLabel.scale.multiplyScalar(0.82);
+  mascotLabel.position.set(mascot.group.position.x, 1.72, mascot.group.position.z);
+  scene.add(mascotLabel);
 }
 
 // ============================================================
@@ -671,6 +809,90 @@ const pointer = new THREE.Vector2(-10, -10);
 let pointerClient = { x: 0, y: 0 };
 let hovered = null;
 let started = false;
+
+const mascotMove = {
+  keys: new Set(), destination: null, speed: 2.45, phase: 0,
+  bounds: { minX: -6.7, maxX: 6.7, minZ: -4.35, maxZ: 3.35 },
+};
+const stageWalkPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const instrumentGroups = { drums: drums.group, piano: piano.group, guitar: guitar.group, mic: mic.group };
+
+function clampMascotPoint(point) {
+  point.x = THREE.MathUtils.clamp(point.x, mascotMove.bounds.minX, mascotMove.bounds.maxX);
+  point.z = THREE.MathUtils.clamp(point.z, mascotMove.bounds.minZ, mascotMove.bounds.maxZ);
+  point.y = 0;
+  return point;
+}
+
+function setMascotDestination(point) {
+  mascotMove.destination = clampMascotPoint(point.clone());
+  controls.autoRotate = false;
+}
+
+function walkMascotToInstrument(kind) {
+  const instrument = instrumentGroups[kind];
+  if (!instrument) return;
+  const instrumentPosition = new THREE.Vector3();
+  instrument.getWorldPosition(instrumentPosition);
+  const away = new THREE.Vector3().subVectors(mascot.group.position, instrumentPosition);
+  away.y = 0;
+  if (away.lengthSq() < 0.01) away.set(0, 0, 1);
+  setMascotDestination(instrumentPosition.add(away.normalize().multiplyScalar(1.2)));
+}
+
+function nearestInstrument() {
+  let nearest = null;
+  for (const [kind, group] of Object.entries(instrumentGroups)) {
+    const position = new THREE.Vector3();
+    group.getWorldPosition(position);
+    const distance = Math.hypot(position.x - mascot.group.position.x, position.z - mascot.group.position.z);
+    if (!nearest || distance < nearest.distance) nearest = { kind, distance, position };
+  }
+  return nearest;
+}
+
+function updateMascot(dt) {
+  if (!started || ui.modalOpen) return;
+  const direction = new THREE.Vector3(
+    (mascotMove.keys.has('ArrowRight') ? 1 : 0) - (mascotMove.keys.has('ArrowLeft') ? 1 : 0),
+    0,
+    (mascotMove.keys.has('ArrowDown') ? 1 : 0) - (mascotMove.keys.has('ArrowUp') ? 1 : 0),
+  );
+
+  if (direction.lengthSq() > 0) mascotMove.destination = null;
+  else if (mascotMove.destination) {
+    direction.subVectors(mascotMove.destination, mascot.group.position).setY(0);
+    if (direction.length() < 0.08) {
+      mascotMove.destination = null;
+      direction.set(0, 0, 0);
+    }
+  }
+
+  const walking = direction.lengthSq() > 0;
+  if (walking) {
+    direction.normalize();
+    mascot.group.position.addScaledVector(direction, mascotMove.speed * dt);
+    clampMascotPoint(mascot.group.position);
+    const targetRotation = Math.atan2(direction.x, direction.z);
+    const rotationDelta = Math.atan2(Math.sin(targetRotation - mascot.group.rotation.y), Math.cos(targetRotation - mascot.group.rotation.y));
+    mascot.group.rotation.y += rotationDelta * Math.min(1, dt * 10);
+    mascotMove.phase += dt * 10;
+  }
+
+  const stride = walking ? Math.sin(mascotMove.phase) * 0.58 : 0;
+  const relax = Math.min(1, dt * 10);
+  mascot.legL.rotation.x = THREE.MathUtils.lerp(mascot.legL.rotation.x, stride, relax);
+  mascot.legR.rotation.x = THREE.MathUtils.lerp(mascot.legR.rotation.x, -stride, relax);
+  mascot.armL.rotation.x = THREE.MathUtils.lerp(mascot.armL.rotation.x, -stride * 0.75, relax);
+  mascot.armR.rotation.x = THREE.MathUtils.lerp(mascot.armR.rotation.x, stride * 0.75, relax);
+  mascot.group.position.y = walking ? Math.abs(Math.sin(mascotMove.phase * 2)) * 0.035 : 0;
+  mascot.torso.rotation.z = walking ? Math.sin(mascotMove.phase) * 0.035 : 0;
+  mascot.head.rotation.z = walking ? -Math.sin(mascotMove.phase) * 0.025 : 0;
+
+  if (mascotLabel) {
+    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+  }
+}
 
 const INSTRUMENT_STYLE = {
   drums: { glow: 0x9E33CA, tip: 'УДАРНІ <em>клік — грати · A S D F G</em>' },
@@ -816,8 +1038,40 @@ function handleClick(e) {
   onPointerMove(e);
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(interactables, false);
-  if (hits.length) trigger(hits[0].object);
+  if (hits.length) {
+    const hit = hits[0].object;
+    trigger(hit);
+    walkMascotToInstrument(hit.userData.instrument);
+    return;
+  }
+  const walkPoint = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(stageWalkPlane, walkPoint)) setMascotDestination(walkPoint);
 }
+
+window.addEventListener('keydown', (e) => {
+  if (!started || ui.modalOpen) return;
+  if (e.code.startsWith('Arrow')) {
+    e.preventDefault();
+    mascotMove.keys.add(e.code);
+  }
+  if (e.code === 'KeyE' && !e.repeat) {
+    const nearest = nearestInstrument();
+    if (!nearest || nearest.distance > 2.15) {
+      ui.toast('Підійди ближче до інструмента й натисни <span class="hl">E</span>', 2200);
+      return;
+    }
+    const mesh = interactables.find((object) => object.userData.instrument === nearest.kind);
+    if (mesh) {
+      const look = new THREE.Vector3().subVectors(nearest.position, mascot.group.position);
+      mascot.group.rotation.y = Math.atan2(look.x, look.z);
+      trigger(mesh);
+    }
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code.startsWith('Arrow')) mascotMove.keys.delete(e.code);
+});
 
 // ---- keyboard ----
 const DRUM_KEYS = { KeyA: 'kick', KeyS: 'snare', KeyD: 'hihat', KeyF: 'tom2', KeyG: 'crash' };
@@ -911,7 +1165,7 @@ controls.addEventListener('end', () => {
 
 // ticker
 (() => {
-  const unit = 'СЦЕНА • МУЗИКА • ВАЙБ • УКРАЇНСЬКА МОВА • ВОКАЛ • ГІТАРА • ';
+  const unit = 'СЦЕНА • МУЗИКА • ВАЙБ • УКРАЇНСЬКА МОВА • ВОКАЛ • ГІТАРА • БАРАБАНИ • ФОРТЕПІАНО • ';
   document.getElementById('ticker-track').textContent = unit.repeat(8);
 })();
 
@@ -954,6 +1208,7 @@ function animate() {
 
   // instruments
   for (const inst of instruments) inst.update(dt, t);
+  updateMascot(dt);
 
   // labels bob
   for (const spr of labels) {
