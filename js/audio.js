@@ -50,6 +50,10 @@ export class AudioEngine {
     g.exponentialRampToValueAtTime(0.0001, t + attack + decay);
   }
 
+  _at(at) {
+    return Number.isFinite(at) ? Math.max(this.ctx.currentTime, at) : this.ctx.currentTime;
+  }
+
   _noiseSrc(t, dur) {
     const src = this.ctx.createBufferSource();
     src.buffer = this._noise;
@@ -61,9 +65,9 @@ export class AudioEngine {
 
   // ---------------- DRUMS ----------------
 
-  kick(vel = 1) {
+  kick(vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = 'sine';
@@ -82,9 +86,9 @@ export class AudioEngine {
     n.connect(hp).connect(ng).connect(this.master);
   }
 
-  snare(vel = 1) {
+  snare(vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const n = this._noiseSrc(t, 0.22);
     const bp = this.ctx.createBiquadFilter();
     bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.8;
@@ -101,9 +105,9 @@ export class AudioEngine {
     osc.start(t); osc.stop(t + 0.15);
   }
 
-  hihat(open = false, vel = 1) {
+  hihat(open = false, vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const dur = open ? 0.32 : 0.06;
     const n = this._noiseSrc(t, dur);
     const hp = this.ctx.createBiquadFilter();
@@ -113,9 +117,9 @@ export class AudioEngine {
     n.connect(hp).connect(g).connect(this.master);
   }
 
-  crash(vel = 1) {
+  crash(vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const n = this._noiseSrc(t, 1.4);
     const hp = this.ctx.createBiquadFilter();
     hp.type = 'highpass'; hp.frequency.value = 4600;
@@ -126,9 +130,9 @@ export class AudioEngine {
     n.connect(hp).connect(bp).connect(g).connect(this.master);
   }
 
-  tom(freq = 120, vel = 1) {
+  tom(freq = 120, vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = 'sine';
@@ -141,9 +145,9 @@ export class AudioEngine {
 
   // ---------------- PIANO ----------------
 
-  piano(freq, vel = 1) {
+  piano(freq, vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const out = this.ctx.createGain();
     this._env(out, t, 0.5 * vel, 0.006, 1.6);
     const lp = this.ctx.createBiquadFilter();
@@ -194,9 +198,9 @@ export class AudioEngine {
     return buf;
   }
 
-  pluck(freq, vel = 1, when = 0) {
+  pluck(freq, vel = 1, at = null) {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime + when;
+    const t = this._at(at);
     const src = this.ctx.createBufferSource();
     src.buffer = this._ksBuffer(freq);
     const g = this.ctx.createGain();
@@ -208,15 +212,17 @@ export class AudioEngine {
     src.stop(t + 2.2);
   }
 
-  strum(freqs, vel = 1) {
-    freqs.forEach((f, i) => this.pluck(f, vel * (0.85 + Math.random() * 0.3), i * 0.042));
+  strum(freqs, vel = 1, at = null) {
+    if (!this.ctx) return;
+    const base = this._at(at);
+    freqs.forEach((f, i) => this.pluck(f, vel * (0.85 + Math.random() * 0.3), base + i * 0.042));
   }
 
   // ---------------- MIC / VOCAL ----------------
 
-  startVocal(freq = 329.63, vowel = 1, vel = 1) {
+  startVocal(freq = 329.63, vowel = 1, vel = 1, at = null) {
     if (!this.ctx) return null;
-    const t = this.ctx.currentTime;
+    const t = this._at(at);
     const out = this.ctx.createGain();
     out.gain.setValueAtTime(0.0001, t);
     out.gain.exponentialRampToValueAtTime(0.26 * vel, t + 0.035);
@@ -264,24 +270,46 @@ export class AudioEngine {
     const voice = {
       stopped: false,
       safetyTimer: null,
-      stop: () => {
+      cleanupTimer: null,
+      stopAt: null,
+      stop: (atTime = null) => {
         if (voice.stopped) return;
-        voice.stopped = true;
-        clearTimeout(voice.safetyTimer);
         const now = this.ctx.currentTime;
-        if (out.gain.cancelAndHoldAtTime) out.gain.cancelAndHoldAtTime(now);
+        const releaseAt = Number.isFinite(atTime) ? Math.max(now, atTime) : now;
+        if (voice.stopAt !== null && releaseAt >= voice.stopAt) return;
+        clearTimeout(voice.safetyTimer);
+        clearTimeout(voice.cleanupTimer);
+        voice.stopAt = releaseAt;
+        if (out.gain.cancelAndHoldAtTime) out.gain.cancelAndHoldAtTime(releaseAt);
         else {
-          out.gain.cancelScheduledValues(now);
-          out.gain.setValueAtTime(Math.max(0.0001, Math.min(0.26 * vel, out.gain.value || 0.26 * vel)), now);
+          out.gain.cancelScheduledValues(releaseAt);
+          out.gain.setValueAtTime(Math.max(0.0001, Math.min(0.26 * vel, out.gain.value || 0.26 * vel)), releaseAt);
         }
-        out.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+        out.gain.exponentialRampToValueAtTime(0.0001, releaseAt + 0.24);
         for (const source of sources) {
-          try { source.stop(now + 0.27); } catch { /* already stopped */ }
+          try { source.stop(releaseAt + 0.27); } catch { /* already stopped */ }
         }
+        voice.cleanupTimer = setTimeout(() => {
+          voice.stopped = true;
+          this._activeVocals.delete(voice);
+        }, Math.max(0, (releaseAt + 0.3 - now) * 1000));
+      },
+      cancel: () => {
+        if (voice.stopped) return;
+        clearTimeout(voice.safetyTimer);
+        clearTimeout(voice.cleanupTimer);
+        const now = this.ctx.currentTime;
+        out.gain.cancelScheduledValues(now);
+        out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || 0.0001), now);
+        out.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+        for (const source of sources) {
+          try { source.stop(now + 0.055); } catch { /* already stopped */ }
+        }
+        voice.stopped = true;
         this._activeVocals.delete(voice);
       },
     };
-    voice.safetyTimer = setTimeout(() => voice.stop(), 10000);
+    voice.safetyTimer = setTimeout(() => voice.cancel(), Math.max(10000, (t - this.ctx.currentTime + 10) * 1000));
     this._activeVocals.add(voice);
     return voice;
   }
@@ -290,9 +318,10 @@ export class AudioEngine {
     voice?.stop?.();
   }
 
-  vocalTone(freq = 329.63, vowel = 1) {
-    const voice = this.startVocal(freq, vowel);
-    if (voice) setTimeout(() => voice.stop(), 680);
+  vocalTone(freq = 329.63, vowel = 1, vel = 1, at = null, duration = 0.68) {
+    const startAt = this.ctx ? this._at(at) : null;
+    const voice = this.startVocal(freq, vowel, vel, startAt);
+    if (voice) voice.stop(startAt + duration);
     return voice;
   }
 

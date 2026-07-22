@@ -32,6 +32,11 @@ html, body {
 
 .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
 
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
 [hidden] { display: none !important; }
 
 ::selection { background: var(--purple); color: var(--cream); }
@@ -259,6 +264,58 @@ html, body {
   background: var(--gold); border-color: var(--gold); color: var(--ink); outline: none;
 }
 #zoom-controls button:active { transform: scale(.91); }
+
+/* ============ LOOP PEDAL ============ */
+#loop-pedal {
+  position: fixed; right: 18px; bottom: 52px; z-index: 44;
+  display: flex; align-items: stretch; gap: 6px;
+}
+#loop-toggle {
+  position: relative; width: 82px; height: 60px; overflow: hidden;
+  display: grid; grid-template-columns: 11px 1fr; grid-template-rows: 1fr 1fr;
+  align-items: center; column-gap: 5px; padding: 9px 10px 8px;
+  border: 2px solid rgba(209, 161, 59, .66); border-radius: 16px;
+  background: linear-gradient(155deg, rgba(35, 25, 43, .95), rgba(15, 10, 22, .95));
+  color: var(--cream); cursor: pointer; touch-action: manipulation;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), 0 6px 0 rgba(59, 14, 77, .9), 0 13px 28px rgba(0, 0, 0, .4);
+  -webkit-tap-highlight-color: transparent; user-select: none;
+  transition: transform .14s, border-color .2s, background .2s, box-shadow .2s, opacity .2s;
+}
+#loop-toggle:hover, #loop-toggle:focus-visible { border-color: var(--gold-light); outline: 2px solid rgba(209, 161, 59, .42); outline-offset: 2px; }
+#loop-toggle:active { transform: translateY(4px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 2px 0 rgba(59, 14, 77, .9), 0 8px 18px rgba(0, 0, 0, .38); }
+#loop-toggle:disabled { cursor: default; opacity: .62; }
+.loop-led {
+  grid-row: 1 / 3; width: 9px; height: 9px; border-radius: 50%;
+  background: rgba(253, 251, 247, .24); box-shadow: 0 0 0 3px rgba(253, 251, 247, .06);
+}
+#loop-label { align-self: end; font: 800 10px/1 'Unbounded', sans-serif; letter-spacing: .04em; text-align: left; }
+#loop-meta { align-self: start; color: rgba(253, 251, 247, .52); font-size: 6px; line-height: 1.25; letter-spacing: .06em; text-align: left; white-space: nowrap; }
+.loop-progress { position: absolute; left: 9px; right: 9px; bottom: 5px; height: 2px; overflow: hidden; border-radius: 9px; background: rgba(253, 251, 247, .12); }
+#loop-progress-bar { display: block; width: 0%; height: 100%; border-radius: inherit; background: var(--gold-light); transition: width .08s linear; }
+#loop-tools { display: flex; flex-direction: column; gap: 5px; }
+#loop-tools button {
+  width: 29px; height: 28px; display: grid; place-items: center;
+  border: 1px solid rgba(253, 251, 247, .28); border-radius: 9px;
+  background: rgba(23, 18, 28, .88); color: var(--cream); cursor: pointer;
+  font: 700 11px/1 'Manrope', sans-serif; touch-action: manipulation;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .3); transition: background .15s, color .15s, transform .15s;
+}
+#loop-tools button:hover, #loop-tools button:focus-visible { background: var(--gold); color: var(--ink); outline: none; transform: scale(1.05); }
+#loop-pedal[data-state="recording"] #loop-toggle { border-color: rgba(255, 91, 117, .9); }
+#loop-pedal[data-state="recording"] .loop-led { background: #ff5b75; box-shadow: 0 0 13px rgba(255, 91, 117, .95); animation: loopPulse .62s ease-in-out infinite alternate; }
+#loop-pedal[data-state="recording"] #loop-progress-bar { background: #ff7890; }
+#loop-pedal[data-state="playing"] .loop-led { background: var(--gold-light); box-shadow: 0 0 12px rgba(209, 161, 59, .9); }
+#loop-pedal[data-state="overdubbing"] #loop-toggle { border-color: var(--purple); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), 0 6px 0 rgba(59, 14, 77, .9), 0 0 22px rgba(158, 51, 202, .5); }
+#loop-pedal[data-state="overdubbing"] .loop-led { background: #df7cff; box-shadow: 0 0 14px rgba(223, 124, 255, .95); animation: loopPulse .52s ease-in-out infinite alternate; }
+#loop-pedal[data-state="paused"] #loop-toggle { opacity: .68; }
+#loop-pedal[data-state="paused"] .loop-led { background: rgba(253, 251, 247, .34); }
+#loop-pedal.unlocking { animation: loopUnlock .58s cubic-bezier(.2, .9, .25, 1); }
+@keyframes loopUnlock {
+  0% { opacity: 0; transform: translateY(20px) scale(.82); }
+  62% { opacity: 1; transform: translateY(-4px) scale(1.05); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes loopPulse { to { transform: scale(1.35); filter: brightness(1.25); } }
 
 /* ============ TOOLTIP / CHIP / TOAST ============ */
 #tooltip {
@@ -575,6 +632,20 @@ html, body {
     background: rgba(23, 18, 28, .46);
   }
   #zoom-controls button { width: 36px; height: 36px; font-size: 22px; }
+  #loop-pedal {
+    right: calc(max(18px, env(safe-area-inset-right)) + 106px);
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  #loop-toggle {
+    width: 66px; height: 66px; grid-template-columns: 1fr; grid-template-rows: 12px 18px 10px;
+    justify-items: center; row-gap: 2px; padding: 9px 7px 10px; border-radius: 50%;
+  }
+  .loop-led { grid-row: 1; width: 8px; height: 8px; }
+  #loop-label { align-self: center; font-size: 9px; text-align: center; }
+  #loop-meta { align-self: start; max-width: 55px; overflow: hidden; font-size: 5px; line-height: 1.1; text-align: center; }
+  .loop-progress { left: 13px; right: 13px; bottom: 8px; }
+  #loop-tools { position: absolute; left: -3px; top: -38px; flex-direction: row; gap: 4px; }
+  #loop-tools button { width: 34px; height: 34px; border-radius: 50%; }
   #mobile-controls.active {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     display: flex; align-items: flex-end; justify-content: space-between;
@@ -616,10 +687,14 @@ html, body {
   #move-stick { width: 98px; height: 98px; }
   #move-thumb { width: 43px; height: 43px; }
   #mobile-play { width: 82px; height: 82px; }
+  #loop-pedal { right: calc(max(18px, env(safe-area-inset-right)) + 92px); }
+  #loop-toggle { width: 60px; height: 60px; grid-template-rows: 11px 16px 9px; padding-top: 8px; }
+  #loop-label { font-size: 8px; }
+  #loop-meta { max-width: 49px; font-size: 4.7px; }
   .hud-right { grid-template-columns: minmax(0, 1.35fr) minmax(0, .9fr) minmax(0, .72fr) 34px 34px; gap: 4px; }
   .icon-btn { width: 34px; height: 34px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track, .intro-bg, #enter-btn.ready { animation: none; }
+  .ticker-track, .intro-bg, #enter-btn.ready, .loop-led, #loop-pedal.unlocking { animation: none; }
 }

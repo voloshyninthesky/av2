@@ -7,7 +7,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { AudioEngine } from './audio.js?v=20260721-14';
+import { AudioEngine } from './audio.js?v=20260721-15';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260721-15';
 import { UI } from './ui.js?v=20260721-15';
 
@@ -952,6 +952,16 @@ const mobilePlay = document.getElementById('mobile-play');
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
 const zoomOut = document.getElementById('zoom-out');
+const loopPedal = document.getElementById('loop-pedal');
+const loopToggle = document.getElementById('loop-toggle');
+const loopLabel = document.getElementById('loop-label');
+const loopMeta = document.getElementById('loop-meta');
+const loopProgressBar = document.getElementById('loop-progress-bar');
+const loopTools = document.getElementById('loop-tools');
+const loopPause = document.getElementById('loop-pause');
+const loopClear = document.getElementById('loop-clear');
+const loopStatus = document.getElementById('loop-status');
+const loopKeyHint = document.getElementById('loop-key-hint');
 const joystickInput = new THREE.Vector2();
 const cameraForwardXZ = new THREE.Vector3();
 const cameraRightXZ = new THREE.Vector3();
@@ -1160,13 +1170,7 @@ function playInstrumentPerformance(kind) {
       [1440, 'snare'], [1440, 'hihat'], [1680, 'tom2'], [1860, 'floor'], [2040, 'crash'],
     ];
     for (const [delay, part] of beat) later(delay, () => {
-      drums.hit(part);
-      if (part === 'kick') audio.kick();
-      else if (part === 'snare') audio.snare();
-      else if (part === 'hihat') audio.hihat(false, 0.78);
-      else if (part === 'crash') audio.crash();
-      else audio.tom(part === 'floor' ? 95 : 120);
-      addVibe(1.15);
+      playMusicalEvent({ type: 'drum', part, vel: part === 'hihat' ? 0.78 : 1, vibe: 1.15, showPrice: false });
     });
     navigator.vibrate?.([35, 205, 25, 205, 45]);
     finish(2350);
@@ -1175,9 +1179,7 @@ function playInstrumentPerformance(kind) {
     melody.forEach((keyIndex, step) => later(step * 245, () => {
       const key = whiteKeys[keyIndex];
       if (!key) return;
-      piano.press(key);
-      audio.piano(key.userData.freq, 0.82);
-      addVibe(1.35);
+      playMusicalEvent({ type: 'piano', freq: key.userData.freq, vel: 0.82, vibe: 1.35, showPrice: false });
     }));
     finish(2200);
   } else if (kind === 'guitar') {
@@ -1188,9 +1190,7 @@ function playInstrumentPerformance(kind) {
       [87.31, 130.81, 174.61, 220.0, 261.63, 349.23],
     ];
     chords.forEach((chord, step) => later(step * 620, () => {
-      guitar.strum();
-      audio.strum(chord, 0.8);
-      addVibe(2.2);
+      playMusicalEvent({ type: 'guitar-strum', freqs: chord, vel: 0.8, vibe: 2.2, showPrice: false });
     }));
     finish(2600);
   } else if (kind === 'mic') {
@@ -1200,9 +1200,7 @@ function playInstrumentPerformance(kind) {
       [349.23, 0], [329.63, 2], [293.66, 1], [261.63, 0],
     ];
     phrase.forEach(([freq, vowel], step) => later(step * 285, () => {
-      mic.sing();
-      audio.vocalTone(freq, vowel);
-      addVibe(1.3);
+      playMusicalEvent({ type: 'vocal', freq, vowel, duration: 0.68, vibe: 1.3, showPrice: false, showPad: false });
     }));
     finish(2500);
   }
@@ -1384,15 +1382,35 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ---- vibe ----
 let vibe = 0, lastVibeAdd = 0, vibeCooldown = 0;
+let loopUnlocked = false;
+
+function unlockLoopPedal() {
+  if (loopUnlocked) return false;
+  loopUnlocked = true;
+  loopPedal.hidden = false;
+  loopKeyHint.hidden = false;
+  loopPedal.classList.remove('unlocking');
+  void loopPedal.offsetWidth;
+  loopPedal.classList.add('unlocking');
+  loopStatus.textContent = 'Loop-педаль відкрито';
+  return true;
+}
+
 function addVibe(n) {
   vibe = Math.min(100, vibe + n);
   lastVibeAdd = performance.now();
   ui.setVibe(vibe);
-  if (vibe >= 100 && performance.now() > vibeCooldown) {
+  const justUnlocked = vibe >= 100 && unlockLoopPedal();
+  if (vibe >= 100 && (justUnlocked || performance.now() > vibeCooldown)) {
     vibeCooldown = performance.now() + 4000;
     const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
     spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
-    ui.toast('МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">Сцена — твоя</span>', 4200);
+    ui.toast(
+      justUnlocked
+        ? 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>'
+        : 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">Сцена — твоя</span>',
+      4200,
+    );
     vibe = 55;
     setTimeout(() => ui.setVibe(vibe), 600);
   }
@@ -1420,6 +1438,342 @@ function chipFor(kind) {
   );
 }
 
+// ---- multi-instrument loop pedal ----
+const LOOP_MAX_SECONDS = 12;
+const LOOP_LOOKAHEAD = 0.12;
+const LOOP_TICK_MS = 25;
+const LOOP_EVENT_LIMIT = 192;
+const loop = {
+  state: 'empty',
+  events: [],
+  duration: 0,
+  epoch: 0,
+  recordStartedAt: 0,
+  pausedOffset: 0,
+  layers: 0,
+  activeLayer: 0,
+  layerStartCount: 0,
+  nextId: 1,
+  autoCloseTimer: null,
+  schedulerTimer: null,
+  scheduled: new Set(),
+  activeVoices: new Set(),
+  visualTimers: new Set(),
+  lastUiAt: 0,
+};
+
+const positiveModulo = (value, modulus) => ((value % modulus) + modulus) % modulus;
+const loopLayerWord = (count) => count === 1 ? 'шар' : (count < 5 ? 'шари' : 'шарів');
+
+function cloneLoopEvent(event) {
+  const clone = { ...event };
+  if (event.freqs) clone.freqs = [...event.freqs];
+  return clone;
+}
+
+function captureLoopEvent(event, at = audio.ctx?.currentTime) {
+  if (!audio.ctx || (loop.state !== 'recording' && loop.state !== 'overdubbing')) return null;
+  if (loop.events.length >= LOOP_EVENT_LIMIT) {
+    ui.toast('Loop заповнений — замкни цей шар', 1800);
+    return null;
+  }
+  const now = Number.isFinite(at) ? at : audio.ctx.currentTime;
+  const recordingBase = loop.state === 'recording';
+  const offset = recordingBase
+    ? Math.max(0, now - loop.recordStartedAt)
+    : positiveModulo(now - loop.epoch, loop.duration);
+  const captured = {
+    ...cloneLoopEvent(event),
+    id: loop.nextId++,
+    offset,
+    layer: loop.activeLayer,
+    playFromCycle: recordingBase ? 0 : Math.floor((now - loop.epoch) / loop.duration) + 1,
+  };
+  loop.events.push(captured);
+  return captured;
+}
+
+function clearLoopVisualTimers() {
+  for (const timer of loop.visualTimers) clearTimeout(timer);
+  loop.visualTimers.clear();
+}
+
+function stopLoopVoices() {
+  for (const voice of loop.activeVoices) voice?.cancel?.();
+  loop.activeVoices.clear();
+}
+
+function runMusicalVisual(event, feedback) {
+  let kind = null;
+  if (event.type === 'drum') {
+    drums.hit(event.part);
+    kind = 'drums';
+  } else if (event.type === 'piano') {
+    const key = piano.keys.find((candidate) => Math.abs(candidate.userData.freq - event.freq) < 0.01);
+    if (key) piano.press(key);
+    kind = 'piano';
+  } else if (event.type === 'guitar-pluck') {
+    guitar.pluck(event.stringIndex ?? 0);
+    kind = 'guitar';
+  } else if (event.type === 'guitar-strum') {
+    guitar.strum();
+    kind = 'guitar';
+  } else if (event.type === 'vocal') {
+    mic.sing();
+    kind = 'mic';
+  }
+
+  if (!feedback || !kind) return;
+  if (kind !== 'mic') hideVocalPad();
+  if (kind === 'mic' && event.showPad !== false) showVocalPad();
+  addVibe(event.vibe ?? ({ drums: 4, piano: 3.5, guitar: 5, mic: 4 }[kind] || 3));
+  if (event.showPrice !== false) chipFor(kind);
+}
+
+function playMusicalEvent(event, { record = true, at = null, feedback = true } = {}) {
+  audio.init();
+  audio.resume();
+  if (record) captureLoopEvent(event);
+
+  const startAt = Number.isFinite(at) ? at : null;
+  const velocity = event.vel ?? 1;
+  let voice = null;
+  if (event.type === 'drum') {
+    if (event.part === 'kick') audio.kick(velocity, startAt);
+    else if (event.part === 'snare') audio.snare(velocity, startAt);
+    else if (event.part === 'hihat') audio.hihat(false, velocity, startAt);
+    else if (event.part === 'crash') audio.crash(velocity, startAt);
+    else audio.tom(event.part === 'tom1' ? 150 : (event.part === 'floor' ? 95 : 120), velocity, startAt);
+  } else if (event.type === 'piano') {
+    audio.piano(event.freq, velocity, startAt);
+  } else if (event.type === 'guitar-pluck') {
+    audio.pluck(event.freq, velocity, startAt);
+  } else if (event.type === 'guitar-strum') {
+    audio.strum(event.freqs, velocity, startAt);
+  } else if (event.type === 'vocal') {
+    voice = audio.vocalTone(event.freq, event.vowel, velocity, startAt, event.duration ?? 0.68);
+    if (!record && voice) {
+      loop.activeVoices.add(voice);
+      const cleanupDelay = Math.max(0, (((startAt ?? audio.ctx.currentTime) - audio.ctx.currentTime) + (event.duration ?? 0.68) + 0.36) * 1000);
+      setTimeout(() => loop.activeVoices.delete(voice), cleanupDelay);
+    }
+  }
+
+  const visualDelay = startAt === null ? 0 : Math.max(0, (startAt - audio.ctx.currentTime) * 1000);
+  if (visualDelay > 5) {
+    const timer = setTimeout(() => {
+      loop.visualTimers.delete(timer);
+      runMusicalVisual(event, feedback);
+    }, visualDelay);
+    loop.visualTimers.add(timer);
+  } else {
+    runMusicalVisual(event, feedback);
+  }
+  return voice;
+}
+
+function schedulerTick() {
+  if (!audio.ctx || (loop.state !== 'playing' && loop.state !== 'overdubbing') || !loop.duration) return;
+  const now = audio.ctx.currentTime;
+  const firstCycle = Math.max(0, Math.floor((now - loop.epoch - 0.02) / loop.duration));
+  const lastCycle = Math.max(firstCycle, Math.floor((now + LOOP_LOOKAHEAD - loop.epoch) / loop.duration));
+
+  for (let cycle = firstCycle; cycle <= lastCycle; cycle++) {
+    for (const event of loop.events) {
+      if (cycle < event.playFromCycle) continue;
+      const eventAt = loop.epoch + cycle * loop.duration + event.offset;
+      if (eventAt < now - 0.02 || eventAt > now + LOOP_LOOKAHEAD) continue;
+      const key = `${cycle}:${event.id}`;
+      if (loop.scheduled.has(key)) continue;
+      loop.scheduled.add(key);
+      playMusicalEvent(event, { record: false, at: eventAt, feedback: false });
+    }
+  }
+
+  if (loop.scheduled.size > Math.max(80, loop.events.length * 6)) {
+    for (const key of loop.scheduled) {
+      if (Number(key.slice(0, key.indexOf(':'))) < firstCycle - 1) loop.scheduled.delete(key);
+    }
+  }
+}
+
+function startLoopScheduler() {
+  clearInterval(loop.schedulerTimer);
+  loop.scheduled.clear();
+  schedulerTick();
+  loop.schedulerTimer = setInterval(schedulerTick, LOOP_TICK_MS);
+}
+
+function stopLoopScheduler() {
+  clearInterval(loop.schedulerTimer);
+  loop.schedulerTimer = null;
+  loop.scheduled.clear();
+  clearLoopVisualTimers();
+  stopLoopVoices();
+}
+
+function renderLoopState(announce = true) {
+  const state = loop.state;
+  loopPedal.dataset.state = state;
+  loopTools.hidden = loop.duration <= 0;
+  loopPause.textContent = state === 'paused' ? '▶' : 'Ⅱ';
+  loopPause.setAttribute('aria-pressed', String(state === 'paused'));
+  loopPause.setAttribute('aria-label', state === 'paused' ? 'Продовжити loop' : 'Призупинити loop');
+  loopToggle.disabled = state === 'paused';
+
+  const layers = `${loop.layers} ${loopLayerWord(loop.layers)}`;
+  const states = {
+    empty: ['LOOP', 'ЗАПИСАТИ', 'Почати запис музичного циклу', 'Loop порожній'],
+    recording: ['ЗАПИС', 'ГРАЙ ЗАРАЗ', 'Завершити запис і відтворити loop', 'Запис першого шару'],
+    playing: ['+ ШАР', layers, 'Записати новий шар поверх loop', `Loop грає, ${layers}`],
+    overdubbing: ['ДУБЛЬ', 'ГРАЙ ПОВЕРХ', 'Завершити запис нового шару', `Запис нового шару, ${layers}`],
+    paused: ['LOOP', 'ПАУЗА', 'Loop призупинено', `Loop призупинено, ${layers}`],
+  };
+  const [label, meta, aria, status] = states[state];
+  loopLabel.textContent = label;
+  loopMeta.textContent = meta;
+  loopToggle.setAttribute('aria-label', aria);
+  if (announce) loopStatus.textContent = status;
+}
+
+function updateLoopProgress() {
+  if (!audio.ctx || audio.ctx.currentTime - loop.lastUiAt < 0.08) return;
+  loop.lastUiAt = audio.ctx.currentTime;
+  let progress = 0;
+  if (loop.state === 'recording') {
+    const elapsed = Math.max(0, audio.ctx.currentTime - loop.recordStartedAt);
+    progress = Math.min(1, elapsed / LOOP_MAX_SECONDS);
+    loopMeta.textContent = `${elapsed.toFixed(1)} С · ГРАЙ`;
+  } else if (loop.duration > 0) {
+    const offset = loop.state === 'paused'
+      ? loop.pausedOffset
+      : positiveModulo(audio.ctx.currentTime - loop.epoch, loop.duration);
+    progress = offset / loop.duration;
+    if (loop.state === 'playing') loopMeta.textContent = `${loop.layers} ${loopLayerWord(loop.layers)} · ${loop.duration.toFixed(1)} С`;
+    else if (loop.state === 'overdubbing') loopMeta.textContent = `ГРАЙ · ${loop.duration.toFixed(1)} С`;
+  }
+  loopProgressBar.style.width = `${Math.max(0, Math.min(1, progress)) * 100}%`;
+}
+
+function startBaseLoopRecording() {
+  if (!loopUnlocked) return;
+  audio.init();
+  audio.resume();
+  stopLoopScheduler();
+  clearTimeout(loop.autoCloseTimer);
+  loop.state = 'recording';
+  loop.events = [];
+  loop.duration = 0;
+  loop.layers = 0;
+  loop.activeLayer = 1;
+  loop.layerStartCount = 0;
+  loop.recordStartedAt = audio.ctx.currentTime;
+  loopProgressBar.style.width = '0%';
+  loop.autoCloseTimer = setTimeout(() => finishBaseLoopRecording(true), LOOP_MAX_SECONDS * 1000);
+  renderLoopState();
+  navigator.vibrate?.(30);
+}
+
+function finishBaseLoopRecording(automatic = false) {
+  if (loop.state !== 'recording') return;
+  finishHeldLoopCapture();
+  clearTimeout(loop.autoCloseTimer);
+  if (!loop.events.length) {
+    loop.state = 'empty';
+    loop.duration = 0;
+    renderLoopState();
+    ui.toast('Зіграй щось під час запису', 1800);
+    return;
+  }
+  const rawDuration = Math.min(LOOP_MAX_SECONDS, Math.max(0, audio.ctx.currentTime - loop.recordStartedAt));
+  loop.duration = Math.max(1, Math.ceil(rawDuration / 0.125) * 0.125);
+  loop.layers = 1;
+  loop.state = 'playing';
+  loop.epoch = audio.ctx.currentTime + 0.08;
+  loop.events.sort((a, b) => a.offset - b.offset);
+  renderLoopState();
+  startLoopScheduler();
+  ui.toast(automatic ? 'Loop замкнено автоматично' : 'Loop грає · додай ще один інструмент', 2100);
+  navigator.vibrate?.([24, 35, 24]);
+}
+
+function startLoopOverdub() {
+  if (loop.state !== 'playing') return;
+  loop.state = 'overdubbing';
+  loop.activeLayer = loop.layers + 1;
+  loop.layerStartCount = loop.events.length;
+  renderLoopState();
+  ui.toast('Новий шар — грай поверх loop', 1700);
+  navigator.vibrate?.(24);
+}
+
+function finishLoopOverdub() {
+  if (loop.state !== 'overdubbing') return;
+  finishHeldLoopCapture();
+  const added = loop.events.length - loop.layerStartCount;
+  if (added > 0) {
+    loop.layers = loop.activeLayer;
+    loop.events.sort((a, b) => a.offset - b.offset);
+    ui.toast(`Шар ${loop.layers} додано`, 1600);
+  } else {
+    ui.toast('У цьому шарі немає нот', 1500);
+  }
+  loop.state = 'playing';
+  renderLoopState();
+}
+
+function pauseLoop() {
+  if (loop.state === 'overdubbing') finishLoopOverdub();
+  if (loop.state !== 'playing') return;
+  loop.pausedOffset = positiveModulo(audio.ctx.currentTime - loop.epoch, loop.duration);
+  loop.state = 'paused';
+  stopLoopScheduler();
+  renderLoopState();
+}
+
+function resumeLoop() {
+  if (loop.state !== 'paused') return;
+  audio.resume();
+  loop.epoch = audio.ctx.currentTime - loop.pausedOffset;
+  for (const event of loop.events) event.playFromCycle = 0;
+  loop.state = 'playing';
+  renderLoopState();
+  startLoopScheduler();
+}
+
+function clearRecordedLoop() {
+  clearTimeout(loop.autoCloseTimer);
+  finishHeldLoopCapture();
+  stopLoopScheduler();
+  loop.state = 'empty';
+  loop.events = [];
+  loop.duration = 0;
+  loop.layers = 0;
+  loop.activeLayer = 0;
+  loop.pausedOffset = 0;
+  loopProgressBar.style.width = '0%';
+  renderLoopState();
+  ui.toast('Loop очищено', 1500);
+}
+
+function toggleLoopRecording() {
+  if (!started || ui.modalOpen || mascotMove.fall) return;
+  if (!loopUnlocked) {
+    ui.toast('Заповни VIBE-метр, щоб відкрити loop-педаль', 1800);
+    return;
+  }
+  if (loop.state === 'empty') startBaseLoopRecording();
+  else if (loop.state === 'recording') finishBaseLoopRecording();
+  else if (loop.state === 'playing') startLoopOverdub();
+  else if (loop.state === 'overdubbing') finishLoopOverdub();
+  else if (loop.state === 'paused') resumeLoop();
+}
+
+loopToggle.addEventListener('click', toggleLoopRecording);
+loopPause.addEventListener('click', () => loop.state === 'paused' ? resumeLoop() : pauseLoop());
+loopClear.addEventListener('click', clearRecordedLoop);
+renderLoopState(false);
+
 // ---- microphone note pad ----
 const vocalPad = document.getElementById('vocal-pad');
 const vocalButtons = [...vocalPad.querySelectorAll('[data-vocal-freq]')];
@@ -1428,6 +1782,22 @@ let heldVocal = null;
 let heldVocalButton = null;
 let heldVocalPointer = null;
 let heldVocalPulseTimer = null;
+let heldLoopCapture = null;
+
+function beginHeldLoopCapture(freq, vowel) {
+  const startedAt = audio.ctx?.currentTime;
+  const event = captureLoopEvent({ type: 'vocal', freq, vowel, vel: 1, duration: 0.12 }, startedAt);
+  return event ? { event, startedAt, finished: false } : null;
+}
+
+function finishHeldLoopCapture() {
+  if (!heldLoopCapture || heldLoopCapture.finished) return;
+  heldLoopCapture.finished = true;
+  const elapsed = Math.max(0.12, (audio.ctx?.currentTime ?? heldLoopCapture.startedAt) - heldLoopCapture.startedAt);
+  const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : 10;
+  heldLoopCapture.event.duration = Math.min(maximum, elapsed);
+  heldLoopCapture = null;
+}
 
 function showVocalPad(autoHide = true) {
   vocalPad.hidden = false;
@@ -1438,6 +1808,7 @@ function showVocalPad(autoHide = true) {
 function hideVocalPad() {
   clearTimeout(vocalPadTimer);
   clearInterval(heldVocalPulseTimer);
+  finishHeldLoopCapture();
   audio.stopVocal(heldVocal);
   heldVocalButton?.classList.remove('playing');
   heldVocal = null;
@@ -1447,18 +1818,13 @@ function hideVocalPad() {
 }
 
 function playVocalNote(freq, vowel, showPrice = false) {
-  audio.init();
-  audio.resume();
-  mic.sing();
-  audio.vocalTone(freq, vowel);
-  addVibe(4);
-  showVocalPad();
-  if (showPrice) chipFor('mic');
+  playMusicalEvent({ type: 'vocal', freq, vowel, duration: 0.68, vibe: 4, showPrice });
 }
 
 function releaseHeldVocal(event) {
   if (event && heldVocalPointer !== null && event.pointerId !== heldVocalPointer) return;
   clearInterval(heldVocalPulseTimer);
+  finishHeldLoopCapture();
   audio.stopVocal(heldVocal);
   heldVocalButton?.classList.remove('playing');
   heldVocal = null;
@@ -1477,6 +1843,7 @@ for (const button of vocalButtons) {
     audio.resume();
     mic.sing();
     heldVocal = audio.startVocal(freq, vowel);
+    heldLoopCapture = beginHeldLoopCapture(freq, vowel);
     heldVocalButton = button;
     heldVocalPointer = event.pointerId;
     button.setPointerCapture?.(event.pointerId);
@@ -1494,45 +1861,28 @@ for (const button of vocalButtons) {
 // ---- trigger instruments ----
 function trigger(mesh) {
   const u = mesh.userData;
-  audio.init();
-  audio.resume();
-  if (u.instrument !== 'mic') hideVocalPad();
   switch (u.instrument) {
     case 'drums': {
-      const part = u.part;
-      drums.hit(part);
-      addVibe(4);
-      chipFor('drums');
-      if (part === 'kick') audio.kick();
-      else if (part === 'snare') audio.snare();
-      else if (part === 'hihat') audio.hihat(false);
-      else if (part === 'crash') audio.crash();
-      else if (part === 'tom1') audio.tom(150);
-      else if (part === 'tom2') audio.tom(120);
-      else if (part === 'floor') audio.tom(95);
+      playMusicalEvent({ type: 'drum', part: u.part, vel: 1, vibe: 4 });
       break;
     }
     case 'piano': {
       if (u.freq !== undefined) {
-        piano.press(mesh);
-        audio.piano(u.freq);
-        addVibe(3.5);
-        chipFor('piano');
+        playMusicalEvent({ type: 'piano', freq: u.freq, vel: 1, vibe: 3.5 });
       }
       break;
     }
     case 'guitar': {
       if (u.stringFreq !== undefined) {
-        guitar.pluck(u.stringIndex);
-        audio.pluck(u.stringFreq);
-        addVibe(3);
+        playMusicalEvent({ type: 'guitar-pluck', freq: u.stringFreq, stringIndex: u.stringIndex, vel: 1, vibe: 3 });
       } else {
-        guitar.strum();
-        // Em9 strum
-        audio.strum([164.81, 246.94, 329.63, 392.0, 493.88, 659.25]);
-        addVibe(7);
+        playMusicalEvent({
+          type: 'guitar-strum',
+          freqs: [164.81, 246.94, 329.63, 392.0, 493.88, 659.25],
+          vel: 1,
+          vibe: 7,
+        });
       }
-      chipFor('guitar');
       break;
     }
     case 'mic': {
@@ -1566,6 +1916,15 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyE' && !e.repeat) {
     playNearestInstrument();
   }
+  if (e.code === 'KeyL' && !e.repeat) {
+    e.preventDefault();
+    if (!loopUnlocked) {
+      toggleLoopRecording();
+      return;
+    }
+    if (e.shiftKey && loop.state !== 'empty') clearRecordedLoop();
+    else toggleLoopRecording();
+  }
 });
 
 window.addEventListener('keyup', (e) => {
@@ -1578,32 +1937,21 @@ window.addEventListener('keydown', (e) => {
   if (!started || ui.modalOpen || e.repeat) return;
   if (e.code in DRUM_KEYS) {
     const part = DRUM_KEYS[e.code];
-    drums.hit(part);
-    audio.resume();
-    addVibe(4);
-    chipFor('drums');
-    if (part === 'kick') audio.kick();
-    else if (part === 'snare') audio.snare();
-    else if (part === 'hihat') audio.hihat(false);
-    else if (part === 'crash') audio.crash();
-    else audio.tom(120);
+    playMusicalEvent({ type: 'drum', part, vel: 1, vibe: 4 });
   } else if (/^Digit[1-8]$/.test(e.code)) {
     const idx = Number(e.code.slice(5)) - 1;
     const key = whiteKeys[idx];
     if (key) {
-      piano.press(key);
-      audio.resume();
-      audio.piano(key.userData.freq);
-      addVibe(3.5);
-      chipFor('piano');
+      playMusicalEvent({ type: 'piano', freq: key.userData.freq, vel: 1, vibe: 3.5 });
     }
   } else if (e.code === 'Space') {
     e.preventDefault();
-    guitar.strum();
-    audio.resume();
-    audio.strum([164.81, 246.94, 329.63, 392.0, 493.88, 659.25]);
-    addVibe(7);
-    chipFor('guitar');
+    playMusicalEvent({
+      type: 'guitar-strum',
+      freqs: [164.81, 246.94, 329.63, 392.0, 493.88, 659.25],
+      vel: 1,
+      vibe: 7,
+    });
   }
 });
 
@@ -1757,6 +2105,7 @@ function animate() {
   fireworks.update(dt);
   updateSlideshow(dt);
   updateSlideshowNavLayout();
+  updateLoopProgress();
 
   if (composer) composer.render();
   else renderer.render(scene, camera);
@@ -1794,7 +2143,7 @@ Promise.race([
   } else {
     enterBtn.disabled = false;
     enterBtn.classList.add('ready');
-    enterLabel.textContent = 'УВІЙТИ НА СЦЕНУ ›';
+    enterLabel.textContent = 'ВИЙТИ НА СЦЕНУ ›';
   }
 
   if (params.has('autoenter')) {

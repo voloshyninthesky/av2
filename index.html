@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260721-16">
+<link rel="stylesheet" href="css/style.css?v=20260721-18">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -76,13 +76,27 @@
 </header>
 
 <div id="keys-hint" class="mono hidden">
-  <b>↑</b><b>↓</b><b>←</b><b>→</b> / клік по сцені — рух · <b>E</b> — грати · <b>A–G</b> — ударні · <b>1–8</b> — піаніно · <b>ПРОБІЛ</b> — гітара
+  <b>↑</b><b>↓</b><b>←</b><b>→</b> / клік — рух · <b>E</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>A–G</b> — ударні · <b>1–8</b> — піаніно · <b>ПРОБІЛ</b> — гітара
 </div>
 <div id="drag-hint" class="mono hidden">перетягуй — огляд сцени · коліщатко — зум</div>
 
 <div id="zoom-controls" hidden aria-label="Масштаб сцени">
   <button id="zoom-in" type="button" aria-label="Наблизити сцену" title="Наблизити">+</button>
   <button id="zoom-out" type="button" aria-label="Віддалити сцену" title="Віддалити">−</button>
+</div>
+
+<div id="loop-pedal" data-state="empty" role="group" aria-label="Loop-педаль" hidden>
+  <button id="loop-toggle" type="button" aria-label="Почати запис музичного циклу" aria-describedby="loop-status" title="Loop-педаль · L">
+    <span class="loop-led" aria-hidden="true"></span>
+    <span id="loop-label">LOOP</span>
+    <span id="loop-meta" class="mono">ЗАПИСАТИ</span>
+    <span class="loop-progress" aria-hidden="true"><span id="loop-progress-bar"></span></span>
+  </button>
+  <div id="loop-tools" hidden>
+    <button id="loop-pause" type="button" aria-label="Призупинити loop" aria-pressed="false" title="Пауза">Ⅱ</button>
+    <button id="loop-clear" type="button" aria-label="Очистити всі шари loop" title="Очистити loop">×</button>
+  </div>
+  <span id="loop-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true">Loop порожній</span>
 </div>
 
 <!-- floating tooltip / chip / toast -->
@@ -126,6 +140,7 @@
       <li><span class="kbd">миша</span> перетягуй — огляд сцени, коліщатко — зум</li>
       <li><span class="kbd">клік</span> по інструменту — зіграти звук</li>
       <li><span class="kbd">свайп</span> по екрану сцени — перемикати слайди</li>
+      <li><span class="kbd">L</span> після першого заповнення VIBE-метра: записати loop · натисни ще раз, щоб замкнути або додати новий шар</li>
       <li><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span><span class="kbd">F</span><span class="kbd">G</span> бас · малий барабан · хет · том · креш</li>
       <li><span class="kbd">1</span>…<span class="kbd">8</span> білі клавіші піаніно (До–До)</li>
       <li><span class="kbd">клік</span> по струнах — окремі ноти · <span class="kbd">ПРОБІЛ</span> — акорд</li>
@@ -339,6 +354,6 @@
 
 <div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
 
-<script type="module" src="js/main.js?v=20260721-20"></script>
+<script type="module" src="js/main.js?v=20260721-23"></script>
 </body>
 </html>
