@@ -660,6 +660,29 @@ function makeLabel(text) {
   return spr;
 }
 
+function makeMascotPointer() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, 256, 256);
+  x.shadowColor = '#9E33CA';
+  x.shadowBlur = 18;
+  x.fillStyle = '#9E33CA';
+  x.beginPath();
+  x.moveTo(78, 72); x.lineTo(178, 72); x.lineTo(128, 188);
+  x.closePath();
+  x.fill();
+  x.shadowBlur = 0;
+  x.strokeStyle = '#D1A13B';
+  x.lineWidth = 8;
+  x.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
+  spr.scale.set(0.55, 0.55, 1);
+  return spr;
+}
+
 // ---- compact young stage mascot ----
 function buildMascot() {
   const group = new THREE.Group();
@@ -949,20 +972,11 @@ for (const inst of instruments) {
 // labels
 const labels = [];
 let mascotLabel = null;
+const MASCOT_LABEL_Y = 1.92;
 function addLabels() {
-  for (const inst of instruments) {
-    const spr = makeLabel(inst.label);
-    const anchor = inst.labelAnchor.clone();
-    inst.group.localToWorld(anchor);
-    spr.position.copy(anchor);
-    spr.userData.baseY = anchor.y;
-    spr.userData.ph = Math.random() * Math.PI * 2;
-    scene.add(spr);
-    labels.push(spr);
-  }
-  mascotLabel = makeLabel('Ти');
-  mascotLabel.scale.multiplyScalar(0.82);
-  mascotLabel.position.set(mascot.group.position.x, 1.72, mascot.group.position.z);
+  // Arrow-only marker above the mascot (no "Ти" text).
+  mascotLabel = makeMascotPointer();
+  mascotLabel.position.set(mascot.group.position.x, MASCOT_LABEL_Y, mascot.group.position.z);
   scene.add(mascotLabel);
 }
 
@@ -1064,7 +1078,6 @@ const instrumentView = {
 };
 
 function setSceneLabelsVisible(visible) {
-  for (const spr of labels) spr.visible = visible;
   if (mascotLabel && !mascotMove.fall) mascotLabel.visible = visible;
 }
 
@@ -1121,7 +1134,7 @@ function poseMascotAtInstrument(kind) {
   }
   if (mascotLabel) {
     mascotLabel.visible = false;
-    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
   }
 }
 
@@ -1438,7 +1451,7 @@ function respawnMascot() {
   }
   if (mascotLabel) {
     mascotLabel.visible = true;
-    mascotLabel.position.set(mascotMove.spawn.x, 1.72, mascotMove.spawn.z);
+    mascotLabel.position.set(mascotMove.spawn.x, MASCOT_LABEL_Y, mascotMove.spawn.z);
   }
   if (isMobileGameMode()) {
     mobileFollowTarget.set(mascotMove.spawn.x, 1.35, mascotMove.spawn.z - 0.25);
@@ -1603,7 +1616,7 @@ function updateMascot(dt) {
     camera.lookAt(controls.target);
     if (mascotLabel) {
       mascotLabel.visible = fall.t < 0.42;
-      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
     }
     if (fall.t >= fall.duration) respawnMascot();
     return;
@@ -1612,7 +1625,7 @@ function updateMascot(dt) {
     if (mascotLabel) {
       mascotLabel.visible = instrumentView.phase === 'returning';
       if (mascotLabel.visible) {
-        mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+        mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
       }
     }
     return;
@@ -1687,7 +1700,7 @@ function updateMascot(dt) {
   mascot.head.rotation.z = walking ? -Math.sin(mascotMove.phase) * 0.025 : 0;
 
   if (mascotLabel) {
-    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
   }
 
   if (isMobileGameMode() && flyT < 0 && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')) {
