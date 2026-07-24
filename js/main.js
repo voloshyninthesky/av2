@@ -1770,6 +1770,23 @@ function isMultiTouchInstrumentFocus() {
     && (instrumentView.kind === 'piano' || instrumentView.kind === 'drums');
 }
 
+function isGuitarPlayFocus() {
+  return instrumentView.phase === 'focused' && instrumentView.kind === 'guitar';
+}
+
+const GUITAR_STRUM_FREQS = [164.81, 246.94, 329.63, 392.0, 493.88, 659.25];
+const GUITAR_STRUM_THRESHOLD = 24;
+const GUITAR_STRUM_COOLDOWN = 105;
+
+function fireGuitarStrum(vel = 1) {
+  playMusicalEvent({
+    type: 'guitar-strum',
+    freqs: GUITAR_STRUM_FREQS,
+    vel,
+    vibe: 5,
+  });
+}
+
 function playTokenForMesh(mesh) {
   if (!mesh) return null;
   const u = mesh.userData;
@@ -1803,6 +1820,30 @@ canvas.addEventListener('pointerdown', (e) => {
     }
   }
 
+  {
+    const mesh = hitInteractableAt(e.clientX, e.clientY);
+    if (mesh && mesh.userData.instrument === 'guitar') {
+      // Prefer strum gestures over orbit whenever the finger starts on the guitar.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      activePointers.set(e.pointerId, {
+        mode: 'guitar-strum',
+        x: e.clientX,
+        y: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        t: performance.now(),
+        travel: 0,
+        lastStrumAt: 0,
+        strummed: false,
+        dir: 0,
+        hitMesh: mesh,
+      });
+      return;
+    }
+  }
+
   activePointers.set(e.pointerId, {
     mode: 'tap',
     x: e.clientX,
@@ -1813,19 +1854,76 @@ canvas.addEventListener('pointerdown', (e) => {
 
 canvas.addEventListener('pointermove', (e) => {
   const info = activePointers.get(e.pointerId);
-  if (!info || info.mode !== 'play' || !isMultiTouchInstrumentFocus()) return;
-  const mesh = hitInteractableAt(e.clientX, e.clientY);
-  if (!mesh || mesh.userData.instrument !== instrumentView.kind) return;
-  const token = playTokenForMesh(mesh);
-  if (token === info.token) return;
-  info.token = token;
-  trigger(mesh);
+  if (!info) return;
+
+  if (info.mode === 'play') {
+    if (!isMultiTouchInstrumentFocus()) return;
+    const mesh = hitInteractableAt(e.clientX, e.clientY);
+    if (!mesh || mesh.userData.instrument !== instrumentView.kind) return;
+    const token = playTokenForMesh(mesh);
+    if (token === info.token) return;
+    info.token = token;
+    trigger(mesh);
+    return;
+  }
+
+  if (info.mode === 'guitar-strum') {
+    const dx = e.clientX - info.lastX;
+    const dy = e.clientY - info.lastY;
+    info.lastX = e.clientX;
+    info.lastY = e.clientY;
+    const step = Math.hypot(dx, dy);
+    if (step < 0.4) return;
+
+    // Primary axis of this sample — either direction counts as a stroke.
+    const primary = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
+    const sign = Math.sign(primary) || info.dir || 1;
+    if (info.dir && sign !== info.dir) {
+      // Reverse swipe starts a fresh stroke immediately.
+      info.travel = step;
+      info.dir = sign;
+    } else {
+      info.dir = sign;
+      info.travel += step;
+    }
+
+    const now = performance.now();
+    if (info.travel < GUITAR_STRUM_THRESHOLD || now - info.lastStrumAt < GUITAR_STRUM_COOLDOWN) return;
+
+    const over = hitInteractableAt(e.clientX, e.clientY);
+    if (over?.userData.instrument !== 'guitar' && !info.strummed) return;
+
+    const vel = Math.min(1.15, 0.72 + info.travel / 90);
+    fireGuitarStrum(vel);
+    info.lastStrumAt = now;
+    info.travel = 0;
+    info.strummed = true;
+    if (!isGuitarPlayFocus()) walkMascotToInstrument('guitar');
+  }
 }, { capture: true, passive: true });
 
 function endActivePointer(e) {
   const info = activePointers.get(e.pointerId);
   activePointers.delete(e.pointerId);
-  if (!info || info.mode !== 'tap') return;
+  if (!info) return;
+
+  if (info.mode === 'guitar-strum') {
+    if (info.strummed) return;
+    const dx = e.clientX - info.x;
+    const dy = e.clientY - info.y;
+    const dt = performance.now() - info.t;
+    const tapTolerance = isMobileGameMode() ? 16 : 8;
+    if (Math.hypot(dx, dy) < tapTolerance && dt < 600) {
+      const mesh = hitInteractableAt(e.clientX, e.clientY) || info.hitMesh;
+      if (mesh) {
+        trigger(mesh);
+        if (!isGuitarPlayFocus()) walkMascotToInstrument('guitar');
+      }
+    }
+    return;
+  }
+
+  if (info.mode !== 'tap') return;
   const dx = e.clientX - info.x;
   const dy = e.clientY - info.y;
   const dt = performance.now() - info.t;
@@ -2356,12 +2454,7 @@ function trigger(mesh) {
       if (u.stringFreq !== undefined) {
         playMusicalEvent({ type: 'guitar-pluck', freq: u.stringFreq, stringIndex: u.stringIndex, vel: 1, vibe: 3 });
       } else {
-        playMusicalEvent({
-          type: 'guitar-strum',
-          freqs: [164.81, 246.94, 329.63, 392.0, 493.88, 659.25],
-          vel: 1,
-          vibe: 7,
-        });
+        fireGuitarStrum(1);
       }
       break;
     }
@@ -2428,12 +2521,7 @@ window.addEventListener('keydown', (e) => {
     }
   } else if (e.code === 'Space') {
     e.preventDefault();
-    playMusicalEvent({
-      type: 'guitar-strum',
-      freqs: [164.81, 246.94, 329.63, 392.0, 493.88, 659.25],
-      vel: 1,
-      vibe: 7,
-    });
+    fireGuitarStrum(1);
   }
 });
 
