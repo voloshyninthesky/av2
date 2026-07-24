@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-50';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-62';
 import { UI } from './ui.js?v=20260721-15';
 
 // ---- error collector (debug / headless testing) ----
@@ -22,6 +22,8 @@ const audio = new AudioEngine();
 const isMobileGameMode = () => window.innerWidth <= 720 ||
   window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const stageAmbience = { curtains: [], valance: null };
 
 // ============================================================
 // RENDERER / SCENE / CAMERA
@@ -100,24 +102,23 @@ function woodTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 512;
   const x = c.getContext('2d');
-  x.fillStyle = '#7a5433';
+  x.fillStyle = '#6e4a2d';
   x.fillRect(0, 0, 512, 512);
   for (let row = 0; row < 8; row++) {
     const y0 = row * 64;
-    const shade = 0.88 + Math.random() * 0.24;
-    x.fillStyle = `rgb(${122 * shade | 0},${84 * shade | 0},${51 * shade | 0})`;
+    const shade = 0.82 + Math.random() * 0.28;
+    x.fillStyle = `rgb(${110 * shade | 0},${74 * shade | 0},${42 * shade | 0})`;
     x.fillRect(0, y0, 512, 64);
-    x.strokeStyle = 'rgba(40,22,10,.8)';
+    x.strokeStyle = 'rgba(32,16,8,.72)';
     x.lineWidth = 3;
     x.strokeRect(-2, y0, 516, 64);
-    // grain
-    x.strokeStyle = 'rgba(60,35,15,.25)';
+    x.strokeStyle = 'rgba(55,30,12,.3)';
     x.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       x.beginPath();
-      const gy = y0 + 8 + Math.random() * 48;
+      const gy = y0 + 6 + Math.random() * 50;
       x.moveTo(0, gy);
-      x.bezierCurveTo(150, gy + Math.random() * 8 - 4, 350, gy + Math.random() * 8 - 4, 512, gy);
+      x.bezierCurveTo(140, gy + Math.random() * 10 - 5, 360, gy + Math.random() * 10 - 5, 512, gy);
       x.stroke();
     }
   }
@@ -125,6 +126,7 @@ function woodTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(3, 2);
+  t.anisotropy = 4;
   return t;
 }
 
@@ -261,16 +263,22 @@ function buildStage() {
 
   // curtains
   const curt = curtainTexture();
-  const curtMat = new THREE.MeshStandardMaterial({ map: curt, roughness: 0.9 });
+  const curtMat = new THREE.MeshStandardMaterial({ map: curt, roughness: 0.88 });
+  stageAmbience.curtains.length = 0;
   for (const s of [-1, 1]) {
     const c = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 9.4), curtMat);
     c.position.set(s * 7.9, 4.1, -3.9);
     c.rotation.y = -s * 0.3;
+    c.userData.baseRotY = c.rotation.y;
+    c.userData.side = s;
     g.add(c);
+    stageAmbience.curtains.push(c);
   }
   const valance = new THREE.Mesh(new THREE.PlaneGeometry(19.5, 1.7), curtMat.clone());
   valance.position.set(0, 8.15, -4.1);
+  valance.userData.baseY = valance.position.y;
   g.add(valance);
+  stageAmbience.valance = valance;
   const valanceTrim = new THREE.Mesh(
     new THREE.BoxGeometry(19.5, 0.09, 0.05),
     new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.8, roughness: 0.35 })
@@ -1700,7 +1708,14 @@ function updateMascot(dt) {
   mascot.head.rotation.z = walking ? -Math.sin(mascotMove.phase) * 0.025 : 0;
 
   if (mascotLabel) {
-    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
+    const bob = prefersReducedMotion.matches ? 0 : Math.sin(performance.now() * 0.003) * 0.04;
+    mascotLabel.position.set(
+      mascot.group.position.x,
+      mascot.group.position.y + MASCOT_LABEL_Y + bob,
+      mascot.group.position.z,
+    );
+    const pulse = prefersReducedMotion.matches ? 1 : 1 + Math.sin(performance.now() * 0.004) * 0.06;
+    mascotLabel.scale.setScalar(0.55 * pulse);
   }
 
   if (isMobileGameMode() && flyT < 0 && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')) {
@@ -2642,9 +2657,20 @@ function animate() {
   updateMascot(dt);
   updateMobilePlayAvailability();
 
-  // labels bob
-  for (const spr of labels) {
-    spr.position.y = spr.userData.baseY + Math.sin(t * 1.4 + spr.userData.ph) * 0.07;
+  // stage atmosphere (materials/motion only — lights unchanged)
+  if (!prefersReducedMotion.matches) {
+    for (const curtain of stageAmbience.curtains) {
+      curtain.rotation.y = curtain.userData.baseRotY + Math.sin(t * 0.55 + curtain.userData.side) * 0.035;
+    }
+    if (stageAmbience.valance) {
+      stageAmbience.valance.position.y = stageAmbience.valance.userData.baseY + Math.sin(t * 0.7) * 0.025;
+    }
+    for (let i = 0; i < spotHeads.length; i++) {
+      const lens = spotHeads[i].lensMat;
+      const pulse = 0.72 + Math.sin(t * 1.4 + i * 1.1) * 0.28;
+      lens.color.setHex(spotHeads[i].base);
+      lens.color.multiplyScalar(0.75 + pulse * 0.35);
+    }
   }
 
   // dust drift
@@ -2654,7 +2680,8 @@ function animate() {
     for (let i = 0; i < meta.length; i++) {
       const m = meta[i];
       p[i * 3 + 1] += m.sp * dt;
-      p[i * 3] += Math.sin(t * m.sw + m.ph) * dt * 0.06;
+      p[i * 3] += Math.sin(t * 0.35 + m.ph) * m.sw * dt * 0.35;
+      p[i * 3 + 2] += Math.cos(t * 0.28 + m.ph) * m.sw * dt * 0.22;
       if (p[i * 3 + 1] > 7) p[i * 3 + 1] = 0.1;
     }
     dust.geometry.attributes.position.needsUpdate = true;

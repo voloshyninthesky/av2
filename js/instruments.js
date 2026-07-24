@@ -15,6 +15,45 @@ function std(color, opts = {}) {
 function metal(color, roughness = 0.28) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.9 });
 }
+function lacquer(color, opts = {}) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.28,
+    metalness: 0.22,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.16,
+    ...opts,
+  });
+}
+function guitarWoodTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const x = c.getContext('2d');
+  x.fillStyle = '#c98d3d';
+  x.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 48; i++) {
+    const y = (i / 48) * 512;
+    const shade = 0.82 + Math.sin(i * 0.7) * 0.1 + Math.random() * 0.08;
+    x.strokeStyle = `rgba(${90 * shade | 0},${48 * shade | 0},${18 * shade | 0},${0.18 + Math.random() * 0.2})`;
+    x.lineWidth = 1 + Math.random() * 2;
+    x.beginPath();
+    x.moveTo(0, y);
+    x.bezierCurveTo(160, y + Math.random() * 10 - 5, 340, y + Math.random() * 10 - 5, 512, y);
+    x.stroke();
+  }
+  for (let i = 0; i < 7; i++) {
+    const cx = 80 + i * 60;
+    x.strokeStyle = 'rgba(70,35,12,.22)';
+    x.lineWidth = 2;
+    x.beginPath();
+    x.ellipse(cx, 260 + (i % 3) * 40, 18, 70, 0.1, 0, Math.PI * 2);
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
 function cylinderBetween(a, b, r, mat, segments = 8) {
   const dir = new THREE.Vector3().subVectors(b, a);
   const len = dir.length();
@@ -32,10 +71,12 @@ function markInteract(root, data) {
 // ============================================================
 export function buildDrumKit() {
   const kit = new THREE.Group();
-  const shellMat = std(PURPLE, { roughness: 0.35 });
-  const headMat = std(CREAM, { roughness: 0.85 });
-  const goldMetal = metal(GOLD, 0.3);
-  const chrome = metal(0xd9d9e2, 0.22);
+  const shellMat = lacquer(PURPLE, { roughness: 0.32, metalness: 0.28, clearcoat: 0.55 });
+  const headMat = std(CREAM, { roughness: 0.78, metalness: 0.04 });
+  const goldMetal = metal(GOLD, 0.26);
+  goldMetal.emissive = new THREE.Color(GOLD);
+  goldMetal.emissiveIntensity = 0.07;
+  const chrome = metal(0xd9d9e2, 0.18);
   const darkMetal = metal(0x2c2c34, 0.4);
 
   const parts = { cymbals: [] };
@@ -247,8 +288,9 @@ export function buildDrumKit() {
       const f1 = 1 + anim.floor * 0.07; parts.floor.scale.set(f1, 1 - anim.floor * 0.1, f1);
 
       parts.hihatTop.position.y = 0.045 - anim.hihat * 0.03;
-      parts.crash.rotation.z = -0.12 - Math.sin(time * 22) * anim.crash * 0.14;
-      parts.crash.rotation.x = Math.sin(time * 17) * anim.crash * 0.08;
+      parts.hihatTop.rotation.z = -0.03 + Math.sin(time * 1.7) * 0.01;
+      parts.crash.rotation.z = -0.12 - Math.sin(time * 22) * anim.crash * 0.14 + Math.sin(time * 1.2) * 0.012;
+      parts.crash.rotation.x = Math.sin(time * 17) * anim.crash * 0.08 + Math.sin(time * 0.9) * 0.01;
     },
   };
 }
@@ -258,8 +300,10 @@ export function buildDrumKit() {
 // ============================================================
 export function buildPiano() {
   const piano = new THREE.Group();
-  const bodyMat = std(0x241a2e, { roughness: 0.32, metalness: 0.25 }); // deep purple-black lacquer
-  const trimMat = metal(GOLD, 0.35);
+  const bodyMat = lacquer(0x241a2e, { roughness: 0.24, metalness: 0.28, clearcoat: 0.85, clearcoatRoughness: 0.12 });
+  const trimMat = metal(GOLD, 0.28);
+  trimMat.emissive = new THREE.Color(GOLD);
+  trimMat.emissiveIntensity = 0.08;
 
   // cabinet
   const cabinet = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.25, 0.58), bodyMat);
@@ -299,13 +343,17 @@ export function buildPiano() {
   standBoard.position.set(0, 1.28, 0.32);
   standBoard.rotation.x = -0.5;
   piano.add(standBoard);
-  const pageMat = std(CREAM, { roughness: 0.9 });
+  const pageMat = std(CREAM, { roughness: 0.88 });
+  const sheetPages = [];
   for (const s of [-1, 1]) {
     const page = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.005, 0.24), pageMat);
     page.position.set(s * 0.155, 1.31, 0.35);
     page.rotation.x = -0.5;
     page.rotation.y = s * -0.14;
+    page.userData.baseRotY = page.rotation.y;
+    page.userData.side = s;
     piano.add(page);
+    sheetPages.push(page);
     // note lines
     for (let l = 0; l < 3; l++) {
       const line = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.002, 0.012), std(INK));
@@ -382,13 +430,17 @@ export function buildPiano() {
     label: 'Піаніно',
     labelAnchor: new THREE.Vector3(0, 2.45, 0.2),
     press(key) { key.userData.press = 1; },
-    update(dt) {
+    update(dt, t = 0) {
       for (const k of keys) {
         const u = k.userData;
         u.press = Math.max(0, u.press - dt * 5);
         const dip = (u.black ? 0.016 : 0.02) * Math.min(1, u.press * 1.4);
         k.position.y = u.baseY - dip;
       }
+      for (const page of sheetPages) {
+        page.rotation.y = page.userData.baseRotY + Math.sin(t * 1.4 + page.userData.side) * 0.018;
+      }
+      trimMat.emissiveIntensity = 0.06 + Math.sin(t * 1.8) * 0.035;
     },
   };
 }
@@ -401,9 +453,10 @@ export function buildGuitar() {
   const body = new THREE.Group();         // the instrument itself (wobbles)
   guitar.add(body);
 
-  const woodMat = std(0xc98d3d, { roughness: 0.45 });
-  const woodDark = std(0x5a3a1c, { roughness: 0.5 });
-  const purpleMat = std(PURPLE_DARK, { roughness: 0.4 });
+  const woodMap = guitarWoodTexture();
+  const woodMat = std(0xc98d3d, { map: woodMap, roughness: 0.42, metalness: 0.08 });
+  const woodDark = std(0x5a3a1c, { roughness: 0.48, metalness: 0.1 });
+  const purpleMat = lacquer(PURPLE_DARK, { roughness: 0.36, clearcoat: 0.4 });
 
   // ---- body: figure-8 silhouette, extruded ----
   const s = new THREE.Shape();
@@ -529,16 +582,17 @@ export function buildGuitar() {
     update(dt) {
       time += dt;
       wobble *= Math.pow(0.02, dt);
-      body.rotation.z = Math.sin(time * 26) * wobble * 0.05;
-      body.rotation.x = -0.14 + Math.sin(time * 20) * wobble * 0.02;
+      const idleZ = Math.sin(time * 0.9) * 0.01;
+      const idleX = Math.sin(time * 0.65) * 0.006;
+      body.rotation.z = Math.sin(time * 26) * wobble * 0.05 + (wobble < 0.05 ? idleZ : 0);
+      body.rotation.x = -0.14 + Math.sin(time * 20) * wobble * 0.02 + (wobble < 0.05 ? idleX : 0);
       for (let i = 0; i < strings.length; i++) {
         const str = strings[i];
         stringWobble[i] *= Math.pow(0.012, dt);
         const movement = Math.max(wobble, stringWobble[i]);
-        str.position.x = str.userData.baseX + Math.sin(time * 55 + str.userData.phase) * movement * 0.012;
+        const shimmer = movement < 0.02 ? Math.sin(time * 3.2 + str.userData.phase) * 0.0012 : 0;
+        str.position.x = str.userData.baseX + Math.sin(time * 55 + str.userData.phase) * movement * 0.012 + shimmer;
       }
-      // gentle idle sway
-      if (wobble < 0.01) body.rotation.z = Math.sin(time * 0.9) * 0.006;
     },
   };
 }
@@ -548,7 +602,9 @@ export function buildGuitar() {
 // ============================================================
 export function buildMic() {
   const mic = new THREE.Group();
-  const chrome = metal(0xd9d9e2, 0.18);
+  const chrome = metal(0xd9d9e2, 0.14);
+  chrome.emissive = new THREE.Color(0xffffff);
+  chrome.emissiveIntensity = 0.045;
   const darkMetal = metal(0x2c2c34, 0.4);
 
   // round base
@@ -636,8 +692,10 @@ export function buildMic() {
     update(dt) {
       time += dt;
       bob *= Math.pow(0.02, dt);
-      headGroup.rotation.x = -0.18 + Math.sin(time * 18) * bob * 0.16;
-      headGroup.rotation.z = Math.sin(time * 14) * bob * 0.1;
+      const idleNod = Math.sin(time * 0.85) * 0.02;
+      const idleRoll = Math.sin(time * 0.6) * 0.012;
+      headGroup.rotation.x = -0.18 + Math.sin(time * 18) * bob * 0.16 + idleNod;
+      headGroup.rotation.z = Math.sin(time * 14) * bob * 0.1 + idleRoll;
       if (pulseT > 0) {
         pulseT = Math.max(0, pulseT - dt * 1.4);
         const p = 1 - pulseT;
