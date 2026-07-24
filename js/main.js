@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260721-15';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260722-16';
 import { UI } from './ui.js?v=20260721-15';
 
 // ---- error collector (debug / headless testing) ----
@@ -50,7 +50,7 @@ scene.fog = new THREE.FogExp2(BG, 0.036);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 120);
 const CAM_START = new THREE.Vector3(0, 9.5, 18.5);
-const CAM_END = new THREE.Vector3(0, 3.1, 11.2);
+const CAM_END = new THREE.Vector3(0, 3.05, 10.45);
 const TARGET = new THREE.Vector3(0, 1.45, -0.3);
 
 function fitCameraToViewport() {
@@ -66,7 +66,7 @@ function fitCameraToViewport() {
     renderer.toneMappingExposure = 0.98;
   } else {
     CAM_START.set(0, 9.5, 18.5);
-    CAM_END.set(0, 3.1, 11.2);
+    CAM_END.set(0, 3.05, 10.45);
     camera.fov = 55;
     controls.maxDistance = 16;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -497,7 +497,8 @@ function loadSlideTextures() {
 function startSlideshow(photos) {
   ss.texs = [screenUniforms.texA.value, ...photos]; // title slide stays in rotation
   ss.i = 0; // texs[0] (title) is currently shown
-  ss.t = ss.SLIDE; // begin fading from the title slide into the first photo
+  ss.t = 0; // hold frame 0 (the Art Vibe title) for a complete slide interval
+  screenUniforms.progress.value = 0;
   screenUniforms.texB.value = ss.texs[1] || ss.texs[0];
   ss.started = true;
   slideshowNav.hidden = false;
@@ -879,7 +880,8 @@ scene.add(mic.group);
 const mascot = buildMascot();
 const mascotBaseScale = 0.68;
 mascot.group.scale.setScalar(mascotBaseScale);
-mascot.group.position.set(0, 0, 0.35);
+// Start close to the visual center and just upstage: drums are first on mobile.
+mascot.group.position.set(-0.75, 0, -0.6);
 scene.add(mascot.group);
 const mascotFallMeshes = [];
 const mascotFallMaterialStates = new Map();
@@ -939,16 +941,17 @@ let hovered = null;
 let started = false;
 
 const mascotMove = {
-  keys: new Set(), destination: null, speed: 2.45, phase: 0,
+  keys: new Set(), destination: null, destinationKind: null, waypoints: [], speed: 2.45, phase: 0,
   travelBounds: { minX: -8.35, maxX: 8.35, minZ: -4.65, maxZ: 4.35 },
   stageEdge: { minX: -7.72, maxX: 7.72, frontZ: 3.78 },
-  spawn: new THREE.Vector3(0, 0, 0.35),
+  spawn: new THREE.Vector3(-0.75, 0, -0.6),
   fall: null,
 };
 const mobileControls = document.getElementById('mobile-controls');
 const moveStick = document.getElementById('move-stick');
 const moveThumb = document.getElementById('move-thumb');
 const mobilePlay = document.getElementById('mobile-play');
+const mobilePlayHint = document.getElementById('mobile-play-hint');
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
 const zoomOut = document.getElementById('zoom-out');
@@ -970,6 +973,281 @@ const mobileFollowDelta = new THREE.Vector3();
 let joystickPointer = null;
 const stageWalkPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const instrumentGroups = { drums: drums.group, piano: piano.group, guitar: guitar.group, mic: mic.group };
+const instrumentWorldPositions = Object.fromEntries(
+  Object.keys(instrumentGroups).map((kind) => [kind, new THREE.Vector3()]),
+);
+
+const INSTRUMENT_VIEW_PRESETS = {
+  drums: {
+    mascot: new THREE.Vector3(0, 0.15, -1.05),
+    yaw: 0,
+    seated: true,
+    approach: [new THREE.Vector3(-1.55, 0, -1.3)],
+    camera: new THREE.Vector3(1.2, 2.18, -2.2),
+    cameraMobile: new THREE.Vector3(1.42, 2.52, -2.75),
+    target: new THREE.Vector3(0, 0.94, 0.05),
+    arms: [-0.88, -1.05],
+  },
+  piano: {
+    mascot: new THREE.Vector3(0, 0.07, 1.15),
+    yaw: Math.PI,
+    seated: true,
+    approach: [],
+    camera: new THREE.Vector3(1.05, 1.75, 2.15),
+    cameraMobile: new THREE.Vector3(1.24, 2.05, 2.72),
+    target: new THREE.Vector3(0, 0.72, 0.42),
+    arms: [-0.94, -0.98],
+  },
+  guitar: {
+    mascot: new THREE.Vector3(0.62, 0, 0.78),
+    yaw: -2.32,
+    seated: false,
+    approach: [],
+    camera: new THREE.Vector3(-1.55, 1.8, 2.45),
+    cameraMobile: new THREE.Vector3(-1.9, 2.14, 3.08),
+    target: new THREE.Vector3(0, 0.94, 0.05),
+    arms: [-1.05, -0.66],
+  },
+  mic: {
+    mascot: new THREE.Vector3(0.42, 0, 0.58),
+    yaw: -2.52,
+    seated: false,
+    approach: [],
+    camera: new THREE.Vector3(-1.45, 1.75, 2),
+    cameraMobile: new THREE.Vector3(-1.82, 2.05, 2.58),
+    target: new THREE.Vector3(0, 1.2, 0),
+    arms: [-0.42, -0.78],
+  },
+};
+
+const instrumentView = {
+  phase: 'idle',
+  kind: null,
+  transition: null,
+  home: null,
+  queuedPerformance: null,
+};
+
+function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
+  instrumentView.phase = phase;
+  instrumentView.kind = phase === 'idle' ? null : kind;
+  document.documentElement.dataset.instrumentView = phase;
+  if (instrumentView.kind) document.documentElement.dataset.instrument = instrumentView.kind;
+  else delete document.documentElement.dataset.instrument;
+}
+
+function instrumentLocalToWorld(kind, point) {
+  const group = instrumentGroups[kind];
+  group.updateWorldMatrix(true, false);
+  return group.localToWorld(point.clone());
+}
+
+function resetMascotPose() {
+  mascot.group.scale.setScalar(mascotBaseScale);
+  mascot.group.rotation.x = 0;
+  mascot.group.rotation.z = 0;
+  mascot.torso.rotation.set(0, 0, 0);
+  mascot.head.rotation.set(0, 0, 0);
+  mascot.armL.rotation.set(0, 0, -0.12);
+  mascot.armR.rotation.set(0, 0, 0.12);
+  mascot.legL.rotation.set(0, 0, 0);
+  mascot.legR.rotation.set(0, 0, 0);
+}
+
+function poseMascotAtInstrument(kind) {
+  const preset = INSTRUMENT_VIEW_PRESETS[kind];
+  const group = instrumentGroups[kind];
+  if (!preset || !group) return;
+  resetMascotPose();
+  mascot.group.position.copy(instrumentLocalToWorld(kind, preset.mascot));
+  mascot.group.rotation.y = group.rotation.y + preset.yaw;
+  mascot.armL.rotation.x = preset.arms[0];
+  mascot.armR.rotation.x = preset.arms[1];
+  mascot.armL.rotation.z = -0.24;
+  mascot.armR.rotation.z = 0.24;
+  if (preset.seated) {
+    mascot.legL.rotation.x = -1.08;
+    mascot.legR.rotation.x = -1.14;
+    mascot.legL.rotation.z = -0.08;
+    mascot.legR.rotation.z = 0.08;
+    mascot.torso.rotation.x = -0.06;
+  } else if (kind === 'guitar') {
+    mascot.torso.rotation.z = 0.05;
+    mascot.head.rotation.z = -0.08;
+  } else if (kind === 'mic') {
+    mascot.head.rotation.x = -0.08;
+    mascot.head.rotation.z = 0.05;
+  }
+  if (mascotLabel) {
+    mascotLabel.visible = true;
+    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+  }
+}
+
+function captureInstrumentViewHome() {
+  return {
+    position: camera.position.clone(),
+    target: controls.target.clone(),
+    minDistance: controls.minDistance,
+    maxDistance: controls.maxDistance,
+    minPolarAngle: controls.minPolarAngle,
+    maxPolarAngle: controls.maxPolarAngle,
+  };
+}
+
+function restoreInstrumentControlLimits(home = instrumentView.home) {
+  if (!home) return;
+  controls.minDistance = home.minDistance;
+  controls.maxDistance = home.maxDistance;
+  controls.minPolarAngle = home.minPolarAngle;
+  controls.maxPolarAngle = home.maxPolarAngle;
+}
+
+function applyFocusedControlLimits() {
+  controls.minDistance = 1.05;
+  controls.maxDistance = isMobileGameMode() ? 5.5 : 4.4;
+  controls.minPolarAngle = 0.42;
+  controls.maxPolarAngle = 1.48;
+}
+
+function startInstrumentCameraTransition(phase, kind, position, target, duration) {
+  clearTimeout(idleTimer);
+  controls.autoRotate = false;
+  controls.enabled = false;
+  instrumentView.transition = {
+    elapsed: 0,
+    duration,
+    fromPosition: camera.position.clone(),
+    fromTarget: controls.target.clone(),
+    toPosition: position.clone(),
+    toTarget: target.clone(),
+  };
+  setInstrumentViewPhase(phase, kind);
+}
+
+function activateInstrumentView(kind) {
+  const preset = INSTRUMENT_VIEW_PRESETS[kind];
+  if (!preset || instrumentView.phase !== 'approaching' || instrumentView.kind !== kind) return;
+  instrumentView.home = captureInstrumentViewHome();
+  mascotMove.destination = null;
+  mascotMove.destinationKind = null;
+  mascotMove.waypoints.length = 0;
+  mascotMove.keys.clear();
+  releaseJoystick();
+  poseMascotAtInstrument(kind);
+  if (instrumentView.queuedPerformance === kind) {
+    instrumentView.queuedPerformance = null;
+    playInstrumentPerformance(kind);
+  }
+  const cameraPoint = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
+  startInstrumentCameraTransition(
+    'entering',
+    kind,
+    instrumentLocalToWorld(kind, cameraPoint),
+    instrumentLocalToWorld(kind, preset.target),
+    0.78,
+  );
+}
+
+function finishInstrumentReturn() {
+  const home = instrumentView.home;
+  if (instrumentView.phase === 'returning') {
+    resetMascotPose();
+    mascot.group.position.y = 0;
+  }
+  if (home) {
+    camera.position.copy(home.position);
+    controls.target.copy(home.target);
+    restoreInstrumentControlLimits(home);
+  }
+  controls.enabled = started && flyT < 0;
+  controls.autoRotate = false;
+  controls.update();
+  instrumentView.transition = null;
+  instrumentView.home = null;
+  setInstrumentViewPhase('idle');
+}
+
+function leaveInstrumentView({ immediate = false } = {}) {
+  if (instrumentView.phase === 'idle') return;
+  mascotMove.destinationKind = null;
+  mascotMove.waypoints.length = 0;
+  if (instrumentView.phase === 'approaching') {
+    instrumentView.queuedPerformance = null;
+    mascotMove.destination = null;
+    instrumentView.transition = null;
+    instrumentView.home = null;
+    setInstrumentViewPhase('idle');
+    return;
+  }
+  if (instrumentView.phase === 'returning') {
+    if (immediate) {
+      resetMascotPose();
+      mascot.group.position.y = 0;
+      finishInstrumentReturn();
+    }
+    return;
+  }
+  const home = instrumentView.home;
+  if (!home) {
+    resetMascotPose();
+    mascot.group.position.y = 0;
+    controls.enabled = true;
+    setInstrumentViewPhase('idle');
+    return;
+  }
+  if (immediate) {
+    resetMascotPose();
+    mascot.group.position.y = 0;
+    finishInstrumentReturn();
+    return;
+  }
+  startInstrumentCameraTransition('returning', instrumentView.kind, home.position, home.target, 0.52);
+}
+
+function updateInstrumentViewCamera(dt) {
+  const transition = instrumentView.transition;
+  if (!transition) return false;
+  transition.elapsed += dt;
+  const k = Math.min(1, transition.elapsed / transition.duration);
+  const eased = easeInOut(k);
+  camera.position.lerpVectors(transition.fromPosition, transition.toPosition, eased);
+  controls.target.lerpVectors(transition.fromTarget, transition.toTarget, eased);
+  camera.lookAt(controls.target);
+  if (k >= 1) {
+    instrumentView.transition = null;
+    if (instrumentView.phase === 'entering') {
+      applyFocusedControlLimits();
+      controls.enabled = true;
+      controls.update();
+      setInstrumentViewPhase('focused', instrumentView.kind);
+    } else if (instrumentView.phase === 'returning') {
+      finishInstrumentReturn();
+    }
+  }
+  return true;
+}
+
+function requestInstrumentView(kind) {
+  const preset = INSTRUMENT_VIEW_PRESETS[kind];
+  if (!preset || mascotMove.fall || flyT >= 0) return;
+  if (instrumentView.kind === kind && ['approaching', 'entering', 'focused'].includes(instrumentView.phase)) return;
+  if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
+  setInstrumentViewPhase('approaching', kind);
+  mascotMove.keys.clear();
+  releaseJoystick();
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+  const route = [...preset.approach, preset.mascot].map((point) => {
+    const world = instrumentLocalToWorld(kind, point);
+    world.y = 0;
+    return clampMascotPoint(world);
+  });
+  mascotMove.waypoints = route;
+  mascotMove.destinationKind = kind;
+  mascotMove.destination = mascotMove.waypoints.shift() || null;
+  if (!mascotMove.destination) activateInstrumentView(kind);
+}
 
 function zoomScene(factor) {
   if (!started || !controls.enabled || ui.modalOpen) return;
@@ -1023,6 +1301,7 @@ function releaseJoystick(event) {
 moveStick.addEventListener('pointerdown', (event) => {
   if (!started || ui.modalOpen) return;
   event.preventDefault();
+  leaveInstrumentView({ immediate: true });
   controls.autoRotate = false;
   clearTimeout(idleTimer);
   joystickPointer = event.pointerId;
@@ -1046,13 +1325,19 @@ function clampMascotPoint(point) {
 
 function setMascotDestination(point) {
   if (mascotMove.fall) return;
+  leaveInstrumentView();
+  mascotMove.destinationKind = null;
+  mascotMove.waypoints.length = 0;
   mascotMove.destination = clampMascotPoint(point.clone());
   controls.autoRotate = false;
 }
 
 function beginMascotFall(direction) {
   if (mascotMove.fall) return;
+  leaveInstrumentView({ immediate: true });
   mascotMove.destination = null;
+  mascotMove.destinationKind = null;
+  mascotMove.waypoints.length = 0;
   mascotMove.keys.clear();
   releaseJoystick();
   ui.hideChip();
@@ -1120,24 +1405,17 @@ function respawnMascot() {
     controls.target.add(mobileFollowDelta);
     camera.position.add(mobileFollowDelta);
   }
-  ui.toast('Обережніше, не падай', 2200);
+  ui.toast('Не втечеш ;)', 2200);
 }
 
 function walkMascotToInstrument(kind) {
-  const instrument = instrumentGroups[kind];
-  if (!instrument) return;
-  const instrumentPosition = new THREE.Vector3();
-  instrument.getWorldPosition(instrumentPosition);
-  const away = new THREE.Vector3().subVectors(mascot.group.position, instrumentPosition);
-  away.y = 0;
-  if (away.lengthSq() < 0.01) away.set(0, 0, 1);
-  setMascotDestination(instrumentPosition.add(away.normalize().multiplyScalar(1.2)));
+  requestInstrumentView(kind);
 }
 
 function nearestInstrument() {
   let nearest = null;
   for (const [kind, group] of Object.entries(instrumentGroups)) {
-    const position = new THREE.Vector3();
+    const position = instrumentWorldPositions[kind];
     group.getWorldPosition(position);
     const distance = Math.hypot(position.x - mascot.group.position.x, position.z - mascot.group.position.z);
     if (!nearest || distance < nearest.distance) nearest = { kind, distance, position };
@@ -1206,23 +1484,58 @@ function playInstrumentPerformance(kind) {
   }
 }
 
-function playNearestInstrument() {
-  if (!started || ui.modalOpen || mascotMove.fall) return;
+const mobileInstrumentReach = () => 2.36;
+
+function playNearestInstrument({ focus = false } = {}) {
+  if (!started || ui.modalOpen || mascotMove.fall) return false;
   const nearest = nearestInstrument();
-  const reach = isMobileGameMode() ? 2.55 : 2.15;
-  if (!nearest || nearest.distance > reach) {
-    ui.toast('Підійди ближче до інструмента', 1800);
-    return;
+  if (!nearest || nearest.distance > mobileInstrumentReach()) {
+    if (!isMobileGameMode()) ui.toast('Підійди ближче до інструмента', 1800);
+    return false;
   }
   const look = new THREE.Vector3().subVectors(nearest.position, mascot.group.position);
   mascot.group.rotation.y = Math.atan2(look.x, look.z);
-  playInstrumentPerformance(nearest.kind);
+  if (!focus) {
+    playInstrumentPerformance(nearest.kind);
+    return true;
+  }
+
+  // Unlock audio from the tap itself, then wait for the mascot to reach the instrument.
+  audio.init();
+  audio.resume();
+  const alreadyInPosition = instrumentView.kind === nearest.kind
+    && ['entering', 'focused'].includes(instrumentView.phase);
+  if (alreadyInPosition) {
+    playInstrumentPerformance(nearest.kind);
+    return true;
+  }
+  requestInstrumentView(nearest.kind);
+  // `requestInstrumentView` may cancel a previous approach; queue after that reset.
+  if (instrumentView.phase === 'approaching' && instrumentView.kind === nearest.kind) {
+    instrumentView.queuedPerformance = nearest.kind;
+  }
+  return true;
 }
+
+function updateMobilePlayAvailability() {
+  const now = performance.now();
+  if (now - updateMobilePlayAvailability.lastCheck < 90) return;
+  updateMobilePlayAvailability.lastCheck = now;
+  const nearest = started && !ui.modalOpen && !mascotMove.fall ? nearestInstrument() : null;
+  const available = Boolean(nearest && nearest.distance <= mobileInstrumentReach());
+  mobilePlay.disabled = !available;
+  mobilePlayHint.hidden = !started || available;
+  mobilePlay.setAttribute('aria-label', available
+    ? `Грати на інструменті: ${nearest.kind}`
+    : 'Підійди ближче до інструмента щоб заграти');
+}
+updateMobilePlayAvailability.lastCheck = -Infinity;
 
 mobilePlay.addEventListener('pointerdown', (event) => {
   event.preventDefault();
+  if (mobilePlay.disabled) return;
   mobilePlay.classList.add('pressed');
-  playNearestInstrument();
+  playNearestInstrument({ focus: true });
   navigator.vibrate?.(22);
 });
 for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
@@ -1256,6 +1569,12 @@ function updateMascot(dt) {
     if (fall.t >= fall.duration) respawnMascot();
     return;
   }
+  if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused' || instrumentView.phase === 'returning') {
+    if (mascotLabel) {
+      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+    }
+    return;
+  }
   const direction = new THREE.Vector3(
     (mascotMove.keys.has('ArrowRight') ? 1 : 0) - (mascotMove.keys.has('ArrowLeft') ? 1 : 0),
     0,
@@ -1272,12 +1591,26 @@ function updateMascot(dt) {
     direction.addScaledVector(cameraForwardXZ, -joystickInput.y);
   }
 
-  if (direction.lengthSq() > 0) mascotMove.destination = null;
+  if (direction.lengthSq() > 0) {
+    if (instrumentView.phase === 'approaching') leaveInstrumentView({ immediate: true });
+    mascotMove.destination = null;
+  }
   else if (mascotMove.destination) {
     direction.subVectors(mascotMove.destination, mascot.group.position).setY(0);
     if (direction.length() < 0.08) {
-      mascotMove.destination = null;
-      direction.set(0, 0, 0);
+      if (mascotMove.waypoints.length) {
+        mascotMove.destination = mascotMove.waypoints.shift();
+        direction.subVectors(mascotMove.destination, mascot.group.position).setY(0);
+      } else {
+        const arrivedKind = mascotMove.destinationKind;
+        mascotMove.destination = null;
+        mascotMove.destinationKind = null;
+        direction.set(0, 0, 0);
+        if (arrivedKind) {
+          activateInstrumentView(arrivedKind);
+          return;
+        }
+      }
     }
   }
 
@@ -1315,7 +1648,7 @@ function updateMascot(dt) {
     mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
   }
 
-  if (isMobileGameMode() && flyT < 0) {
+  if (isMobileGameMode() && flyT < 0 && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')) {
     mobileFollowTarget.set(mascot.group.position.x, 1.35, mascot.group.position.z - 0.25);
     mobileFollowDelta.subVectors(mobileFollowTarget, controls.target)
       .multiplyScalar(Math.min(1, dt * 2.2));
@@ -1580,6 +1913,7 @@ function schedulerTick() {
 
   for (let cycle = firstCycle; cycle <= lastCycle; cycle++) {
     for (const event of loop.events) {
+      if (event.durationPending) continue;
       if (cycle < event.playFromCycle) continue;
       const eventAt = loop.epoch + cycle * loop.duration + event.offset;
       if (eventAt < now - 0.02 || eventAt > now + LOOP_LOOKAHEAD) continue;
@@ -1787,6 +2121,7 @@ let heldLoopCapture = null;
 function beginHeldLoopCapture(freq, vowel) {
   const startedAt = audio.ctx?.currentTime;
   const event = captureLoopEvent({ type: 'vocal', freq, vowel, vel: 1, duration: 0.12 }, startedAt);
+  if (event) event.durationPending = true;
   return event ? { event, startedAt, finished: false } : null;
 }
 
@@ -1794,8 +2129,13 @@ function finishHeldLoopCapture() {
   if (!heldLoopCapture || heldLoopCapture.finished) return;
   heldLoopCapture.finished = true;
   const elapsed = Math.max(0.12, (audio.ctx?.currentTime ?? heldLoopCapture.startedAt) - heldLoopCapture.startedAt);
-  const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : 10;
+  const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : LOOP_MAX_SECONDS;
   heldLoopCapture.event.duration = Math.min(maximum, elapsed);
+  delete heldLoopCapture.event.durationPending;
+  if (loop.duration > 0 && audio.ctx) {
+    const currentCycle = Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration);
+    heldLoopCapture.event.playFromCycle = Math.max(heldLoopCapture.event.playFromCycle, currentCycle + 1);
+  }
   heldLoopCapture = null;
 }
 
@@ -1869,6 +2209,8 @@ function trigger(mesh) {
     case 'piano': {
       if (u.freq !== undefined) {
         playMusicalEvent({ type: 'piano', freq: u.freq, vel: 1, vibe: 3.5 });
+      } else {
+        playMusicalEvent({ type: 'piano', freq: 523.25, vel: 0.82, vibe: 3.5 });
       }
       break;
     }
@@ -1893,7 +2235,7 @@ function trigger(mesh) {
 }
 
 function handleClick(e) {
-  if (!started || ui.modalOpen) return;
+  if (!started || ui.modalOpen || flyT >= 0) return;
   onPointerMove(e);
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(interactables, false);
@@ -1908,9 +2250,11 @@ function handleClick(e) {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') leaveInstrumentView();
   if (!started || ui.modalOpen) return;
   if (e.code.startsWith('Arrow')) {
     e.preventDefault();
+    leaveInstrumentView({ immediate: true });
     mascotMove.keys.add(e.code);
   }
   if (e.code === 'KeyE' && !e.repeat) {
@@ -2009,14 +2353,16 @@ controls.addEventListener('start', () => {
 });
 controls.addEventListener('end', () => {
   clearTimeout(idleTimer);
-  if (!isMobileGameMode()) {
-    idleTimer = setTimeout(() => { if (!ui.modalOpen) controls.autoRotate = true; }, 9000);
+  if (!isMobileGameMode() && instrumentView.phase === 'idle') {
+    idleTimer = setTimeout(() => {
+      if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
+    }, 9000);
   }
 });
 
 // ticker
 (() => {
-  const unit = 'СЦЕНА • МУЗИКА • ВАЙБ • УКРАЇНСЬКА МОВА • ВОКАЛ • ГІТАРА • БАРАБАНИ • ФОРТЕПІАНО • ';
+  const unit = 'СЦЕНА • МУЗИКА • ВАЙБ • ВОКАЛ • ГІТАРА • БАРАБАНИ • ФОРТЕПІАНО • ';
   document.getElementById('ticker-track').textContent = unit.repeat(8);
 })();
 
@@ -2025,6 +2371,10 @@ controls.addEventListener('end', () => {
 // ============================================================
 window.addEventListener('resize', () => {
   fitCameraToViewport();
+  if (instrumentView.home && instrumentView.phase !== 'idle') {
+    instrumentView.home.maxDistance = controls.maxDistance;
+  }
+  if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused') applyFocusedControlLimits();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer && composer.setSize(window.innerWidth, window.innerHeight);
 });
@@ -2052,16 +2402,19 @@ function animate() {
       controls.enabled = true;
       ui.showHUD();
       if (!isMobileGameMode()) {
-        idleTimer = setTimeout(() => { if (!ui.modalOpen) controls.autoRotate = true; }, 6000);
+        idleTimer = setTimeout(() => {
+          if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
+        }, 6000);
       }
     }
-  } else if (controls.enabled) {
+  } else if (!updateInstrumentViewCamera(dt) && controls.enabled) {
     controls.update();
   }
 
   // instruments
   for (const inst of instruments) inst.update(dt, t);
   updateMascot(dt);
+  updateMobilePlayAvailability();
 
   // labels bob
   for (const spr of labels) {

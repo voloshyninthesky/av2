@@ -314,7 +314,11 @@ export function buildPiano() {
   bench.position.set(0, 0.54, 1.15);
   piano.add(bench);
 
-  piano.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  piano.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    if (!o.userData.instrument) Object.assign(o.userData, { instrument: 'piano', focusOnly: true });
+  });
 
   return {
     group: piano,

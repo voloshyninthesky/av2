@@ -383,6 +383,7 @@ html, body {
   background: rgba(23, 18, 28, .82); backdrop-filter: blur(12px);
   box-shadow: 0 10px 34px rgba(0, 0, 0, .42), 0 0 22px rgba(158, 51, 202, .25);
   animation: vocalPadIn .24s cubic-bezier(.2, 1.3, .35, 1);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 @keyframes vocalPadIn { from { opacity: 0; transform: translate(-50%, 18px) scale(.88); } }
 #vocal-pad button {
@@ -390,6 +391,7 @@ html, body {
   background: linear-gradient(145deg, rgba(158, 51, 202, .95), rgba(92, 24, 118, .92));
   color: var(--cream); font: 700 9px/1 'Unbounded', sans-serif; letter-spacing: .02em;
   cursor: pointer; touch-action: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 4px 12px rgba(0, 0, 0, .3);
   transition: transform .12s, background .12s, box-shadow .12s;
 }
@@ -402,7 +404,13 @@ html, body {
 
 /* ============ MOBILE GAME CONTROLS ============ */
 #mobile-controls { display: none; }
+#mobile-controls.active {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 0 22px 22px; pointer-events: none;
+}
 #move-stick, #mobile-play { -webkit-tap-highlight-color: transparent; user-select: none; }
+#move-stick, #mobile-play { pointer-events: auto; }
 #move-stick {
   position: relative; width: 112px; height: 112px; border-radius: 50%;
   border: 2px solid rgba(209, 161, 59, .48);
@@ -433,8 +441,37 @@ html, body {
 }
 #mobile-play:active, #mobile-play.pressed { transform: translateY(6px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .16), 0 2px 0 #3b0e4d; }
 #mobile-play.performing { animation: playPulse .48s ease-in-out infinite alternate; }
+#mobile-play:disabled {
+  opacity: .42; filter: saturate(.45); cursor: not-allowed;
+  transform: none; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .1), 0 4px 0 #3b0e4d, 0 8px 18px rgba(0, 0, 0, .3);
+}
+#mobile-play-hint {
+  position: absolute; right: max(14px, env(safe-area-inset-right));
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 112px);
+  width: min(240px, 64vw); padding: 9px 12px; border-radius: 14px;
+  border: 1px solid rgba(209, 161, 59, .48); background: rgba(23, 18, 28, .84);
+  color: var(--cream); font: 600 9px/1.45 'Unbounded', sans-serif; text-align: center;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .35); backdrop-filter: blur(8px);
+  pointer-events: none;
+}
 @keyframes playPulse { to { filter: brightness(1.2); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .24), 0 8px 0 #3b0e4d, 0 0 28px rgba(209, 161, 59, .62); } }
-.play-key { color: var(--gold-light); font-size: 15px; }
+
+@media (min-width: 721px) {
+  #loop-pedal { right: 134px; bottom: 24px; }
+  #keys-hint { bottom: 150px; }
+  #drag-hint { right: 142px; bottom: 30px; }
+}
+
+/* On full desktop, keep the controls discoverable without covering the stage. */
+@media (min-width: 1000px) {
+  #keys-hint {
+    left: 50%; bottom: 22px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  #keys-hint.hidden { transform: translate(-50%, -140%); }
+  #drag-hint { right: 142px; bottom: 140px; }
+}
 
 /* ============ OVERLAYS / PANELS ============ */
 .overlay {
@@ -652,7 +689,6 @@ html, body {
     padding: 0 max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
     pointer-events: none;
   }
-  #move-stick, #mobile-play { pointer-events: auto; }
   #vocal-pad {
     bottom: calc(202px + env(safe-area-inset-bottom));
     max-width: calc(100vw - 22px); gap: 5px; padding: 7px;
@@ -687,6 +723,7 @@ html, body {
   #move-stick { width: 98px; height: 98px; }
   #move-thumb { width: 43px; height: 43px; }
   #mobile-play { width: 82px; height: 82px; }
+  #mobile-play-hint { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 98px); width: min(220px, 66vw); font-size: 8px; }
   #loop-pedal { right: calc(max(18px, env(safe-area-inset-right)) + 92px); }
   #loop-toggle { width: 60px; height: 60px; grid-template-rows: 11px 16px 9px; padding-top: 8px; }
   #loop-label { font-size: 8px; }
