@@ -242,15 +242,22 @@ function buildStage() {
   trim.position.set(0, -0.02, 4.02);
   g.add(trim);
 
-  // footlights
+  // footlights — emissive bulbs + real PointLights on every other fixture
   const bulbMat = new THREE.MeshStandardMaterial({
     color: 0x332211, emissive: 0xD1A13B, emissiveIntensity: 1.6, roughness: 0.5,
   });
   const bulbGeom = new THREE.SphereGeometry(0.05, 10, 8);
+  const footIntensity = isMobileGameMode() ? 10 : 16;
   for (let i = 0; i < 9; i++) {
+    const x = -6 + i * 1.5;
     const b = new THREE.Mesh(bulbGeom, bulbMat);
-    b.position.set(-6 + i * 1.5, 0.06, 3.9);
+    b.position.set(x, 0.06, 3.9);
     g.add(b);
+    if (i % 2 === 0) {
+      const pl = new THREE.PointLight(0xffc878, footIntensity, 4.2, 2);
+      pl.position.set(x, 0.22, 3.65);
+      g.add(pl);
+    }
   }
 
   // backdrop wall
@@ -544,9 +551,48 @@ function updateSlideshow(dt) {
 
 // ---- truss + spotlights + visible cones ----
 const spotHeads = [];
+/** Dim procedural HDR for lacquer/chrome reflections (no external assets). */
+function installStageEnvironment() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 256;
+    const ctx = c.getContext('2d');
+    const sky = ctx.createLinearGradient(0, 0, 0, 256);
+    sky.addColorStop(0, '#2e163f');
+    sky.addColorStop(0.42, '#160e22');
+    sky.addColorStop(0.55, '#0c0714');
+    sky.addColorStop(1, '#05030a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, 512, 256);
+    // Soft key / fill panels — keep alpha modest (r160 has no environmentIntensity).
+    ctx.globalAlpha = 0.42;
+    ctx.fillStyle = '#ffe2b0';
+    ctx.fillRect(10, 88, 72, 52);
+    ctx.fillRect(430, 88, 72, 52);
+    ctx.fillStyle = '#9E33CA';
+    ctx.fillRect(208, 22, 96, 38);
+    ctx.fillStyle = '#D1A13B';
+    ctx.fillRect(228, 198, 56, 30);
+    ctx.globalAlpha = 1;
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(tex).texture;
+    tex.dispose();
+    pmrem.dispose();
+  } catch (_) {
+    /* env is optional polish */
+  }
+}
+
 function buildLights() {
   const g = new THREE.Group();
-  g.add(new THREE.AmbientLight(0x584a74, 1.15));
+  // Soft sky/ground gradient instead of flat wash — spots keep their punch.
+  g.add(new THREE.HemisphereLight(0x6a4a88, 0x1a0e22, 0.55));
+  g.add(new THREE.AmbientLight(0x584a74, 0.22));
 
   // truss bar
   const trussMat = new THREE.MeshStandardMaterial({ color: 0x1a1420, metalness: 0.7, roughness: 0.4 });
@@ -564,7 +610,7 @@ function buildLights() {
   ];
 
   // broad warm front fill (no visible cone) so instruments read well
-  const fill = new THREE.SpotLight(0xffe8c8, 130, 45, 0.62, 1.0, 1.8);
+  const fill = new THREE.SpotLight(0xffe8c8, 130, 45, 0.62, 0.9, 1.8);
   fill.position.set(0, 7.5, 14);
   fill.target.position.set(0, 0.8, 0);
   g.add(fill, fill.target);
@@ -592,11 +638,14 @@ function buildLights() {
     spot.target.position.copy(s.target);
     if (s.shadow) {
       spot.castShadow = true;
-      const shadowSize = isMobileGameMode() ? 512 : 1024;
+      const shadowSize = isMobileGameMode() ? 512 : 2048;
       spot.shadow.mapSize.set(shadowSize, shadowSize);
-      spot.shadow.bias = -0.0004;
-      spot.shadow.camera.near = 2;
-      spot.shadow.camera.far = 20;
+      spot.shadow.bias = -0.0002;
+      spot.shadow.normalBias = 0.035;
+      spot.shadow.focus = 1;
+      spot.shadow.camera.near = 1.5;
+      spot.shadow.camera.far = 16;
+      spot.shadow.camera.updateProjectionMatrix();
     }
     g.add(spot, spot.target);
 
@@ -884,6 +933,7 @@ class Fireworks {
 const stage = buildStage();
 scene.add(stage);
 scene.add(buildLights());
+installStageEnvironment();
 const dust = buildDust();
 scene.add(dust);
 const fireworks = new Fireworks(scene);
