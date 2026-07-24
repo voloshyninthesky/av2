@@ -43,7 +43,80 @@ export function buildDrumKit() {
 
   // ---- kick drum (axis towards audience, +z) ----
   const kick = new THREE.Group();
-  const kickShell = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.5, 36, 1, false), [shellMat, headMat, headMat]);
+  const logoCanvas = document.createElement('canvas');
+  const logoSize = 1024;
+  logoCanvas.width = logoCanvas.height = logoSize;
+  const lc = logoCanvas.getContext('2d');
+  const logoTex = new THREE.CanvasTexture(logoCanvas);
+  logoTex.colorSpace = THREE.SRGBColorSpace;
+  logoTex.anisotropy = 8;
+
+  function paintKickLogo() {
+    const s = logoSize;
+    const cx = s / 2;
+    const cy = s / 2;
+    lc.clearRect(0, 0, s, s);
+
+    // Soft cream disc — clipped so the square canvas never shows corners.
+    lc.save();
+    lc.beginPath();
+    lc.arc(cx, cy, s * 0.498, 0, Math.PI * 2);
+    lc.clip();
+    const fill = lc.createRadialGradient(cx, cy * 0.92, s * 0.08, cx, cy, s * 0.5);
+    fill.addColorStop(0, '#fffaf2');
+    fill.addColorStop(0.7, '#f5ebe0');
+    fill.addColorStop(1, '#e8d5c4');
+    lc.fillStyle = fill;
+    lc.fillRect(0, 0, s, s);
+
+    // Double brand ring, inset from the hoop
+    lc.strokeStyle = 'rgba(158, 51, 202, 0.92)';
+    lc.lineWidth = s * 0.013;
+    lc.beginPath();
+    lc.arc(cx, cy, s * 0.405, 0, Math.PI * 2);
+    lc.stroke();
+    lc.strokeStyle = 'rgba(209, 161, 59, 0.82)';
+    lc.lineWidth = s * 0.0055;
+    lc.beginPath();
+    lc.arc(cx, cy, s * 0.438, 0, Math.PI * 2);
+    lc.stroke();
+
+    // Centered lockup matching the intro mark
+    lc.textAlign = 'center';
+    lc.textBaseline = 'middle';
+    lc.fillStyle = '#6b1f8c';
+    lc.font = `italic 900 ${Math.round(s * 0.1)}px "Playfair Display", Georgia, serif`;
+    lc.fillText('ART VIBE', cx, cy - s * 0.012);
+
+    lc.fillStyle = '#D1A13B';
+    lc.font = `600 ${Math.round(s * 0.038)}px "Unbounded", sans-serif`;
+    const studio = 'STUDIO';
+    const studioGap = s * 0.026;
+    let studioWidth = 0;
+    for (const ch of studio) studioWidth += lc.measureText(ch).width;
+    studioWidth += studioGap * (studio.length - 1);
+    let sx = cx - studioWidth / 2;
+    const sy = cy + s * 0.1;
+    for (const ch of studio) {
+      const w = lc.measureText(ch).width;
+      lc.fillText(ch, sx + w / 2, sy);
+      sx += w + studioGap;
+    }
+    lc.restore();
+
+    logoTex.needsUpdate = true;
+  }
+  paintKickLogo();
+
+  const logoMat = new THREE.MeshStandardMaterial({
+    map: logoTex,
+    roughness: 0.82,
+    metalness: 0.04,
+  });
+  const kickShell = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.55, 0.5, 48, 1, false),
+    [shellMat, headMat, headMat],
+  );
   kickShell.rotation.x = Math.PI / 2;
   kick.add(kickShell);
   for (const s of [-1, 1]) {
@@ -51,27 +124,9 @@ export function buildDrumKit() {
     hoop.position.z = s * 0.25;
     kick.add(hoop);
   }
-  // front head logo
-  const logoCanvas = document.createElement('canvas');
-  logoCanvas.width = logoCanvas.height = 256;
-  const lc = logoCanvas.getContext('2d');
-  lc.fillStyle = '#FDFBF7'; lc.fillRect(0, 0, 256, 256);
-  lc.strokeStyle = '#9E33CA'; lc.lineWidth = 6;
-  lc.beginPath(); lc.arc(128, 128, 108, 0, Math.PI * 2); lc.stroke();
-  lc.fillStyle = '#9E33CA';
-  lc.font = 'italic 900 52px "Playfair Display", Georgia, serif';
-  lc.textAlign = 'center'; lc.textBaseline = 'middle';
-  lc.fillText('ART VIBE', 128, 118);
-  lc.fillStyle = '#D1A13B';
-  lc.font = '700 22px "Unbounded", sans-serif';
-  lc.fillText('STUDIO', 128, 168);
-  const logoTex = new THREE.CanvasTexture(logoCanvas);
-  logoTex.colorSpace = THREE.SRGBColorSpace;
-  const logoHead = new THREE.Mesh(
-    new THREE.CircleGeometry(0.52, 36),
-    new THREE.MeshStandardMaterial({ map: logoTex, roughness: 0.85 })
-  );
-  logoHead.position.z = 0.251;
+  // Front disc (CircleGeometry) keeps UV orientation upright.
+  const logoHead = new THREE.Mesh(new THREE.CircleGeometry(0.5, 64), logoMat);
+  logoHead.position.z = 0.252;
   kick.add(logoHead);
   kick.position.set(0, 0.58, 0);
   markInteract(kick, { instrument: 'drums', part: 'kick' });
@@ -177,6 +232,7 @@ export function buildDrumKit() {
     group: kit,
     label: 'Ударні',
     labelAnchor: new THREE.Vector3(0.5, 2.75, 0),
+    refreshLogo: paintKickLogo,
     hit(part) { anim[part] = 1; },
     update(dt) {
       time += dt;

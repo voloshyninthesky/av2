@@ -1,0 +1,9 @@
+[
+  { "note": "F#4", "freqHz": 370.00 },
+  { "note": "E4", "freqHz": 329.63 },
+  { "note": "A4", "freqHz": 440.01 },
+  { "note": "C#5", "freqHz": 554.37 },
+  { "note": "C#5", "freqHz": 554.37 },
+  { "note": "B4", "freqHz": 493.89 },
+  { "note": "A4", "freqHz": 440.01 }
+]

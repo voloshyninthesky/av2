@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260722-16';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-50';
 import { UI } from './ui.js?v=20260721-15';
 
 // ---- error collector (debug / headless testing) ----
@@ -904,6 +904,40 @@ mascot.group.traverse((object) => {
 const instruments = [drums, piano, guitar, mic];
 const whiteKeys = piano.keys.filter((k) => !k.userData.black).sort((a, b) => a.userData.whiteIdx - b.userData.whiteIdx);
 
+// E / ГРАТИ piano phrase — source of truth is piano-notes.json
+const PIANO_MELODY_FALLBACK = [
+  { note: 'F#4', freqHz: 370.00 },
+  { note: 'E4', freqHz: 329.63 },
+  { note: 'A4', freqHz: 440.01 },
+  { note: 'C#5', freqHz: 554.37 },
+  { note: 'C#5', freqHz: 554.37 },
+  { note: 'B4', freqHz: 493.89 },
+  { note: 'A4', freqHz: 440.01 },
+];
+let pianoMelody = PIANO_MELODY_FALLBACK;
+
+function normalizePianoMelody(data) {
+  if (!Array.isArray(data) || !data.length) return null;
+  const notes = data
+    .map((entry) => {
+      const freqHz = Number(entry?.freqHz);
+      if (!Number.isFinite(freqHz) || freqHz <= 0) return null;
+      return { note: entry.note || null, freqHz };
+    })
+    .filter(Boolean);
+  return notes.length ? notes : null;
+}
+
+function loadPianoMelody() {
+  return fetch('piano-notes.json', { cache: 'no-store' })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((data) => {
+      const notes = normalizePianoMelody(data);
+      if (notes) pianoMelody = notes;
+    })
+    .catch(() => { /* keep fallback */ });
+}
+
 // interactable meshes
 const interactables = [];
 for (const inst of instruments) {
@@ -993,9 +1027,10 @@ const INSTRUMENT_VIEW_PRESETS = {
     yaw: Math.PI,
     seated: true,
     approach: [],
-    camera: new THREE.Vector3(1.05, 1.75, 2.15),
-    cameraMobile: new THREE.Vector3(1.24, 2.05, 2.72),
-    target: new THREE.Vector3(0, 0.72, 0.42),
+    // Steeper overhead: look down onto keys from behind-left.
+    camera: new THREE.Vector3(1.25, 3.55, 2.45),
+    cameraMobile: new THREE.Vector3(1.4, 4.05, 2.9),
+    target: new THREE.Vector3(-0.05, 0.52, 0.32),
     arms: [-0.94, -0.98],
   },
   guitar: {
@@ -1028,12 +1063,18 @@ const instrumentView = {
   queuedPerformance: null,
 };
 
+function setSceneLabelsVisible(visible) {
+  for (const spr of labels) spr.visible = visible;
+  if (mascotLabel && !mascotMove.fall) mascotLabel.visible = visible;
+}
+
 function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   instrumentView.phase = phase;
   instrumentView.kind = phase === 'idle' ? null : kind;
   document.documentElement.dataset.instrumentView = phase;
   if (instrumentView.kind) document.documentElement.dataset.instrument = instrumentView.kind;
   else delete document.documentElement.dataset.instrument;
+  setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
 }
 
 function instrumentLocalToWorld(kind, point) {
@@ -1079,7 +1120,7 @@ function poseMascotAtInstrument(kind) {
     mascot.head.rotation.z = 0.05;
   }
   if (mascotLabel) {
-    mascotLabel.visible = true;
+    mascotLabel.visible = false;
     mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
   }
 }
@@ -1453,13 +1494,11 @@ function playInstrumentPerformance(kind) {
     navigator.vibrate?.([35, 205, 25, 205, 45]);
     finish(2350);
   } else if (kind === 'piano') {
-    const melody = [0, 2, 4, 7, 5, 4, 2, 0];
-    melody.forEach((keyIndex, step) => later(step * 245, () => {
-      const key = whiteKeys[keyIndex];
-      if (!key) return;
-      playMusicalEvent({ type: 'piano', freq: key.userData.freq, vel: 0.82, vibe: 1.35, showPrice: false });
+    const melody = pianoMelody.length ? pianoMelody : PIANO_MELODY_FALLBACK;
+    melody.forEach((entry, step) => later(step * 245, () => {
+      playMusicalEvent({ type: 'piano', freq: entry.freqHz, vel: 0.82, vibe: 1.35, showPrice: false });
     }));
-    finish(2200);
+    finish(Math.max(900, melody.length * 245 + 250));
   } else if (kind === 'guitar') {
     const chords = [
       [130.81, 196.0, 261.63, 329.63, 392.0, 523.25],
@@ -1571,7 +1610,10 @@ function updateMascot(dt) {
   }
   if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused' || instrumentView.phase === 'returning') {
     if (mascotLabel) {
-      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+      mascotLabel.visible = instrumentView.phase === 'returning';
+      if (mascotLabel.visible) {
+        mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + 1.72, mascot.group.position.z);
+      }
     }
     return;
   }
@@ -1697,19 +1739,89 @@ function onPointerMove(e) {
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
 }
 
-let downInfo = null;
+function pointerNdc(clientX, clientY, target = pointer) {
+  target.x = (clientX / window.innerWidth) * 2 - 1;
+  target.y = -(clientY / window.innerHeight) * 2 + 1;
+  return target;
+}
+
+function hitInteractableAt(clientX, clientY) {
+  pointerNdc(clientX, clientY);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(interactables, false);
+  return hits[0]?.object || null;
+}
+
+function isMultiTouchInstrumentFocus() {
+  return instrumentView.phase === 'focused'
+    && (instrumentView.kind === 'piano' || instrumentView.kind === 'drums');
+}
+
+function playTokenForMesh(mesh) {
+  if (!mesh) return null;
+  const u = mesh.userData;
+  if (u.freq !== undefined) return `piano:${u.freq}`;
+  if (u.part) return `drum:${u.part}`;
+  return `id:${mesh.id}`;
+}
+
+// Track each finger separately so piano chords / drum kits can be played multitouch.
+const activePointers = new Map();
+
 canvas.addEventListener('pointerdown', (e) => {
-  downInfo = { x: e.clientX, y: e.clientY, t: performance.now() };
-});
-canvas.addEventListener('pointerup', (e) => {
-  if (!downInfo) return;
-  const dx = e.clientX - downInfo.x, dy = e.clientY - downInfo.y;
-  const dt = performance.now() - downInfo.t;
-  downInfo = null;
+  if (!started || ui.modalOpen || flyT >= 0) return;
+
+  if (isMultiTouchInstrumentFocus()) {
+    const mesh = hitInteractableAt(e.clientX, e.clientY);
+    if (mesh && mesh.userData.instrument === instrumentView.kind) {
+      // Steal this finger from OrbitControls so a second finger can play too.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      activePointers.set(e.pointerId, {
+        mode: 'play',
+        x: e.clientX,
+        y: e.clientY,
+        t: performance.now(),
+        token: playTokenForMesh(mesh),
+      });
+      trigger(mesh);
+      return;
+    }
+  }
+
+  activePointers.set(e.pointerId, {
+    mode: 'tap',
+    x: e.clientX,
+    y: e.clientY,
+    t: performance.now(),
+  });
+}, { capture: true, passive: false });
+
+canvas.addEventListener('pointermove', (e) => {
+  const info = activePointers.get(e.pointerId);
+  if (!info || info.mode !== 'play' || !isMultiTouchInstrumentFocus()) return;
+  const mesh = hitInteractableAt(e.clientX, e.clientY);
+  if (!mesh || mesh.userData.instrument !== instrumentView.kind) return;
+  const token = playTokenForMesh(mesh);
+  if (token === info.token) return;
+  info.token = token;
+  trigger(mesh);
+}, { capture: true, passive: true });
+
+function endActivePointer(e) {
+  const info = activePointers.get(e.pointerId);
+  activePointers.delete(e.pointerId);
+  if (!info || info.mode !== 'tap') return;
+  const dx = e.clientX - info.x;
+  const dy = e.clientY - info.y;
+  const dt = performance.now() - info.t;
   const tapTolerance = isMobileGameMode() ? 16 : 8;
   if (Math.hypot(dx, dy) < tapTolerance && dt < 600) handleClick(e);
-});
-canvas.addEventListener('pointercancel', () => { downInfo = null; });
+}
+
+canvas.addEventListener('pointerup', endActivePointer, { capture: true });
+canvas.addEventListener('pointercancel', (e) => { activePointers.delete(e.pointerId); }, { capture: true });
 window.addEventListener('pointermove', onPointerMove, { passive: true });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -1756,12 +1868,15 @@ const PRICE_SLIDES = [
   { kind: 'drums', title: 'Уроки гри на барабанах', anchor: 'drums' },
   { kind: 'piano', title: 'Уроки фортепіано', anchor: 'piano' },
 ];
+const shownPriceChips = new Set();
 
-function chipFor(kind) {
+function chipFor(kind, { force = false } = {}) {
   if (ui.modalOpen) return;
+  if (!force && shownPriceChips.has(kind)) return;
+  shownPriceChips.add(kind);
   const index = Math.max(0, PRICE_SLIDES.findIndex((slide) => slide.kind === kind));
   const slide = PRICE_SLIDES[index];
-  const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind);
+  const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind, { force: true });
   ui.showChip(
     `${slide.title} <span class="accent">від 50 зл</span>`,
     '',
@@ -2476,10 +2591,12 @@ Promise.race([
   document.fonts ? document.fonts.ready : Promise.resolve(),
   new Promise((r) => setTimeout(r, 3500)),
 ]).then(() => {
+  drums.refreshLogo?.();
   loadSlideTextures().then((photos) => {
     if (photos.length) startSlideshow(photos);
     else window.__dbg = 'no photos loaded';
   }).catch((e) => { window.__dbg = `load err: ${e}`; });
+  loadPianoMelody();
   addLabels();
   renderer.compile(scene, camera);
   animate();
@@ -2508,7 +2625,7 @@ Promise.race([
     setTimeout(() => {
       if (shot === 'help') ui.el.help.hidden = false;
       else if (shot === 'chip') {
-        chipFor('guitar');
+        chipFor('guitar', { force: true });
         clearTimeout(ui._chipTimer);
       }
       else if (shot === 'toast') ui.toast('У студії доступні <span class="hl">вокал, гітара, барабани та фортепіано</span>', 60000);
