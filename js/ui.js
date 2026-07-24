@@ -21,6 +21,7 @@ export class UI {
       vibeFill: document.getElementById('vibe-fill'),
       soundBtn: document.getElementById('sound-btn'),
       helpBtn: document.getElementById('help-btn'),
+      menuBtn: document.getElementById('menu-btn'),
       help: document.getElementById('help'),
     };
     this.modals = {
@@ -51,6 +52,15 @@ export class UI {
       if (e.target === this.el.help) this.el.help.hidden = true;
     });
     this.el.helpBtn.addEventListener('click', () => { this.el.help.hidden = !this.el.help.hidden; });
+    this.el.menuBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleNav();
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.el.hud.classList.contains('nav-open')) return;
+      if (e.target.closest('#hud')) return;
+      this.closeNav();
+    });
 
     this.el.chipClose.addEventListener('click', () => this.hideChip());
     let swipeStart = null;
@@ -68,12 +78,13 @@ export class UI {
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { this.closeAll(); this.el.help.hidden = true; }
+      if (e.key === 'Escape') { this.closeAll(); this.el.help.hidden = true; this.closeNav(); }
     });
   }
 
   open(name, anchor) {
     this.closeAll();
+    this.closeNav();
     const m = this.modals[name];
     if (!m) return;
     m.hidden = false;
@@ -97,6 +108,17 @@ export class UI {
   }
 
   get modalOpen() { return this.current !== null || !this.el.help.hidden; }
+
+  toggleNav() {
+    const open = !this.el.hud.classList.contains('nav-open');
+    this.el.hud.classList.toggle('nav-open', open);
+    if (this.el.menuBtn) this.el.menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  closeNav() {
+    this.el.hud.classList.remove('nav-open');
+    if (this.el.menuBtn) this.el.menuBtn.setAttribute('aria-expanded', 'false');
+  }
 
   showHUD() {
     this.el.hud.classList.remove('hidden');
