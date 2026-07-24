@@ -1825,6 +1825,16 @@ canvas.addEventListener('pointercancel', (e) => { activePointers.delete(e.pointe
 window.addEventListener('pointermove', onPointerMove, { passive: true });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+// Block accidental text selection / iOS callouts on game chrome (not modal panels).
+document.addEventListener('selectstart', (e) => {
+  if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
+  e.preventDefault();
+}, { capture: true });
+document.addEventListener('dragstart', (e) => {
+  if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
+  e.preventDefault();
+}, { capture: true });
+
 // ---- vibe ----
 let vibe = 0, lastVibeAdd = 0, vibeCooldown = 0;
 let loopUnlocked = false;
