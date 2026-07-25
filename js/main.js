@@ -454,7 +454,7 @@ function buildScreen() {
   // Quiet neon credit on the reverse side of the screen.
   const sigMap = signatureTexture();
   const signature = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.6, 0.9),
+    new THREE.PlaneGeometry(2.6, 0.65),
     new THREE.MeshBasicMaterial({
       map: sigMap,
       transparent: true,
@@ -468,10 +468,10 @@ function buildScreen() {
   signature.name = 'credit-signature';
   // Invisible hit target over the linked name only (local +X = "vadymbek").
   const nameHit = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.65, 0.62),
+    new THREE.PlaneGeometry(1.2, 0.45),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
   );
-  nameHit.position.set(0.72, 0, 0.01);
+  nameHit.position.set(0.52, 0, 0.01);
   nameHit.userData.link = 'https://vadymbek.top';
   nameHit.name = 'credit-link';
   signature.add(nameHit);
