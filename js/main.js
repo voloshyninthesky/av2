@@ -24,6 +24,7 @@ const isMobileGameMode = () => window.innerWidth <= 720 ||
 const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
+const creditLinks = [];
 
 // ============================================================
 // RENDERER / SCENE / CAMERA
@@ -210,6 +211,61 @@ function plateTexture() {
   return t;
 }
 
+// soft neon credit on the slideshow's back face
+function signatureTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 256;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, 1024, 256);
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+
+  const left = 'created by ';
+  const name = 'vadymbek';
+  const font = '500 40px "Unbounded", sans-serif';
+  x.font = font;
+  const leftW = x.measureText(left).width;
+  const nameW = x.measureText(name).width;
+  const totalW = leftW + nameW;
+  const startX = 512 - totalW / 2;
+  const leftCenter = startX + leftW / 2;
+  const nameCenter = startX + leftW + nameW / 2;
+  const nameUvMin = (startX + leftW) / 1024;
+
+  const drawLine = (text, cx, fill, blur) => {
+    x.shadowColor = 'rgba(158, 51, 202, 0.85)';
+    x.shadowBlur = blur;
+    x.fillStyle = fill;
+    x.fillText(text, cx, 128);
+  };
+
+  // Soft violet bloom, kept quiet so it doesn't compete with the stage.
+  x.font = '500 42px "Unbounded", sans-serif';
+  drawLine(left + name, 512, 'rgba(158, 51, 202, 0.22)', 36);
+  x.font = font;
+  drawLine(left, leftCenter, 'rgba(201, 136, 240, 0.45)', 14);
+  drawLine(name, nameCenter, 'rgba(232, 210, 255, 0.9)', 16);
+  x.shadowBlur = 0;
+
+  // Subtle neon underline under the linked name.
+  const underlineY = 148;
+  x.strokeStyle = 'rgba(209, 161, 59, 0.55)';
+  x.lineWidth = 2;
+  x.shadowColor = 'rgba(158, 51, 202, 0.7)';
+  x.shadowBlur = 10;
+  x.beginPath();
+  x.moveTo(startX + leftW, underlineY);
+  x.lineTo(startX + leftW + nameW, underlineY);
+  x.stroke();
+  x.shadowBlur = 0;
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  t.userData = { nameUvMin };
+  return t;
+}
+
 function buildStage() {
   const g = new THREE.Group();
 
@@ -265,7 +321,7 @@ function buildStage() {
     new THREE.PlaneGeometry(30, 12),
     new THREE.MeshStandardMaterial({ color: 0x15091f, roughness: 0.95 })
   );
-  wall.position.set(0, 5, -5.6);
+  wall.position.set(0, 5, -5.85);
   g.add(wall);
 
   // curtains
@@ -394,6 +450,33 @@ function buildScreen() {
   );
   plate.position.set(0, 2.62, -5.45);
   g.add(plate);
+
+  // Quiet neon credit on the reverse side of the screen.
+  const sigMap = signatureTexture();
+  const signature = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.6, 0.9),
+    new THREE.MeshBasicMaterial({
+      map: sigMap,
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+      side: THREE.FrontSide,
+    })
+  );
+  signature.position.set(0, 5.35, -5.52);
+  signature.rotation.y = Math.PI;
+  signature.name = 'credit-signature';
+  // Invisible hit target over the linked name only (local +X = "vadymbek").
+  const nameHit = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.65, 0.62),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  nameHit.position.set(0.72, 0, 0.01);
+  nameHit.userData.link = 'https://vadymbek.top';
+  nameHit.name = 'credit-link';
+  signature.add(nameHit);
+  creditLinks.push(nameHit);
+  g.add(signature);
 
   return g;
 }
@@ -2547,9 +2630,24 @@ function trigger(mesh) {
   }
 }
 
+function openCreditLink(hit) {
+  const url = hit?.object?.userData?.link;
+  if (!url) return false;
+  window.open(url, '_blank', 'noopener,noreferrer');
+  return true;
+}
+
+function creditLinkAtPointer() {
+  if (!creditLinks.length) return null;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(creditLinks, false);
+  return hits[0] || null;
+}
+
 function handleClick(e) {
   if (!started || ui.modalOpen || flyT >= 0) return;
   onPointerMove(e);
+  if (openCreditLink(creditLinkAtPointer())) return;
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(interactables, false);
   if (hits.length) {
@@ -2762,6 +2860,7 @@ function animate() {
 
   // hover raycast
   if (started && !ui.modalOpen && canHover.matches) {
+    const overLink = creditLinkAtPointer();
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects(interactables, false);
     const hit = hits.length ? hits[0].object : null;
@@ -2769,10 +2868,11 @@ function animate() {
       if (hovered) setGlow(hovered, false);
       hovered = hit;
       if (hovered) setGlow(hovered, true);
-      canvas.style.cursor = hovered ? 'pointer' : '';
     }
+    canvas.style.cursor = (overLink || hovered) ? 'pointer' : '';
   } else {
     if (hovered) { setGlow(hovered, false); hovered = null; }
+    if (!canHover.matches) canvas.style.cursor = '';
   }
 
   fireworks.update(dt);
@@ -2797,6 +2897,13 @@ Promise.race([
   new Promise((r) => setTimeout(r, 3500)),
 ]).then(() => {
   drums.refreshLogo?.();
+  const credit = stage.getObjectByName('credit-signature');
+  if (credit?.material?.map) {
+    const next = signatureTexture();
+    credit.material.map.dispose();
+    credit.material.map = next;
+    credit.material.needsUpdate = true;
+  }
   loadSlideTextures().then((photos) => {
     if (photos.length) startSlideshow(photos);
     else window.__dbg = 'no photos loaded';
