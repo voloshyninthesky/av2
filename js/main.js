@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-69';
-import { UI } from './ui.js?v=20260724-65';
+import { UI } from './ui.js?v=20260725-03';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -2935,8 +2935,7 @@ Promise.race([
   const shot = params.get('shot');
   if (shot) {
     setTimeout(() => {
-      if (shot === 'help') ui.el.help.hidden = false;
-      else if (shot === 'chip') {
+      if (shot === 'chip') {
         chipFor('guitar', { force: true });
         clearTimeout(ui._chipTimer);
       }

@@ -2,6 +2,8 @@
 // ART VIBE — HUD & overlay UI manager
 // ============================================================
 
+import { PricingPicker } from './pricing.js?v=20260725-02';
+
 export class UI {
   constructor() {
     this.el = {
@@ -20,9 +22,7 @@ export class UI {
       vibe: document.getElementById('vibe'),
       vibeFill: document.getElementById('vibe-fill'),
       soundBtn: document.getElementById('sound-btn'),
-      helpBtn: document.getElementById('help-btn'),
       menuBtn: document.getElementById('menu-btn'),
-      help: document.getElementById('help'),
     };
     this.modals = {
       steps: document.getElementById('modal-steps'),
@@ -32,6 +32,8 @@ export class UI {
     this.current = null;
     this._toastTimer = null;
     this._chipTimer = null;
+    this.pricing = new PricingPicker(this.modals.pricing);
+    this.pricing.init();
     this._bind();
   }
 
@@ -48,10 +50,6 @@ export class UI {
         if (e.target === this.modals[key]) this.closeAll();
       });
     }
-    this.el.help.addEventListener('click', (e) => {
-      if (e.target === this.el.help) this.el.help.hidden = true;
-    });
-    this.el.helpBtn.addEventListener('click', () => { this.el.help.hidden = !this.el.help.hidden; });
     this.el.menuBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.toggleNav();
@@ -78,7 +76,7 @@ export class UI {
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { this.closeAll(); this.el.help.hidden = true; this.closeNav(); }
+      if (e.key === 'Escape') { this.closeAll(); this.closeNav(); }
     });
   }
 
@@ -89,6 +87,13 @@ export class UI {
     if (!m) return;
     m.hidden = false;
     this.current = name;
+    if (name === 'pricing') {
+      this.pricing.selectInstrument(anchor || this.pricing.state.instrument);
+      requestAnimationFrame(() => {
+        this.modals.pricing.querySelector('#price-board')?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      });
+      return;
+    }
     if (anchor) {
       const target = m.querySelector(`#card-${anchor}`) || m.querySelector(`[data-instruments~="${anchor}"]`);
       if (target) {
@@ -107,7 +112,7 @@ export class UI {
     this.current = null;
   }
 
-  get modalOpen() { return this.current !== null || !this.el.help.hidden; }
+  get modalOpen() { return this.current !== null; }
 
   toggleNav() {
     const open = !this.el.hud.classList.contains('nav-open');
