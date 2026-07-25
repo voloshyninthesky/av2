@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260724-66">
+<link rel="stylesheet" href="css/style.css?v=20260725-01">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -177,58 +177,63 @@
 <div id="modal-rules" class="overlay" hidden>
   <div class="panel rules-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>4 ПРАВИЛА</span></div>
     <h2 class="panel-title">Правила<span class="dot">.</span></h2>
+    <p class="panel-lead">Коротко про мову, оплату й переноси — щоб усі грали за одними нотами.</p>
 
-    <section class="rule-block">
-      <div class="rule-num">1</div>
-      <div class="rule-body">
-        <h3>Мовна політика</h3>
-        <p class="status no"><span class="mark">✕</span> Ні російській мові! В Art Vibe Studio уроки проводяться українською мовою. Ми не використовуємо російську мову, пісні, твори чи методики російських авторів.</p>
-        <p class="status yes"><span class="mark">✓</span> Завжди раді іншим мовам.</p>
-      </div>
-    </section>
+    <div class="rules-score">
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>1</span></div>
+        <div class="rule-body">
+          <h3>Мовна політика</h3>
+          <p class="status no"><span class="mark" aria-hidden="true">✕</span><span>Ні російській мові. Уроки — українською. Без російської мови, пісень, творів і методик російських авторів.</span></p>
+          <p class="status yes"><span class="mark" aria-hidden="true">✓</span><span>Завжди раді іншим мовам.</span></p>
+        </div>
+      </section>
 
-    <section class="rule-block">
-      <div class="rule-num">2</div>
-      <div class="rule-body">
-        <h3>Оплата та переноси. Одноразовий урок</h3>
-        <ul class="dots">
-          <li>Щоб забронювати час, урок оплачується повністю.</li>
-          <li>Якщо скасування за 24+ години — оплата переноситься.</li>
-          <li>Якщо скасування менше ніж за 24 години — знімається 50% від вартості.</li>
-          <li>Якщо скасування менше ніж за 2 години або учень не з'явився — урок вважається проведеним, оплата не переноситься та не повертається.</li>
-        </ul>
-      </div>
-    </section>
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>2</span></div>
+        <div class="rule-body">
+          <h3>Одноразовий урок</h3>
+          <p class="rule-sub">Оплата та переноси</p>
+          <ul class="dots">
+            <li>Щоб забронювати час, урок оплачується повністю.</li>
+            <li>Скасування за 24+ години — оплата переноситься.</li>
+            <li>Скасування менше ніж за 24 години — знімається 50% від вартості.</li>
+            <li>Скасування менше ніж за 2 години або неявка — урок вважається проведеним; оплата не переноситься й не повертається.</li>
+          </ul>
+        </div>
+      </section>
 
-    <section class="rule-block">
-      <div class="rule-num">3</div>
-      <div class="rule-body">
-        <h3>Оплата та переноси. Абонемент</h3>
-        <ul class="dots">
-          <li>Абонемент діє 1 місяць з дати першого заняття.</li>
-          <li>Щоб продовжити дію, потрібно оплатити наступний абонемент до останнього заняття поточного.</li>
-          <li>Абонемент гарантує фіксований час для уроків (можна в різні дні, але визначається на початку місяця).</li>
-          <li>Можливі 2 переноси на місяць без втрати оплаченого уроку (з дотриманням правил переносу).</li>
-          <li>Можливе «заморожування» абонементу до 2 тижнів без втрати оплати. Абонемент автоматично заморожується, якщо відсутній викладач (відпустка або лікарняний).</li>
-          <li>Абонемент можна придбати у будь-який день місяця.</li>
-        </ul>
-      </div>
-    </section>
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>3</span></div>
+        <div class="rule-body">
+          <h3>Абонемент</h3>
+          <p class="rule-sub">Оплата та переноси</p>
+          <ul class="dots">
+            <li>Діє 1 місяць з дати першого заняття.</li>
+            <li>Щоб продовжити, оплатіть наступний абонемент до останнього заняття поточного.</li>
+            <li>Гарантує фіксований час (дні можуть відрізнятися, але фіксуються на початку місяця).</li>
+            <li>2 переноси на місяць без втрати уроку — з дотриманням правил переносу.</li>
+            <li>«Заморожування» до 2 тижнів без втрати оплати. Автоматично — якщо немає викладача (відпустка чи лікарняний).</li>
+            <li>Можна придбати у будь-який день місяця.</li>
+          </ul>
+        </div>
+      </section>
 
-    <section class="rule-block">
-      <div class="rule-num">4</div>
-      <div class="rule-body">
-        <h3>Прийняття і уточнення</h3>
-        <ul class="dots">
-          <li>Оплата підтверджує, що ви ознайомлені та погоджуєтеся з правилами.</li>
-          <li>Якщо викладач скасовує урок менше ніж за 24 години — наступний урок для учня зі знижкою 50%.</li>
-          <li>Якщо викладач скасовує урок менше ніж за 2 години — наступний урок безкоштовний.</li>
-          <li>Перша оплата здійснюється переказом на карту. Подальші оплати можуть проводитися як переказом, так і готівкою.</li>
-        </ul>
-      </div>
-    </section>
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>4</span></div>
+        <div class="rule-body">
+          <h3>Прийняття і уточнення</h3>
+          <ul class="dots">
+            <li>Оплата підтверджує, що ви ознайомлені та погоджуєтеся з правилами.</li>
+            <li>Якщо викладач скасовує менше ніж за 24 години — наступний урок зі знижкою 50%.</li>
+            <li>Якщо викладач скасовує менше ніж за 2 години — наступний урок безкоштовний.</li>
+            <li>Перша оплата — переказ на картку. Далі — переказом або готівкою.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
 
     <div class="panel-actions">
       <button class="pill-btn outline big" data-goto="pricing">ДАЛІ — ЦІНИ ›</button>
@@ -240,14 +245,17 @@
 <div id="modal-pricing" class="overlay" hidden>
   <div class="panel pricing-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
-    <h2 class="panel-title">price list<span class="dot">.</span></h2>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>PLN · ЗЛ</span></div>
+    <h2 class="panel-title">Ціни<span class="dot">.</span></h2>
 
     <div class="price-cards">
 
       <article class="price-card vocal" id="card-vocal" data-instruments="vocal guitar">
         <header>
-          <div><span class="price-kicker mono">ВОКАЛ · ГІТАРА</span><h3>Вокал або гітара</h3></div>
+          <div>
+            <span class="price-kicker mono">ВОКАЛ · ГІТАРА</span>
+            <h3>Вокал або гітара</h3>
+          </div>
           <svg class="sketch" viewBox="0 0 120 160" aria-hidden="true">
             <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
               <path d="M60 18c-14 0-22 10-22 24v16c0 14 8 24 22 24s22-10 22-24V42c0-14-8-24-22-24z"/>
@@ -261,74 +269,86 @@
             </g>
           </svg>
         </header>
-        <div class="dur-group single-lessons">
-          <div class="dur-head"><span class="dur">Одноразовий урок</span></div>
-          <div class="price-row"><span>30 хв <small>пробний або для дітей до 7 років</small></span><b>50 зл</b></div>
-          <div class="price-row"><span>45 хв <small>для підлітків або дорослих</small></span><b>75 зл</b></div>
-          <div class="price-row"><span>55 хв <small>для дорослих</small></span><b>90 зл</b></div>
-        </div>
-        <div class="section-label mono">АБОНЕМЕНТИ</div>
-        <div class="dur-group">
-          <div class="dur-head"><span class="dur">30 хв</span><span class="dur-note">для дітей до 7 років</span></div>
-          <div class="price-row"><span>4 уроки</span><b>190 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>280 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>360 зл</b></div>
-        </div>
-        <div class="dur-group">
-          <div class="dur-head"><span class="dur">45 хв</span><span class="dur-note"></span></div>
-          <div class="price-row"><span>4 уроки</span><b>290 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>420 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>540 зл</b></div>
-        </div>
-        <div class="dur-group">
-          <div class="dur-head"><span class="dur">55 хв</span><span class="dur-note"></span></div>
-          <div class="price-row"><span>4 уроки</span><b>350 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>510 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>650 зл</b></div>
+        <div class="ticket-body">
+          <div class="dur-group single-lessons">
+            <div class="dur-head"><span class="dur">Одноразовий урок</span></div>
+            <div class="price-row">
+              <span class="price-meta"><span class="price-dur">30 хв</span><small>пробний або для дітей до 7 років</small></span>
+              <b>50 зл</b>
+            </div>
+            <div class="price-row">
+              <span class="price-meta"><span class="price-dur">45 хв</span><small>для підлітків або дорослих</small></span>
+              <b>75 зл</b>
+            </div>
+            <div class="price-row">
+              <span class="price-meta"><span class="price-dur">55 хв</span><small>для дорослих</small></span>
+              <b>90 зл</b>
+            </div>
+          </div>
+          <div class="section-label mono">АБОНЕМЕНТИ</div>
+          <div class="dur-group">
+            <div class="dur-head"><span class="dur">30 хв</span><span class="dur-note">для дітей до 7 років</span></div>
+            <div class="price-row"><span>4 уроки</span><b>190 зл</b></div>
+            <div class="price-row"><span>6 уроків</span><b>280 зл</b></div>
+            <div class="price-row"><span>8 уроків</span><b>360 зл</b></div>
+          </div>
+          <div class="dur-group">
+            <div class="dur-head"><span class="dur">45 хв</span></div>
+            <div class="price-row"><span>4 уроки</span><b>290 зл</b></div>
+            <div class="price-row"><span>6 уроків</span><b>420 зл</b></div>
+            <div class="price-row"><span>8 уроків</span><b>540 зл</b></div>
+          </div>
+          <div class="dur-group">
+            <div class="dur-head"><span class="dur">55 хв</span></div>
+            <div class="price-row"><span>4 уроки</span><b>350 зл</b></div>
+            <div class="price-row"><span>6 уроків</span><b>510 зл</b></div>
+            <div class="price-row"><span>8 уроків</span><b>650 зл</b></div>
+          </div>
         </div>
       </article>
 
-      <article class="price-card guitar" id="card-drums" data-instruments="drums piano">
+      <article class="price-card rhythm" id="card-drums" data-instruments="drums piano">
         <header>
-          <div><span class="price-kicker mono">БАРАБАНИ · ФОРТЕПІАНО</span><h3>Барабани або фортепіано</h3></div>
-          <svg class="sketch" viewBox="0 0 120 160" aria-hidden="true">
-            <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-              <path d="M50 78c-10-2-18 4-20 14-2 8 2 14 8 18-4 8-2 18 6 23 9 6 22 4 28-4 5-6 5-13 2-19 6-4 9-12 6-20-3-9-13-13-22-10"/>
-              <circle cx="57" cy="100" r="9"/>
-              <path d="M52 118c4 2 10 2 14-1" opacity=".6"/>
-              <path d="M62 80 90 40"/>
-              <path d="M66 86 96 46" opacity=".7"/>
-              <path d="M88 36l10-12 12 6-6 12z"/>
-              <path d="M97 26l2-4M103 30l3-3M99 34l3-2" />
-              <path d="M63 82 92 44M65 85 94 47" stroke-width="1" opacity=".8"/>
-              <path d="M30 88c-3 5-3 11 1 15" opacity=".5"/>
-            </g>
-          </svg>
+          <div>
+            <span class="price-kicker mono">БАРАБАНИ · ФОРТЕПІАНО</span>
+            <h3>Барабани або фортепіано</h3>
+          </div>
         </header>
-        <div class="dur-group single-lessons">
-          <div class="dur-head"><span class="dur">Одноразовий урок</span></div>
-          <div class="price-row"><span>30 хв <small>пробний або для дітей до 7 років</small></span><b>50 зл</b></div>
-          <div class="price-row"><span>45 хв <small>для підлітків або дорослих</small></span><b>70 зл</b></div>
-          <div class="price-row"><span>55 хв <small>для дорослих</small></span><b>85 зл</b></div>
-        </div>
-        <div class="section-label mono">АБОНЕМЕНТИ</div>
-        <div class="dur-group">
-          <div class="dur-head"><span class="dur">30 хв</span><span class="dur-note">для дітей до 7 років</span></div>
-          <div class="price-row"><span>4 уроки</span><b>190 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>280 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>360 зл</b></div>
-        </div>
-        <div class="dur-group">
-          <div class="dur-head"><span class="dur">45 хв</span><span class="dur-note"></span></div>
-          <div class="price-row"><span>4 уроки</span><b>270 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>390 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>510 зл</b></div>
-        </div>
-        <div class="dur-group">
-          <div class="dur-head"><span class="dur">55 хв</span><span class="dur-note"></span></div>
-          <div class="price-row"><span>4 уроки</span><b>330 зл</b></div>
-          <div class="price-row"><span>6 уроків</span><b>480 зл</b></div>
-          <div class="price-row"><span>8 уроків</span><b>620 зл</b></div>
+        <div class="ticket-body">
+          <div class="dur-group single-lessons">
+            <div class="dur-head"><span class="dur">Одноразовий урок</span></div>
+            <div class="price-row">
+              <span class="price-meta"><span class="price-dur">30 хв</span><small>пробний або для дітей до 7 років</small></span>
+              <b>50 зл</b>
+            </div>
+            <div class="price-row">
+              <span class="price-meta"><span class="price-dur">45 хв</span><small>для підлітків або дорослих</small></span>
+              <b>70 зл</b>
+            </div>
+            <div class="price-row">
+              <span class="price-meta"><span class="price-dur">55 хв</span><small>для дорослих</small></span>
+              <b>85 зл</b>
+            </div>
+          </div>
+          <div class="section-label mono">АБОНЕМЕНТИ</div>
+          <div class="dur-group">
+            <div class="dur-head"><span class="dur">30 хв</span><span class="dur-note">для дітей до 7 років</span></div>
+            <div class="price-row"><span>4 уроки</span><b>190 зл</b></div>
+            <div class="price-row"><span>6 уроків</span><b>280 зл</b></div>
+            <div class="price-row"><span>8 уроків</span><b>360 зл</b></div>
+          </div>
+          <div class="dur-group">
+            <div class="dur-head"><span class="dur">45 хв</span></div>
+            <div class="price-row"><span>4 уроки</span><b>270 зл</b></div>
+            <div class="price-row"><span>6 уроків</span><b>390 зл</b></div>
+            <div class="price-row"><span>8 уроків</span><b>510 зл</b></div>
+          </div>
+          <div class="dur-group">
+            <div class="dur-head"><span class="dur">55 хв</span></div>
+            <div class="price-row"><span>4 уроки</span><b>330 зл</b></div>
+            <div class="price-row"><span>6 уроків</span><b>480 зл</b></div>
+            <div class="price-row"><span>8 уроків</span><b>620 зл</b></div>
+          </div>
         </div>
       </article>
     </div>
@@ -345,7 +365,7 @@
     <p class="mono price-foot">ціна — за абонемент · перша оплата на картку, далі — карткою або готівкою</p>
     <div class="panel-actions">
       <button class="pill-btn outline big" data-goto="steps">ЯК ЗАПИСАТИСЯ? ›</button>
-      <a class="pill-btn gold big" id="direct-btn-2" href="https://www.instagram.com/artvibe.pl/" target="_blank" rel="noopener noreferrer">НАПИШИ @ARTVIBE.PL ›</a>
+      <a class="pill-btn gold big" id="direct-btn-2" href="https://www.instagram.com/artvibe.pl/" target="_blank" rel="noopener noreferrer">НАПИШИ НАМ ›</a>
     </div>
   </div>
 </div>

@@ -568,9 +568,14 @@ html[data-instrument-view="focused"] #hud {
   font-family: 'Unbounded', sans-serif; font-weight: 900;
   font-size: clamp(30px, 5.5vw, 54px); line-height: 1.04;
   color: var(--purple); text-transform: none; letter-spacing: -.01em;
-  margin-bottom: 26px;
+  margin-bottom: 12px;
 }
 .panel-title .dot { color: var(--gold); }
+.panel-lead {
+  max-width: 38em; margin: 0 0 28px;
+  font-size: clamp(14px, 2vw, 16px); line-height: 1.55;
+  color: rgba(23, 18, 28, .72);
+}
 
 .panel-actions {
   display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px;
@@ -585,90 +590,180 @@ html[data-instrument-view="focused"] #hud {
 .steps-list em { font-style: normal; color: var(--gold); font-weight: 700; background: rgba(209, 161, 59, .18); padding: 0 6px; border-radius: 6px; }
 
 /* ---- rules ---- */
-.rules-panel { background: var(--lavender); }
-.rule-block {
-  display: flex; gap: clamp(14px, 3vw, 30px);
-  padding: 22px 0; border-top: 2px dashed rgba(23, 18, 28, .25);
+.rules-panel {
+  background:
+    radial-gradient(90% 60% at 100% 0%, rgba(158, 51, 202, .12), transparent 55%),
+    var(--cream);
 }
-.rule-block:first-of-type { border-top: none; }
+.rules-score {
+  position: relative;
+  display: flex; flex-direction: column; gap: 0;
+  padding-left: 2px;
+}
+.rules-score::before {
+  content: '';
+  position: absolute; left: 19px; top: 18px; bottom: 18px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--gold), rgba(158, 51, 202, .55), var(--gold));
+  border-radius: 2px;
+}
+.rule-block {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: clamp(14px, 3vw, 22px);
+  padding: 18px 0 22px;
+}
 .rule-num {
-  font-family: 'Rubik Mono One', 'Unbounded', sans-serif;
-  font-size: clamp(56px, 9vw, 96px); line-height: .9;
-  color: var(--purple);
-  text-shadow: 5px 5px 0 var(--ink);
-  flex: none; width: 1.15em; text-align: center;
-  transform: rotate(-4deg);
+  position: relative; z-index: 1;
+  display: grid; place-items: start center;
+  padding-top: 2px;
+}
+.rule-num span {
+  display: grid; place-items: center;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--ink); color: var(--gold);
+  border: 2px solid var(--gold);
+  font-family: 'Unbounded', sans-serif; font-weight: 900;
+  font-size: 15px; letter-spacing: .02em;
+  box-shadow: 0 0 0 4px var(--cream);
 }
 .rule-body h3 {
   font-family: 'Unbounded'; font-weight: 700; font-size: clamp(15px, 2.2vw, 19px);
-  letter-spacing: .02em; margin-bottom: 12px; color: var(--ink);
+  letter-spacing: .02em; margin-bottom: 6px; color: var(--ink);
+}
+.rule-sub {
+  margin: 0 0 12px;
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(23, 18, 28, .5);
 }
 .dots { list-style: none; display: flex; flex-direction: column; gap: 9px; }
-.dots li { position: relative; padding-left: 20px; font-size: 15px; line-height: 1.5; }
+.dots li { position: relative; padding-left: 18px; font-size: 15px; line-height: 1.5; }
 .dots li::before {
-  content: ''; position: absolute; left: 0; top: .5em;
+  content: ''; position: absolute; left: 0; top: .55em;
   width: 7px; height: 7px; border-radius: 50%; background: var(--purple);
 }
-.status { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 1.5; margin-bottom: 10px; }
+.status {
+  display: flex; gap: 12px; align-items: flex-start;
+  font-size: 15px; line-height: 1.5; margin-bottom: 10px;
+  padding: 12px 14px; border-radius: 14px; border: 2px solid transparent;
+}
 .status .mark {
   flex: none; width: 26px; height: 26px; border-radius: 8px;
   display: grid; place-items: center; font-weight: 900; font-size: 14px;
   color: var(--cream); margin-top: 1px;
 }
+.status.no {
+  background: rgba(210, 31, 60, .08);
+  border-color: rgba(210, 31, 60, .28);
+}
 .status.no .mark { background: var(--red); }
+.status.yes {
+  background: rgba(31, 157, 77, .08);
+  border-color: rgba(31, 157, 77, .28);
+}
 .status.yes .mark { background: var(--green); }
 
 /* ---- pricing ---- */
+.pricing-panel {
+  background:
+    radial-gradient(80% 50% at 0% 0%, rgba(209, 161, 59, .14), transparent 50%),
+    var(--cream);
+}
 .price-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .price-card {
-  border: 3px solid var(--ink); border-radius: 18px; overflow: hidden;
+  position: relative;
+  border: 3px solid var(--ink); border-radius: 18px;
+  overflow: visible;
   transition: transform .25s, box-shadow .25s;
 }
+/* Ticket notches — setlist stub against the cream panel */
+.price-card::before,
+.price-card::after {
+  content: '';
+  position: absolute; top: 86px; z-index: 2;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  pointer-events: none;
+}
+.price-card::before { left: -11px; }
+.price-card::after { right: -11px; }
 .price-card:hover { transform: translateY(-4px); box-shadow: 8px 8px 0 rgba(23, 18, 28, .25); }
 .price-card.flash { animation: cardFlash 1.2s ease; }
 @keyframes cardFlash { 0%, 60% { box-shadow: 0 0 0 6px var(--gold); } 100% { box-shadow: none; } }
 .price-card header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 22px 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 22px 16px;
 }
 .price-card h3 {
   font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic;
-  font-size: clamp(24px, 3.2vw, 36px); line-height: 1.05;
+  font-size: clamp(22px, 3.2vw, 34px); line-height: 1.05;
 }
 .price-kicker { display: block; margin-bottom: 5px; font-size: 9px; letter-spacing: .14em; opacity: .78; }
-.price-card .sketch { width: 64px; height: 88px; }
+.price-card .sketch { width: 56px; height: 76px; flex: none; opacity: .92; }
 .price-card.vocal { background: var(--purple); color: var(--cream); }
 .price-card.vocal h3 { color: var(--gold-light); }
 .price-card.vocal .sketch { color: rgba(253, 251, 247, .9); }
-.price-card.guitar { background: var(--gold); color: var(--ink); }
-.price-card.guitar h3 { color: var(--purple-deep); }
-.price-card.guitar .sketch { color: rgba(23, 18, 28, .85); }
+.price-card.rhythm { background: var(--gold); color: var(--ink); }
+.price-card.rhythm h3 { color: var(--purple-deep); }
+.price-card.rhythm .sketch { color: rgba(23, 18, 28, .85); }
 
-.dur-group { padding: 10px 22px 14px; border-top: 1px dashed rgba(253, 251, 247, .35); }
-.price-card.guitar .dur-group { border-top-color: rgba(23, 18, 28, .3); }
-.section-label { padding: 13px 22px 4px; font-size: 10px; font-weight: 800; letter-spacing: .2em; opacity: .72; }
-.single-lessons { padding-bottom: 16px; }
-.single-lessons .price-row > span { display: grid; gap: 2px; font-weight: 800; }
-.single-lessons .price-row small { font-size: 9px; font-weight: 500; opacity: .72; }
-.dur-head { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 8px; }
+.ticket-body {
+  position: relative;
+  border-top: 2px dashed rgba(253, 251, 247, .38);
+}
+.price-card.rhythm .ticket-body { border-top-color: rgba(23, 18, 28, .28); }
+.dur-group { padding: 12px 20px 14px; }
+.dur-group + .dur-group {
+  border-top: 1px dashed rgba(253, 251, 247, .28);
+}
+.price-card.rhythm .dur-group + .dur-group { border-top-color: rgba(23, 18, 28, .22); }
+.section-label {
+  padding: 14px 20px 2px;
+  font-size: 10px; font-weight: 800; letter-spacing: .2em; opacity: .72;
+}
+.single-lessons { padding-bottom: 8px; }
+.price-meta { display: grid; gap: 2px; min-width: 0; padding-right: 12px; }
+.price-dur { font-weight: 800; }
+.price-meta small {
+  display: block; font-size: 11px; font-weight: 500; line-height: 1.35; opacity: .72;
+}
+.dur-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px;
+  margin: 0 0 8px;
+}
 .dur {
-  font-family: 'Unbounded'; font-weight: 900; font-size: 17px; letter-spacing: .05em;
+  font-family: 'Unbounded'; font-weight: 900; font-size: 16px; letter-spacing: .04em;
 }
 .price-card.vocal .dur { color: var(--gold-light); }
-.price-card.guitar .dur { color: var(--purple-deep); }
-.dur-note { font-size: 11px; opacity: .75; letter-spacing: .04em; }
+.price-card.rhythm .dur { color: var(--purple-deep); }
+.dur-note { font-size: 12px; opacity: .75; letter-spacing: .02em; }
+.dur-note:empty { display: none; }
 .price-row {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 14px; padding: 5px 0;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; font-size: 14px; padding: 6px 0;
 }
-.price-row b { font-family: 'Unbounded'; font-weight: 700; font-size: 15px; }
+.price-row b {
+  flex: none; font-family: 'Unbounded'; font-weight: 700; font-size: 15px;
+  white-space: nowrap;
+}
 .price-foot { margin-top: 18px; font-size: 11px; letter-spacing: .08em; color: rgba(23, 18, 28, .55); }
-.promotions { margin-top: 24px; padding-top: 22px; border-top: 2px dashed rgba(23, 18, 28, .22); }
-.promotions > h3 { margin-bottom: 14px; color: var(--gold); font: 900 clamp(24px, 4vw, 36px)/1.05 'Playfair Display', serif; }
+.promotions { margin-top: 28px; padding-top: 22px; border-top: 2px dashed rgba(23, 18, 28, .22); }
+.promotions > h3 {
+  margin-bottom: 14px; color: var(--purple);
+  font: 900 clamp(22px, 3.5vw, 32px)/1.05 'Playfair Display', serif; font-style: italic;
+}
 .promo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.promo-grid p { min-height: 112px; margin: 0; padding: 18px; border: 2px solid var(--ink); border-radius: 16px; background: var(--purple); color: var(--cream); font-size: 13px; font-weight: 700; line-height: 1.35; }
+.promo-grid p {
+  min-height: 0; margin: 0; padding: 16px 16px 18px;
+  border: 2px solid var(--ink); border-radius: 14px;
+  background: var(--purple); color: var(--cream);
+  font-size: 13px; font-weight: 600; line-height: 1.4;
+}
 .promo-grid p:nth-child(2) { background: var(--gold); color: var(--ink); }
-.promo-grid b { display: block; margin-bottom: 6px; font: 900 17px 'Unbounded', sans-serif; }
+.promo-grid p:nth-child(3) { background: var(--ink); color: var(--cream); }
+.promo-grid b { display: block; margin-bottom: 6px; font: 900 18px/1.1 'Unbounded', sans-serif; }
 
 /* ---- help ---- */
 .help-panel { width: min(560px, 100%); }
@@ -763,10 +858,26 @@ html[data-instrument-view="focused"] #hud {
     max-width: calc(100vw - 22px); gap: 5px; padding: 7px;
   }
   #vocal-pad button { width: clamp(42px, 12vw, 50px); height: clamp(42px, 12vw, 50px); font-size: 8px; }
-  .panel { padding: 28px 16px 24px; }
-  .rule-num { text-shadow: 3px 3px 0 var(--ink); }
-  .dur-group { padding: 8px 14px 12px; }
-  .price-card header { padding: 14px 16px 8px; }
+  .overlay { padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); align-items: flex-end; }
+  .panel {
+    width: 100%; max-height: min(92vh, 100%);
+    padding: 24px 14px 22px; border-radius: 18px 18px 14px 14px;
+  }
+  .panel-title { margin-bottom: 8px; }
+  .panel-lead { margin-bottom: 20px; font-size: 14px; }
+  .rules-score::before { left: 17px; }
+  .rule-block { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px 0 18px; }
+  .rule-num span { width: 34px; height: 34px; font-size: 13px; }
+  .status { padding: 10px 12px; font-size: 14px; }
+  .dots li { font-size: 14px; }
+  .price-card::before,
+  .price-card::after { top: 78px; width: 16px; height: 16px; }
+  .dur-group { padding: 10px 14px 12px; }
+  .section-label { padding: 12px 14px 2px; }
+  .price-card header { padding: 14px 14px 12px; }
+  .price-card .sketch { width: 48px; height: 64px; }
+  .price-meta small { font-size: 10px; }
+  .promo-grid p { padding: 14px; }
   #chip {
     top: auto; bottom: calc(112px + env(safe-area-inset-bottom));
     grid-template-columns: 24px minmax(0, 1fr) 24px auto;
