@@ -2778,7 +2778,7 @@ function finishOnboard() {
 function startOnboard() {
   if (!shouldOfferOnboard() || !onboardEl) return;
   onboard.active = true;
-  onboardText.textContent = 'Вітаємо на сцені Art Vibe. На всіх інструментах можна грати, натиснувши на них.';
+  onboardText.textContent = 'Вітаємо на сцені Art Vibe! Сьогодні вона повністю твоя. По ній можна ходити, а на інструментах — грати.';
   onboardEl.hidden = false;
 }
 
