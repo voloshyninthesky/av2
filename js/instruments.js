@@ -493,17 +493,47 @@ export function buildGuitar() {
   bridge.position.set(0, -0.27, holeZ);
   body.add(bridge);
 
-  // neck + fretboard
+  // neck + fretboard (nut → body); frets use real 12-TET spacing
+  const NUT_Y = 1.175;
+  const BRIDGE_Y = -0.26;
+  const SCALE_LEN = NUT_Y - BRIDGE_Y;
+  const FRET_COUNT = 12;
+  const OPEN_FREQS = [82.41, 110.0, 146.83, 196.0, 246.94, 329.63]; // E A D G B E
+  const fretY = (n) => (n <= 0 ? NUT_Y : NUT_Y - SCALE_LEN * (1 - 2 ** (-n / 12)));
+
   const neck = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.78, 0.05), woodMat);
   neck.position.set(0, 0.83, 0.045);
   body.add(neck);
-  const fretboard = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.78, 0.012), woodDark);
+  const fretboard = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.78, 0.012), woodDark);
   fretboard.position.set(0, 0.83, 0.075);
   body.add(fretboard);
-  for (let i = 0; i < 8; i++) {
-    const fret = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.006, 0.014), metal(GOLD, 0.4));
-    fret.position.set(0, 0.5 + i * 0.085, 0.076);
+
+  // nut
+  const nut = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.016), metal(0xf0e6d0, 0.45));
+  nut.position.set(0, NUT_Y, 0.082);
+  body.add(nut);
+
+  const fretMat = metal(GOLD, 0.4);
+  for (let f = 1; f <= FRET_COUNT; f++) {
+    const fret = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.005, 0.014), fretMat);
+    fret.position.set(0, fretY(f), 0.082);
     body.add(fret);
+  }
+  // position markers (3, 5, 7, 9, 12)
+  const dotMat = std(0xf5efe3, { roughness: 0.55 });
+  for (const f of [3, 5, 7, 9, 12]) {
+    const y = (fretY(f - 1) + fretY(f)) * 0.5;
+    if (f === 12) {
+      for (const sx of [-0.018, 0.018]) {
+        const d = new THREE.Mesh(new THREE.CircleGeometry(0.006, 10), dotMat);
+        d.position.set(sx, y, 0.082);
+        body.add(d);
+      }
+    } else {
+      const d = new THREE.Mesh(new THREE.CircleGeometry(0.007, 10), dotMat);
+      d.position.set(0, y, 0.082);
+      body.add(d);
+    }
   }
 
   // headstock + tuners
@@ -519,32 +549,53 @@ export function buildGuitar() {
     }
   }
 
-  // Strings are individually playable. Generous transparent hit strips keep
-  // the real hairline geometry easy to tap on phones.
+  // Strings + playable zones: neck frets change pitch; body taps = open strings.
   const stringMat = metal(0xe8e8f0, 0.2);
   const strings = [];
-  const stringFrequencies = [82.41, 110.0, 146.83, 196.0, 246.94, 329.63];
   const stringWobble = Array(6).fill(0);
   const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const stringXAt = (i, y) => {
+    const t = (y - BRIDGE_Y) / (1.33 - BRIDGE_Y);
+    const xb = -0.042 + i * 0.0168;
+    const xt = -0.028 + i * 0.0112;
+    return xb + (xt - xb) * t;
+  };
   for (let i = 0; i < 6; i++) {
     const xt = -0.028 + i * 0.0112;
     const xb = -0.042 + i * 0.0168;
     const str = cylinderBetween(
-      new THREE.Vector3(xb, -0.26, 0.1),
+      new THREE.Vector3(xb, BRIDGE_Y, 0.1),
       new THREE.Vector3(xt, 1.33, 0.075),
       0.0032, stringMat, 5);
     str.userData.baseX = str.position.x;
     str.userData.phase = i * 1.3;
     str.userData.stringIndex = i;
-    str.userData.stringFreq = stringFrequencies[i];
+    str.userData.stringFreq = OPEN_FREQS[i];
+    str.userData.fret = 0;
     body.add(str);
     strings.push(str);
 
-    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.035, 1.62, 0.055), hitMat);
-    hit.position.set(-0.0875 + i * 0.035, 0.53, 0.105);
-    hit.userData.stringIndex = i;
-    hit.userData.stringFreq = stringFrequencies[i];
-    body.add(hit);
+    // Open-string pluck pad over the soundhole / lower bout
+    const openHit = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.42, 0.05), hitMat);
+    openHit.position.set(stringXAt(i, 0.02), 0.02, 0.11);
+    openHit.userData.stringIndex = i;
+    openHit.userData.stringFreq = OPEN_FREQS[i];
+    openHit.userData.fret = 0;
+    body.add(openHit);
+
+    // One hit cell per fret (fingerboard behind that fret)
+    for (let f = 1; f <= FRET_COUNT; f++) {
+      const y0 = fretY(f - 1);
+      const y1 = fretY(f);
+      const mid = (y0 + y1) * 0.5;
+      const h = Math.max(0.018, y0 - y1);
+      const cell = new THREE.Mesh(new THREE.BoxGeometry(0.028, h * 0.92, 0.04), hitMat);
+      cell.position.set(stringXAt(i, mid), mid, 0.105);
+      cell.userData.stringIndex = i;
+      cell.userData.fret = f;
+      cell.userData.stringFreq = OPEN_FREQS[i] * (2 ** (f / 12));
+      body.add(cell);
+    }
   }
 
   // purple pickguard
@@ -569,7 +620,10 @@ export function buildGuitar() {
   guitar.add(stand);
 
   markInteract(body, { instrument: 'guitar' });
-  guitar.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  guitar.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = o.material !== hitMat;
+  });
 
   let wobble = 0, time = 0;
 

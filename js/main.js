@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-68';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-69';
 import { UI } from './ui.js?v=20260724-65';
 
 // ---- error collector (debug / headless testing) ----
@@ -1088,7 +1088,7 @@ const INSTRUMENT_VIEW_PRESETS = {
     mascot: new THREE.Vector3(0, 0.15, -1.05),
     yaw: 0,
     seated: true,
-    approach: [new THREE.Vector3(-1.55, 0, -1.3)],
+    approach: [],
     camera: new THREE.Vector3(1.2, 2.18, -2.2),
     cameraMobile: new THREE.Vector3(1.42, 2.52, -2.75),
     target: new THREE.Vector3(0, 0.94, 0.05),
@@ -1110,9 +1110,10 @@ const INSTRUMENT_VIEW_PRESETS = {
     yaw: -2.32,
     seated: false,
     approach: [],
-    camera: new THREE.Vector3(-1.55, 1.8, 2.45),
-    cameraMobile: new THREE.Vector3(-1.9, 2.14, 3.08),
-    target: new THREE.Vector3(0, 0.94, 0.05),
+    // Frame the neck so frets are readable while playing.
+    camera: new THREE.Vector3(-1.35, 1.95, 2.2),
+    cameraMobile: new THREE.Vector3(-1.7, 2.25, 2.75),
+    target: new THREE.Vector3(0, 0.88, 0.06),
     arms: [-1.05, -0.66],
   },
   mic: {
@@ -1857,10 +1858,11 @@ function playTokenForMesh(mesh) {
   const u = mesh.userData;
   if (u.freq !== undefined) return `piano:${u.freq}`;
   if (u.part) return `drum:${u.part}`;
+  if (u.stringFreq !== undefined) return `guitar:${u.stringIndex ?? 0}:${u.fret ?? 0}:${u.stringFreq}`;
   return `id:${mesh.id}`;
 }
 
-// Track each finger separately so piano chords / drum kits can be played multitouch.
+// Track each finger separately so piano chords / drum kits / fretted guitar can be multitouch.
 const activePointers = new Map();
 
 canvas.addEventListener('pointerdown', (e) => {
@@ -1888,10 +1890,23 @@ canvas.addEventListener('pointerdown', (e) => {
   {
     const mesh = hitInteractableAt(e.clientX, e.clientY);
     if (mesh && mesh.userData.instrument === 'guitar') {
-      // Prefer strum gestures over orbit whenever the finger starts on the guitar.
       e.preventDefault();
       e.stopImmediatePropagation();
       try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+
+      // Neck frets (fret ≥ 1): tap / slide to note. Body / open (fret 0): swipe-strum.
+      if (isGuitarPlayFocus() && (mesh.userData.fret ?? 0) > 0) {
+        activePointers.set(e.pointerId, {
+          mode: 'play',
+          x: e.clientX,
+          y: e.clientY,
+          t: performance.now(),
+          token: playTokenForMesh(mesh),
+        });
+        trigger(mesh);
+        return;
+      }
+
       activePointers.set(e.pointerId, {
         mode: 'guitar-strum',
         x: e.clientX,
@@ -1922,9 +1937,11 @@ canvas.addEventListener('pointermove', (e) => {
   if (!info) return;
 
   if (info.mode === 'play') {
-    if (!isMultiTouchInstrumentFocus()) return;
+    const allowGuitarFret = isGuitarPlayFocus();
+    if (!isMultiTouchInstrumentFocus() && !allowGuitarFret) return;
     const mesh = hitInteractableAt(e.clientX, e.clientY);
     if (!mesh || mesh.userData.instrument !== instrumentView.kind) return;
+    if (allowGuitarFret && instrumentView.kind === 'guitar' && !(mesh.userData.fret > 0)) return;
     const token = playTokenForMesh(mesh);
     if (token === info.token) return;
     info.token = token;
