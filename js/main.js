@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-69';
-import { UI } from './ui.js?v=20260725-03';
+import { UI } from './ui.js?v=20260725-06';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -1526,6 +1526,7 @@ function setMascotDestination(point) {
   mascotMove.waypoints.length = 0;
   mascotMove.destination = clampMascotPoint(point.clone());
   controls.autoRotate = false;
+  finishOnboard();
 }
 
 function beginMascotFall(direction) {
@@ -1791,6 +1792,7 @@ function updateMascot(dt) {
   if (direction.lengthSq() > 0) {
     if (instrumentView.phase === 'approaching') leaveInstrumentView({ immediate: true });
     mascotMove.destination = null;
+    if (mascotMove.keys.size || joystickInput.lengthSq() > 0) finishOnboard();
   }
   else if (mascotMove.destination) {
     direction.subVectors(mascotMove.destination, mascot.group.position).setY(0);
@@ -2267,7 +2269,10 @@ function runMusicalVisual(event, feedback) {
 function playMusicalEvent(event, { record = true, at = null, feedback = true } = {}) {
   audio.init();
   audio.resume();
-  if (record) captureLoopEvent(event);
+  if (record) {
+    captureLoopEvent(event);
+    finishOnboard();
+  }
 
   const startAt = Number.isFinite(at) ? at : null;
   const velocity = event.vel ?? 1;
@@ -2661,7 +2666,10 @@ function handleClick(e) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Escape') leaveInstrumentView();
+  if (e.code === 'Escape') {
+    finishOnboard();
+    leaveInstrumentView();
+  }
   if (!started || ui.modalOpen) return;
   if (e.code.startsWith('Arrow')) {
     e.preventDefault();
@@ -2738,6 +2746,62 @@ const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) 
 const enterBtn = document.getElementById('enter-btn');
 const enterLabel = document.getElementById('enter-label');
 const intro = document.getElementById('intro');
+const onboardEl = document.getElementById('onboard');
+const onboardText = document.getElementById('onboard-text');
+const onboardOk = document.getElementById('onboard-ok');
+const ONBOARD_KEY = 'av2.onboard.v1';
+const onboard = { active: false, pulsing: false };
+
+function shouldOfferOnboard() {
+  if (new URLSearchParams(location.search).has('skiponboard')) return false;
+  try { return !localStorage.getItem(ONBOARD_KEY); } catch { return true; }
+}
+
+function clearOnboardPulse() {
+  if (!onboard.pulsing) return;
+  onboard.pulsing = false;
+  mic.group.traverse((o) => {
+    if (!o.isMesh || !o.material?.emissive || o.userData._baseEmissive === undefined) return;
+    o.material.emissive.setHex(o.userData._baseEmissive);
+    o.material.emissiveIntensity = o.userData._baseEI;
+  });
+}
+
+function finishOnboard() {
+  if (!onboard.active) return;
+  onboard.active = false;
+  try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* ignore */ }
+  if (onboardEl) onboardEl.hidden = true;
+  clearOnboardPulse();
+}
+
+function startOnboard() {
+  if (!shouldOfferOnboard() || !onboardEl) return;
+  onboard.active = true;
+  onboardText.textContent = 'Вітаємо на сцені Art Vibe. На всіх інструментах можна грати, натиснувши на них.';
+  onboardEl.hidden = false;
+}
+
+function updateOnboardPulse(t) {
+  if (!onboard.active || prefersReducedMotion.matches) return;
+  if (hovered && hovered.userData.instrument !== 'mic') return;
+  const intensity = 0.12 + 0.22 * (0.5 + 0.5 * Math.sin(t * 2.6));
+  mic.group.traverse((o) => {
+    if (!o.isMesh || !o.material?.emissive) return;
+    if (o.userData._baseEmissive === undefined) {
+      o.userData._baseEmissive = o.material.emissive.getHex();
+      o.userData._baseEI = o.material.emissiveIntensity ?? 1;
+    }
+    o.material.emissive.setHex(0x9E33CA);
+    o.material.emissiveIntensity = intensity;
+  });
+  onboard.pulsing = true;
+}
+
+onboardOk?.addEventListener('click', finishOnboard);
+onboardEl?.addEventListener('click', (e) => {
+  if (e.target === onboardEl || e.target === onboardText) finishOnboard();
+});
 
 function startExperience(withAudio = true) {
   if (started) return;
@@ -2807,6 +2871,7 @@ function animate() {
       flyT = -1;
       controls.enabled = true;
       ui.showHUD();
+      startOnboard();
       if (!isMobileGameMode()) {
         idleTimer = setTimeout(() => {
           if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
@@ -2821,6 +2886,7 @@ function animate() {
   for (const inst of instruments) inst.update(dt, t);
   updateMascot(dt);
   updateMobilePlayAvailability();
+  updateOnboardPulse(t);
 
   // stage atmosphere (materials/motion only — lights unchanged)
   if (!prefersReducedMotion.matches) {
@@ -2922,6 +2988,7 @@ Promise.race([
     camera.lookAt(TARGET);
     controls.enabled = true;
     ui.showHUD();
+    startOnboard();
   } else {
     enterBtn.disabled = false;
     enterBtn.classList.add('ready');

@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260725-03">
+<link rel="stylesheet" href="css/style.css?v=20260725-06">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -112,6 +112,10 @@
   <button id="chip-cta" class="pill-btn gold small">ЦІНИ ›</button>
 </div>
 <div id="toast" class="mono" hidden></div>
+<div id="onboard" class="mono" hidden role="status">
+  <p id="onboard-text">Вітаємо на сцені Art Vibe. На всіх інструментах можна грати, натиснувши на них.</p>
+  <button type="button" id="onboard-ok" class="pill-btn gold small">ЗРОЗУМІЛО</button>
+</div>
 
 <div id="vocal-pad" hidden aria-label="Ноти вокалу">
   <button type="button" data-vocal-freq="261.63" data-vocal-vowel="0" aria-label="Нота До">ДО</button>
@@ -302,6 +306,6 @@
 
 <div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
 
-<script type="module" src="js/main.js?v=20260725-05"></script>
+<script type="module" src="js/main.js?v=20260725-07"></script>
 </body>
 </html>
