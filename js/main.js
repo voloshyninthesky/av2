@@ -7,7 +7,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { AudioEngine } from './audio.js?v=20260721-15';
+import { AudioEngine } from './audio.js?v=20260726-21';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260726-03';
 import { UI } from './ui.js?v=20260725-06';
 
@@ -55,6 +55,17 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 const CAM_START = new THREE.Vector3(0, 9.5, 18.5);
 const CAM_END = new THREE.Vector3(0, 3.05, 10.45);
 const TARGET = new THREE.Vector3(0, 1.45, -0.3);
+const ZOOM_IN_STEP = 0.82;
+// Match three "+" presses for a closer stage start.
+const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 3;
+// Allow two extra "+" presses past the previous closest zoom.
+const EXTRA_ZOOM_IN_LEVELS = 2;
+const STAGE_MIN_DISTANCE = 5 * (ZOOM_IN_STEP ** EXTRA_ZOOM_IN_LEVELS);
+const FOCUSED_MIN_DISTANCE = 1.05 * (ZOOM_IN_STEP ** EXTRA_ZOOM_IN_LEVELS);
+
+function pullCameraTowardTarget(point, factor = START_ZOOM_FACTOR) {
+  point.sub(TARGET).multiplyScalar(factor).add(TARGET);
+}
 
 function fitCameraToViewport() {
   const portrait = window.innerWidth / window.innerHeight < 1;
@@ -75,6 +86,7 @@ function fitCameraToViewport() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMappingExposure = 1.12;
   }
+  pullCameraTowardTarget(CAM_END);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 }
@@ -90,26 +102,26 @@ controls.target.copy(TARGET);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.enablePan = false;
-controls.minDistance = 5;
+controls.minDistance = STAGE_MIN_DISTANCE;
 controls.minPolarAngle = 0.7;
 controls.maxPolarAngle = 1.47;
 controls.autoRotateSpeed = 0.55;
 controls.enabled = false;
 
-// Classic orbit on all devices; mobile is slower + softer so kids don't overshoot.
+// Classic orbit on all devices; keep it soft so kids don't overshoot.
 function applyMobileOrbitPolicy() {
   controls.touches.ONE = THREE.TOUCH.ROTATE;
   controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
   if (isMobileGameMode()) {
-    controls.rotateSpeed = 0.52;
-    controls.zoomSpeed = 0.7;
-    controls.dampingFactor = 0.1;
+    controls.rotateSpeed = 0.3;
+    controls.zoomSpeed = 0.42;
+    controls.dampingFactor = 0.16;
     controls.minPolarAngle = 0.55;
     controls.maxPolarAngle = 1.52;
   } else {
-    controls.rotateSpeed = 1;
-    controls.zoomSpeed = 1;
-    controls.dampingFactor = 0.06;
+    controls.rotateSpeed = 0.48;
+    controls.zoomSpeed = 0.58;
+    controls.dampingFactor = 0.12;
     controls.minPolarAngle = 0.7;
     controls.maxPolarAngle = 1.47;
   }
@@ -1312,7 +1324,7 @@ function restoreInstrumentControlLimits(home = instrumentView.home) {
 }
 
 function applyFocusedControlLimits() {
-  controls.minDistance = 1.05;
+  controls.minDistance = FOCUSED_MIN_DISTANCE;
   controls.maxDistance = isMobileGameMode() ? 5.5 : 4.4;
   controls.minPolarAngle = 0.42;
   controls.maxPolarAngle = 1.48;
@@ -1469,7 +1481,7 @@ function zoomScene(factor) {
 
 zoomIn.addEventListener('pointerdown', (event) => {
   event.preventDefault();
-  zoomScene(0.82);
+  zoomScene(ZOOM_IN_STEP);
 });
 zoomOut.addEventListener('pointerdown', (event) => {
   event.preventDefault();
@@ -1896,6 +1908,10 @@ function isGuitarPlayFocus() {
   return instrumentView.phase === 'focused' && instrumentView.kind === 'guitar';
 }
 
+function canPlayInstrument(kind) {
+  return instrumentView.phase === 'focused' && instrumentView.kind === kind;
+}
+
 // Open strings when nothing is held; pad chords only while a chord button is pressed.
 const GUITAR_OPEN_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
 const GUITAR_CHORDS = {
@@ -2047,12 +2063,21 @@ canvas.addEventListener('pointermove', (e) => {
     const over = hitInteractableAt(e.clientX, e.clientY);
     if (over?.userData.instrument !== 'guitar' && !info.strummed) return;
 
+    // Far-away swipe: walk over, no preview strum.
+    if (!isGuitarPlayFocus()) {
+      if (!info.approached) {
+        info.approached = true;
+        walkMascotToInstrument('guitar');
+      }
+      info.travel = 0;
+      return;
+    }
+
     const vel = Math.min(1.15, 0.72 + info.travel / 90);
     fireGuitarStrum(vel);
     info.lastStrumAt = now;
     info.travel = 0;
     info.strummed = true;
-    if (!isGuitarPlayFocus()) walkMascotToInstrument('guitar');
   }
 }, { capture: true, passive: true });
 
@@ -2062,17 +2087,16 @@ function endActivePointer(e) {
   if (!info) return;
 
   if (info.mode === 'guitar-strum') {
-    if (info.strummed) return;
+    if (info.strummed || info.approached) return;
     const dx = e.clientX - info.x;
     const dy = e.clientY - info.y;
     const dt = performance.now() - info.t;
     const tapTolerance = isMobileGameMode() ? 28 : 8;
     if (Math.hypot(dx, dy) < tapTolerance && dt < 600) {
       const mesh = hitInteractableAt(e.clientX, e.clientY) || info.hitMesh;
-      if (mesh) {
-        trigger(mesh);
-        if (!isGuitarPlayFocus()) walkMascotToInstrument('guitar');
-      }
+      if (!mesh) return;
+      if (isGuitarPlayFocus()) trigger(mesh);
+      else walkMascotToInstrument('guitar');
     }
     return;
   }
@@ -2725,8 +2749,10 @@ function handleClick(e) {
   const hits = raycaster.intersectObjects(interactables, false);
   if (hits.length) {
     const hit = hits[0].object;
-    trigger(hit);
-    walkMascotToInstrument(hit.userData.instrument);
+    const kind = hit.userData.instrument;
+    // Sound only while focused on that instrument — distant tap just walks over.
+    if (canPlayInstrument(kind)) trigger(hit);
+    else walkMascotToInstrument(kind);
     return;
   }
   const walkPoint = new THREE.Vector3();
@@ -2780,13 +2806,96 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// ---- sound toggle ----
+// ---- sound mixer (HUD) — per-instrument levels + master mute ----
+const soundMixer = document.getElementById('sound-mixer');
+const soundMuteBtn = document.getElementById('sound-mute-btn');
+const soundFaders = [...(soundMixer?.querySelectorAll('input[data-bus]') || [])];
 let muted = false;
-ui.el.soundBtn.addEventListener('click', () => {
-  muted = !muted;
-  audio.setMuted(muted);
+
+function silenceHeldVocal() {
+  clearInterval(heldVocalPulseTimer);
+  finishHeldLoopCapture();
+  audio.stopVocal(heldVocal);
+  heldVocalButton?.classList.remove('playing');
+  heldVocal = null;
+  heldVocalButton = null;
+}
+
+function syncSoundMuteUi() {
   ui.setSoundMuted(muted);
+  if (soundMuteBtn) {
+    soundMuteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    soundMuteBtn.textContent = muted ? 'УВІМК' : 'ВИМК';
+  }
+}
+
+function setMasterMuted(next) {
+  muted = Boolean(next);
+  audio.init();
+  audio.setMuted(muted);
+  if (muted) silenceHeldVocal();
+  syncSoundMuteUi();
+}
+
+function closeSoundMixer() {
+  if (!soundMixer || soundMixer.hidden) return;
+  soundMixer.hidden = true;
+  ui.el.soundBtn?.setAttribute('aria-expanded', 'false');
+}
+
+function openSoundMixer() {
+  if (!soundMixer) return;
+  ui.closeNav();
+  audio.init();
+  audio.resume();
+  for (const fader of soundFaders) {
+    fader.value = String(Math.round((audio.getLevel(fader.dataset.bus) ?? 1) * 100));
+  }
+  soundMixer.hidden = false;
+  ui.el.soundBtn?.setAttribute('aria-expanded', 'true');
+  syncSoundMuteUi();
+}
+
+ui.el.soundBtn?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (soundMixer?.hidden) openSoundMixer();
+  else closeSoundMixer();
 });
+
+soundMuteBtn?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  setMasterMuted(!muted);
+});
+
+for (const fader of soundFaders) {
+  fader.addEventListener('pointerdown', (event) => event.stopPropagation());
+  fader.addEventListener('input', () => {
+    audio.init();
+    audio.setLevel(fader.dataset.bus, Number(fader.value) / 100);
+    if (fader.dataset.bus === 'mic' && Number(fader.value) <= 0) silenceHeldVocal();
+  });
+}
+
+document.addEventListener('pointerdown', (event) => {
+  if (!soundMixer || soundMixer.hidden) return;
+  if (event.target.closest('.sound-wrap')) return;
+  closeSoundMixer();
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeSoundMixer();
+});
+
+const _uiToggleNav = ui.toggleNav.bind(ui);
+ui.toggleNav = (...args) => {
+  closeSoundMixer();
+  return _uiToggleNav(...args);
+};
+const _uiOpen = ui.open.bind(ui);
+ui.open = (...args) => {
+  closeSoundMixer();
+  return _uiOpen(...args);
+};
 
 // ============================================================
 // POST-PROCESSING

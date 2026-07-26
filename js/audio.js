@@ -3,9 +3,13 @@
 // ============================================================
 
 export class AudioEngine {
+  static BUS_KEYS = ['drums', 'piano', 'guitar', 'mic'];
+
   constructor() {
     this.ctx = null;
     this.master = null;
+    this.buses = { drums: null, piano: null, guitar: null, mic: null };
+    this.levels = { drums: 1, piano: 1, guitar: 0.6, mic: 1 };
     this.muted = false;
     this._noise = null;
     this._ksCache = new Map();
@@ -18,7 +22,15 @@ export class AudioEngine {
     this.ctx = new AC();
 
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.9;
+    // Honor mute chosen before the context existed (HUD sound button).
+    this.master.gain.value = this.muted ? 0 : 0.9;
+
+    for (const key of AudioEngine.BUS_KEYS) {
+      const bus = this.ctx.createGain();
+      bus.gain.value = this.levels[key];
+      bus.connect(this.master);
+      this.buses[key] = bus;
+    }
 
     const comp = this.ctx.createDynamicsCompressor();
     comp.threshold.value = -18;
@@ -39,8 +51,40 @@ export class AudioEngine {
   resume() { this.ctx && this.ctx.state === 'suspended' && this.ctx.resume(); }
 
   setMuted(m) {
-    this.muted = m;
-    if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.02);
+    this.muted = Boolean(m);
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setValueAtTime(this.muted ? 0 : 0.9, t);
+    if (this.muted) {
+      for (const voice of [...this._activeVocals]) voice.cancel?.();
+    }
+  }
+
+  getLevel(kind) {
+    return this.levels[kind] ?? 1;
+  }
+
+  setLevel(kind, value) {
+    if (!AudioEngine.BUS_KEYS.includes(kind)) return;
+    const level = Math.max(0, Math.min(1, Number(value)));
+    this.levels[kind] = Number.isFinite(level) ? level : 1;
+    if (this.buses[kind] && this.ctx) {
+      const t = this.ctx.currentTime;
+      this.buses[kind].gain.cancelScheduledValues(t);
+      this.buses[kind].gain.setValueAtTime(this.levels[kind], t);
+    }
+    if (kind === 'mic' && this.levels.mic <= 0.001) {
+      for (const voice of [...this._activeVocals]) voice.cancel?.();
+    }
+  }
+
+  _bus(kind) {
+    return this.buses[kind] || this.master;
+  }
+
+  _silent() {
+    return !this.ctx || this.muted;
   }
 
   _env(gainNode, t, peak, attack, decay) {
@@ -66,7 +110,7 @@ export class AudioEngine {
   // ---------------- DRUMS ----------------
 
   kick(vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -74,7 +118,7 @@ export class AudioEngine {
     osc.frequency.setValueAtTime(155, t);
     osc.frequency.exponentialRampToValueAtTime(44, t + 0.11);
     this._env(g, t, 0.95 * vel, 0.004, 0.34);
-    osc.connect(g).connect(this.master);
+    osc.connect(g).connect(this._bus('drums'));
     osc.start(t); osc.stop(t + 0.4);
 
     // beater click
@@ -83,30 +127,30 @@ export class AudioEngine {
     hp.type = 'highpass'; hp.frequency.value = 1200;
     const ng = this.ctx.createGain();
     this._env(ng, t, 0.25 * vel, 0.001, 0.03);
-    n.connect(hp).connect(ng).connect(this.master);
+    n.connect(hp).connect(ng).connect(this._bus('drums'));
   }
 
   snare(vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const n = this._noiseSrc(t, 0.22);
     const bp = this.ctx.createBiquadFilter();
     bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.8;
     const ng = this.ctx.createGain();
     this._env(ng, t, 0.55 * vel, 0.002, 0.19);
-    n.connect(bp).connect(ng).connect(this.master);
+    n.connect(bp).connect(ng).connect(this._bus('drums'));
 
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(195, t);
     this._env(g, t, 0.32 * vel, 0.002, 0.1);
-    osc.connect(g).connect(this.master);
+    osc.connect(g).connect(this._bus('drums'));
     osc.start(t); osc.stop(t + 0.15);
   }
 
   hihat(open = false, vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const dur = open ? 0.32 : 0.06;
     const n = this._noiseSrc(t, dur);
@@ -114,11 +158,11 @@ export class AudioEngine {
     hp.type = 'highpass'; hp.frequency.value = 7800;
     const g = this.ctx.createGain();
     this._env(g, t, 0.28 * vel, 0.001, dur);
-    n.connect(hp).connect(g).connect(this.master);
+    n.connect(hp).connect(g).connect(this._bus('drums'));
   }
 
   crash(vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const n = this._noiseSrc(t, 1.4);
     const hp = this.ctx.createBiquadFilter();
@@ -127,11 +171,11 @@ export class AudioEngine {
     bp.type = 'bandpass'; bp.frequency.value = 8200; bp.Q.value = 1.6;
     const g = this.ctx.createGain();
     this._env(g, t, 0.4 * vel, 0.004, 1.3);
-    n.connect(hp).connect(bp).connect(g).connect(this.master);
+    n.connect(hp).connect(bp).connect(g).connect(this._bus('drums'));
   }
 
   tom(freq = 120, vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -139,14 +183,14 @@ export class AudioEngine {
     osc.frequency.setValueAtTime(freq * 1.4, t);
     osc.frequency.exponentialRampToValueAtTime(freq * 0.72, t + 0.16);
     this._env(g, t, 0.6 * vel, 0.004, 0.42);
-    osc.connect(g).connect(this.master);
+    osc.connect(g).connect(this._bus('drums'));
     osc.start(t); osc.stop(t + 0.5);
   }
 
   // ---------------- PIANO ----------------
 
   piano(freq, vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const out = this.ctx.createGain();
     this._env(out, t, 0.5 * vel, 0.006, 1.6);
@@ -154,7 +198,7 @@ export class AudioEngine {
     lp.type = 'lowpass';
     lp.frequency.setValueAtTime(Math.min(4200, freq * 6), t);
     lp.frequency.exponentialRampToValueAtTime(Math.max(600, freq * 1.5), t + 1.1);
-    out.connect(lp).connect(this.master);
+    out.connect(lp).connect(this._bus('piano'));
 
     const partials = [
       { mult: 1, type: 'triangle', gain: 1 },
@@ -199,7 +243,7 @@ export class AudioEngine {
   }
 
   pluck(freq, vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this._at(at);
     const src = this.ctx.createBufferSource();
     src.buffer = this._ksBuffer(freq);
@@ -207,13 +251,13 @@ export class AudioEngine {
     g.gain.setValueAtTime(0.75 * vel, t);
     const lp = this.ctx.createBiquadFilter();
     lp.type = 'lowpass'; lp.frequency.value = 5200;
-    src.connect(lp).connect(g).connect(this.master);
+    src.connect(lp).connect(g).connect(this._bus('guitar'));
     src.start(t);
     src.stop(t + 2.2);
   }
 
   strum(freqs, vel = 1, at = null) {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const base = this._at(at);
     freqs.forEach((f, i) => this.pluck(f, vel * (0.85 + Math.random() * 0.3), base + i * 0.042));
   }
@@ -221,12 +265,12 @@ export class AudioEngine {
   // ---------------- MIC / VOCAL ----------------
 
   startVocal(freq = 329.63, vowel = 1, vel = 1, at = null) {
-    if (!this.ctx) return null;
+    if (this._silent()) return null;
     const t = this._at(at);
     const out = this.ctx.createGain();
     out.gain.setValueAtTime(0.0001, t);
     out.gain.exponentialRampToValueAtTime(0.26 * vel, t + 0.035);
-    out.connect(this.master);
+    out.connect(this._bus('mic'));
 
     const formants = [
       [[800, 5, 1], [1200, 7, 0.45]],
@@ -326,7 +370,7 @@ export class AudioEngine {
   }
 
   micCheck() {
-    if (!this.ctx) return;
+    if (this._silent()) return;
     const t = this.ctx.currentTime;
     // little feedback-ish "woo" — a gliding saw through a formant bandpass
     const osc = this.ctx.createOscillator();
@@ -343,7 +387,7 @@ export class AudioEngine {
     bp.type = 'bandpass'; bp.frequency.value = 1050; bp.Q.value = 2.2;
     const g = this.ctx.createGain();
     this._env(g, t, 0.34, 0.03, 0.55);
-    osc.connect(bp).connect(g).connect(this.master);
+    osc.connect(bp).connect(g).connect(this._bus('mic'));
     osc.start(t); vib.start(t);
     osc.stop(t + 0.65); vib.stop(t + 0.65);
 
@@ -352,6 +396,6 @@ export class AudioEngine {
     const hp = this.ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
     const ng = this.ctx.createGain();
     this._env(ng, t + 0.02, 0.12, 0.001, 0.02);
-    n.connect(hp).connect(ng).connect(this.master);
+    n.connect(hp).connect(ng).connect(this._bus('mic'));
   }
 }
