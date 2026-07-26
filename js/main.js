@@ -2113,6 +2113,20 @@ document.addEventListener('dragstart', (e) => {
   e.preventDefault();
 }, { capture: true });
 
+// Mobile Safari: block pinch / double-tap page zoom that breaks the fixed layout.
+document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
+{
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
+    const now = performance.now();
+    if (now - lastTouchEnd < 320) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false, capture: true });
+}
+
 // ---- vibe ----
 let vibe = 0, lastVibeAdd = 0, vibeCooldown = 0;
 let loopUnlocked = false;

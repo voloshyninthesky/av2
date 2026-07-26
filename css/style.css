@@ -32,6 +32,9 @@ html, body {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+  /* Kill iOS Safari double-tap zoom without blocking taps */
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 /* Keep readable panels copyable (rules, pricing). */
@@ -39,6 +42,12 @@ html, body {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
+}
+.panel { touch-action: pan-y; }
+#intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
+#zoom-controls, #loop-pedal, #vocal-pad, .overlay,
+button, a, .pill-btn, .icon-btn, .nav-btn {
+  touch-action: manipulation;
 }
 
 .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
