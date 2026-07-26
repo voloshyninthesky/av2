@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260726-21">
+<link rel="stylesheet" href="css/style.css?v=20260726-22">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -272,22 +272,10 @@
       <div class="mixer-section">
         <span class="mixer-label mono" id="lbl-instrument">НАПРЯМОК</span>
         <div class="inst-grid" role="radiogroup" aria-labelledby="lbl-instrument">
-          <button type="button" class="inst-btn is-on" data-instrument="vocal" role="radio" aria-checked="true">
-            <svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6c-4 0-6 3-6 7v6c0 4 2 7 6 7s6-3 6-7v-6c0-4-2-7-6-7z"/><path d="M12 18v1c0 5 3.5 8 8 8s8-3 8-8v-1"/><path d="M20 27v6M14 33h12"/></g></svg>
-            <span>Вокал</span>
-          </button>
-          <button type="button" class="inst-btn" data-instrument="guitar" role="radio" aria-checked="false">
-            <svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="15" cy="24" rx="8" ry="9"/><path d="M21 18 33 6"/><path d="M29 6h5v5"/><circle cx="15" cy="24" r="3"/></g></svg>
-            <span>Гітара</span>
-          </button>
-          <button type="button" class="inst-btn" data-instrument="drums" role="radio" aria-checked="false">
-            <svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="18" cy="24" rx="9" ry="6"/><path d="M9 24v5c0 3 4 5 9 5s9-2 9-5v-5"/><path d="M24 14l8-6M26 16l7-4"/><circle cx="33" cy="7" r="2.2"/></g></svg>
-            <span>Барабани</span>
-          </button>
-          <button type="button" class="inst-btn" data-instrument="piano" role="radio" aria-checked="false">
-            <svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="12" width="28" height="18" rx="2"/><path d="M13 12v18M20 12v18M27 12v18M10 22h4M17 22h4M24 22h4"/></g></svg>
-            <span>Фортепіано</span>
-          </button>
+          <button type="button" class="inst-btn is-on" data-instrument="vocal" role="radio" aria-checked="true">Вокал</button>
+          <button type="button" class="inst-btn" data-instrument="guitar" role="radio" aria-checked="false">Гітара</button>
+          <button type="button" class="inst-btn" data-instrument="drums" role="radio" aria-checked="false">Барабани</button>
+          <button type="button" class="inst-btn" data-instrument="piano" role="radio" aria-checked="false">Фортепіано</button>
         </div>
       </div>
 
@@ -344,6 +332,6 @@
 
 <div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
 
-<script type="module" src="js/main.js?v=20260726-21"></script>
+<script type="module" src="js/main.js?v=20260726-22"></script>
 </body>
 </html>
