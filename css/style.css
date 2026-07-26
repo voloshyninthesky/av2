@@ -473,7 +473,16 @@ button, a, .pill-btn, .icon-btn, .nav-btn {
   display: flex; align-items: flex-end; justify-content: space-between;
   padding: 0 22px 22px; pointer-events: none;
 }
-#move-stick, #mobile-play {
+/* Small grab pad around the home stick — leave most of the screen free for orbit/zoom. */
+#move-zone {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#move-stick, #mobile-play, #mobile-exit {
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; user-select: none;
@@ -481,18 +490,26 @@ button, a, .pill-btn, .icon-btn, .nav-btn {
   transition: opacity .28s ease, transform .28s ease;
 }
 #move-stick {
-  position: relative; width: 96px; height: 96px; border-radius: 50%;
+  position: absolute; left: 4px; bottom: 0;
+  width: 108px; height: 108px; border-radius: 50%;
   border: 1px solid rgba(209, 161, 59, .32);
   background: rgba(23, 18, 28, .42);
   box-shadow: inset 0 0 18px rgba(158, 51, 202, .12), 0 4px 16px rgba(0, 0, 0, .28);
   backdrop-filter: blur(8px); touch-action: none;
+  opacity: .58;
 }
+#move-stick.floating {
+  position: fixed; left: auto; right: auto; bottom: auto; margin: 0;
+  transform: translate(-50%, -50%);
+  opacity: 1; z-index: 45;
+}
+#move-stick.engaged { opacity: 1; }
 .stick-arrows {
   position: absolute; inset: 0; display: grid; place-items: center;
   color: rgba(209, 161, 59, .18); font-size: 40px; transform: rotate(45deg); pointer-events: none;
 }
 #move-thumb {
-  position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; border-radius: 50%;
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; border-radius: 50%;
   transform: translate(-50%, -50%);
   background: linear-gradient(145deg, rgba(232, 193, 105, .95), rgba(209, 161, 59, .92));
   border: 1px solid rgba(253, 251, 247, .55);
@@ -500,7 +517,12 @@ button, a, .pill-btn, .icon-btn, .nav-btn {
   pointer-events: none; transition: transform .1s ease-out;
 }
 #move-stick.engaged #move-thumb { transition: none; }
-#mobile-play {
+#mobile-actions {
+  position: relative;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  pointer-events: none;
+}
+#mobile-play, #mobile-exit {
   width: 78px; height: 78px; border-radius: 50%; border: 2px solid rgba(209, 161, 59, .75);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   background: rgba(92, 24, 118, .82); color: var(--cream);
@@ -509,6 +531,13 @@ button, a, .pill-btn, .icon-btn, .nav-btn {
   backdrop-filter: blur(8px);
   touch-action: none;
 }
+#mobile-exit {
+  width: 56px; height: 56px; border-color: rgba(253, 251, 247, .5);
+  background: rgba(23, 18, 28, .88);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .4), 0 0 14px rgba(209, 161, 59, .3);
+  font-size: 22px; line-height: 1; color: var(--gold); letter-spacing: 0;
+}
+#mobile-exit:active, #mobile-exit.pressed,
 #mobile-play:active, #mobile-play.pressed { transform: scale(.94); }
 #mobile-play.performing { animation: playPulse .48s ease-in-out infinite alternate; }
 #mobile-play:disabled {
@@ -528,7 +557,11 @@ button, a, .pill-btn, .icon-btn, .nav-btn {
   to { filter: brightness(1.15); box-shadow: 0 4px 18px rgba(0, 0, 0, .35), 0 0 22px rgba(209, 161, 59, .5); }
 }
 
-/* Stage-first: tuck chrome while seated at an instrument */
+/* Stage-first: tuck walk chrome while seated; keep exit */
+html[data-instrument-view="approaching"] #move-zone,
+html[data-instrument-view="entering"] #move-zone,
+html[data-instrument-view="focused"] #move-zone,
+html[data-instrument-view="approaching"] #move-stick,
 html[data-instrument-view="entering"] #move-stick,
 html[data-instrument-view="focused"] #move-stick,
 html[data-instrument-view="entering"] #zoom-controls,
@@ -537,11 +570,11 @@ html[data-instrument-view="entering"] #mobile-play-hint,
 html[data-instrument-view="focused"] #mobile-play-hint {
   opacity: 0 !important;
   pointer-events: none !important;
-  transform: scale(.86);
 }
+html[data-instrument-view="approaching"] #mobile-play,
 html[data-instrument-view="entering"] #mobile-play,
 html[data-instrument-view="focused"] #mobile-play {
-  opacity: .38;
+  display: none !important;
 }
 html[data-instrument-view="focused"] #hud {
   opacity: .72;
@@ -980,9 +1013,11 @@ html[data-instrument-view="focused"] #hud {
 }
 
 @media (max-width: 390px) {
-  #move-stick { width: 86px; height: 86px; }
-  #move-thumb { width: 36px; height: 36px; }
+  #move-zone { width: 118px; height: 118px; }
+  #move-stick { width: 96px; height: 96px; }
+  #move-thumb { width: 40px; height: 40px; }
   #mobile-play { width: 70px; height: 70px; font-size: 9px; }
+  #mobile-exit { width: 52px; height: 52px; font-size: 20px; }
   #mobile-play-hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); width: min(180px, 62vw); font-size: 7px; }
   #zoom-controls { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 96px); }
   #loop-pedal { right: calc(max(14px, env(safe-area-inset-right)) + 78px); }

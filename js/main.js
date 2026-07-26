@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260721-15';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260724-69';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260726-03';
 import { UI } from './ui.js?v=20260725-06';
 
 // ---- error collector (debug / headless testing) ----
@@ -95,6 +95,26 @@ controls.minPolarAngle = 0.7;
 controls.maxPolarAngle = 1.47;
 controls.autoRotateSpeed = 0.55;
 controls.enabled = false;
+
+// Classic orbit on all devices; mobile is slower + softer so kids don't overshoot.
+function applyMobileOrbitPolicy() {
+  controls.touches.ONE = THREE.TOUCH.ROTATE;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+  if (isMobileGameMode()) {
+    controls.rotateSpeed = 0.52;
+    controls.zoomSpeed = 0.7;
+    controls.dampingFactor = 0.1;
+    controls.minPolarAngle = 0.55;
+    controls.maxPolarAngle = 1.52;
+  } else {
+    controls.rotateSpeed = 1;
+    controls.zoomSpeed = 1;
+    controls.dampingFactor = 0.06;
+    controls.minPolarAngle = 0.7;
+    controls.maxPolarAngle = 1.47;
+  }
+}
+applyMobileOrbitPolicy();
 
 // ============================================================
 // STAGE ENVIRONMENT
@@ -1068,40 +1088,6 @@ mascot.group.traverse((object) => {
 const instruments = [drums, piano, guitar, mic];
 const whiteKeys = piano.keys.filter((k) => !k.userData.black).sort((a, b) => a.userData.whiteIdx - b.userData.whiteIdx);
 
-// E / ГРАТИ piano phrase — source of truth is piano-notes.json
-const PIANO_MELODY_FALLBACK = [
-  { note: 'F#4', freqHz: 370.00 },
-  { note: 'E4', freqHz: 329.63 },
-  { note: 'A4', freqHz: 440.01 },
-  { note: 'C#5', freqHz: 554.37 },
-  { note: 'C#5', freqHz: 554.37 },
-  { note: 'B4', freqHz: 493.89 },
-  { note: 'A4', freqHz: 440.01 },
-];
-let pianoMelody = PIANO_MELODY_FALLBACK;
-
-function normalizePianoMelody(data) {
-  if (!Array.isArray(data) || !data.length) return null;
-  const notes = data
-    .map((entry) => {
-      const freqHz = Number(entry?.freqHz);
-      if (!Number.isFinite(freqHz) || freqHz <= 0) return null;
-      return { note: entry.note || null, freqHz };
-    })
-    .filter(Boolean);
-  return notes.length ? notes : null;
-}
-
-function loadPianoMelody() {
-  return fetch('piano-notes.json', { cache: 'no-store' })
-    .then((response) => (response.ok ? response.json() : null))
-    .then((data) => {
-      const notes = normalizePianoMelody(data);
-      if (notes) pianoMelody = notes;
-    })
-    .catch(() => { /* keep fallback */ });
-}
-
 // interactable meshes
 const interactables = [];
 for (const inst of instruments) {
@@ -1137,9 +1123,11 @@ const mascotMove = {
   fall: null,
 };
 const mobileControls = document.getElementById('mobile-controls');
+const moveZone = document.getElementById('move-zone');
 const moveStick = document.getElementById('move-stick');
 const moveThumb = document.getElementById('move-thumb');
 const mobilePlay = document.getElementById('mobile-play');
+const mobileExit = document.getElementById('mobile-exit');
 const mobilePlayHint = document.getElementById('mobile-play-hint');
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
@@ -1216,11 +1204,17 @@ const instrumentView = {
   kind: null,
   transition: null,
   home: null,
-  queuedPerformance: null,
 };
 
 function setSceneLabelsVisible(visible) {
   if (mascotLabel && !mascotMove.fall) mascotLabel.visible = visible;
+}
+
+function syncMobileInstrumentChrome() {
+  const busy = ['approaching', 'entering', 'focused', 'returning'].includes(instrumentView.phase);
+  // ✕ is the only way out of instrument focus (desktop + mobile).
+  const showExit = busy && instrumentView.phase !== 'returning';
+  if (mobileExit) mobileExit.hidden = !showExit;
 }
 
 function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
@@ -1230,6 +1224,9 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   if (instrumentView.kind) document.documentElement.dataset.instrument = instrumentView.kind;
   else delete document.documentElement.dataset.instrument;
   setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
+  syncMobileInstrumentChrome();
+  if (phase === 'focused' && kind === 'mic') showVocalPad(false);
+  else if (phase !== 'focused') hideVocalPad();
 }
 
 function instrumentLocalToWorld(kind, point) {
@@ -1329,12 +1326,8 @@ function activateInstrumentView(kind) {
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
   mascotMove.keys.clear();
-  releaseJoystick();
+  releaseMoveJoystick();
   poseMascotAtInstrument(kind);
-  if (instrumentView.queuedPerformance === kind) {
-    instrumentView.queuedPerformance = null;
-    playInstrumentPerformance(kind);
-  }
   const cameraPoint = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
   startInstrumentCameraTransition(
     'entering',
@@ -1369,7 +1362,6 @@ function leaveInstrumentView({ immediate = false } = {}) {
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
   if (instrumentView.phase === 'approaching') {
-    instrumentView.queuedPerformance = null;
     mascotMove.destination = null;
     instrumentView.transition = null;
     instrumentView.home = null;
@@ -1431,7 +1423,7 @@ function requestInstrumentView(kind) {
   if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
   setInstrumentViewPhase('approaching', kind);
   mascotMove.keys.clear();
-  releaseJoystick();
+  releaseMoveJoystick();
   controls.autoRotate = false;
   clearTimeout(idleTimer);
   const route = [...preset.approach, preset.mascot].map((point) => {
@@ -1469,6 +1461,24 @@ zoomOut.addEventListener('pointerdown', (event) => {
   zoomScene(1.22);
 });
 
+function placeFloatingStick(clientX, clientY) {
+  const size = moveStick.offsetWidth || 108;
+  const half = size * 0.55;
+  const maxX = window.innerWidth * 0.52;
+  const x = THREE.MathUtils.clamp(clientX, half, Math.max(half, maxX));
+  const y = THREE.MathUtils.clamp(clientY, half, window.innerHeight - half);
+  moveStick.classList.add('floating');
+  moveStick.style.left = `${x}px`;
+  moveStick.style.top = `${y}px`;
+}
+
+function resetStickHome() {
+  moveStick.classList.remove('floating', 'engaged');
+  moveStick.style.left = '';
+  moveStick.style.top = '';
+  moveThumb.style.transform = 'translate(-50%, -50%)';
+}
+
 function setJoystickFromPointer(event) {
   const rect = moveStick.getBoundingClientRect();
   const dx = event.clientX - (rect.left + rect.width / 2);
@@ -1486,31 +1496,45 @@ function setJoystickFromPointer(event) {
   moveThumb.style.transform = `translate(-50%, -50%) translate(${visualX}px, ${visualY}px)`;
 }
 
-function releaseJoystick(event) {
+function releaseMoveJoystick(event) {
   if (event && joystickPointer !== null && event.pointerId !== joystickPointer) return;
   joystickPointer = null;
   joystickInput.set(0, 0);
-  moveStick.classList.remove('engaged');
-  moveThumb.style.transform = 'translate(-50%, -50%)';
+  resetStickHome();
 }
 
-moveStick.addEventListener('pointerdown', (event) => {
-  if (!started || ui.modalOpen) return;
+function beginMoveJoystick(event) {
+  if (!started || ui.modalOpen || mascotMove.fall) return;
+  if (instrumentView.phase !== 'idle') return;
   event.preventDefault();
-  leaveInstrumentView({ immediate: true });
   controls.autoRotate = false;
   clearTimeout(idleTimer);
+  finishOnboard();
   joystickPointer = event.pointerId;
+  placeFloatingStick(event.clientX, event.clientY);
   moveStick.classList.add('engaged');
-  moveStick.setPointerCapture?.(event.pointerId);
+  (moveZone || moveStick).setPointerCapture?.(event.pointerId);
   setJoystickFromPointer(event);
-});
-moveStick.addEventListener('pointermove', (event) => {
+}
+
+const moveSurface = moveZone || moveStick;
+moveSurface?.addEventListener('pointerdown', beginMoveJoystick);
+moveSurface?.addEventListener('pointermove', (event) => {
   if (event.pointerId === joystickPointer) setJoystickFromPointer(event);
 });
-moveStick.addEventListener('pointerup', releaseJoystick);
-moveStick.addEventListener('pointercancel', releaseJoystick);
-moveStick.addEventListener('lostpointercapture', releaseJoystick);
+moveSurface?.addEventListener('pointerup', releaseMoveJoystick);
+moveSurface?.addEventListener('pointercancel', releaseMoveJoystick);
+moveSurface?.addEventListener('lostpointercapture', releaseMoveJoystick);
+
+mobileExit?.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  mobileExit.classList.add('pressed');
+  leaveInstrumentView();
+  navigator.vibrate?.(18);
+});
+for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
+  mobileExit?.addEventListener(eventName, () => mobileExit.classList.remove('pressed'));
+}
 
 function clampMascotPoint(point) {
   point.x = THREE.MathUtils.clamp(point.x, mascotMove.travelBounds.minX, mascotMove.travelBounds.maxX);
@@ -1520,8 +1544,7 @@ function clampMascotPoint(point) {
 }
 
 function setMascotDestination(point) {
-  if (mascotMove.fall) return;
-  leaveInstrumentView();
+  if (mascotMove.fall || instrumentView.phase !== 'idle') return;
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
   mascotMove.destination = clampMascotPoint(point.clone());
@@ -1536,7 +1559,7 @@ function beginMascotFall(direction) {
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
   mascotMove.keys.clear();
-  releaseJoystick();
+  releaseMoveJoystick();
   ui.hideChip();
   hideVocalPad();
   mascotMove.fall = {
@@ -1620,68 +1643,9 @@ function nearestInstrument() {
   return nearest;
 }
 
-let performanceUntil = 0;
-
-function playInstrumentPerformance(kind) {
-  if (performance.now() < performanceUntil) return;
-  audio.init();
-  audio.resume();
-  chipFor(kind);
-  if (kind !== 'mic') hideVocalPad();
-  mobilePlay.classList.add('performing');
-
-  const later = (delay, fn) => setTimeout(() => {
-    if (started && !ui.modalOpen) fn();
-  }, delay);
-  const finish = (duration) => {
-    performanceUntil = performance.now() + duration;
-    setTimeout(() => mobilePlay.classList.remove('performing'), duration);
-  };
-
-  if (kind === 'drums') {
-    const beat = [
-      [0, 'kick'], [0, 'hihat'], [240, 'hihat'], [480, 'snare'], [480, 'hihat'],
-      [720, 'hihat'], [960, 'kick'], [960, 'hihat'], [1200, 'kick'], [1200, 'hihat'],
-      [1440, 'snare'], [1440, 'hihat'], [1680, 'tom2'], [1860, 'floor'], [2040, 'crash'],
-    ];
-    for (const [delay, part] of beat) later(delay, () => {
-      playMusicalEvent({ type: 'drum', part, vel: part === 'hihat' ? 0.78 : 1, vibe: 1.15, showPrice: false });
-    });
-    navigator.vibrate?.([35, 205, 25, 205, 45]);
-    finish(2350);
-  } else if (kind === 'piano') {
-    const melody = pianoMelody.length ? pianoMelody : PIANO_MELODY_FALLBACK;
-    melody.forEach((entry, step) => later(step * 245, () => {
-      playMusicalEvent({ type: 'piano', freq: entry.freqHz, vel: 0.82, vibe: 1.35, showPrice: false });
-    }));
-    finish(Math.max(900, melody.length * 245 + 250));
-  } else if (kind === 'guitar') {
-    const chords = [
-      [130.81, 196.0, 261.63, 329.63, 392.0, 523.25],
-      [98.0, 146.83, 196.0, 246.94, 293.66, 392.0],
-      [110.0, 164.81, 220.0, 261.63, 329.63, 440.0],
-      [87.31, 130.81, 174.61, 220.0, 261.63, 349.23],
-    ];
-    chords.forEach((chord, step) => later(step * 620, () => {
-      playMusicalEvent({ type: 'guitar-strum', freqs: chord, vel: 0.8, vibe: 2.2, showPrice: false });
-    }));
-    finish(2600);
-  } else if (kind === 'mic') {
-    showVocalPad();
-    const phrase = [
-      [261.63, 0], [293.66, 1], [329.63, 2], [392.0, 1],
-      [349.23, 0], [329.63, 2], [293.66, 1], [261.63, 0],
-    ];
-    phrase.forEach(([freq, vowel], step) => later(step * 285, () => {
-      playMusicalEvent({ type: 'vocal', freq, vowel, duration: 0.68, vibe: 1.3, showPrice: false, showPad: false });
-    }));
-    finish(2500);
-  }
-}
-
 const mobileInstrumentReach = () => 2.36;
 
-function playNearestInstrument({ focus = false } = {}) {
+function playNearestInstrument() {
   if (!started || ui.modalOpen || mascotMove.fall) return false;
   const nearest = nearestInstrument();
   if (!nearest || nearest.distance > mobileInstrumentReach()) {
@@ -1690,25 +1654,12 @@ function playNearestInstrument({ focus = false } = {}) {
   }
   const look = new THREE.Vector3().subVectors(nearest.position, mascot.group.position);
   mascot.group.rotation.y = Math.atan2(look.x, look.z);
-  if (!focus) {
-    playInstrumentPerformance(nearest.kind);
-    return true;
-  }
-
-  // Unlock audio from the tap itself, then wait for the mascot to reach the instrument.
   audio.init();
   audio.resume();
   const alreadyInPosition = instrumentView.kind === nearest.kind
     && ['entering', 'focused'].includes(instrumentView.phase);
-  if (alreadyInPosition) {
-    playInstrumentPerformance(nearest.kind);
-    return true;
-  }
+  if (alreadyInPosition) return true;
   requestInstrumentView(nearest.kind);
-  // `requestInstrumentView` may cancel a previous approach; queue after that reset.
-  if (instrumentView.phase === 'approaching' && instrumentView.kind === nearest.kind) {
-    instrumentView.queuedPerformance = nearest.kind;
-  }
   return true;
 }
 
@@ -1730,7 +1681,7 @@ mobilePlay.addEventListener('pointerdown', (event) => {
   event.preventDefault();
   if (mobilePlay.disabled) return;
   mobilePlay.classList.add('pressed');
-  playNearestInstrument({ focus: true });
+  playNearestInstrument();
   navigator.vibrate?.(22);
 });
 for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
@@ -1790,9 +1741,13 @@ function updateMascot(dt) {
   }
 
   if (direction.lengthSq() > 0) {
-    if (instrumentView.phase === 'approaching') leaveInstrumentView({ immediate: true });
-    mascotMove.destination = null;
-    if (mascotMove.keys.size || joystickInput.lengthSq() > 0) finishOnboard();
+    if (instrumentView.phase !== 'idle') {
+      // Focus stays until ✕ — ignore walk input while approaching / seated.
+      direction.set(0, 0, 0);
+    } else {
+      mascotMove.destination = null;
+      if (mascotMove.keys.size || joystickInput.lengthSq() > 0) finishOnboard();
+    }
   }
   else if (mascotMove.destination) {
     direction.subVectors(mascotMove.destination, mascot.group.position).setY(0);
@@ -2079,7 +2034,7 @@ function endActivePointer(e) {
     const dx = e.clientX - info.x;
     const dy = e.clientY - info.y;
     const dt = performance.now() - info.t;
-    const tapTolerance = isMobileGameMode() ? 16 : 8;
+    const tapTolerance = isMobileGameMode() ? 28 : 8;
     if (Math.hypot(dx, dy) < tapTolerance && dt < 600) {
       const mesh = hitInteractableAt(e.clientX, e.clientY) || info.hitMesh;
       if (mesh) {
@@ -2094,7 +2049,7 @@ function endActivePointer(e) {
   const dx = e.clientX - info.x;
   const dy = e.clientY - info.y;
   const dt = performance.now() - info.t;
-  const tapTolerance = isMobileGameMode() ? 16 : 8;
+  const tapTolerance = isMobileGameMode() ? 28 : 8;
   if (Math.hypot(dx, dy) < tapTolerance && dt < 600) handleClick(e);
 }
 
@@ -2682,12 +2637,11 @@ function handleClick(e) {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     finishOnboard();
-    leaveInstrumentView();
   }
   if (!started || ui.modalOpen) return;
   if (e.code.startsWith('Arrow')) {
     e.preventDefault();
-    leaveInstrumentView({ immediate: true });
+    if (instrumentView.phase !== 'idle') return;
     mascotMove.keys.add(e.code);
   }
   if (e.code === 'KeyE' && !e.repeat) {
@@ -2855,6 +2809,8 @@ controls.addEventListener('end', () => {
 // ============================================================
 window.addEventListener('resize', () => {
   fitCameraToViewport();
+  applyMobileOrbitPolicy();
+  syncMobileInstrumentChrome();
   if (instrumentView.home && instrumentView.phase !== 'idle') {
     instrumentView.home.maxDistance = controls.maxDistance;
   }
@@ -2988,7 +2944,6 @@ Promise.race([
     if (photos.length) startSlideshow(photos);
     else window.__dbg = 'no photos loaded';
   }).catch((e) => { window.__dbg = `load err: ${e}`; });
-  loadPianoMelody();
   addLabels();
   renderer.compile(scene, camera);
   animate();
