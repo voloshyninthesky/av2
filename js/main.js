@@ -1225,8 +1225,23 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   else delete document.documentElement.dataset.instrument;
   setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
   syncMobileInstrumentChrome();
-  if (phase === 'focused' && kind === 'mic') showVocalPad(false);
-  else if (phase !== 'focused') hideVocalPad();
+  if (phase === 'focused' && kind === 'mic') {
+    hideChordPad();
+    showVocalPad(false);
+    controls.enableZoom = true;
+    document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
+  } else if (phase === 'focused' && kind === 'guitar') {
+    hideVocalPad();
+    showChordPad();
+    // Prefer finger strum over page/orbit pinch-zoom while at the guitar.
+    controls.enableZoom = false;
+    document.documentElement.classList.add('guitar-focused');
+  } else if (phase !== 'focused') {
+    hideVocalPad();
+    hideChordPad();
+    controls.enableZoom = true;
+    document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
+  }
 }
 
 function instrumentLocalToWorld(kind, point) {
@@ -1562,6 +1577,7 @@ function beginMascotFall(direction) {
   releaseMoveJoystick();
   ui.hideChip();
   hideVocalPad();
+  hideChordPad();
   mascotMove.fall = {
     t: 0,
     duration: 2.7,
@@ -1880,14 +1896,30 @@ function isGuitarPlayFocus() {
   return instrumentView.phase === 'focused' && instrumentView.kind === 'guitar';
 }
 
-const GUITAR_STRUM_FREQS = [164.81, 246.94, 329.63, 392.0, 493.88, 659.25];
+// Open strings when nothing is held; pad chords only while a chord button is pressed.
+const GUITAR_OPEN_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
+const GUITAR_CHORDS = {
+  Em: [82.41, 123.47, 164.81, 196.00, 246.94, 329.63],
+  Am: [110.00, 164.81, 220.00, 261.63, 329.63],
+  C: [130.81, 164.81, 196.00, 261.63, 329.63],
+  D: [146.83, 220.00, 293.66, 369.99],
+  G: [98.00, 123.47, 146.83, 196.00, 246.94, 392.00],
+  F: [87.31, 130.81, 174.61, 220.00, 261.63, 349.23],
+};
 const GUITAR_STRUM_THRESHOLD = 24;
 const GUITAR_STRUM_COOLDOWN = 105;
+let heldGuitarChord = null;
+let heldGuitarChordPointer = null;
+
+function currentGuitarChordFreqs() {
+  if (heldGuitarChord && GUITAR_CHORDS[heldGuitarChord]) return GUITAR_CHORDS[heldGuitarChord];
+  return GUITAR_OPEN_FREQS;
+}
 
 function fireGuitarStrum(vel = 1) {
   playMusicalEvent({
     type: 'guitar-strum',
-    freqs: GUITAR_STRUM_FREQS,
+    freqs: currentGuitarChordFreqs(),
     vel,
     vibe: 5,
   });
@@ -2487,6 +2519,8 @@ renderLoopState(false);
 const vocalPad = document.getElementById('vocal-pad');
 const vocalButtons = [...vocalPad.querySelectorAll('[data-vocal-freq]')];
 let vocalPadTimer = null;
+const chordPad = document.getElementById('chord-pad');
+const chordButtons = [...(chordPad?.querySelectorAll('[data-chord]') || [])];
 let heldVocal = null;
 let heldVocalButton = null;
 let heldVocalPointer = null;
@@ -2530,6 +2564,71 @@ function hideVocalPad() {
   heldVocalButton = null;
   heldVocalPointer = null;
   vocalPad.hidden = true;
+}
+
+function syncChordPadHeld() {
+  for (const button of chordButtons) {
+    button.classList.toggle('held', button.dataset.chord === heldGuitarChord);
+  }
+  document.documentElement.classList.toggle('guitar-fretting', Boolean(heldGuitarChord));
+}
+
+function showChordPad() {
+  if (!chordPad) return;
+  syncChordPadHeld();
+  chordPad.hidden = false;
+}
+
+function hideChordPad() {
+  if (!chordPad) return;
+  releaseHeldGuitarChord();
+  chordPad.hidden = true;
+}
+
+function holdGuitarChord(name, pointerId) {
+  if (!GUITAR_CHORDS[name]) return;
+  heldGuitarChord = name;
+  heldGuitarChordPointer = pointerId;
+  syncChordPadHeld();
+  navigator.vibrate?.(10);
+}
+
+function releaseHeldGuitarChord(event) {
+  if (event && heldGuitarChordPointer !== null && event.pointerId !== heldGuitarChordPointer) return;
+  heldGuitarChord = null;
+  heldGuitarChordPointer = null;
+  syncChordPadHeld();
+}
+
+for (const button of chordButtons) {
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    audio.init();
+    audio.resume();
+    holdGuitarChord(button.dataset.chord, event.pointerId);
+    button.setPointerCapture?.(event.pointerId);
+  });
+  for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    button.addEventListener(eventName, releaseHeldGuitarChord);
+  }
+}
+
+// Hold chord + second-finger strum: stop Safari/Chrome page pinch-zoom (not orbit dolly).
+function blockGuitarBrowserPageZoom(event) {
+  if (!isGuitarPlayFocus()) return;
+  const onPad = Boolean(event.target?.closest?.('#chord-pad'));
+  if (onPad || heldGuitarChord || (event.touches && event.touches.length >= 2)) {
+    event.preventDefault();
+  }
+}
+document.addEventListener('touchstart', blockGuitarBrowserPageZoom, { passive: false, capture: true });
+document.addEventListener('touchmove', blockGuitarBrowserPageZoom, { passive: false, capture: true });
+// iOS Safari still fires gesture* for page pinch even with user-scalable=no.
+for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(name, (event) => {
+    if (isGuitarPlayFocus()) event.preventDefault();
+  }, { passive: false, capture: true });
 }
 
 function playVocalNote(freq, vowel, showPrice = false) {
