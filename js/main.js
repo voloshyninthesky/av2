@@ -22,6 +22,8 @@ const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
 const isMobileGameMode = () => window.innerWidth <= 720 ||
   window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+const MOBILE_MAX_PIXEL_RATIO = 1.5;
+const DESKTOP_MAX_PIXEL_RATIO = 2;
 const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
@@ -64,7 +66,10 @@ try {
   document.getElementById('intro').style.display = 'none';
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(
+  window.devicePixelRatio,
+  isMobileGameMode() ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
+));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -94,6 +99,7 @@ function pullCameraTowardTarget(point, factor = START_ZOOM_FACTOR) {
 
 function fitCameraToViewport() {
   const portrait = window.innerWidth / window.innerHeight < 1;
+  const mobile = isMobileGameMode();
   if (portrait) {
     // Portrait intentionally crops the far stage wings and brings the player
     // into the action, closer to a third-person mobile game camera.
@@ -101,16 +107,19 @@ function fitCameraToViewport() {
     CAM_END.set(0, 2.9, 14.6);
     camera.fov = 62;
     controls.maxDistance = 22;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.toneMappingExposure = 0.98;
   } else {
     CAM_START.set(0, 9.5, 18.5);
     CAM_END.set(0, 3.05, 10.45);
     camera.fov = 55;
     controls.maxDistance = 16;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMappingExposure = 1.12;
   }
+  // A coarse-pointer phone stays capped in landscape as well as portrait.
+  renderer.setPixelRatio(Math.min(
+    window.devicePixelRatio,
+    mobile ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
+  ));
   pullCameraTowardTarget(CAM_END);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -358,19 +367,23 @@ function buildStage() {
   trim.position.set(0, -0.02, 4.02);
   g.add(trim);
 
-  // footlights — emissive bulbs + real PointLights on every other fixture
+  // Preserve the full stage-light layout on mobile; intensity is reduced
+  // instead so the original warm shaping and depth remain intact.
+  const mobileLighting = isMobileGameMode();
   const bulbMat = new THREE.MeshStandardMaterial({
-    color: 0x332211, emissive: 0xD1A13B, emissiveIntensity: 1.6, roughness: 0.5,
+    color: 0x332211,
+    emissive: 0xD1A13B,
+    emissiveIntensity: 1.6,
+    roughness: 0.5,
   });
   const bulbGeom = new THREE.SphereGeometry(0.05, 10, 8);
-  const footIntensity = isMobileGameMode() ? 10 : 16;
   for (let i = 0; i < 9; i++) {
     const x = -6 + i * 1.5;
     const b = new THREE.Mesh(bulbGeom, bulbMat);
     b.position.set(x, 0.06, 3.9);
     g.add(b);
     if (i % 2 === 0) {
-      const pl = new THREE.PointLight(0xffc878, footIntensity, 4.2, 2);
+      const pl = new THREE.PointLight(0xffc878, mobileLighting ? 10 : 16, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
     }
@@ -632,24 +645,75 @@ slideshowNav.addEventListener('pointerup', (event) => {
 });
 slideshowNav.addEventListener('pointercancel', () => { slideSwipe = null; });
 
-function loadSlideTextures() {
-  const loader = new THREE.TextureLoader();
+function loadSlideImage(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Could not load slide: ${file}`));
+    image.src = file;
+  });
+}
+
+async function makeSlideTexture(file) {
+  const image = await loadSlideImage(file);
+  const maxDimension = isMobileGameMode() ? 1024 : 1600;
+  const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvasImage = document.createElement('canvas');
+  canvasImage.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvasImage.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvasImage.getContext('2d', { alpha: false });
+  context.drawImage(image, 0, 0, canvasImage.width, canvasImage.height);
+
+  const texture = new THREE.CanvasTexture(canvasImage);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = isMobileGameMode()
+    ? 1
+    : Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  texture.userData.sourceFile = file;
+  return texture;
+}
+
+function waitForSlideLoadBudget() {
+  return new Promise((resolve) => {
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => resolve(), { timeout: 800 });
+    } else {
+      window.setTimeout(resolve, 80);
+    }
+  });
+}
+
+async function loadSlideTextures() {
   const fallbackFiles = ['img/wicked-ensemble.jpg', 'img/wicked-cast.jpg', 'img/wicked-duet.jpg', 'img/stage-guitar.jpg'];
 
   // `slides.json` is the complete manifest of images in /img that belong in the slideshow.
   // Keeping it separate lets the stage load every supplied slide without bundling a stale list in the app.
-  return fetch('img/slides.json', { cache: 'no-store' })
+  const files = await fetch('img/slides.json', { cache: 'no-store' })
     .then((response) => response.ok ? response.json() : fallbackFiles)
     .then((files) => Array.isArray(files) && files.length ? files : fallbackFiles)
-    .catch(() => fallbackFiles)
-    .then((files) => Promise.allSettled(
-      files.map((file) => new Promise((res, rej) =>
-        loader.load(file, (texture) => {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          res(texture);
-        }, undefined, rej)))
-    ))
-    .then((results) => results.filter((result) => result.status === 'fulfilled').map((result) => result.value));
+    .catch(() => fallbackFiles);
+
+  let loaded = 0;
+  const debugTimelineTextures = [];
+  const deferDebugTimeline = params.has('sstime');
+  for (const file of files) {
+    if (loaded > 0) await waitForSlideLoadBudget();
+    try {
+      const texture = await makeSlideTexture(file);
+      if (deferDebugTimeline) debugTimelineTextures.push(texture);
+      else if (!ss.started) startSlideshow([texture]);
+      else ss.texs.push(texture);
+      loaded++;
+      window.__dbg = `slideshow loaded: ${loaded}/${files.length}`;
+    } catch (_) {
+      /* A missing promotional image should not block the scene. */
+    }
+  }
+  if (deferDebugTimeline && debugTimelineTextures.length) {
+    startSlideshow(debugTimelineTextures);
+  }
+  return loaded;
 }
 
 function startSlideshow(photos) {
@@ -2716,13 +2780,17 @@ function refitActiveInstrumentView() {
 function syncRendererToWindow() {
   fitCameraToViewport();
   applyMobileOrbitPolicy();
+  renderer.shadowMap.enabled = true;
   syncMobileInstrumentChrome();
   if (instrumentView.home && instrumentView.phase !== 'idle') {
     instrumentView.home.maxDistance = controls.maxDistance;
   }
   if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused') applyFocusedControlLimits();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer && composer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) {
+    composer.setPixelRatio(renderer.getPixelRatio());
+    composer.setSize(window.innerWidth, window.innerHeight);
+  }
   refitActiveInstrumentView();
 }
 
@@ -3698,12 +3766,32 @@ try {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight), isMobileGameMode() ? 0.28 : 0.45, 0.5, 0.85);
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    isMobileGameMode() ? 0.28 : 0.45,
+    0.5,
+    0.85,
+  );
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 } catch (e) {
   composer = null;
 }
+window.__qualityDebug = () => {
+  const lightCounts = { point: 0, spot: 0, shadowCasting: 0 };
+  scene.traverse((object) => {
+    if (object.isPointLight) lightCounts.point++;
+    if (object.isSpotLight) lightCounts.spot++;
+    if (object.isLight && object.castShadow) lightCounts.shadowCasting++;
+  });
+  return {
+    mobile: isMobileGameMode(),
+    pixelRatio: renderer.getPixelRatio(),
+    postprocessing: Boolean(composer),
+    shadows: renderer.shadowMap.enabled,
+    lightCounts,
+    slidesLoaded: Math.max(0, ss.texs.length - 1),
+  };
+};
 
 // ============================================================
 // INTRO / START FLOW
@@ -3903,9 +3991,19 @@ window.addEventListener('resize', syncRendererToWindow);
 // ============================================================
 const clock = new THREE.Clock();
 let firstFrame = true;
+let lastRenderedFrameAt = -Infinity;
 
-function animate() {
+function renderIntervalMs() {
+  if (!started) return 1000 / 10;
+  if (ui.modalOpen) return 1000 / 15;
+  return 0;
+}
+
+function animate(frameTime = performance.now()) {
   requestAnimationFrame(animate);
+  const interval = renderIntervalMs();
+  if (interval && frameTime - lastRenderedFrameAt < interval) return;
+  lastRenderedFrameAt = frameTime;
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
 
@@ -4019,9 +4117,8 @@ Promise.race([
     credit.material.map = next;
     credit.material.needsUpdate = true;
   }
-  loadSlideTextures().then((photos) => {
-    if (photos.length) startSlideshow(photos);
-    else window.__dbg = 'no photos loaded';
+  loadSlideTextures().then((loaded) => {
+    if (!loaded) window.__dbg = 'no photos loaded';
   }).catch((e) => { window.__dbg = `load err: ${e}`; });
   addLabels();
   renderer.compile(scene, camera);
