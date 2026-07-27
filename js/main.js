@@ -742,10 +742,10 @@ function buildLights() {
   g.add(bar);
 
   const spots = [
-    { x: -4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7 },
-    { x: -1.55, color: 0xD1A13B, intensity: 800, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3 },
-    { x: 1.55, color: 0xfff0d8, intensity: 700, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, shadow: true },
-    { x: 4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7 },
+    { x: -4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025 },
+    { x: -1.55, color: 0xD1A13B, intensity: 800, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025 },
+    { x: 1.55, color: 0xfff0d8, intensity: 700, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, coneFloorY: 0.025, shadow: true },
+    { x: 4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025 },
     { x: 0, color: 0x7a1fa2, intensity: 420, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5 },
   ];
 
@@ -789,19 +789,31 @@ function buildLights() {
     }
     g.add(spot, spot.target);
 
-    // visible light cone
+    // Visible beam: SpotLight targets steer the light but do not stop it.
+    // Extend stage beams along the same ray until they meet the platform top,
+    // otherwise the decorative cone appears to hover above the illuminated floor.
     const from = new THREE.Vector3(s.x, y, z);
-    const len = from.distanceTo(s.target);
+    const targetVector = new THREE.Vector3().subVectors(s.target, from);
+    const coneEnd = s.target.clone();
+    let coneEndRadius = s.coneR;
+    if (Number.isFinite(s.coneFloorY) && Math.abs(targetVector.y) > 0.0001) {
+      const floorScale = (s.coneFloorY - from.y) / targetVector.y;
+      if (floorScale > 0) {
+        coneEnd.copy(from).addScaledVector(targetVector, floorScale);
+        coneEndRadius = 0.09 + (s.coneR - 0.09) * floorScale;
+      }
+    }
+    const len = from.distanceTo(coneEnd);
     const cone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.09, s.coneR, len, 24, 1, true),
+      new THREE.CylinderGeometry(0.09, coneEndRadius, len, 24, 1, true),
       new THREE.MeshBasicMaterial({
         color: s.color, transparent: true, opacity: 0.05,
         blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
         depthWrite: false, fog: false,
       })
     );
-    cone.position.copy(from).add(s.target).multiplyScalar(0.5);
-    const dir = new THREE.Vector3().subVectors(s.target, from).normalize();
+    cone.position.copy(from).add(coneEnd).multiplyScalar(0.5);
+    const dir = new THREE.Vector3().subVectors(coneEnd, from).normalize();
     cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
     g.add(cone);
   }
