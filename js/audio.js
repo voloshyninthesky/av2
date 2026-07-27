@@ -20,6 +20,7 @@ export class AudioEngine {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     this.ctx = new AC();
+    this._primed = false;
 
     this.master = this.ctx.createGain();
     // Honor mute chosen before the context existed (HUD sound button).
@@ -46,9 +47,62 @@ export class AudioEngine {
     this._noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this._noise.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+
+    // Mobile / Telegram WebViews often re-suspend after backgrounding.
+    this.ctx.addEventListener('statechange', () => {
+      if (this.ctx?.state !== 'running') this._primed = false;
+    });
   }
 
-  resume() { this.ctx && this.ctx.state === 'suspended' && this.ctx.resume(); }
+  /** Tiny silent buffer start — must run inside a user-gesture turn on iOS. */
+  _prime() {
+    if (!this.ctx || this._primed) return;
+    try {
+      const buf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.ctx.destination);
+      src.start(0);
+      this._primed = true;
+    } catch (_) { /* ignore */ }
+  }
+
+  _resetContext() {
+    this.ctx = null;
+    this.master = null;
+    this.buses = { drums: null, piano: null, guitar: null, mic: null };
+    this._noise = null;
+    this._ksCache.clear();
+    this._primed = false;
+  }
+
+  /**
+   * Unlock / wake the AudioContext. Fire-and-forget resume() was leaving mobile
+   * WebViews stuck suspended (silent until hard refresh).
+   */
+  resume() {
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this._resetContext();
+      this.init();
+    }
+    if (!this.ctx) return Promise.resolve(false);
+    this._prime();
+    if (this.ctx.state === 'running') return Promise.resolve(true);
+
+    const wake = () => {
+      if (!this.ctx || this.ctx.state === 'running' || this.ctx.state === 'closed') return Promise.resolve(this.ctx?.state === 'running');
+      this._prime();
+      return this.ctx.resume().then(() => this.ctx.state === 'running').catch(() => false);
+    };
+
+    const pending = wake();
+    // Flaky in-app browsers sometimes need a couple of deferred retries.
+    clearTimeout(this._resumeRetry1);
+    clearTimeout(this._resumeRetry2);
+    this._resumeRetry1 = setTimeout(() => { wake(); }, 120);
+    this._resumeRetry2 = setTimeout(() => { wake(); }, 450);
+    return pending;
+  }
 
   setMuted(m) {
     this.muted = Boolean(m);
@@ -58,6 +112,8 @@ export class AudioEngine {
     this.master.gain.setValueAtTime(this.muted ? 0 : 0.9, t);
     if (this.muted) {
       for (const voice of [...this._activeVocals]) voice.cancel?.();
+    } else {
+      this.resume();
     }
   }
 
@@ -85,6 +141,10 @@ export class AudioEngine {
 
   _silent() {
     return !this.ctx || this.muted;
+  }
+
+  isRunning() {
+    return Boolean(this.ctx && this.ctx.state === 'running');
   }
 
   _env(gainNode, t, peak, attack, decay) {

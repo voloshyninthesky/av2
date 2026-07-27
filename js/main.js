@@ -7,7 +7,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { AudioEngine } from './audio.js?v=20260726-21';
+import { AudioEngine } from './audio.js?v=20260727-07';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260726-03';
 import { UI } from './ui.js?v=20260725-06';
 
@@ -2955,6 +2955,7 @@ function setMasterMuted(next) {
   muted = Boolean(next);
   audio.init();
   audio.setMuted(muted);
+  if (!muted) audio.resume();
   if (muted) silenceHeldVocal();
   syncSoundMuteUi();
 }
@@ -3115,6 +3116,23 @@ function startExperience(withAudio = true) {
 }
 
 enterBtn.addEventListener('click', () => startExperience(true));
+
+// Keep WebAudio alive across backgrounding / flaky in-app browsers (Telegram).
+// Stuck "suspended" contexts are the usual cause of silent sessions until refresh.
+function unlockAudioFromGesture() {
+  if (!started && !audio.ctx) return;
+  audio.init();
+  audio.resume();
+}
+window.addEventListener('pointerdown', unlockAudioFromGesture, { capture: true, passive: true });
+window.addEventListener('touchstart', unlockAudioFromGesture, { capture: true, passive: true });
+window.addEventListener('keydown', unlockAudioFromGesture, { capture: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && audio.ctx) audio.resume();
+});
+window.addEventListener('pageshow', () => {
+  if (audio.ctx) audio.resume();
+});
 
 // idle auto-rotate
 let idleTimer = null;
