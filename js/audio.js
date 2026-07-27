@@ -13,13 +13,29 @@ export class AudioEngine {
     this.muted = false;
     this._noise = null;
     this._ksCache = new Map();
+    this._guitarVariant = 0;
+    this._activeGuitarStrings = new Map();
+    this._guitarPrewarmQueue = [];
+    this._guitarPrewarmScheduled = false;
     this._activeVocals = new Set();
+    this._contextGeneration = 0;
+    this._needsRecovery = false;
+    this._resumeFailures = 0;
+    this._lastUnlockAt = 0;
   }
 
   init() {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
-    this.ctx = new AC();
+    if (!AC) return;
+    this._configureAudioSession();
+    try {
+      this.ctx = new AC({ latencyHint: 'interactive' });
+    } catch (_) {
+      this.ctx = new AC();
+    }
+    const context = this.ctx;
+    this._contextGeneration++;
     this._primed = false;
 
     this.master = this.ctx.createGain();
@@ -29,7 +45,26 @@ export class AudioEngine {
     for (const key of AudioEngine.BUS_KEYS) {
       const bus = this.ctx.createGain();
       bus.gain.value = this.levels[key];
-      bus.connect(this.master);
+      if (key === 'guitar') {
+        // Compact acoustic-body colour: a low shelf into two broad resonances.
+        const bodyLow = this.ctx.createBiquadFilter();
+        bodyLow.type = 'lowshelf';
+        bodyLow.frequency.value = 145;
+        bodyLow.gain.value = 3.5;
+        const bodyMid = this.ctx.createBiquadFilter();
+        bodyMid.type = 'peaking';
+        bodyMid.frequency.value = 235;
+        bodyMid.Q.value = 0.9;
+        bodyMid.gain.value = 2.4;
+        const bodyTop = this.ctx.createBiquadFilter();
+        bodyTop.type = 'peaking';
+        bodyTop.frequency.value = 920;
+        bodyTop.Q.value = 0.7;
+        bodyTop.gain.value = 1.4;
+        bus.connect(bodyLow).connect(bodyMid).connect(bodyTop).connect(this.master);
+      } else {
+        bus.connect(this.master);
+      }
       this.buses[key] = bus;
     }
 
@@ -49,9 +84,41 @@ export class AudioEngine {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
     // Mobile / Telegram WebViews often re-suspend after backgrounding.
-    this.ctx.addEventListener('statechange', () => {
-      if (this.ctx?.state !== 'running') this._primed = false;
+    context.addEventListener('statechange', () => {
+      if (this.ctx !== context) return;
+      if (context.state === 'running') this._resumeFailures = 0;
+      else this._primed = false;
     });
+  }
+
+  get contextGeneration() {
+    return this._contextGeneration;
+  }
+
+  debugState() {
+    return {
+      contextState: this.ctx?.state ?? 'uninitialized',
+      generation: this._contextGeneration,
+      muted: this.muted,
+      recoveryPending: this._needsRecovery,
+      resumeFailures: this._resumeFailures,
+      audioSessionState: navigator.audioSession?.state ?? 'unsupported',
+      audioSessionType: navigator.audioSession?.type ?? 'unsupported',
+    };
+  }
+
+  _configureAudioSession() {
+    try {
+      const session = navigator.audioSession;
+      if (!session) return;
+      if (session.type !== 'playback') session.type = 'playback';
+      if (!this._audioSessionBound && session.addEventListener) {
+        session.addEventListener('statechange', () => {
+          if (session.state !== 'active') this.markForRecovery();
+        });
+        this._audioSessionBound = true;
+      }
+    } catch (_) { /* experimental API or WebView may reject assignment */ }
   }
 
   /** Tiny silent buffer start — must run inside a user-gesture turn on iOS. */
@@ -67,13 +134,56 @@ export class AudioEngine {
     } catch (_) { /* ignore */ }
   }
 
-  _resetContext() {
+  _resetContext({ close = false } = {}) {
+    const previous = this.ctx;
+    clearTimeout(this._resumeRetry1);
+    clearTimeout(this._resumeRetry2);
+    clearTimeout(this._resumeCheck);
+    for (const voice of [...this._activeVocals]) voice.cancel?.();
+    this._activeVocals.clear();
     this.ctx = null;
     this.master = null;
     this.buses = { drums: null, piano: null, guitar: null, mic: null };
     this._noise = null;
     this._ksCache.clear();
+    this._activeGuitarStrings.clear();
+    this._guitarPrewarmQueue.length = 0;
+    this._guitarPrewarmScheduled = false;
     this._primed = false;
+    this._resumeFailures = 0;
+    if (close && previous?.state !== 'closed') {
+      try {
+        previous.close()?.catch?.(() => {});
+      } catch (_) { /* closing a broken WebView context may throw */ }
+    }
+  }
+
+  /**
+   * Mobile browsers can report a running context while its output route is dead
+   * after Control Center, a phone call, tab backgrounding, or WebView restore.
+   * Rebuilding on the next trusted gesture is the only dependable recovery.
+   */
+  markForRecovery() {
+    if (!this.ctx) return;
+    this._needsRecovery = true;
+    this._primed = false;
+  }
+
+  unlock() {
+    const now = performance.now();
+    const duplicateGesture = now - this._lastUnlockAt < 80;
+    this._lastUnlockAt = now;
+    this._configureAudioSession();
+
+    const stuck = this.ctx
+      && this.ctx.state !== 'running'
+      && this._resumeFailures > 0;
+    if (!duplicateGesture && this.ctx && (this._needsRecovery || stuck)) {
+      this._resetContext({ close: true });
+    }
+    this._needsRecovery = false;
+    this.init();
+    return this.resume();
   }
 
   /**
@@ -86,13 +196,19 @@ export class AudioEngine {
       this.init();
     }
     if (!this.ctx) return Promise.resolve(false);
+    this._configureAudioSession();
     this._prime();
-    if (this.ctx.state === 'running') return Promise.resolve(true);
+    if (this.ctx.state === 'running') {
+      this._resumeFailures = 0;
+      return Promise.resolve(true);
+    }
 
+    const context = this.ctx;
     const wake = () => {
-      if (!this.ctx || this.ctx.state === 'running' || this.ctx.state === 'closed') return Promise.resolve(this.ctx?.state === 'running');
+      if (this.ctx !== context || context.state === 'closed') return Promise.resolve(false);
+      if (context.state === 'running') return Promise.resolve(true);
       this._prime();
-      return this.ctx.resume().then(() => this.ctx.state === 'running').catch(() => false);
+      return context.resume().then(() => context.state === 'running').catch(() => false);
     };
 
     const pending = wake();
@@ -101,6 +217,12 @@ export class AudioEngine {
     clearTimeout(this._resumeRetry2);
     this._resumeRetry1 = setTimeout(() => { wake(); }, 120);
     this._resumeRetry2 = setTimeout(() => { wake(); }, 450);
+    clearTimeout(this._resumeCheck);
+    this._resumeCheck = setTimeout(() => {
+      if (this.ctx !== context || context.state === 'running' || context.state === 'closed') return;
+      this._resumeFailures++;
+      this._primed = false;
+    }, 850);
     return pending;
   }
 
@@ -112,6 +234,7 @@ export class AudioEngine {
     this.master.gain.setValueAtTime(this.muted ? 0 : 0.9, t);
     if (this.muted) {
       for (const voice of [...this._activeVocals]) voice.cancel?.();
+      this.muteGuitar();
     } else {
       this.resume();
     }
@@ -279,47 +402,157 @@ export class AudioEngine {
 
   // ---------------- GUITAR (Karplus–Strong) ----------------
 
-  _ksBuffer(freq) {
-    const key = Math.round(freq * 10);
+  _ksBuffer(freq, variant = 0, stringIndex = 0) {
+    const pitchKey = Math.round(freq * 10);
+    const key = `${pitchKey}:${variant}:${stringIndex}`;
     if (this._ksCache.has(key)) return this._ksCache.get(key);
     const sr = this.ctx.sampleRate;
     const period = Math.max(2, Math.round(sr / freq));
-    const dur = 2.2;
+    const dur = 1.65 + (5 - Math.max(0, Math.min(5, stringIndex))) * 0.11;
     const len = Math.floor(sr * dur);
     const buf = this.ctx.createBuffer(1, len, sr);
     const out = buf.getChannelData(0);
     const ring = new Float32Array(period);
-    for (let i = 0; i < period; i++) ring[i] = Math.random() * 2 - 1;
+    let seed = ((pitchKey * 2654435761) ^ ((variant + 1) * 2246822519) ^ ((stringIndex + 1) * 3266489917)) >>> 0;
+    const random = () => {
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      return (seed >>> 0) / 4294967295;
+    };
+    for (let i = 0; i < period; i++) ring[i] = random() * 2 - 1;
     let idx = 0;
+    const damping = 0.9969 - Math.max(0, Math.min(5, stringIndex)) * 0.00016;
     for (let i = 0; i < len; i++) {
       const cur = ring[idx];
       const nxt = ring[(idx + 1) % period];
-      ring[idx] = 0.9965 * 0.5 * (cur + nxt);
-      out[i] = cur;
+      ring[idx] = damping * 0.5 * (cur + nxt);
+      const tail = i > len - 768 ? (len - i) / 768 : 1;
+      out[i] = cur * tail;
       idx = (idx + 1) % period;
     }
     this._ksCache.set(key, buf);
     return buf;
   }
 
-  pluck(freq, vel = 1, at = null) {
-    if (this._silent()) return;
-    const t = this._at(at);
-    const src = this.ctx.createBufferSource();
-    src.buffer = this._ksBuffer(freq);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.75 * vel, t);
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 5200;
-    src.connect(lp).connect(g).connect(this._bus('guitar'));
-    src.start(t);
-    src.stop(t + 2.2);
+  prewarmGuitar(stringPitches = []) {
+    if (!this.ctx || !Array.isArray(stringPitches)) return;
+    const queued = new Set(this._guitarPrewarmQueue.map((item) => item.key));
+    for (const pitch of stringPitches) {
+      const freq = Number(pitch.freqHz ?? pitch.freq);
+      const stringIndex = Number(pitch.stringIndex ?? 0);
+      if (!Number.isFinite(freq)) continue;
+      for (let variant = 0; variant < 2; variant++) {
+        const key = `${Math.round(freq * 10)}:${variant}:${stringIndex}`;
+        if (this._ksCache.has(key) || queued.has(key)) continue;
+        queued.add(key);
+        this._guitarPrewarmQueue.push({ key, freq, stringIndex, variant });
+      }
+    }
+    if (this._guitarPrewarmScheduled || !this._guitarPrewarmQueue.length) return;
+    this._guitarPrewarmScheduled = true;
+    const work = (deadline) => {
+      this._guitarPrewarmScheduled = false;
+      let processed = 0;
+      while (this._guitarPrewarmQueue.length && processed < 2) {
+        if (processed > 0 && deadline?.timeRemaining && deadline.timeRemaining() < 2) break;
+        const item = this._guitarPrewarmQueue.shift();
+        this._ksBuffer(item.freq, item.variant, item.stringIndex);
+        processed++;
+      }
+      if (!this._guitarPrewarmQueue.length) return;
+      this._guitarPrewarmScheduled = true;
+      if ('requestIdleCallback' in window) window.requestIdleCallback(work, { timeout: 80 });
+      else setTimeout(() => work(null), 12);
+    };
+    if ('requestIdleCallback' in window) window.requestIdleCallback(work, { timeout: 80 });
+    else setTimeout(() => work(null), 12);
   }
 
-  strum(freqs, vel = 1, at = null) {
+  _releaseGuitarVoice(voice, at = this.ctx?.currentTime ?? 0, release = 0.018) {
+    if (!voice || voice.released || !this.ctx) return;
+    voice.released = true;
+    const t = Math.max(at, this.ctx.currentTime);
+    try {
+      voice.gain.gain.cancelScheduledValues(t);
+      voice.gain.gain.setValueAtTime(Math.max(0.0001, voice.gain.gain.value), t);
+      voice.gain.gain.exponentialRampToValueAtTime(0.0001, t + release);
+      voice.source.stop(t + release + 0.025);
+    } catch (_) { /* source may already be stopped */ }
+  }
+
+  muteGuitar(at = null) {
+    if (!this.ctx) return;
+    const t = this._at(at);
+    for (const voice of this._activeGuitarStrings.values()) {
+      this._releaseGuitarVoice(voice, t, 0.025);
+    }
+    this._activeGuitarStrings.clear();
+  }
+
+  pluck(freq, vel = 1, at = null, options = {}) {
+    if (this._silent()) return;
+    const t = this._at(at);
+    const stringIndex = Math.max(0, Math.min(5, Number(options.stringIndex ?? 0)));
+    // Live fretting tracks voices so muteGuitar() can cut them. Loop playback
+    // must NOT register here — leaving focus / falling would cancel lookahead notes
+    // that stay marked as scheduled and never replay that cycle.
+    const track = options.track !== false;
+    if (track) {
+      const previous = this._activeGuitarStrings.get(stringIndex);
+      if (previous) this._releaseGuitarVoice(previous, t);
+    }
+
+    const src = this.ctx.createBufferSource();
+    const variant = this._guitarVariant++ % 2;
+    src.buffer = this._ksBuffer(freq, variant, stringIndex);
+    src.detune.value = (Math.random() - 0.5) * (2.2 + (1 - vel) * 1.8);
+    const g = this.ctx.createGain();
+    const level = 0.18 + Math.max(0, Math.min(1.2, vel)) * 0.52;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(level, t + 0.0025);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.max(1800, 2600 + vel * 4300 - stringIndex * 120);
+    lp.Q.value = 0.45;
+    src.connect(lp).connect(g);
+    if (this.ctx.createStereoPanner) {
+      const pan = this.ctx.createStereoPanner();
+      pan.pan.value = (stringIndex - 2.5) / 12;
+      g.connect(pan).connect(this._bus('guitar'));
+    } else {
+      g.connect(this._bus('guitar'));
+    }
+    src.start(t);
+    src.stop(t + src.buffer.duration + 0.04);
+    const voice = { source: src, gain: g, released: false };
+    if (track) {
+      this._activeGuitarStrings.set(stringIndex, voice);
+      src.onended = () => {
+        if (this._activeGuitarStrings.get(stringIndex) === voice) {
+          this._activeGuitarStrings.delete(stringIndex);
+        }
+      };
+    }
+    return voice;
+  }
+
+  strum(strings, vel = 1, at = null, options = {}) {
     if (this._silent()) return;
     const base = this._at(at);
-    freqs.forEach((f, i) => this.pluck(f, vel * (0.85 + Math.random() * 0.3), base + i * 0.042));
+    const events = (strings || []).map((item, index) => (
+      typeof item === 'number'
+        ? { freqHz: item, stringIndex: index, offsetMs: index * 22 }
+        : item
+    ));
+    for (const stringEvent of events) {
+      this.pluck(
+        stringEvent.freqHz,
+        vel * (0.9 + Math.random() * 0.16),
+        base + Math.max(0, stringEvent.offsetMs ?? 0) / 1000,
+        { stringIndex: stringEvent.stringIndex, track: options.track },
+      );
+    }
   }
 
   // ---------------- MIC / VOCAL ----------------

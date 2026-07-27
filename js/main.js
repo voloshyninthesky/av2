@@ -7,9 +7,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { AudioEngine } from './audio.js?v=20260727-07';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260726-03';
-import { UI } from './ui.js?v=20260727-09';
+import { AudioEngine } from './audio.js?v=20260727-16';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260727-10';
+import { UI } from './ui.js?v=20260727-17';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -19,6 +19,7 @@ window.addEventListener('unhandledrejection', (e) => { errlog.textContent += `RE
 const params = new URLSearchParams(location.search);
 const ui = new UI();
 const audio = new AudioEngine();
+window.__audioDebug = () => audio.debugState();
 const isMobileGameMode = () => window.innerWidth <= 720 ||
   window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -1217,10 +1218,10 @@ const INSTRUMENT_VIEW_PRESETS = {
     yaw: -2.32,
     seated: false,
     approach: [],
-    // Frame the neck so frets are readable while playing.
-    camera: new THREE.Vector3(-1.35, 1.95, 2.2),
-    cameraMobile: new THREE.Vector3(-1.7, 2.25, 2.75),
-    target: new THREE.Vector3(0, 0.88, 0.06),
+    // Near-front performance view: keep soundhole, strings, and first frets legible.
+    camera: new THREE.Vector3(0.08, 1.72, 2.02),
+    cameraMobile: new THREE.Vector3(0.08, 1.72, 2.34),
+    target: new THREE.Vector3(0, 0.91, 0.07),
     arms: [-1.05, -0.66],
   },
   mic: {
@@ -1253,6 +1254,14 @@ function syncMobileInstrumentChrome() {
   if (mobileExit) mobileExit.hidden = !showExit;
 }
 
+function syncInstrumentExposure() {
+  const portrait = window.innerWidth / window.innerHeight < 1;
+  const baseExposure = portrait ? 0.98 : 1.12;
+  renderer.toneMappingExposure = instrumentView.phase === 'focused' && instrumentView.kind === 'guitar'
+    ? baseExposure * 0.78
+    : baseExposure;
+}
+
 function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   instrumentView.phase = phase;
   instrumentView.kind = phase === 'idle' ? null : kind;
@@ -1261,6 +1270,7 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   else delete document.documentElement.dataset.instrument;
   setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
   syncMobileInstrumentChrome();
+  syncInstrumentExposure();
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);
@@ -1277,6 +1287,8 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
     hideChordPad();
     controls.enableZoom = true;
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
+    clearGuitarInteractionState();
+    audio.muteGuitar();
   }
 }
 
@@ -1393,6 +1405,8 @@ function captureInstrumentViewHome() {
     maxDistance: controls.maxDistance,
     minPolarAngle: controls.minPolarAngle,
     maxPolarAngle: controls.maxPolarAngle,
+    minAzimuthAngle: controls.minAzimuthAngle,
+    maxAzimuthAngle: controls.maxAzimuthAngle,
   };
 }
 
@@ -1402,6 +1416,8 @@ function restoreInstrumentControlLimits(home = instrumentView.home) {
   controls.maxDistance = home.maxDistance;
   controls.minPolarAngle = home.minPolarAngle;
   controls.maxPolarAngle = home.maxPolarAngle;
+  controls.minAzimuthAngle = home.minAzimuthAngle;
+  controls.maxAzimuthAngle = home.maxAzimuthAngle;
 }
 
 function applyFocusedControlLimits() {
@@ -1409,6 +1425,14 @@ function applyFocusedControlLimits() {
   controls.maxDistance = isMobileGameMode() ? 5.5 : 4.4;
   controls.minPolarAngle = 0.42;
   controls.maxPolarAngle = 1.48;
+  if (instrumentView.kind === 'guitar') {
+    const azimuth = controls.getAzimuthalAngle();
+    controls.minAzimuthAngle = azimuth - 0.18;
+    controls.maxAzimuthAngle = azimuth + 0.18;
+  } else {
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+  }
 }
 
 function startInstrumentCameraTransition(phase, kind, position, target, duration) {
@@ -1436,13 +1460,18 @@ function activateInstrumentView(kind) {
   mascotMove.keys.clear();
   releaseMoveJoystick();
   poseMascotAtInstrument(kind);
+  if (kind === 'guitar') {
+    audio.init();
+    audio.resume();
+    audio.prewarmGuitar(allGuitarPitches());
+  }
   const cameraPoint = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
   startInstrumentCameraTransition(
     'entering',
     kind,
     instrumentLocalToWorld(kind, cameraPoint),
     instrumentLocalToWorld(kind, preset.target),
-    0.78,
+    prefersReducedMotion.matches ? 0.18 : 0.78,
   );
 }
 
@@ -1467,6 +1496,11 @@ function finishInstrumentReturn() {
 
 function leaveInstrumentView({ immediate = false } = {}) {
   if (instrumentView.phase === 'idle') return;
+  const leavingKind = instrumentView.kind;
+  if (leavingKind === 'guitar') {
+    clearGuitarInteractionState();
+    audio.muteGuitar();
+  }
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
   if (instrumentView.phase === 'approaching') {
@@ -1498,7 +1532,13 @@ function leaveInstrumentView({ immediate = false } = {}) {
     finishInstrumentReturn();
     return;
   }
-  startInstrumentCameraTransition('returning', instrumentView.kind, home.position, home.target, 0.52);
+  startInstrumentCameraTransition(
+    'returning',
+    instrumentView.kind,
+    home.position,
+    home.target,
+    prefersReducedMotion.matches ? 0.12 : 0.52,
+  );
 }
 
 function updateInstrumentViewCamera(dt) {
@@ -1635,9 +1675,10 @@ moveSurface?.addEventListener('pointerup', releaseMoveJoystick);
 moveSurface?.addEventListener('pointercancel', releaseMoveJoystick);
 moveSurface?.addEventListener('lostpointercapture', releaseMoveJoystick);
 
-mobileExit?.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
+mobileExit?.addEventListener('pointerdown', () => {
   mobileExit.classList.add('pressed');
+});
+mobileExit?.addEventListener('click', () => {
   leaveInstrumentView();
   navigator.vibrate?.(18);
 });
@@ -1736,6 +1777,10 @@ function respawnMascot() {
     controls.target.add(mobileFollowDelta);
     camera.position.add(mobileFollowDelta);
   }
+  // Fall leaves focus (muteGuitar) and can suspend WebAudio — wake + re-queue loop.
+  audio.init();
+  audio.resume();
+  resyncLoopPlayback();
   ui.toast('Не втечеш ;)', 2200);
 }
 
@@ -1827,6 +1872,13 @@ function updateMascot(dt) {
     return;
   }
   if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused' || instrumentView.phase === 'returning') {
+    if (instrumentView.kind === 'guitar' && instrumentView.phase !== 'returning') {
+      guitarStrokeMotion *= Math.pow(0.012, dt);
+      if (guitarStrokeMotion < 0.002) guitarStrokeMotion = 0;
+      const motion = prefersReducedMotion.matches ? 0 : guitarStrokeMotion;
+      mascot.armR.rotation.x = -0.66 + motion * 0.12;
+      mascot.armR.rotation.z = 0.24 + guitarStrokeDirection * motion * 0.34;
+    }
     if (mascotLabel) {
       mascotLabel.visible = instrumentView.phase === 'returning';
       if (mascotLabel.visible) {
@@ -1990,11 +2042,28 @@ function pointerNdc(clientX, clientY, target = pointer) {
   return target;
 }
 
-function hitInteractableAt(clientX, clientY) {
+function hitInteractableDetailsAt(clientX, clientY, guitarZone = null) {
   pointerNdc(clientX, clientY);
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(interactables, false);
-  return hits[0]?.object || null;
+  for (const hit of hits) {
+    const zone = hit.object.userData.guitarZone;
+    if (hit.object.userData.instrument !== 'guitar') {
+      if (guitarZone) continue;
+      return hit;
+    }
+    if (guitarZone && zone !== guitarZone) continue;
+    if (isGuitarPlayFocus()) {
+      if (zone === 'strum' || zone === 'fretboard') return hit;
+      continue;
+    }
+    if (zone === 'approach') return hit;
+  }
+  return null;
+}
+
+function hitInteractableAt(clientX, clientY) {
+  return hitInteractableDetailsAt(clientX, clientY)?.object || null;
 }
 
 function isMultiTouchInstrumentFocus() {
@@ -2010,33 +2079,112 @@ function canPlayInstrument(kind) {
   return instrumentView.phase === 'focused' && instrumentView.kind === kind;
 }
 
-// Open strings when nothing is held; pad chords only while a chord button is pressed.
+// Six-string voicings, low E → high E. null is a muted string.
 const GUITAR_OPEN_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
 const GUITAR_CHORDS = {
-  Em: [82.41, 123.47, 164.81, 196.00, 246.94, 329.63],
-  Am: [110.00, 164.81, 220.00, 261.63, 329.63],
-  C: [130.81, 164.81, 196.00, 261.63, 329.63],
-  D: [146.83, 220.00, 293.66, 369.99],
-  G: [98.00, 123.47, 146.83, 196.00, 246.94, 392.00],
-  F: [87.31, 130.81, 174.61, 220.00, 261.63, 349.23],
+  Em: [0, 2, 2, 0, 0, 0],
+  Am: [null, 0, 2, 2, 1, 0],
+  C: [null, 3, 2, 0, 1, 0],
+  D: [null, null, 0, 2, 3, 2],
+  G: [3, 2, 0, 0, 0, 3],
+  F: [1, 3, 3, 2, 1, 1],
 };
-const GUITAR_STRUM_THRESHOLD = 24;
-const GUITAR_STRUM_COOLDOWN = 105;
+const GUITAR_OPEN_SHAPE = [0, 0, 0, 0, 0, 0];
+const GUITAR_KEY_CHORDS = {
+  KeyE: 'Em',
+  KeyA: 'Am',
+  KeyC: 'C',
+  KeyD: 'D',
+  KeyG: 'G',
+  KeyF: 'F',
+};
 let heldGuitarChord = null;
 let heldGuitarChordPointer = null;
+let latchedGuitarChord = null;
+let keyboardGuitarChord = null;
+let guitarStrokeMotion = 0;
+let guitarStrokeDirection = 1;
 
-function currentGuitarChordFreqs() {
-  if (heldGuitarChord && GUITAR_CHORDS[heldGuitarChord]) return GUITAR_CHORDS[heldGuitarChord];
-  return GUITAR_OPEN_FREQS;
+function currentGuitarChordName() {
+  return keyboardGuitarChord || heldGuitarChord || latchedGuitarChord || null;
 }
 
-function fireGuitarStrum(vel = 1) {
+function currentGuitarShape() {
+  return GUITAR_CHORDS[currentGuitarChordName()] || GUITAR_OPEN_SHAPE;
+}
+
+function guitarPitchForString(stringIndex, fret = currentGuitarShape()[stringIndex]) {
+  if (fret === null || fret === undefined) return null;
+  return GUITAR_OPEN_FREQS[stringIndex] * (2 ** (fret / 12));
+}
+
+function allGuitarPitches() {
+  const seen = new Set();
+  const pitches = [];
+  for (const shape of [GUITAR_OPEN_SHAPE, ...Object.values(GUITAR_CHORDS)]) {
+    shape.forEach((fret, stringIndex) => {
+      const freqHz = guitarPitchForString(stringIndex, fret);
+      if (!freqHz) return;
+      const key = `${stringIndex}:${Math.round(freqHz * 10)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      pitches.push({ stringIndex, freqHz });
+    });
+  }
+  return pitches;
+}
+
+function createGuitarStringEvent(stringIndex, fret, offsetMs = 0) {
+  const freqHz = guitarPitchForString(stringIndex, fret);
+  if (!freqHz) return null;
+  return { stringIndex, fret, freqHz, offsetMs: Math.max(0, offsetMs) };
+}
+
+function fireGuitarStrum(
+  vel = 0.72,
+  direction = 'bass-to-treble',
+  stringIndices = null,
+  offsetByString = null,
+  feedback = true,
+) {
+  if (!isGuitarPlayFocus()) return false;
+  const shape = currentGuitarShape();
+  const order = stringIndices || (
+    direction === 'treble-to-bass'
+      ? [5, 4, 3, 2, 1, 0]
+      : [0, 1, 2, 3, 4, 5]
+  );
+  const spread = 8 + (1 - THREE.MathUtils.clamp(vel, 0, 1)) * 24;
+  const strings = order.map((stringIndex, orderIndex) => createGuitarStringEvent(
+    stringIndex,
+    shape[stringIndex],
+    offsetByString?.get(stringIndex) ?? orderIndex * spread,
+  )).filter(Boolean);
+  if (!strings.length) return false;
   playMusicalEvent({
     type: 'guitar-strum',
-    freqs: currentGuitarChordFreqs(),
-    vel,
+    direction,
+    strings,
+    vel: THREE.MathUtils.clamp(vel, 0.16, 1),
     vibe: 5,
-  });
+  }, { feedback });
+  guitarStrokeDirection = direction === 'treble-to-bass' ? -1 : 1;
+  guitarStrokeMotion = Math.max(guitarStrokeMotion, vel);
+  return true;
+}
+
+function pluckGuitarString(stringIndex, fret, vel = 0.7, feedback = true) {
+  if (!isGuitarPlayFocus()) return false;
+  const stringEvent = createGuitarStringEvent(stringIndex, fret, 0);
+  if (!stringEvent) return false;
+  playMusicalEvent({
+    type: 'guitar-pluck',
+    ...stringEvent,
+    freq: stringEvent.freqHz,
+    vel: THREE.MathUtils.clamp(vel, 0.16, 1),
+    vibe: 3,
+  }, { feedback });
+  return true;
 }
 
 function playTokenForMesh(mesh) {
@@ -2044,11 +2192,54 @@ function playTokenForMesh(mesh) {
   const u = mesh.userData;
   if (u.freq !== undefined) return `piano:${u.freq}`;
   if (u.part) return `drum:${u.part}`;
-  if (u.stringFreq !== undefined) return `guitar:${u.stringIndex ?? 0}:${u.fret ?? 0}:${u.stringFreq}`;
   return `id:${mesh.id}`;
 }
 
-// Track each finger separately so piano chords / drum kits / fretted guitar can be multitouch.
+function guitarLocalPoint(hit) {
+  return hit.object.worldToLocal(hit.point.clone());
+}
+
+function nearestGuitarString(stringXs, localX) {
+  let closest = 0;
+  let distance = Infinity;
+  for (let index = 0; index < stringXs.length; index++) {
+    const nextDistance = Math.abs(stringXs[index] - localX);
+    if (nextDistance < distance) {
+      closest = index;
+      distance = nextDistance;
+    }
+  }
+  return closest;
+}
+
+function guitarFretHit(hit) {
+  const local = guitarLocalPoint(hit);
+  const data = hit.object.userData;
+  const bodyY = data.centerY + local.y;
+  let fret = 1;
+  for (let candidate = 1; candidate <= data.fretCount; candidate++) {
+    const upper = data.fretYs[candidate - 1];
+    const lower = data.fretYs[candidate];
+    if (bodyY <= upper && bodyY >= lower) {
+      fret = candidate;
+      break;
+    }
+  }
+  const neckHalfWidth = 0.045;
+  const normalized = THREE.MathUtils.clamp((local.x + neckHalfWidth) / (neckHalfWidth * 2), 0, 1);
+  const stringIndex = Math.round(normalized * 5);
+  // A selected chord owns the fretting: touching any point on its string keeps
+  // the chord voicing rather than falling back to the visual fret position.
+  const chordFret = currentGuitarChordName() ? currentGuitarShape()[stringIndex] : fret;
+  return {
+    stringIndex,
+    fret: chordFret,
+    freqHz: chordFret === null ? null : data.openFreqs[stringIndex] * (2 ** (chordFret / 12)),
+    token: `${stringIndex}:${chordFret}`,
+  };
+}
+
+// Track each finger separately so pads and instrument play remain independent.
 const activePointers = new Map();
 
 canvas.addEventListener('pointerdown', (e) => {
@@ -2074,36 +2265,50 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 
   {
-    const mesh = hitInteractableAt(e.clientX, e.clientY);
-    if (mesh && mesh.userData.instrument === 'guitar') {
+    const hit = hitInteractableDetailsAt(e.clientX, e.clientY);
+    const mesh = hit?.object;
+    if (mesh?.userData.instrument === 'guitar') {
       e.preventDefault();
       e.stopImmediatePropagation();
       try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
 
-      // Neck frets (fret ≥ 1): tap / slide to note. Body / open (fret 0): swipe-strum.
-      if (isGuitarPlayFocus() && (mesh.userData.fret ?? 0) > 0) {
+      if (!isGuitarPlayFocus()) {
         activePointers.set(e.pointerId, {
-          mode: 'play',
+          mode: 'guitar-approach',
           x: e.clientX,
           y: e.clientY,
           t: performance.now(),
-          token: playTokenForMesh(mesh),
+          approached: false,
         });
-        trigger(mesh);
         return;
       }
 
+      if (mesh.userData.guitarZone === 'fretboard') {
+        const fretHit = guitarFretHit(hit);
+        activePointers.set(e.pointerId, {
+          mode: 'guitar-fret',
+          token: fretHit.token,
+        });
+        pluckGuitarString(fretHit.stringIndex, fretHit.fret, 0.72);
+        return;
+      }
+
+      const local = guitarLocalPoint(hit);
       activePointers.set(e.pointerId, {
         mode: 'guitar-strum',
         x: e.clientX,
         y: e.clientY,
         lastX: e.clientX,
         lastY: e.clientY,
-        t: performance.now(),
-        travel: 0,
-        lastStrumAt: 0,
+        lastAt: performance.now(),
+        lastLocalX: local.x,
+        stringXs: [...mesh.userData.stringXs],
+        seenStrings: new Set(),
         strummed: false,
         dir: 0,
+        strokeFeedbackPending: true,
+        strokeCompletionReported: false,
+        pointerType: e.pointerType,
         hitMesh: mesh,
       });
       return;
@@ -2122,12 +2327,30 @@ canvas.addEventListener('pointermove', (e) => {
   const info = activePointers.get(e.pointerId);
   if (!info) return;
 
+  if (info.mode === 'guitar-approach') {
+    if (info.approached) return;
+    if (Math.hypot(e.clientX - info.x, e.clientY - info.y) >= 18) {
+      info.approached = true;
+      walkMascotToInstrument('guitar');
+    }
+    return;
+  }
+
+  if (info.mode === 'guitar-fret') {
+    if (!isGuitarPlayFocus()) return;
+    const hit = hitInteractableDetailsAt(e.clientX, e.clientY, 'fretboard');
+    if (!hit) return;
+    const fretHit = guitarFretHit(hit);
+    if (fretHit.token === info.token) return;
+    info.token = fretHit.token;
+    pluckGuitarString(fretHit.stringIndex, fretHit.fret, 0.64, false);
+    return;
+  }
+
   if (info.mode === 'play') {
-    const allowGuitarFret = isGuitarPlayFocus();
-    if (!isMultiTouchInstrumentFocus() && !allowGuitarFret) return;
+    if (!isMultiTouchInstrumentFocus()) return;
     const mesh = hitInteractableAt(e.clientX, e.clientY);
     if (!mesh || mesh.userData.instrument !== instrumentView.kind) return;
-    if (allowGuitarFret && instrumentView.kind === 'guitar' && !(mesh.userData.fret > 0)) return;
     const token = playTokenForMesh(mesh);
     if (token === info.token) return;
     info.token = token;
@@ -2136,46 +2359,92 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (info.mode === 'guitar-strum') {
-    const dx = e.clientX - info.lastX;
-    const dy = e.clientY - info.lastY;
-    info.lastX = e.clientX;
-    info.lastY = e.clientY;
-    const step = Math.hypot(dx, dy);
-    if (step < 0.4) return;
-
-    // Primary axis of this sample — either direction counts as a stroke.
-    const primary = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
-    const sign = Math.sign(primary) || info.dir || 1;
-    if (info.dir && sign !== info.dir) {
-      // Reverse swipe starts a fresh stroke immediately.
-      info.travel = step;
-      info.dir = sign;
-    } else {
-      info.dir = sign;
-      info.travel += step;
-    }
-
-    const now = performance.now();
-    if (info.travel < GUITAR_STRUM_THRESHOLD || now - info.lastStrumAt < GUITAR_STRUM_COOLDOWN) return;
-
-    const over = hitInteractableAt(e.clientX, e.clientY);
-    if (over?.userData.instrument !== 'guitar' && !info.strummed) return;
-
-    // Far-away swipe: walk over, no preview strum.
-    if (!isGuitarPlayFocus()) {
-      if (!info.approached) {
-        info.approached = true;
-        walkMascotToInstrument('guitar');
+    if (!isGuitarPlayFocus()) return;
+    const samples = e.getCoalescedEvents?.() || [e];
+    for (const sample of samples.length ? samples : [e]) {
+      const now = sample.timeStamp || performance.now();
+      const hit = hitInteractableDetailsAt(sample.clientX, sample.clientY, 'strum');
+      if (!hit) {
+        info.lastLocalX = null;
+        info.lastX = sample.clientX;
+        info.lastY = sample.clientY;
+        info.lastAt = now;
+        continue;
       }
-      info.travel = 0;
-      return;
-    }
+      const localX = guitarLocalPoint(hit).x;
+      if (info.lastLocalX === null) {
+        info.lastLocalX = localX;
+        info.lastX = sample.clientX;
+        info.lastY = sample.clientY;
+        info.lastAt = now;
+        continue;
+      }
+      const localDelta = localX - info.lastLocalX;
+      const dtMs = Math.max(1, now - info.lastAt);
+      const screenDistance = Math.hypot(sample.clientX - info.lastX, sample.clientY - info.lastY);
+      const sign = Math.sign(localDelta);
+      if (!sign || Math.abs(localDelta) < 0.0015) {
+        info.lastLocalX = localX;
+        info.lastX = sample.clientX;
+        info.lastY = sample.clientY;
+        info.lastAt = now;
+        continue;
+      }
+      if (info.dir && sign !== info.dir) {
+        if (Math.abs(localDelta) < 0.004) continue;
+        info.dir = sign;
+        info.seenStrings.clear();
+        info.strokeFeedbackPending = true;
+        info.strokeCompletionReported = false;
+      } else if (!info.dir) {
+        info.dir = sign;
+      }
 
-    const vel = Math.min(1.15, 0.72 + info.travel / 90);
-    fireGuitarStrum(vel);
-    info.lastStrumAt = now;
-    info.travel = 0;
-    info.strummed = true;
+      const crossed = info.stringXs.filter((stringX, stringIndex) => {
+        if (info.seenStrings.has(stringIndex)) return false;
+        return sign > 0
+          ? stringX > info.lastLocalX && stringX <= localX
+          : stringX < info.lastLocalX && stringX >= localX;
+      }).map((stringX) => ({
+        stringX,
+        stringIndex: info.stringXs.indexOf(stringX),
+      }));
+      crossed.sort((a, b) => sign > 0 ? a.stringX - b.stringX : b.stringX - a.stringX);
+
+      if (crossed.length) {
+        const firstFraction = Math.abs((crossed[0].stringX - info.lastLocalX) / localDelta);
+        const offsets = new Map();
+        for (const crossing of crossed) {
+          const fraction = Math.abs((crossing.stringX - info.lastLocalX) / localDelta);
+          offsets.set(crossing.stringIndex, Math.max(0, (fraction - firstFraction) * Math.min(dtMs, 42)));
+          info.seenStrings.add(crossing.stringIndex);
+        }
+        const speed = screenDistance / dtMs;
+        const velocity = THREE.MathUtils.clamp(0.18 + speed * 0.74, 0.18, 1);
+        const direction = sign > 0 ? 'bass-to-treble' : 'treble-to-bass';
+        const gaveFeedback = info.strokeFeedbackPending;
+        if (fireGuitarStrum(
+          velocity,
+          direction,
+          crossed.map((crossing) => crossing.stringIndex),
+          offsets,
+          gaveFeedback,
+        )) {
+          info.strummed = true;
+          if (gaveFeedback) {
+            info.strokeFeedbackPending = false;
+          }
+          if (!info.strokeCompletionReported && info.seenStrings.size >= 3) {
+            info.strokeCompletionReported = true;
+            navigator.vibrate?.(Math.round(4 + velocity * 7));
+          }
+        }
+      }
+      info.lastLocalX = localX;
+      info.lastX = sample.clientX;
+      info.lastY = sample.clientY;
+      info.lastAt = now;
+    }
   }
 }, { capture: true, passive: true });
 
@@ -2184,18 +2453,18 @@ function endActivePointer(e) {
   activePointers.delete(e.pointerId);
   if (!info) return;
 
+  if (info.mode === 'guitar-approach') {
+    if (!info.approached) walkMascotToInstrument('guitar');
+    return;
+  }
+
   if (info.mode === 'guitar-strum') {
-    if (info.strummed || info.approached) return;
-    const dx = e.clientX - info.x;
-    const dy = e.clientY - info.y;
-    const dt = performance.now() - info.t;
-    const tapTolerance = isMobileGameMode() ? 28 : 8;
-    if (Math.hypot(dx, dy) < tapTolerance && dt < 600) {
-      const mesh = hitInteractableAt(e.clientX, e.clientY) || info.hitMesh;
-      if (!mesh) return;
-      if (isGuitarPlayFocus()) trigger(mesh);
-      else walkMascotToInstrument('guitar');
-    }
+    if (info.strummed || info.pointerType === 'touch' || !isGuitarPlayFocus()) return;
+    const hit = hitInteractableDetailsAt(e.clientX, e.clientY, 'strum');
+    if (!hit) return;
+    const localX = guitarLocalPoint(hit).x;
+    const stringIndex = nearestGuitarString(info.stringXs, localX);
+    pluckGuitarString(stringIndex, currentGuitarShape()[stringIndex], 0.62);
     return;
   }
 
@@ -2222,40 +2491,66 @@ document.addEventListener('dragstart', (e) => {
   e.preventDefault();
 }, { capture: true });
 
-// Block browser page pinch / double-tap zoom that breaks the fixed layout.
-// Safari uses gesture*; Chrome/Android need multitouch preventDefault + touch-action.
-document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
-document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
-document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
+// Block stage double-tap zoom. Play chrome (pads / toast / pedal) must ALSO
+// claim double-taps — skipping them was letting vocal-pad ↔ vibe-toast taps zoom.
 {
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (e) => {
-    if (eventInvolvesUiChrome(e)) return;
+    if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
     const now = performance.now();
-    if (now - lastTouchEnd < 320) e.preventDefault();
+    if (now - lastTouchEnd < 320 && e.cancelable) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false, capture: true });
-  // If a pinch still slipped through, nudge the viewport meta back to 1×.
   document.addEventListener('touchend', () => {
     requestAnimationFrame(resetBrowserPageZoom);
   }, { passive: true, capture: true });
 }
 
-const VIEWPORT_META_BASE = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
+const VIEWPORT_META_BASE = 'width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover';
+const VIEWPORT_META_GAME = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
 let viewportResetTimer = 0;
 
-function resetBrowserPageZoom() {
-  const vv = window.visualViewport;
-  if (!vv || Math.abs(vv.scale - 1) < 0.01) return;
+function syncViewportMeta() {
   const meta = document.querySelector('meta[name="viewport"]');
   if (!meta) return;
-  // Toggle scale to force Chrome/Safari to drop a stuck page zoom.
+  // Allow pinch only inside readable modals; lock zoom on the live stage.
+  meta.setAttribute('content', (started && !ui.modalOpen) ? VIEWPORT_META_GAME : VIEWPORT_META_BASE);
+}
+
+function resetBrowserPageZoom() {
+  if (ui.modalOpen) return;
+  const vv = window.visualViewport;
+  if (!vv || Math.abs(vv.scale - 1) < 0.01) {
+    syncViewportMeta();
+    return;
+  }
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
   meta.setAttribute('content', 'width=device-width, initial-scale=1.0001, maximum-scale=1.0001, user-scalable=no, viewport-fit=cover');
   clearTimeout(viewportResetTimer);
   viewportResetTimer = window.setTimeout(() => {
-    meta.setAttribute('content', VIEWPORT_META_BASE);
+    syncViewportMeta();
     syncRendererToWindow();
   }, 16);
+}
+
+function refitActiveInstrumentView() {
+  const kind = instrumentView.kind;
+  if (!kind || !['entering', 'focused'].includes(instrumentView.phase)) return;
+  const preset = INSTRUMENT_VIEW_PRESETS[kind];
+  if (!preset) return;
+  const cameraPoint = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
+  const nextPosition = instrumentLocalToWorld(kind, cameraPoint);
+  const nextTarget = instrumentLocalToWorld(kind, preset.target);
+  syncInstrumentExposure();
+  if (instrumentView.phase === 'entering' && instrumentView.transition) {
+    instrumentView.transition.toPosition.copy(nextPosition);
+    instrumentView.transition.toTarget.copy(nextTarget);
+    return;
+  }
+  camera.position.copy(nextPosition);
+  controls.target.copy(nextTarget);
+  controls.update();
 }
 
 function syncRendererToWindow() {
@@ -2268,6 +2563,7 @@ function syncRendererToWindow() {
   if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused') applyFocusedControlLimits();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer && composer.setSize(window.innerWidth, window.innerHeight);
+  refitActiveInstrumentView();
 }
 
 // Pedal / pads / HUD sit above the canvas. preventDefault on a 2nd-finger
@@ -2321,6 +2617,11 @@ document.addEventListener('gesturechange', (e) => {
   if (eventInvolvesUiChrome(e)) return;
   if (e.cancelable) e.preventDefault();
 }, { passive: false, capture: true });
+document.addEventListener('gestureend', (e) => {
+  if (!document.documentElement.classList.contains('telegram-webview') && !started) return;
+  if (eventInvolvesUiChrome(e)) return;
+  if (e.cancelable) e.preventDefault();
+}, { passive: false, capture: true });
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
@@ -2360,6 +2661,7 @@ function addVibe(n) {
         ? 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>'
         : 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">Сцена — твоя</span>',
       4200,
+      'vibe-max',
     );
     vibe = 55;
     setTimeout(() => ui.setVibe(vibe), 600);
@@ -2421,6 +2723,7 @@ const loopLayerWord = (count) => count === 1 ? 'шар' : (count < 5 ? 'шари
 function cloneLoopEvent(event) {
   const clone = { ...event };
   if (event.freqs) clone.freqs = [...event.freqs];
+  if (event.strings) clone.strings = event.strings.map((stringEvent) => ({ ...stringEvent }));
   return clone;
 }
 
@@ -2466,10 +2769,12 @@ function runMusicalVisual(event, feedback) {
     if (key) piano.press(key);
     kind = 'piano';
   } else if (event.type === 'guitar-pluck') {
-    guitar.pluck(event.stringIndex ?? 0);
+    guitar.pluck(event.stringIndex ?? 0, event.vel ?? 1, event.offsetMs ?? 0);
     kind = 'guitar';
   } else if (event.type === 'guitar-strum') {
-    guitar.strum();
+    guitar.strum(event.strings || [], event.direction, event.vel ?? 1);
+    guitarStrokeDirection = event.direction === 'treble-to-bass' ? -1 : 1;
+    guitarStrokeMotion = Math.max(guitarStrokeMotion, event.vel ?? 0.72);
     kind = 'guitar';
   } else if (event.type === 'vocal') {
     mic.sing();
@@ -2503,9 +2808,13 @@ function playMusicalEvent(event, { record = true, at = null, feedback = true } =
   } else if (event.type === 'piano') {
     audio.piano(event.freq, velocity, startAt);
   } else if (event.type === 'guitar-pluck') {
-    audio.pluck(event.freq, velocity, startAt);
+    audio.pluck(event.freqHz ?? event.freq, velocity, startAt, {
+      stringIndex: event.stringIndex ?? 0,
+      // Loop playback must survive muteGuitar() when leaving focus / falling.
+      track: record,
+    });
   } else if (event.type === 'guitar-strum') {
-    audio.strum(event.freqs, velocity, startAt);
+    audio.strum(event.strings ?? event.freqs, velocity, startAt, { track: record });
   } else if (event.type === 'vocal') {
     voice = audio.vocalTone(event.freq, event.vowel, velocity, startAt, event.duration ?? 0.68);
     if (!record && voice) {
@@ -2569,6 +2878,17 @@ function stopLoopScheduler() {
   stopLoopVoices();
 }
 
+/** After fall / muteGuitar / audio suspend — re-queue upcoming loop notes. */
+function resyncLoopPlayback() {
+  if (loop.state !== 'playing' && loop.state !== 'overdubbing') return;
+  audio.init();
+  audio.resume();
+  loop.scheduled.clear();
+  stopLoopVoices();
+  if (!loop.schedulerTimer) startLoopScheduler();
+  else schedulerTick();
+}
+
 function renderLoopState(announce = true) {
   const state = loop.state;
   loopPedal.dataset.state = state;
@@ -2627,15 +2947,15 @@ function startBaseLoopRecording() {
   loop.recordStartedAt = audio.ctx.currentTime;
   loopProgressBar.style.width = '0%';
   loop.autoCloseTimer = setTimeout(() => finishBaseLoopRecording(true), LOOP_MAX_SECONDS * 1000);
+  captureHeldVocalIntoLoop();
   renderLoopState();
   navigator.vibrate?.(30);
 }
 
 function finishBaseLoopRecording(automatic = false) {
   if (loop.state !== 'recording') return;
-  finishHeldLoopCapture();
   clearTimeout(loop.autoCloseTimer);
-  if (!loop.events.length) {
+  if (!loop.events.length && !heldLoopCapture) {
     loop.state = 'empty';
     loop.duration = 0;
     renderLoopState();
@@ -2644,6 +2964,15 @@ function finishBaseLoopRecording(automatic = false) {
   }
   const rawDuration = Math.min(LOOP_MAX_SECONDS, Math.max(0, audio.ctx.currentTime - loop.recordStartedAt));
   loop.duration = Math.max(1, Math.ceil(rawDuration / 0.125) * 0.125);
+  // Finalize sustain after loop length is known so held vocals cap correctly.
+  finishHeldLoopCapture();
+  if (!loop.events.length) {
+    loop.state = 'empty';
+    loop.duration = 0;
+    renderLoopState();
+    ui.toast('Зіграй щось під час запису', 1800);
+    return;
+  }
   loop.layers = 1;
   loop.state = 'playing';
   loop.epoch = audio.ctx.currentTime + 0.08;
@@ -2659,6 +2988,7 @@ function startLoopOverdub() {
   loop.state = 'overdubbing';
   loop.activeLayer = loop.layers + 1;
   loop.layerStartCount = loop.events.length;
+  captureHeldVocalIntoLoop();
   renderLoopState();
   ui.toast('Новий шар — грай поверх loop', 1700);
   navigator.vibrate?.(24);
@@ -2753,6 +3083,13 @@ let heldVocalPointer = null;
 let heldVocalPulseTimer = null;
 let heldLoopCapture = null;
 
+function stampHeldLoopCaptureDuration() {
+  if (!heldLoopCapture || heldLoopCapture.finished || !audio.ctx) return;
+  const elapsed = Math.max(0.12, audio.ctx.currentTime - heldLoopCapture.startedAt);
+  const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : LOOP_MAX_SECONDS;
+  heldLoopCapture.event.duration = Math.min(maximum, elapsed);
+}
+
 function beginHeldLoopCapture(freq, vowel) {
   const startedAt = audio.ctx?.currentTime;
   const event = captureLoopEvent({ type: 'vocal', freq, vowel, vel: 1, duration: 0.12 }, startedAt);
@@ -2760,12 +3097,19 @@ function beginHeldLoopCapture(freq, vowel) {
   return event ? { event, startedAt, finished: false } : null;
 }
 
+function captureHeldVocalIntoLoop() {
+  if (heldLoopCapture || !heldVocal || !heldVocalButton || heldVocalPointer === null) return;
+  heldLoopCapture = beginHeldLoopCapture(
+    Number(heldVocalButton.dataset.vocalFreq),
+    Number(heldVocalButton.dataset.vocalVowel),
+  );
+  stampHeldLoopCaptureDuration();
+}
+
 function finishHeldLoopCapture() {
   if (!heldLoopCapture || heldLoopCapture.finished) return;
   heldLoopCapture.finished = true;
-  const elapsed = Math.max(0.12, (audio.ctx?.currentTime ?? heldLoopCapture.startedAt) - heldLoopCapture.startedAt);
-  const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : LOOP_MAX_SECONDS;
-  heldLoopCapture.event.duration = Math.min(maximum, elapsed);
+  stampHeldLoopCaptureDuration();
   delete heldLoopCapture.event.durationPending;
   if (loop.duration > 0 && audio.ctx) {
     const currentCycle = Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration);
@@ -2774,10 +3118,19 @@ function finishHeldLoopCapture() {
   heldLoopCapture = null;
 }
 
+function syncPadsOpenClass() {
+  const padsOpen = Boolean(
+    (vocalPad && !vocalPad.hidden)
+    || (chordPad && !chordPad.hidden),
+  );
+  document.documentElement.classList.toggle('pads-open', padsOpen);
+}
+
 function showVocalPad(autoHide = true) {
   vocalPad.hidden = false;
+  syncPadsOpenClass();
   clearTimeout(vocalPadTimer);
-  if (autoHide) vocalPadTimer = setTimeout(() => { vocalPad.hidden = true; }, 7600);
+  if (autoHide) vocalPadTimer = setTimeout(() => { vocalPad.hidden = true; syncPadsOpenClass(); }, 7600);
 }
 
 function hideVocalPad() {
@@ -2790,25 +3143,31 @@ function hideVocalPad() {
   heldVocalButton = null;
   heldVocalPointer = null;
   vocalPad.hidden = true;
+  syncPadsOpenClass();
 }
 
 function syncChordPadHeld() {
+  const activeChord = currentGuitarChordName();
   for (const button of chordButtons) {
-    button.classList.toggle('held', button.dataset.chord === heldGuitarChord);
+    const isActive = button.dataset.chord === activeChord;
+    button.classList.toggle('held', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   }
-  document.documentElement.classList.toggle('guitar-fretting', Boolean(heldGuitarChord));
+  document.documentElement.classList.toggle('guitar-fretting', Boolean(activeChord));
 }
 
 function showChordPad() {
   if (!chordPad) return;
   syncChordPadHeld();
   chordPad.hidden = false;
+  syncPadsOpenClass();
 }
 
 function hideChordPad() {
   if (!chordPad) return;
-  releaseHeldGuitarChord();
+  clearGuitarInteractionState();
   chordPad.hidden = true;
+  syncPadsOpenClass();
 }
 
 function holdGuitarChord(name, pointerId) {
@@ -2826,14 +3185,46 @@ function releaseHeldGuitarChord(event) {
   syncChordPadHeld();
 }
 
+function toggleLatchedGuitarChord(name) {
+  if (!GUITAR_CHORDS[name]) return;
+  latchedGuitarChord = latchedGuitarChord === name ? null : name;
+  heldGuitarChord = null;
+  heldGuitarChordPointer = null;
+  syncChordPadHeld();
+}
+
+function clearGuitarInteractionState() {
+  for (const [pointerId, info] of activePointers) {
+    if (!info.mode?.startsWith('guitar-')) continue;
+    activePointers.delete(pointerId);
+    try {
+      if (canvas.hasPointerCapture?.(pointerId)) canvas.releasePointerCapture(pointerId);
+    } catch (_) { /* ignore */ }
+  }
+  heldGuitarChord = null;
+  heldGuitarChordPointer = null;
+  latchedGuitarChord = null;
+  keyboardGuitarChord = null;
+  guitarStrokeMotion = 0;
+  syncChordPadHeld();
+}
+
+const recentTouchChordAt = new WeakMap();
 for (const button of chordButtons) {
   button.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
     event.stopPropagation();
     audio.init();
     audio.resume();
-    holdGuitarChord(button.dataset.chord, event.pointerId);
-    button.setPointerCapture?.(event.pointerId);
+    if (event.pointerType === 'touch') {
+      event.preventDefault();
+      recentTouchChordAt.set(button, performance.now());
+      holdGuitarChord(button.dataset.chord, event.pointerId);
+      button.setPointerCapture?.(event.pointerId);
+    }
+  });
+  button.addEventListener('click', (event) => {
+    if (event.detail !== 0 && performance.now() - (recentTouchChordAt.get(button) || 0) < 700) return;
+    toggleLatchedGuitarChord(button.dataset.chord);
   });
   for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
     button.addEventListener(eventName, releaseHeldGuitarChord);
@@ -2855,6 +3246,13 @@ for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
     if (isGuitarPlayFocus()) event.preventDefault();
   }, { passive: false, capture: true });
 }
+
+// Prevent rapid cross-control taps from being promoted to page zoom by mobile
+// browsers. Informational panels remain zoomable / scrollable.
+document.addEventListener('dblclick', (event) => {
+  if (!event.target.closest?.('#vocal-pad, #chord-pad, #toast')) return;
+  event.preventDefault();
+}, { passive: false, capture: true });
 
 function playVocalNote(freq, vowel, showPrice = false) {
   playMusicalEvent({ type: 'vocal', freq, vowel, duration: 0.68, vibe: 4, showPrice });
@@ -2889,12 +3287,17 @@ for (const button of vocalButtons) {
     button.classList.add('playing');
     addVibe(3);
     showVocalPad(false);
-    heldVocalPulseTimer = setInterval(() => mic.sing(), 480);
+    heldVocalPulseTimer = setInterval(() => {
+      mic.sing();
+      // Stamp sustain while held so a cancelled pointer still keeps the length.
+      stampHeldLoopCaptureDuration();
+    }, 120);
     navigator.vibrate?.(16);
   });
   button.addEventListener('pointerup', releaseHeldVocal);
   button.addEventListener('pointercancel', releaseHeldVocal);
   button.addEventListener('lostpointercapture', releaseHeldVocal);
+  button.addEventListener('touchend', (event) => event.preventDefault(), { passive: false });
 }
 
 // ---- trigger instruments ----
@@ -2914,8 +3317,6 @@ function trigger(mesh) {
     case 'guitar': {
       if (u.stringFreq !== undefined) {
         playMusicalEvent({ type: 'guitar-pluck', freq: u.stringFreq, stringIndex: u.stringIndex, vel: 1, vibe: 3 });
-      } else {
-        fireGuitarStrum(1);
       }
       break;
     }
@@ -2944,10 +3345,9 @@ function handleClick(e) {
   if (!started || ui.modalOpen || flyT >= 0) return;
   onPointerMove(e);
   if (openCreditLink(creditLinkAtPointer())) return;
-  raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObjects(interactables, false);
-  if (hits.length) {
-    const hit = hits[0].object;
+  const details = hitInteractableDetailsAt(e.clientX, e.clientY);
+  if (details) {
+    const hit = details.object;
     const kind = hit.userData.instrument;
     // Sound only while focused on that instrument — distant tap just walks over.
     if (canPlayInstrument(kind)) trigger(hit);
@@ -2958,17 +3358,31 @@ function handleClick(e) {
   if (raycaster.ray.intersectPlane(stageWalkPlane, walkPoint)) setMascotDestination(walkPoint);
 }
 
+function isEditableHotkeyTarget(target) {
+  return Boolean(target?.closest?.('button, a, input, textarea, select, [contenteditable="true"], [role="button"]'));
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     finishOnboard();
   }
   if (!started || ui.modalOpen) return;
+  if (isEditableHotkeyTarget(e.target)) return;
+  const guitarChord = GUITAR_KEY_CHORDS[e.code];
+  if (guitarChord && isGuitarPlayFocus()) {
+    e.preventDefault();
+    if (!e.repeat) {
+      keyboardGuitarChord = guitarChord;
+      syncChordPadHeld();
+    }
+    return;
+  }
   if (e.code.startsWith('Arrow')) {
     e.preventDefault();
     if (instrumentView.phase !== 'idle') return;
     mascotMove.keys.add(e.code);
   }
-  if (e.code === 'KeyE' && !e.repeat) {
+  if (e.code === 'KeyE' && !e.repeat && instrumentView.phase === 'idle') {
     playNearestInstrument();
   }
   if (e.code === 'KeyL' && !e.repeat) {
@@ -2984,24 +3398,29 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
   if (e.code.startsWith('Arrow')) mascotMove.keys.delete(e.code);
+  const guitarChord = GUITAR_KEY_CHORDS[e.code];
+  if (guitarChord && keyboardGuitarChord === guitarChord) {
+    keyboardGuitarChord = null;
+    syncChordPadHeld();
+  }
 });
 
 // ---- keyboard ----
 const DRUM_KEYS = { KeyA: 'kick', KeyS: 'snare', KeyD: 'hihat', KeyF: 'tom2', KeyG: 'crash' };
 window.addEventListener('keydown', (e) => {
-  if (!started || ui.modalOpen || e.repeat) return;
-  if (e.code in DRUM_KEYS) {
+  if (!started || ui.modalOpen || e.repeat || isEditableHotkeyTarget(e.target)) return;
+  if (e.code in DRUM_KEYS && canPlayInstrument('drums')) {
     const part = DRUM_KEYS[e.code];
     playMusicalEvent({ type: 'drum', part, vel: 1, vibe: 4 });
-  } else if (/^Digit[1-8]$/.test(e.code)) {
+  } else if (/^Digit[1-8]$/.test(e.code) && canPlayInstrument('piano')) {
     const idx = Number(e.code.slice(5)) - 1;
     const key = whiteKeys[idx];
     if (key) {
       playMusicalEvent({ type: 'piano', freq: key.userData.freq, vel: 1, vibe: 3.5 });
     }
-  } else if (e.code === 'Space') {
+  } else if (e.code === 'Space' && isGuitarPlayFocus()) {
     e.preventDefault();
-    fireGuitarStrum(1);
+    fireGuitarStrum(1, e.shiftKey ? 'treble-to-bass' : 'bass-to-treble');
   }
 });
 
@@ -3190,14 +3609,16 @@ function updateOnboardPulse(t) {
 
 onboardOk?.addEventListener('click', finishOnboard);
 onboardEl?.addEventListener('click', (e) => {
-  if (e.target === onboardEl || e.target === onboardText) finishOnboard();
+  if (e.target !== onboardEl && e.target !== onboardText) return;
+  finishOnboard();
 });
 
 function startExperience(withAudio = true) {
   if (started) return;
   started = true;
   document.documentElement.classList.add('stage-live');
-  if (withAudio) { audio.init(); audio.resume(); }
+  syncViewportMeta();
+  if (withAudio) audio.unlock();
   intro.classList.add('gone');
   mobileControls.classList.add('active');
   zoomControls.hidden = false;
@@ -3207,22 +3628,88 @@ function startExperience(withAudio = true) {
 }
 
 enterBtn.addEventListener('click', () => startExperience(true));
+window.addEventListener('av2:modal', () => syncViewportMeta());
 
 // Keep WebAudio alive across backgrounding / flaky in-app browsers (Telegram).
 // Stuck "suspended" contexts are the usual cause of silent sessions until refresh.
+function captureAudioRecoverySnapshot() {
+  const previousTime = audio.ctx?.currentTime;
+  if (!Number.isFinite(previousTime)) return null;
+  return {
+    previousTime,
+    recordingElapsed: loop.state === 'recording'
+      ? Math.max(0, previousTime - loop.recordStartedAt)
+      : null,
+    loopOffset: loop.duration > 0 && (loop.state === 'playing' || loop.state === 'overdubbing')
+      ? positiveModulo(previousTime - loop.epoch, loop.duration)
+      : null,
+    heldCaptureElapsed: heldLoopCapture
+      ? Math.max(0, previousTime - heldLoopCapture.startedAt)
+      : null,
+  };
+}
+
+function restoreAfterAudioContextRebuild(snapshot) {
+  if (!snapshot || !audio.ctx) return;
+  const now = audio.ctx.currentTime;
+  if (snapshot.recordingElapsed !== null) {
+    const elapsed = Math.min(LOOP_MAX_SECONDS, snapshot.recordingElapsed);
+    loop.recordStartedAt = now - elapsed;
+    clearTimeout(loop.autoCloseTimer);
+    loop.autoCloseTimer = setTimeout(
+      () => finishBaseLoopRecording(true),
+      Math.max(0, LOOP_MAX_SECONDS - elapsed) * 1000,
+    );
+  }
+  if (snapshot.loopOffset !== null) {
+    loop.epoch = now - snapshot.loopOffset;
+  }
+  if (heldLoopCapture && snapshot.heldCaptureElapsed !== null) {
+    heldLoopCapture.startedAt = now - snapshot.heldCaptureElapsed;
+  }
+  if (heldVocalButton && heldVocalPointer !== null) {
+    heldVocal = audio.startVocal(
+      Number(heldVocalButton.dataset.vocalFreq),
+      Number(heldVocalButton.dataset.vocalVowel),
+    );
+  }
+  resyncLoopPlayback();
+}
+
 function unlockAudioFromGesture() {
   if (!started && !audio.ctx) return;
-  audio.init();
-  audio.resume();
+  const generation = audio.contextGeneration;
+  const snapshot = captureAudioRecoverySnapshot();
+  audio.unlock();
+  if (audio.contextGeneration !== generation) {
+    restoreAfterAudioContextRebuild(snapshot);
+  }
 }
 window.addEventListener('pointerdown', unlockAudioFromGesture, { capture: true, passive: true });
 window.addEventListener('touchstart', unlockAudioFromGesture, { capture: true, passive: true });
 window.addEventListener('keydown', unlockAudioFromGesture, { capture: true });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && audio.ctx) audio.resume();
+  if (document.visibilityState === 'visible' && audio.ctx) {
+    audio.resume();
+    resyncLoopPlayback();
+  }
+  if (document.visibilityState === 'hidden') {
+    audio.markForRecovery();
+    clearGuitarInteractionState();
+    audio.muteGuitar();
+  }
 });
+window.addEventListener('blur', () => {
+  audio.markForRecovery();
+  clearGuitarInteractionState();
+  audio.muteGuitar();
+});
+window.addEventListener('pagehide', () => audio.markForRecovery());
 window.addEventListener('pageshow', () => {
-  if (audio.ctx) audio.resume();
+  if (audio.ctx) {
+    audio.resume();
+    resyncLoopPlayback();
+  }
 });
 
 // idle auto-rotate
@@ -3285,7 +3772,7 @@ function animate() {
   }
 
   // instruments
-  for (const inst of instruments) inst.update(dt, t);
+  for (const inst of instruments) inst.update(dt, t, prefersReducedMotion.matches);
   updateMascot(dt);
   updateMobilePlayAvailability();
   updateOnboardPulse(t);
@@ -3410,6 +3897,7 @@ Promise.race([
         chipFor('guitar', { force: true });
         clearTimeout(ui._chipTimer);
       }
+      else if (shot === 'vibe-toast') ui.toast('<span class="hl">МАКСИМАЛЬНИЙ ВАЙБ!</span><br>ЛУП-ПЕДАЛЬ РОЗБЛОКОВАНО', 60000, 'vibe-max');
       else if (shot === 'toast') ui.toast('У студії доступні <span class="hl">вокал, гітара, барабани та фортепіано</span>', 60000);
       else ui.open(shot, params.get('anchor') || undefined);
     }, 400);

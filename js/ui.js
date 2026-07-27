@@ -75,6 +75,19 @@ export class UI {
       (dx < 0 ? this.el.chipNext : this.el.chipPrev).click();
     });
 
+    // Status toasts are display-only chrome. Claim their gestures so a rapid
+    // pad tap followed by a toast tap cannot become browser double-tap zoom.
+    const dismissToastGesture = (event) => {
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+      this.hideToast();
+    };
+    this.el.toast.addEventListener('pointerdown', dismissToastGesture, { passive: false });
+    this.el.toast.addEventListener('touchstart', dismissToastGesture, { passive: false });
+    this.el.toast.addEventListener('touchend', dismissToastGesture, { passive: false });
+    this.el.toast.addEventListener('dblclick', dismissToastGesture, { passive: false });
+    this.el.toast.addEventListener('gesturestart', dismissToastGesture, { passive: false });
+    this.el.toast.addEventListener('gesturechange', dismissToastGesture, { passive: false });
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { this.closeAll(); this.closeNav(); }
     });
@@ -87,6 +100,7 @@ export class UI {
     if (!m) return;
     m.hidden = false;
     this.current = name;
+    window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: true } }));
     if (name === 'pricing') {
       this.pricing.selectInstrument(anchor || this.pricing.state.instrument);
       requestAnimationFrame(() => {
@@ -110,6 +124,7 @@ export class UI {
   closeAll() {
     for (const key in this.modals) this.modals[key].hidden = true;
     this.current = null;
+    window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: false } }));
   }
 
   get modalOpen() { return this.current !== null; }
@@ -168,12 +183,19 @@ export class UI {
   hideChip() { this.el.chip.hidden = true; clearTimeout(this._chipTimer); }
 
   // ---- toast ----
-  toast(html, dur = 3200) {
+  toast(html, dur = 3200, kind = '') {
     const t = this.el.toast;
     t.innerHTML = html;
+    t.dataset.kind = kind;
     t.hidden = false;
     clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => { t.hidden = true; }, dur);
+    this._toastTimer = setTimeout(() => this.hideToast(), dur);
+  }
+
+  hideToast() {
+    this.el.toast.hidden = true;
+    delete this.el.toast.dataset.kind;
+    clearTimeout(this._toastTimer);
   }
 
   // ---- vibe ----

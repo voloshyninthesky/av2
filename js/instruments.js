@@ -549,11 +549,18 @@ export function buildGuitar() {
     }
   }
 
-  // Strings + playable zones: neck frets change pitch; body taps = open strings.
+  // Strings + dedicated play zones. A single fretboard plane replaces the
+  // overlapping per-string/per-fret hit boxes; the soundhole plane owns strums.
   const stringMat = metal(0xe8e8f0, 0.2);
   const strings = [];
   const stringWobble = Array(6).fill(0);
-  const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const pendingExcitations = [];
+  const hitMat = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
   const stringXAt = (i, y) => {
     const t = (y - BRIDGE_Y) / (1.33 - BRIDGE_Y);
     const xb = -0.042 + i * 0.0168;
@@ -574,29 +581,38 @@ export function buildGuitar() {
     str.userData.fret = 0;
     body.add(str);
     strings.push(str);
-
-    // Open-string pluck pad over the soundhole / lower bout
-    const openHit = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.42, 0.05), hitMat);
-    openHit.position.set(stringXAt(i, 0.02), 0.02, 0.11);
-    openHit.userData.stringIndex = i;
-    openHit.userData.stringFreq = OPEN_FREQS[i];
-    openHit.userData.fret = 0;
-    body.add(openHit);
-
-    // One hit cell per fret (fingerboard behind that fret)
-    for (let f = 1; f <= FRET_COUNT; f++) {
-      const y0 = fretY(f - 1);
-      const y1 = fretY(f);
-      const mid = (y0 + y1) * 0.5;
-      const h = Math.max(0.018, y0 - y1);
-      const cell = new THREE.Mesh(new THREE.BoxGeometry(0.028, h * 0.92, 0.04), hitMat);
-      cell.position.set(stringXAt(i, mid), mid, 0.105);
-      cell.userData.stringIndex = i;
-      cell.userData.fret = f;
-      cell.userData.stringFreq = OPEN_FREQS[i] * (2 ** (f / 12));
-      body.add(cell);
-    }
   }
+
+  const STRUM_Y = 0.08;
+  const strumPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.56), hitMat);
+  strumPlane.position.set(0, STRUM_Y, 0.145);
+  Object.assign(strumPlane.userData, {
+    instrument: 'guitar',
+    guitarZone: 'strum',
+    stringXs: OPEN_FREQS.map((_, i) => stringXAt(i, STRUM_Y)),
+  });
+  body.add(strumPlane);
+
+  const fretboardPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.82), hitMat);
+  fretboardPlane.position.set(0, 0.83, 0.13);
+  Object.assign(fretboardPlane.userData, {
+    instrument: 'guitar',
+    guitarZone: 'fretboard',
+    centerY: 0.83,
+    fretCount: FRET_COUNT,
+    fretYs: Array.from({ length: FRET_COUNT + 1 }, (_, fret) => fretY(fret)),
+    openFreqs: [...OPEN_FREQS],
+  });
+  body.add(fretboardPlane);
+
+  // Broad approach / hover target, intentionally ignored once guitar play is focused.
+  const approachCollider = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.92, 0.34), hitMat);
+  approachCollider.position.set(0, 0.52, 0.01);
+  Object.assign(approachCollider.userData, {
+    instrument: 'guitar',
+    guitarZone: 'approach',
+  });
+  body.add(approachCollider);
 
   // purple pickguard
   const guard = new THREE.Mesh(new THREE.CircleGeometry(0.09, 24, Math.PI * 1.05, Math.PI * 0.7), purpleMat);
@@ -619,32 +635,61 @@ export function buildGuitar() {
   stand.add(cylinderBetween(new THREE.Vector3(0.16, 0.3, 0.1), new THREE.Vector3(0.16, 0.34, 0.26), 0.016, standMat));
   guitar.add(stand);
 
-  markInteract(body, { instrument: 'guitar' });
   guitar.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = o.material !== hitMat;
   });
 
-  let wobble = 0, time = 0;
+  let wobble = 0, recoil = 0, recoilDirection = 1, time = 0;
+
+  function queuePluck(index, velocity = 1, delayMs = 0) {
+    if (!Number.isInteger(index) || index < 0 || index >= strings.length) return;
+    pendingExcitations.push({
+      index,
+      at: time + Math.max(0, delayMs) / 1000,
+      velocity: THREE.MathUtils.clamp(velocity, 0.12, 1.2),
+    });
+    pendingExcitations.sort((a, b) => a.at - b.at);
+  }
 
   return {
     group: guitar,
     label: 'Гітара',
     labelAnchor: new THREE.Vector3(0, 2.05, 0),
-    strum() { wobble = 1; },
-    pluck(index) { stringWobble[index] = 1; },
-    update(dt) {
+    openFreqs: [...OPEN_FREQS],
+    strumPlane,
+    fretboardPlane,
+    strum(stringEvents = [], direction = 'bass-to-treble', velocity = 1) {
+      recoilDirection = direction === 'treble-to-bass' ? -1 : 1;
+      recoil = Math.max(recoil, THREE.MathUtils.clamp(velocity, 0.2, 1));
+      wobble = Math.max(wobble, velocity * 0.32);
+      for (const stringEvent of stringEvents) {
+        queuePluck(stringEvent.stringIndex, velocity, stringEvent.offsetMs ?? 0);
+      }
+    },
+    pluck(index, velocity = 1, delayMs = 0) {
+      queuePluck(index, velocity, delayMs);
+    },
+    update(dt, _elapsed, reducedMotion = false) {
       time += dt;
-      wobble *= Math.pow(0.02, dt);
-      const idleZ = Math.sin(time * 0.9) * 0.01;
-      const idleX = Math.sin(time * 0.65) * 0.006;
-      body.rotation.z = Math.sin(time * 26) * wobble * 0.05 + (wobble < 0.05 ? idleZ : 0);
-      body.rotation.x = -0.14 + Math.sin(time * 20) * wobble * 0.02 + (wobble < 0.05 ? idleX : 0);
+      while (pendingExcitations.length && pendingExcitations[0].at <= time) {
+        const excitation = pendingExcitations.shift();
+        stringWobble[excitation.index] = Math.max(stringWobble[excitation.index], excitation.velocity);
+      }
+      wobble *= Math.pow(0.025, dt);
+      recoil *= Math.pow(0.006, dt);
+      const idleZ = reducedMotion ? 0 : Math.sin(time * 0.9) * 0.006;
+      const idleX = reducedMotion ? 0 : Math.sin(time * 0.65) * 0.003;
+      const playRecoil = reducedMotion ? 0 : Math.sin(time * 24) * recoil * 0.012 * recoilDirection;
+      body.rotation.z = playRecoil + Math.sin(time * 26) * wobble * 0.016 + (wobble < 0.05 ? idleZ : 0);
+      body.rotation.x = -0.14 + Math.sin(time * 20) * wobble * 0.008 + (wobble < 0.05 ? idleX : 0);
       for (let i = 0; i < strings.length; i++) {
         const str = strings[i];
         stringWobble[i] *= Math.pow(0.012, dt);
-        const movement = Math.max(wobble, stringWobble[i]);
-        const shimmer = movement < 0.02 ? Math.sin(time * 3.2 + str.userData.phase) * 0.0012 : 0;
+        const movement = stringWobble[i];
+        const shimmer = !reducedMotion && movement < 0.02
+          ? Math.sin(time * 3.2 + str.userData.phase) * 0.0008
+          : 0;
         str.position.x = str.userData.baseX + Math.sin(time * 55 + str.userData.phase) * movement * 0.012 + shimmer;
       }
     },
