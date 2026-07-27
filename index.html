@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260727-17">
+<link rel="stylesheet" href="css/style.css?v=20260727-18">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -70,6 +70,9 @@
     </div>
     <button class="icon-btn" id="menu-btn" type="button" title="Меню" aria-label="Меню" aria-expanded="false" aria-controls="hud-nav-links">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>
+    </button>
+    <button class="icon-btn" id="mascot-btn" type="button" data-open="mascot" title="Твій образ — змінити маскота" aria-label="Твій образ — змінити маскота">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg>
     </button>
     <div class="sound-wrap">
       <button class="icon-btn" id="sound-btn" type="button" title="Гучність інструментів" aria-label="Гучність" aria-expanded="false" aria-controls="sound-mixer">
@@ -262,6 +265,63 @@
   </div>
 </div>
 
+<!-- ======= MODAL: ОБРАЗ (mascot customization) ======= -->
+<div id="modal-mascot" class="overlay" hidden>
+  <div class="panel mascot-panel">
+    <button class="close-btn" data-close aria-label="Закрити">✕</button>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>ТВІЙ ГЕРОЙ</span></div>
+    <h2 class="panel-title">Твій образ<span class="dot">.</span></h2>
+
+    <div class="mascot-mixer">
+      <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-mascot-hair">ЗАЧІСКА</span>
+        <div class="chip-row" id="mascot-hair-row" role="radiogroup" aria-labelledby="lbl-mascot-hair">
+          <button type="button" class="choice-chip is-on" data-mascot-hair="long" role="radio" aria-checked="true">Довге</button>
+          <button type="button" class="choice-chip" data-mascot-hair="bob" role="radio" aria-checked="false">Шапочка</button>
+          <button type="button" class="choice-chip" data-mascot-hair="short" role="radio" aria-checked="false">Коротке</button>
+          <button type="button" class="choice-chip" data-mascot-hair="buzz" role="radio" aria-checked="false">Мінімум</button>
+        </div>
+      </div>
+
+      <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-mascot-hair-color">КОЛІР ВОЛОССЯ</span>
+        <div class="chip-row swatch-row" id="mascot-color-row" role="radiogroup" aria-labelledby="lbl-mascot-hair-color">
+          <button type="button" class="swatch is-on" data-mascot-color="5a2f22" role="radio" aria-checked="true" aria-label="Каштанове" style="--sw:#5a2f22"></button>
+          <button type="button" class="swatch" data-mascot-color="241a14" role="radio" aria-checked="false" aria-label="Чорне" style="--sw:#241a14"></button>
+          <button type="button" class="swatch" data-mascot-color="c9a35f" role="radio" aria-checked="false" aria-label="Блонд" style="--sw:#c9a35f"></button>
+          <button type="button" class="swatch" data-mascot-color="a14d2d" role="radio" aria-checked="false" aria-label="Руде" style="--sw:#a14d2d"></button>
+          <button type="button" class="swatch" data-mascot-color="9E33CA" role="radio" aria-checked="false" aria-label="Фіолетове" style="--sw:#9E33CA"></button>
+        </div>
+      </div>
+
+      <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-mascot-outfit">ОДЯГ</span>
+        <div class="chip-row" id="mascot-outfit-row" role="radiogroup" aria-labelledby="lbl-mascot-outfit">
+          <button type="button" class="choice-chip is-on" data-mascot-outfit="stage" role="radio" aria-checked="true">Сцена</button>
+          <button type="button" class="choice-chip" data-mascot-outfit="vibe" role="radio" aria-checked="false">Фірмовий</button>
+          <button type="button" class="choice-chip" data-mascot-outfit="denim" role="radio" aria-checked="false">Джинс</button>
+          <button type="button" class="choice-chip" data-mascot-outfit="night" role="radio" aria-checked="false">Ніч</button>
+        </div>
+      </div>
+
+      <div class="mixer-section">
+        <label class="mixer-label mono" for="mascot-height">ЗРІСТ · <output id="mascot-height-val">100%</output></label>
+        <input type="range" class="mascot-range" id="mascot-height" min="85" max="115" step="1" value="100">
+      </div>
+
+      <div class="mixer-section">
+        <label class="mixer-label mono" for="mascot-width">СТАТУРА · <output id="mascot-width-val">100%</output></label>
+        <input type="range" class="mascot-range" id="mascot-width" min="80" max="125" step="1" value="100">
+      </div>
+    </div>
+
+    <div class="panel-actions">
+      <button class="pill-btn outline big" id="mascot-reset" type="button">СКИНУТИ</button>
+      <button class="pill-btn gold big" data-close type="button">ГОТОВО ›</button>
+    </div>
+  </div>
+</div>
+
 <!-- ======= MODAL: ЦІНИ ======= -->
 <div id="modal-pricing" class="overlay" hidden>
   <div class="panel pricing-panel">
@@ -334,6 +394,6 @@
 <div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script type="module" src="js/main.js?v=20260727-25"></script>
+<script type="module" src="js/main.js?v=20260727-27"></script>
 </body>
 </html>

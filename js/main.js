@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260727-16';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260727-10';
-import { UI } from './ui.js?v=20260727-17';
+import { UI } from './ui.js?v=20260727-18';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -1011,40 +1011,45 @@ function buildMascot() {
   const group = new THREE.Group();
   group.name = 'Ти';
 
-  const denim = new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82 });
-  const denimLight = new THREE.MeshStandardMaterial({ color: 0x7fa1bd, roughness: 0.82 });
+  // Recolorable outfit slots (mascot customization recolors these in place).
+  const mats = {
+    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75 }),
+    panel: new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72 }),
+    stripes: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 }),
+    sleeveL: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 }),
+    sleeveR: new THREE.MeshStandardMaterial({ color: 0x7fa1bd, roughness: 0.82 }),
+    shoulder: new THREE.MeshStandardMaterial({ color: 0xb93a3a, roughness: 0.76 }),
+    collar: new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.7 }),
+    pants: new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82 }),
+    shoes: new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 }),
+  };
   const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.88 });
-  const green = new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 });
-  const yellow = new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.7 });
-  const blue = new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72 });
-  const red = new THREE.MeshStandardMaterial({ color: 0xb93a3a, roughness: 0.76 });
   const skin = new THREE.MeshStandardMaterial({ color: 0xf2c4a6, roughness: 0.82 });
-  const cream = new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75 });
   const ink = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 });
   const rose = new THREE.MeshStandardMaterial({ color: 0xb86d72, roughness: 0.8 });
   const silver = new THREE.MeshStandardMaterial({ color: 0xd7d9dd, roughness: 0.22, metalness: 0.88 });
 
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.58, 14), cream);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.58, 14), mats.top);
   torso.position.y = 1.08;
   group.add(torso);
-  const rightJerseyPanel = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.49, 0.035), blue);
+  const rightJerseyPanel = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.49, 0.035), mats.panel);
   rightJerseyPanel.position.set(0.135, 1.08, 0.285);
   group.add(rightJerseyPanel);
   for (const y of [0.98, 1.08, 1.18]) {
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.038, 0.04), green);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.038, 0.04), mats.stripes);
     stripe.position.set(-0.13, y, 0.29);
     group.add(stripe);
   }
-  const shoulderAccent = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.04), red);
+  const shoulderAccent = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.04), mats.shoulder);
   shoulderAccent.position.set(-0.23, 1.28, 0.27);
   group.add(shoulderAccent);
   for (const side of [-1, 1]) {
-    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), yellow);
+    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), mats.collar);
     collar.position.set(side * 0.07, 1.31, 0.3);
     collar.rotation.z = side * 0.58;
     group.add(collar);
   }
-  const waistband = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.028, 7, 22), denim);
+  const waistband = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.028, 7, 22), mats.pants);
   waistband.rotation.x = Math.PI / 2;
   waistband.position.y = 0.78;
   group.add(waistband);
@@ -1061,11 +1066,13 @@ function buildMascot() {
   const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.287, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
   hairCap.position.set(0, 0.04, 0.05);
   head.add(hairCap);
+  const locks = [];
   for (const x of [-0.255, 0.255]) {
     const lock = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), hairMat);
     lock.scale.set(0.72, 3.3, 0.7);
     lock.position.set(x, -0.28, 0.08);
     head.add(lock);
+    locks.push(lock);
   }
   for (const x of [-0.09, 0.09]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), ink);
@@ -1104,20 +1111,20 @@ function buildMascot() {
     return pivot;
   };
 
-  const armL = makeLimb(-0.34, 1.28, green, 0.085, 0.5, { hand: true });
-  const armR = makeLimb(0.34, 1.28, denimLight, 0.09, 0.5, { hand: true });
+  const armL = makeLimb(-0.34, 1.28, mats.sleeveL, 0.085, 0.5, { hand: true });
+  const armR = makeLimb(0.34, 1.28, mats.sleeveR, 0.09, 0.5, { hand: true });
   armL.rotation.z = -0.12;
   armR.rotation.z = 0.12;
-  const legL = makeLimb(-0.15, 0.76, denim, 0.145, 0.64);
-  const legR = makeLimb(0.15, 0.76, denim, 0.145, 0.64);
+  const legL = makeLimb(-0.15, 0.76, mats.pants, 0.145, 0.64);
+  const legR = makeLimb(0.15, 0.76, mats.pants, 0.145, 0.64);
 
   for (const leg of [legL, legR]) {
-    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 0.38), ink);
+    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 0.38), mats.shoes);
     sneaker.position.set(0, -0.64, 0.08);
     sneaker.castShadow = true;
     leg.add(sneaker);
     for (const x of [-0.07, 0, 0.07]) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.06, 0.012), cream);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.06, 0.012), mats.top);
       stripe.position.set(x, -0.64, 0.276);
       leg.add(stripe);
     }
@@ -1131,7 +1138,48 @@ function buildMascot() {
     if (object.isMesh) object.castShadow = true;
   });
 
-  return { group, torso, head, armL, armR, legL, legR };
+  return { group, torso, head, armL, armR, legL, legR, custom: { mats, hairMat, hairBack, hairCap, locks } };
+}
+
+// ============================================================
+// MASCOT CUSTOMIZATION (persisted in localStorage)
+// ============================================================
+const MASCOT_KEY = 'av2.mascot.v1';
+const MASCOT_DEFAULTS = { hair: 'long', hairColor: '5a2f22', outfit: 'stage', height: 100, width: 100 };
+
+const MASCOT_HAIR_STYLES = {
+  long: { back: { s: [1.08, 1.55, 0.82], p: [0, -0.13, -0.05] }, cap: { s: [1, 1, 1], p: [0, 0.04, 0.05] }, locks: { s: [0.72, 3.3, 0.7], y: -0.28 } },
+  bob: { back: { s: [1.1, 1.02, 0.88], p: [0, -0.02, -0.04] }, cap: { s: [1, 1, 1], p: [0, 0.04, 0.05] }, locks: { s: [0.78, 1.6, 0.75], y: -0.16 } },
+  short: { back: { s: [1.05, 0.6, 0.85], p: [0, 0.07, -0.03] }, cap: { s: [1.03, 0.95, 1.03], p: [0, 0.04, 0.05] }, locks: null },
+  buzz: { back: null, cap: { s: [1.01, 0.52, 1.01], p: [0, 0.06, 0.05] }, locks: null },
+};
+
+const MASCOT_OUTFITS = {
+  stage: { top: 0xFDFBF7, panel: 0x233f9d, stripes: 0x008542, sleeveL: 0x008542, sleeveR: 0x7fa1bd, shoulder: 0xb93a3a, collar: 0xFFD100, pants: 0x5B82A6, shoes: 0x17121c },
+  vibe: { top: 0xFDFBF7, panel: 0x9E33CA, stripes: 0xD1A13B, sleeveL: 0x9E33CA, sleeveR: 0xD1A13B, shoulder: 0xD1A13B, collar: 0x9E33CA, pants: 0x2a0f3a, shoes: 0x17121c },
+  denim: { top: 0xFDFBF7, panel: 0x5B82A6, stripes: 0xFDFBF7, sleeveL: 0x5B82A6, sleeveR: 0x5B82A6, shoulder: 0xD1A13B, collar: 0xFDFBF7, pants: 0x3a5a8c, shoes: 0xFDFBF7 },
+  night: { top: 0x241a2e, panel: 0x9E33CA, stripes: 0xD1A13B, sleeveL: 0x241a2e, sleeveR: 0x241a2e, shoulder: 0x9E33CA, collar: 0xD1A13B, pants: 0x17121c, shoes: 0x9E33CA },
+};
+
+const mascotCfg = (() => {
+  const cfg = { ...MASCOT_DEFAULTS };
+  try {
+    const raw = localStorage.getItem(MASCOT_KEY);
+    if (!raw) return cfg;
+    const saved = JSON.parse(raw);
+    if (saved && typeof saved === 'object') {
+      if (saved.hair in MASCOT_HAIR_STYLES) cfg.hair = saved.hair;
+      if (typeof saved.hairColor === 'string' && /^[0-9a-fA-F]{6}$/.test(saved.hairColor)) cfg.hairColor = saved.hairColor;
+      if (saved.outfit in MASCOT_OUTFITS) cfg.outfit = saved.outfit;
+      if (Number.isFinite(saved.height)) cfg.height = THREE.MathUtils.clamp(Math.round(saved.height), 85, 115);
+      if (Number.isFinite(saved.width)) cfg.width = THREE.MathUtils.clamp(Math.round(saved.width), 80, 125);
+    }
+  } catch { /* ignore */ }
+  return cfg;
+})();
+
+function saveMascotConfig() {
+  try { localStorage.setItem(MASCOT_KEY, JSON.stringify(mascotCfg)); } catch { /* ignore */ }
 }
 
 // ============================================================
@@ -1223,10 +1271,40 @@ scene.add(mic.group);
 
 const mascot = buildMascot();
 const mascotBaseScale = 0.68;
-mascot.group.scale.setScalar(mascotBaseScale);
+
+// Height/width come from the saved customization; fallFactor shrinks during a stage fall.
+function applyMascotScale(fallFactor = 1) {
+  const w = mascotBaseScale * (mascotCfg.width / 100) * fallFactor;
+  mascot.group.scale.set(w, mascotBaseScale * (mascotCfg.height / 100) * fallFactor, w);
+}
+
+function applyMascotConfig() {
+  const cu = mascot.custom;
+  const style = MASCOT_HAIR_STYLES[mascotCfg.hair] || MASCOT_HAIR_STYLES.long;
+  cu.hairBack.visible = Boolean(style.back);
+  if (style.back) {
+    cu.hairBack.scale.set(...style.back.s);
+    cu.hairBack.position.set(...style.back.p);
+  }
+  cu.hairCap.scale.set(...style.cap.s);
+  cu.hairCap.position.set(...style.cap.p);
+  for (const lock of cu.locks) {
+    lock.visible = Boolean(style.locks);
+    if (style.locks) {
+      lock.scale.set(...style.locks.s);
+      lock.position.y = style.locks.y;
+    }
+  }
+  cu.hairMat.color.setHex(parseInt(mascotCfg.hairColor, 16));
+  const outfit = MASCOT_OUTFITS[mascotCfg.outfit] || MASCOT_OUTFITS.stage;
+  for (const slot in outfit) cu.mats[slot].color.setHex(outfit[slot]);
+  applyMascotScale();
+}
+
 // Start close to the visual center and just upstage: drums are first on mobile.
 mascot.group.position.set(-0.75, 0, -0.6);
 scene.add(mascot.group);
+applyMascotConfig();
 const mascotFallMeshes = [];
 const mascotFallMaterialStates = new Map();
 mascot.group.traverse((object) => {
@@ -1260,10 +1338,12 @@ for (const inst of instruments) {
 const labels = [];
 let mascotLabel = null;
 const MASCOT_LABEL_Y = 1.92;
+// The pointer floats above the head — keep the gap proportional to the customized height.
+const mascotLabelY = () => MASCOT_LABEL_Y * (mascotCfg.height / 100);
 function addLabels() {
   // Arrow-only marker above the mascot (no "Ти" text).
   mascotLabel = makeMascotPointer();
-  mascotLabel.position.set(mascot.group.position.x, MASCOT_LABEL_Y, mascot.group.position.z);
+  mascotLabel.position.set(mascot.group.position.x, mascotLabelY(), mascot.group.position.z);
   scene.add(mascotLabel);
 }
 
@@ -1425,7 +1505,7 @@ function instrumentLocalToWorld(kind, point) {
 }
 
 function resetMascotPose() {
-  mascot.group.scale.setScalar(mascotBaseScale);
+  applyMascotScale();
   mascot.group.rotation.x = 0;
   mascot.group.rotation.z = 0;
   mascot.torso.rotation.set(0, 0, 0);
@@ -1519,7 +1599,7 @@ function poseMascotAtInstrument(kind) {
   }
   if (mascotLabel) {
     mascotLabel.visible = false;
-    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
+    mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + mascotLabelY(), mascot.group.position.z);
   }
 }
 
@@ -1872,7 +1952,7 @@ function respawnMascot() {
   const completedFall = mascotMove.fall;
   mascotMove.fall = null;
   mascot.group.position.copy(mascotMove.spawn);
-  mascot.group.scale.setScalar(mascotBaseScale);
+  applyMascotScale();
   mascot.group.rotation.x = 0;
   mascot.group.rotation.z = 0;
   mascot.torso.rotation.z = 0;
@@ -1899,7 +1979,7 @@ function respawnMascot() {
   }
   if (mascotLabel) {
     mascotLabel.visible = true;
-    mascotLabel.position.set(mascotMove.spawn.x, MASCOT_LABEL_Y, mascotMove.spawn.z);
+    mascotLabel.position.set(mascotMove.spawn.x, mascotLabelY(), mascotMove.spawn.z);
   }
   if (isMobileGameMode()) {
     mobileFollowTarget.set(mascotMove.spawn.x, 1.35, mascotMove.spawn.z - 0.25);
@@ -1982,7 +2062,7 @@ function updateMascot(dt) {
     const fallProgress = Math.min(1, fall.t / fall.duration);
     mascot.group.position.addScaledVector(fall.velocity, dt);
     mascot.group.position.y = -0.05 - 0.48 * fall.t - 0.38 * fall.t * fall.t;
-    mascot.group.scale.setScalar(mascotBaseScale * (1 - fallProgress * 0.24));
+    applyMascotScale(1 - fallProgress * 0.24);
     mascot.group.rotation.z += dt * 1.7;
     mascot.group.rotation.x += dt * 0.82;
     for (const material of mascotFallMaterialStates.keys()) {
@@ -1996,7 +2076,7 @@ function updateMascot(dt) {
     camera.lookAt(controls.target);
     if (mascotLabel) {
       mascotLabel.visible = fall.t < 0.42;
-      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
+      mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + mascotLabelY(), mascot.group.position.z);
     }
     if (fall.t >= fall.duration) respawnMascot();
     return;
@@ -2012,7 +2092,7 @@ function updateMascot(dt) {
     if (mascotLabel) {
       mascotLabel.visible = instrumentView.phase === 'returning';
       if (mascotLabel.visible) {
-        mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
+        mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + mascotLabelY(), mascot.group.position.z);
       }
     }
     return;
@@ -2110,7 +2190,7 @@ function updateMascot(dt) {
     const bob = prefersReducedMotion.matches ? 0 : Math.sin(performance.now() * 0.003) * 0.04;
     mascotLabel.position.set(
       mascot.group.position.x,
-      mascot.group.position.y + MASCOT_LABEL_Y + bob,
+      mascot.group.position.y + mascotLabelY() + bob,
       mascot.group.position.z,
     );
     const pulse = prefersReducedMotion.matches ? 1 : 1 + Math.sin(performance.now() * 0.004) * 0.06;
@@ -3737,6 +3817,111 @@ window.__mascotDebug = () => ({
   dancing: dance.active,
 });
 
+// ---- mascot customization (ОБРАЗ modal) ----
+const mascotModal = document.getElementById('modal-mascot');
+const mascotHeightInput = document.getElementById('mascot-height');
+const mascotWidthInput = document.getElementById('mascot-width');
+
+function syncMascotModal() {
+  if (!mascotModal) return;
+  const syncGroup = (selector, attr, value) => {
+    mascotModal.querySelectorAll(selector).forEach((btn) => {
+      const on = btn.dataset[attr] === String(value);
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  };
+  syncGroup('[data-mascot-hair]', 'mascotHair', mascotCfg.hair);
+  syncGroup('[data-mascot-color]', 'mascotColor', mascotCfg.hairColor);
+  syncGroup('[data-mascot-outfit]', 'mascotOutfit', mascotCfg.outfit);
+  if (mascotHeightInput) mascotHeightInput.value = String(mascotCfg.height);
+  if (mascotWidthInput) mascotWidthInput.value = String(mascotCfg.width);
+  const hv = document.getElementById('mascot-height-val');
+  const wv = document.getElementById('mascot-width-val');
+  if (hv) hv.textContent = `${mascotCfg.height}%`;
+  if (wv) wv.textContent = `${mascotCfg.width}%`;
+}
+
+function setMascotConfig(patch) {
+  Object.assign(mascotCfg, patch);
+  saveMascotConfig();
+  applyMascotConfig();
+  syncMascotModal();
+}
+
+if (mascotModal) {
+  mascotModal.querySelectorAll('[data-mascot-hair]').forEach((btn) =>
+    btn.addEventListener('click', () => setMascotConfig({ hair: btn.dataset.mascotHair })));
+  mascotModal.querySelectorAll('[data-mascot-color]').forEach((btn) =>
+    btn.addEventListener('click', () => setMascotConfig({ hairColor: btn.dataset.mascotColor })));
+  mascotModal.querySelectorAll('[data-mascot-outfit]').forEach((btn) =>
+    btn.addEventListener('click', () => setMascotConfig({ outfit: btn.dataset.mascotOutfit })));
+  mascotHeightInput?.addEventListener('input', () => setMascotConfig({ height: Number(mascotHeightInput.value) }));
+  mascotWidthInput?.addEventListener('input', () => setMascotConfig({ width: Number(mascotWidthInput.value) }));
+  document.getElementById('mascot-reset')?.addEventListener('click', () => setMascotConfig({ ...MASCOT_DEFAULTS }));
+  syncMascotModal();
+}
+
+// Camera frames the mascot while the ОБРАЗ modal is open (live preview).
+const mascotCam = {
+  active: false, returning: false, framed: false, t: 0,
+  fromPos: new THREE.Vector3(), fromTgt: new THREE.Vector3(),
+  toPos: new THREE.Vector3(), toTgt: new THREE.Vector3(),
+  savedPos: new THREE.Vector3(), savedTgt: new THREE.Vector3(),
+};
+
+function startMascotCam(toPos, toTgt, returning) {
+  mascotCam.fromPos.copy(camera.position);
+  mascotCam.fromTgt.copy(controls.target);
+  mascotCam.toPos.copy(toPos);
+  mascotCam.toTgt.copy(toTgt);
+  mascotCam.t = 0;
+  mascotCam.returning = returning;
+  mascotCam.active = true;
+}
+
+function frameMascotForCustomize() {
+  if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
+  setDancing(false);
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+  mascotCam.savedPos.copy(camera.position);
+  mascotCam.savedTgt.copy(controls.target);
+  const mp = mascot.group.position;
+  const dir = camera.position.clone().sub(controls.target);
+  dir.y = 0;
+  if (dir.lengthSq() < 0.01) dir.set(0, 0, 1);
+  dir.normalize();
+  // Face the camera so outfit / hair / face changes are visible while editing.
+  mascot.group.rotation.y = Math.atan2(dir.x, dir.z);
+  let target;
+  let position;
+  if (window.innerWidth <= 900) {
+    // Compact layout docks the panel as a bottom sheet — project the mascot
+    // into the open strip above it instead of screen center.
+    target = new THREE.Vector3(mp.x, mp.y - 0.3, mp.z);
+    position = target.clone().addScaledVector(dir, 3.3);
+    position.y = mp.y + 1.35;
+  } else {
+    target = new THREE.Vector3(mp.x, mp.y + 0.82 * (mascotCfg.height / 100), mp.z);
+    position = target.clone().addScaledVector(dir, 2.7);
+    position.y = target.y + 0.55;
+  }
+  controls.enabled = false;
+  startMascotCam(position, target, false);
+}
+
+window.addEventListener('av2:modal', (event) => {
+  if (event.detail?.name !== 'mascot' || !started) return;
+  if (event.detail.open) {
+    mascotCam.framed = true;
+    frameMascotForCustomize();
+  } else if (mascotCam.framed) {
+    mascotCam.framed = false;
+    startMascotCam(mascotCam.savedPos, mascotCam.savedTgt, true);
+  }
+});
+
 document.addEventListener('pointerdown', (event) => {
   if (!soundMixer || soundMixer.hidden) return;
   if (event.target.closest('.sound-wrap')) return;
@@ -4024,6 +4209,18 @@ function animate(frameTime = performance.now()) {
           if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
         }, 6000);
       }
+    }
+  } else if (mascotCam.active) {
+    // ОБРАЗ modal camera framing (tween toward / away from the mascot).
+    mascotCam.t += dt;
+    const k = Math.min(1, mascotCam.t / (prefersReducedMotion.matches ? 0.01 : 0.6));
+    const e = easeInOut(k);
+    camera.position.lerpVectors(mascotCam.fromPos, mascotCam.toPos, e);
+    controls.target.lerpVectors(mascotCam.fromTgt, mascotCam.toTgt, e);
+    camera.lookAt(controls.target);
+    if (k >= 1) {
+      mascotCam.active = false;
+      if (mascotCam.returning) controls.enabled = true;
     }
   } else if (!updateInstrumentViewCamera(dt) && controls.enabled) {
     controls.update();

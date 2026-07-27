@@ -1011,6 +1011,60 @@ html[data-instrument-view="focused"] #hud {
 }
 .promo-grid p:nth-child(2) b { color: var(--purple-deep); }
 
+/* ---- mascot customization ---- */
+#modal-mascot {
+  justify-content: flex-end;
+  background: rgba(10, 6, 18, .35);
+  backdrop-filter: none;
+}
+.mascot-panel {
+  width: min(430px, 100%);
+  padding: 30px clamp(20px, 4vw, 40px) 26px;
+  background:
+    radial-gradient(80% 50% at 100% 0%, rgba(158, 51, 202, .14), transparent 55%),
+    var(--cream);
+}
+.mascot-panel .panel-title { font-size: clamp(26px, 4vw, 40px); }
+.mascot-panel .panel-lead { margin-bottom: 18px; }
+.mascot-panel .panel-actions { margin-top: 20px; }
+.mascot-mixer { display: flex; flex-direction: column; gap: 13px; }
+.mascot-panel .format-btn.is-on { background: var(--purple); color: var(--cream); }
+.mascot-panel .choice-chip.is-on { background: var(--purple); border-color: var(--ink); color: var(--cream); }
+
+.swatch-row { gap: 10px; }
+.swatch {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid rgba(23, 18, 28, .25);
+  background: var(--sw, #000); cursor: pointer;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.swatch:hover { transform: translateY(-2px) scale(1.06); border-color: var(--purple); }
+.swatch:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.swatch.is-on {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--cream), 0 0 0 5px var(--purple);
+}
+
+.mascot-range {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 8px; border-radius: 999px;
+  background: rgba(23, 18, 28, .14); outline: none;
+  touch-action: none; cursor: pointer;
+}
+.mascot-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--purple); border: 3px solid var(--ink); cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(23, 18, 28, .25);
+}
+.mascot-range::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--purple); border: 3px solid var(--ink); cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(23, 18, 28, .25);
+}
+.mascot-range:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+.mascot-panel output { color: var(--purple); letter-spacing: .1em; }
+
 #webgl-fail { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--scene-bg); padding: 20px; }
 #webgl-fail .panel { width: min(480px, 100%); }
 #webgl-fail p { font-size: 15px; line-height: 1.6; }
@@ -1021,6 +1075,8 @@ html[data-instrument-view="focused"] #hud {
   #keys-hint, #drag-hint { display: none !important; }
 }
 @media (max-width: 900px) {
+  /* Mascot sheet stays low so the 3D avatar previews above it. */
+  #modal-mascot .mascot-panel { max-height: 56vh; }
   .inst-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px), (hover: none) and (pointer: coarse) and (max-height: 900px) {

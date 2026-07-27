@@ -28,6 +28,7 @@ export class UI {
       steps: document.getElementById('modal-steps'),
       rules: document.getElementById('modal-rules'),
       pricing: document.getElementById('modal-pricing'),
+      mascot: document.getElementById('modal-mascot'),
     };
     this.current = null;
     this._toastTimer = null;
@@ -100,7 +101,7 @@ export class UI {
     if (!m) return;
     m.hidden = false;
     this.current = name;
-    window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: true } }));
+    window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: true, name } }));
     if (name === 'pricing') {
       this.pricing.selectInstrument(anchor || this.pricing.state.instrument);
       requestAnimationFrame(() => {
@@ -122,9 +123,10 @@ export class UI {
   }
 
   closeAll() {
+    const closed = this.current;
     for (const key in this.modals) this.modals[key].hidden = true;
     this.current = null;
-    window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: false } }));
+    window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: false, name: closed } }));
   }
 
   get modalOpen() { return this.current !== null; }

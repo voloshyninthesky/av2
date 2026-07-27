@@ -167,6 +167,8 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
+**Customization** (HUD person icon button next to the sound mixer → `#modal-mascot`): зачіска (довге / шапочка / коротке / мінімум), колір волосся (5 swatches; also recolors brows), одяг (4 palettes: Сцена / Фірмовий / Джинс / Ніч — recolor nine shared outfit material slots in place), зріст (85–115%) and статура (80–125%) sliders (non-uniform group scale; the fall shrink and pointer-arrow height stay proportional). Applies live to the 3D mascot, persists in `localStorage` `av2.mascot.v1` (JSON, validated on load), reset button restores defaults. While the modal is open the camera tweens to frame the mascot (leaving any instrument focus first; compact screens aim into the strip above the bottom-sheet panel) and returns on close. The modal never closes on backdrop tap — ✕ / ГОТОВО / Esc only.
+
 **Dance** (click the HUD logo): toggles a **tektonik** routine — procedural 8-beat loop (overhead arm sweeps + bounce, full spin on the last two beats). Limbs relax smoothly on stop. Walk input, instrument approach, or a stage fall stops the dance.
 
 ---
@@ -220,9 +222,9 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
-| HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **sound mixer** |
+| HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **sound mixer** |
 | Sound mixer | Per-instrument faders + master mute (speaker button) |
-| Modals | Steps, rules, **interactive pricing mixer** |
+| Modals | **Mascot customization**, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing |
 | Toast / tooltip | Short feedback |
@@ -288,6 +290,20 @@ A recorded strum carries serializable per-string data. `direction` is `bass-to-t
 ```
 
 The loop pedal preserves this order, velocity, and timing instead of rebuilding a generic chord on playback.
+
+### `av2.mascot.v1` (localStorage)
+
+Mascot customization, merged over defaults and validated on load (unknown / malformed values fall back per field):
+
+```js
+{
+  hair: "long",        // "long" | "bob" | "short" | "buzz"
+  hairColor: "5a2f22", // 6-digit hex, no '#'
+  outfit: "stage",     // "stage" | "vibe" | "denim" | "night"
+  height: 100,         // percent, 85–115
+  width: 100           // percent, 80–125
+}
+```
 
 ---
 
