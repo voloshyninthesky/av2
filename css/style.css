@@ -22,7 +22,11 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background: var(--scene-bg);
   color: var(--cream);
@@ -36,6 +40,11 @@ html, body {
   touch-action: manipulation;
   overscroll-behavior: none;
 }
+/* Once on stage: no browser pinch-zoom between UI chrome and the canvas. */
+html.stage-live,
+html.stage-live body {
+  touch-action: none;
+}
 
 /* Keep readable panels copyable (rules, pricing). */
 .panel, .panel * {
@@ -45,9 +54,28 @@ html, body {
 }
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
-#zoom-controls, #loop-pedal, #vocal-pad, .overlay,
+#zoom-controls, #loop-pedal, #vocal-pad, #chord-pad, .overlay,
 button, a, .pill-btn, .icon-btn, .nav-btn {
   touch-action: manipulation;
+}
+html.stage-live #intro,
+html.stage-live #hud,
+html.stage-live #onboard,
+html.stage-live #toast,
+html.stage-live #chip,
+html.stage-live #keys-hint,
+html.stage-live #drag-hint,
+html.stage-live #zoom-controls,
+html.stage-live #loop-pedal,
+html.stage-live #vocal-pad,
+html.stage-live #chord-pad,
+html.stage-live .overlay,
+html.stage-live button,
+html.stage-live a,
+html.stage-live .pill-btn,
+html.stage-live .icon-btn,
+html.stage-live .nav-btn {
+  touch-action: none;
 }
 
 .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }

@@ -2121,7 +2121,8 @@ document.addEventListener('dragstart', (e) => {
   e.preventDefault();
 }, { capture: true });
 
-// Mobile Safari: block pinch / double-tap page zoom that breaks the fixed layout.
+// Block browser page pinch / double-tap zoom that breaks the fixed layout.
+// Safari uses gesture*; Chrome/Android need multitouch preventDefault + touch-action.
 document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
 document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
@@ -2132,7 +2133,54 @@ document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: fa
     const now = performance.now();
     if (now - lastTouchEnd < 320) e.preventDefault();
     lastTouchEnd = now;
+    // If a pinch still slipped through, nudge the viewport meta back to 1×.
+    requestAnimationFrame(resetBrowserPageZoom);
   }, { passive: false, capture: true });
+}
+
+const VIEWPORT_META_BASE = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
+let viewportResetTimer = 0;
+
+function resetBrowserPageZoom() {
+  const vv = window.visualViewport;
+  if (!vv || Math.abs(vv.scale - 1) < 0.01) return;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  // Toggle scale to force Chrome/Safari to drop a stuck page zoom.
+  meta.setAttribute('content', 'width=device-width, initial-scale=1.0001, maximum-scale=1.0001, user-scalable=no, viewport-fit=cover');
+  clearTimeout(viewportResetTimer);
+  viewportResetTimer = window.setTimeout(() => {
+    meta.setAttribute('content', VIEWPORT_META_BASE);
+    syncRendererToWindow();
+  }, 16);
+}
+
+function syncRendererToWindow() {
+  fitCameraToViewport();
+  applyMobileOrbitPolicy();
+  syncMobileInstrumentChrome();
+  if (instrumentView.home && instrumentView.phase !== 'idle') {
+    instrumentView.home.maxDistance = controls.maxDistance;
+  }
+  if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused') applyFocusedControlLimits();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer && composer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function blockStageBrowserPageZoom(event) {
+  if (!started) return;
+  if (event.target?.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
+  if (event.touches && event.touches.length >= 2) event.preventDefault();
+}
+document.addEventListener('touchstart', blockStageBrowserPageZoom, { passive: false, capture: true });
+document.addEventListener('touchmove', blockStageBrowserPageZoom, { passive: false, capture: true });
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    resetBrowserPageZoom();
+    syncRendererToWindow();
+  });
+  window.visualViewport.addEventListener('scroll', resetBrowserPageZoom);
 }
 
 // ---- vibe ----
@@ -2979,11 +3027,14 @@ onboardEl?.addEventListener('click', (e) => {
 function startExperience(withAudio = true) {
   if (started) return;
   started = true;
+  document.documentElement.classList.add('stage-live');
   if (withAudio) { audio.init(); audio.resume(); }
   intro.classList.add('gone');
   mobileControls.classList.add('active');
   zoomControls.hidden = false;
   flyT = 0;
+  resetBrowserPageZoom();
+  syncRendererToWindow();
 }
 
 enterBtn.addEventListener('click', () => startExperience(true));
@@ -3012,17 +3063,7 @@ controls.addEventListener('end', () => {
 // ============================================================
 // RESIZE
 // ============================================================
-window.addEventListener('resize', () => {
-  fitCameraToViewport();
-  applyMobileOrbitPolicy();
-  syncMobileInstrumentChrome();
-  if (instrumentView.home && instrumentView.phase !== 'idle') {
-    instrumentView.home.maxDistance = controls.maxDistance;
-  }
-  if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused') applyFocusedControlLimits();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  composer && composer.setSize(window.innerWidth, window.innerHeight);
-});
+window.addEventListener('resize', syncRendererToWindow);
 
 // ============================================================
 // MAIN LOOP
@@ -3155,6 +3196,7 @@ Promise.race([
 
   if (params.has('nointro')) {
     started = true;
+    document.documentElement.classList.add('stage-live');
     intro.classList.add('gone');
     mobileControls.classList.add('active');
     zoomControls.hidden = false;
@@ -3163,6 +3205,8 @@ Promise.race([
     controls.enabled = true;
     ui.showHUD();
     startOnboard();
+    resetBrowserPageZoom();
+    syncRendererToWindow();
   } else {
     enterBtn.disabled = false;
     enterBtn.classList.add('ready');
