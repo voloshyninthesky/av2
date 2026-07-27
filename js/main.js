@@ -937,29 +937,26 @@ function buildMascot() {
   }
   group.add(head);
 
-  const makeLimb = (x, y, material, radius, length) => {
+  const makeLimb = (x, y, material, radius, length, { hand = false } = {}) => {
     const pivot = new THREE.Group();
     pivot.position.set(x, y, 0);
     const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.92, length, 9), material);
     limb.position.y = -length / 2;
     pivot.add(limb);
+    if (hand) {
+      const palm = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.05, 10, 8), skin);
+      palm.scale.set(1.05, 0.85, 1.15);
+      palm.position.y = -length - radius * 0.35;
+      pivot.add(palm);
+    }
     group.add(pivot);
     return pivot;
   };
 
-  const armL = makeLimb(-0.34, 1.28, green, 0.085, 0.5);
-  const armR = makeLimb(0.34, 1.28, denimLight, 0.105, 0.56);
+  const armL = makeLimb(-0.34, 1.28, green, 0.085, 0.5, { hand: true });
+  const armR = makeLimb(0.34, 1.28, denimLight, 0.09, 0.5, { hand: true });
   armL.rotation.z = -0.12;
   armR.rotation.z = 0.12;
-  for (const arm of [armL, armR]) {
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), skin);
-    hand.position.y = -0.51;
-    arm.add(hand);
-  }
-  const jacketPanel = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.62, 0.11), denimLight);
-  jacketPanel.position.set(0.38, 0.96, 0.02);
-  jacketPanel.rotation.z = -0.08;
-  group.add(jacketPanel);
   const legL = makeLimb(-0.15, 0.76, denim, 0.145, 0.64);
   const legR = makeLimb(0.15, 0.76, denim, 0.145, 0.64);
 
