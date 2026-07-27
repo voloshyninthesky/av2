@@ -21,6 +21,7 @@ export class UI {
       toast: document.getElementById('toast'),
       vibe: document.getElementById('vibe'),
       vibeFill: document.getElementById('vibe-fill'),
+      danceBtn: document.getElementById('dance-btn'),
       soundBtn: document.getElementById('sound-btn'),
       menuBtn: document.getElementById('menu-btn'),
     };

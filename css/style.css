@@ -226,8 +226,29 @@ html.stage-live .nav-btn {
   backdrop-filter: blur(6px);
 }
 .icon-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
+.icon-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.icon-btn:disabled {
+  cursor: default;
+  color: rgba(253, 251, 247, .28);
+  border-color: rgba(253, 251, 247, .16);
+  transform: none;
+}
 .icon-btn.off { color: rgba(253, 251, 247, .35); }
 .icon-btn.off svg { opacity: .4; }
+#dance-btn.dancing {
+  border-color: var(--gold);
+  background: rgba(158, 51, 202, .82);
+  color: var(--gold);
+  box-shadow: 0 0 18px rgba(158, 51, 202, .65);
+  animation: danceButtonBeat .62s ease-in-out infinite alternate;
+}
+#dance-btn { flex: none; }
+@keyframes danceButtonBeat {
+  to { transform: translateY(-1px) scale(1.07) rotate(-4deg); }
+}
 
 .sound-wrap { position: relative; }
 #sound-mixer {
@@ -376,6 +397,7 @@ html.stage-live .nav-btn {
 }
 @media (prefers-reduced-motion: reduce) {
   #onboard { animation: none; }
+  #dance-btn.dancing { animation: none; }
 }
 
 #zoom-controls {
@@ -1008,6 +1030,15 @@ html[data-instrument-view="focused"] #hud {
 /* ============ RESPONSIVE ============ */
 @media (max-width: 900px) {
   .inst-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 721px) and (max-width: 940px) {
+  .logo-chip {
+    width: 54px;
+    padding: 7px;
+    justify-content: center;
+  }
+  .logo-text { display: none; }
+  .nav-btn { padding-inline: 12px; }
 }
 @media (max-width: 720px), (hover: none) and (pointer: coarse) and (max-height: 900px) {
   #hud {

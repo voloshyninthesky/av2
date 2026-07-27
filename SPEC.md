@@ -118,6 +118,8 @@ Distant tap / swipe on an instrument: **walk + camera approach only** — no pre
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus seats the mascot and reframes the camera.
 
+The HUD has a **breakdance** button immediately beside the sound control. While the mascot is free on stage, pressing it starts a finite routine: top-rock, floor spin / windmill, handstand freeze, then a clean return to the neutral pose. Pressing it again restarts the routine; walking or choosing an instrument interrupts it. The control is unavailable during instrument approach / focus and fall recovery, so ✕ remains the only way to leave instrument focus.
+
 ---
 
 ## 5. Interaction map
@@ -134,6 +136,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 | `1–8` | Piano whites |
 | Space | Guitar strum (held chord or open strings) |
 | `L` | Loop pedal (after first VIBE fill unlock) |
+| Dance button | Start / restart the mascot breakdance |
 | Esc | Dismiss onboard / close sound mixer (does **not** leave instrument focus) |
 | ✕ (`#mobile-exit`) | Leave instrument focus (desktop + mobile) |
 
@@ -146,7 +149,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 - Touch instruments when focused (multitouch piano / drums / fretted guitar).
 - **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys must both work. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
 - Chord pad while guitar-focused; vocal pad while mic-focused.
-- HUD collapses to menu drawer on small screens.
+- HUD collapses to menu drawer on small screens; dance and sound remain directly visible beside it.
 
 ### VIBE meter
 
@@ -164,7 +167,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
-| HUD | Logo, VIBE, nav (кроки / правила / ціни), **sound mixer** |
+| HUD | Logo, VIBE, nav (кроки / правила / ціни), **breakdance**, **sound mixer** |
 | Sound mixer | Per-instrument faders + master mute (speaker button) |
 | Modals | Steps, rules, **interactive pricing mixer** |
 | Chord / vocal pads | Instrument play helpers while focused |
@@ -273,7 +276,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
 - Works on desktop and mobile Safari / Chrome (and best-effort Telegram in-app browser).
 - Keyboard focus visible on overlay controls.
-- `prefers-reduced-motion`: cut ambient / onboard pulse animations.
+- `prefers-reduced-motion`: cut ambient / onboard pulse animations and replace the spinning breakdance with a short low-motion groove.
 - WebGL fail → `#webgl-fail` panel.
 - Block Mobile Safari / Chrome page pinch / double-tap zoom that breaks the fixed layout; guitar focus blocks page pinch while fretting/strumming — without breaking chrome↔canvas multitouch.
 - No stuck-silent sessions from a suspended `AudioContext` after backgrounding when the next user gesture can unlock.

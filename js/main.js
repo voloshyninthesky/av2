@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260727-07';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260726-03';
-import { UI } from './ui.js?v=20260725-06';
+import { UI } from './ui.js?v=20260727-07';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -880,6 +880,8 @@ function makeMascotPointer() {
 }
 
 // ---- compact young stage mascot ----
+const MASCOT_DANCE_PIVOT_Y = 0.82;
+
 function buildMascot() {
   const group = new THREE.Group();
   group.name = 'Ти';
@@ -1000,11 +1002,24 @@ function buildMascot() {
   badge.position.set(-0.14, 1.22, 0.312);
   group.add(badge);
 
+  // Keep locomotion on the outer group and give floor moves a pelvis-centred
+  // pivot. The opposing offsets preserve the mascot's existing neutral pose.
+  const dancePivot = new THREE.Group();
+  dancePivot.name = 'dance-pivot';
+  dancePivot.position.y = MASCOT_DANCE_PIVOT_Y;
+  dancePivot.rotation.order = 'YXZ';
+  const visualRoot = new THREE.Group();
+  visualRoot.name = 'mascot-visual-root';
+  visualRoot.position.y = -MASCOT_DANCE_PIVOT_Y;
+  visualRoot.add(...group.children);
+  dancePivot.add(visualRoot);
+  group.add(dancePivot);
+
   group.traverse((object) => {
     if (object.isMesh) object.castShadow = true;
   });
 
-  return { group, torso, head, armL, armR, legL, legR };
+  return { group, dancePivot, visualRoot, torso, head, armL, armR, legL, legR };
 }
 
 // ============================================================
@@ -1155,12 +1170,213 @@ const mascotMove = {
   spawn: new THREE.Vector3(-0.75, 0, -0.6),
   fall: null,
 };
+const danceFrame = (at, {
+  pivot = [0, MASCOT_DANCE_PIVOT_Y, 0],
+  root = [0, 0, 0],
+  torso = [0, 0, 0],
+  head = [0, 0, 0],
+  armL = [0, 0, -0.12],
+  armR = [0, 0, 0.12],
+  legL = [0, 0, 0],
+  legR = [0, 0, 0],
+} = {}) => ({ at, pivot, root, torso, head, armL, armR, legL, legR });
+const DANCE_TAU = Math.PI * 2;
+const BREAKDANCE_FRAMES = [
+  danceFrame(0),
+  danceFrame(0.34, {
+    pivot: [0, 0.7, 0],
+    root: [0.08, 0, 0.12],
+    torso: [0.12, 0, -0.18],
+    head: [-0.08, 0, 0.14],
+    armL: [-0.42, 0, -0.92],
+    armR: [0.18, 0, 0.86],
+    legL: [0.34, 0, -0.2],
+    legR: [0.08, 0, 0.18],
+  }),
+  danceFrame(0.72, {
+    pivot: [0, 0.8, 0],
+    root: [-0.04, 0, -0.18],
+    torso: [-0.08, 0, 0.28],
+    head: [0.05, 0, -0.18],
+    armL: [0.16, 0, -0.72],
+    armR: [-0.48, 0, 1.02],
+    legL: [0.04, 0, -0.16],
+    legR: [0.42, 0, 0.22],
+  }),
+  danceFrame(1.08, {
+    pivot: [0, 0.56, 0],
+    root: [0.3, 0, -0.2],
+    torso: [0.3, 0, 0.08],
+    head: [-0.18, 0, 0.12],
+    armL: [-1.16, 0, -0.66],
+    armR: [-1.32, 0, 0.62],
+    legL: [0.82, 0, -0.38],
+    legR: [0.48, 0, 0.36],
+  }),
+  danceFrame(1.42, {
+    pivot: [0, 0.38, 0],
+    root: [-0.18, 0, -1.18],
+    torso: [0.12, 0, -0.08],
+    head: [-0.16, 0, 0.22],
+    armL: [-0.28, 0, -1.78],
+    armR: [-0.46, 0, 1.28],
+    legL: [-0.48, 0, -0.92],
+    legR: [0.72, 0, 0.94],
+  }),
+  danceFrame(1.72, {
+    pivot: [0, 0.36, 0],
+    root: [-0.08, 0, -Math.PI / 2],
+    torso: [0.08, 0, 0],
+    head: [-0.12, 0, 0.14],
+    armL: [-0.22, 0, -1.58],
+    armR: [-0.34, 0, 1.52],
+    legL: [-0.7, 0, -1.08],
+    legR: [0.82, 0, 1.02],
+  }),
+  danceFrame(2.12, {
+    pivot: [0, 0.34, 0],
+    root: [0.09, Math.PI, -1.62],
+    torso: [-0.08, 0, 0.08],
+    head: [0.12, 0, -0.12],
+    armL: [-0.44, 0, -1.42],
+    armR: [-0.16, 0, 1.68],
+    legL: [0.86, 0, 0.96],
+    legR: [-0.72, 0, -1.04],
+  }),
+  danceFrame(2.52, {
+    pivot: [0, 0.36, 0],
+    root: [-0.08, DANCE_TAU, -Math.PI / 2],
+    torso: [0.08, 0, -0.08],
+    head: [-0.12, 0, 0.12],
+    armL: [-0.18, 0, -1.7],
+    armR: [-0.42, 0, 1.46],
+    legL: [-0.78, 0, -1.02],
+    legR: [0.9, 0, 1.08],
+  }),
+  danceFrame(2.92, {
+    pivot: [0, 0.34, 0],
+    root: [0.08, DANCE_TAU + Math.PI, -1.64],
+    torso: [-0.08, 0, 0.08],
+    head: [0.12, 0, -0.12],
+    armL: [-0.46, 0, -1.46],
+    armR: [-0.18, 0, 1.66],
+    legL: [0.88, 0, 1.06],
+    legR: [-0.72, 0, -0.98],
+  }),
+  danceFrame(3.32, {
+    pivot: [0, 0.38, 0],
+    root: [-0.06, DANCE_TAU * 2, -Math.PI / 2],
+    torso: [0.08, 0, -0.06],
+    head: [-0.1, 0, 0.1],
+    armL: [-0.2, 0, -1.62],
+    armR: [-0.38, 0, 1.54],
+    legL: [-0.7, 0, -0.96],
+    legR: [0.84, 0, 1.04],
+  }),
+  danceFrame(3.62, {
+    pivot: [0, 0.54, 0],
+    root: [-0.12, DANCE_TAU * 2, -2.42],
+    torso: [0.1, 0, 0],
+    head: [-0.12, 0, 0],
+    armL: [-0.1, 0, -2.36],
+    armR: [-0.1, 0, 2.36],
+    legL: [-0.18, 0, -0.72],
+    legR: [0.26, 0, 0.72],
+  }),
+  danceFrame(3.94, {
+    pivot: [0, MASCOT_DANCE_PIVOT_Y, 0],
+    root: [0, DANCE_TAU * 2, -Math.PI],
+    torso: [0.04, 0, 0],
+    head: [-0.08, 0, 0],
+    armL: [0, 0, -3.02],
+    armR: [0, 0, 3.02],
+    legL: [-0.24, 0, -0.72],
+    legR: [0.24, 0, 0.72],
+  }),
+  danceFrame(4.38, {
+    pivot: [0, MASCOT_DANCE_PIVOT_Y, 0],
+    root: [0, DANCE_TAU * 3, -Math.PI],
+    torso: [-0.04, 0, 0],
+    head: [0.08, 0, 0],
+    armL: [0, 0, -3.04],
+    armR: [0, 0, 3.04],
+    legL: [0.42, 0, -0.94],
+    legR: [-0.42, 0, 0.94],
+  }),
+  danceFrame(4.72, {
+    pivot: [0, 0.48, 0],
+    root: [0.12, DANCE_TAU * 3, -1.66],
+    torso: [0.18, 0, -0.08],
+    head: [-0.16, 0, 0.14],
+    armL: [-1.08, 0, -1.18],
+    armR: [-1.16, 0, 1.22],
+    legL: [0.56, 0, -0.34],
+    legR: [0.78, 0, 0.36],
+  }),
+  danceFrame(5.08, {
+    pivot: [0, 0.6, 0],
+    root: [0.22, DANCE_TAU * 3, 0],
+    torso: [0.2, 0, 0.08],
+    head: [-0.12, 0, -0.08],
+    armL: [-0.72, 0, -0.78],
+    armR: [-0.82, 0, 0.82],
+    legL: [0.62, 0, -0.24],
+    legR: [0.5, 0, 0.24],
+  }),
+  danceFrame(5.42, {
+    pivot: [0, 0.86, 0],
+    root: [-0.08, DANCE_TAU * 3, 0.12],
+    torso: [-0.08, 0, -0.16],
+    head: [0.08, 0, 0.14],
+    armL: [-0.42, 0, -1.18],
+    armR: [-0.18, 0, 1.34],
+    legL: [-0.18, 0, -0.1],
+    legR: [0.14, 0, 0.12],
+  }),
+  danceFrame(5.82, { root: [0, DANCE_TAU * 3, 0] }),
+];
+const REDUCED_DANCE_FRAMES = [
+  danceFrame(0),
+  danceFrame(0.45, {
+    pivot: [0, 0.74, 0],
+    torso: [0.08, 0, -0.16],
+    head: [-0.06, 0, 0.12],
+    armL: [-0.32, 0, -0.78],
+    armR: [0.12, 0, 0.76],
+    legL: [0.26, 0, -0.12],
+  }),
+  danceFrame(0.95, {
+    torso: [-0.06, 0, 0.2],
+    head: [0.05, 0, -0.14],
+    armL: [0.1, 0, -0.68],
+    armR: [-0.34, 0, 0.94],
+    legR: [0.26, 0, 0.12],
+  }),
+  danceFrame(1.45, {
+    pivot: [0, 0.72, 0],
+    root: [0.04, 0, -0.08],
+    torso: [0.1, 0, 0.08],
+    head: [-0.06, 0, -0.06],
+    armL: [-0.72, 0, -0.92],
+    armR: [-0.72, 0, 0.92],
+    legL: [0.38, 0, -0.2],
+    legR: [0.38, 0, 0.2],
+  }),
+  danceFrame(2.05),
+];
+const mascotDance = {
+  active: false,
+  elapsed: 0,
+  frames: BREAKDANCE_FRAMES,
+};
+let danceButtonFocusProxy = null;
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');
 const moveStick = document.getElementById('move-stick');
 const moveThumb = document.getElementById('move-thumb');
 const mobilePlay = document.getElementById('mobile-play');
 const mobileExit = document.getElementById('mobile-exit');
+const danceButton = ui.el.danceBtn;
 const mobilePlayHint = document.getElementById('mobile-play-hint');
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
@@ -1258,6 +1474,7 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   else delete document.documentElement.dataset.instrument;
   setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
   syncMobileInstrumentChrome();
+  syncDanceButtonAvailability();
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);
@@ -1287,12 +1504,132 @@ function resetMascotPose() {
   mascot.group.scale.setScalar(mascotBaseScale);
   mascot.group.rotation.x = 0;
   mascot.group.rotation.z = 0;
+  mascot.dancePivot.position.set(0, MASCOT_DANCE_PIVOT_Y, 0);
+  mascot.dancePivot.rotation.set(0, 0, 0);
+  mascot.dancePivot.scale.setScalar(1);
   mascot.torso.rotation.set(0, 0, 0);
   mascot.head.rotation.set(0, 0, 0);
   mascot.armL.rotation.set(0, 0, -0.12);
   mascot.armR.rotation.set(0, 0, 0.12);
   mascot.legL.rotation.set(0, 0, 0);
   mascot.legR.rotation.set(0, 0, 0);
+}
+
+function canMascotDance() {
+  return started
+    && flyT < 0
+    && !ui.modalOpen
+    && !mascotMove.fall
+    && instrumentView.phase === 'idle';
+}
+
+function syncDanceButtonAvailability() {
+  if (!danceButton) return;
+  const shouldDisable = !canMascotDance();
+  if (shouldDisable && document.activeElement === danceButton) {
+    if (mobileExit && !mobileExit.hidden) {
+      danceButtonFocusProxy = mobileExit;
+      mobileExit.focus();
+    } else if (mascotMove.fall && ui.el.soundBtn) {
+      danceButtonFocusProxy = ui.el.soundBtn;
+      ui.el.soundBtn.focus();
+    }
+  }
+  danceButton.disabled = shouldDisable;
+  if (!shouldDisable && danceButtonFocusProxy) {
+    const activeElement = document.activeElement;
+    const shouldRestore = activeElement === danceButtonFocusProxy
+      || (
+        danceButtonFocusProxy === mobileExit
+        && mobileExit.hidden
+        && activeElement === document.body
+      );
+    danceButtonFocusProxy = null;
+    if (shouldRestore) danceButton.focus();
+  }
+}
+
+function syncDanceButtonState() {
+  if (!danceButton) return;
+  danceButton.classList.toggle('dancing', mascotDance.active);
+  danceButton.setAttribute('aria-label', mascotDance.active
+    ? 'Перезапустити брейкданс'
+    : 'Танцювати брейкданс');
+  danceButton.title = mascotDance.active ? 'Ще раз!' : 'Брейкданс';
+  syncDanceButtonAvailability();
+}
+
+function stopMascotDance({ resumeIdleCamera = false } = {}) {
+  if (!mascotDance.active) return;
+  mascotDance.active = false;
+  mascotDance.elapsed = 0;
+  resetMascotPose();
+  syncDanceButtonState();
+  if (resumeIdleCamera) scheduleIdleCameraRotation();
+}
+
+function startMascotDance() {
+  if (!canMascotDance()) return;
+  stopMascotDance();
+  mascotMove.destination = null;
+  mascotMove.destinationKind = null;
+  mascotMove.waypoints.length = 0;
+  mascotMove.keys.clear();
+  releaseMoveJoystick();
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+  finishOnboard();
+  resetMascotPose();
+  mascot.group.position.y = 0;
+  mascotDance.active = true;
+  mascotDance.elapsed = 0;
+  mascotDance.frames = prefersReducedMotion.matches
+    ? REDUCED_DANCE_FRAMES
+    : BREAKDANCE_FRAMES;
+  syncDanceButtonState();
+}
+
+function applyDanceTuple(target, property, from, to, amount) {
+  target[property].set(
+    THREE.MathUtils.lerp(from[0], to[0], amount),
+    THREE.MathUtils.lerp(from[1], to[1], amount),
+    THREE.MathUtils.lerp(from[2], to[2], amount),
+  );
+}
+
+function updateMascotDance(dt) {
+  if (!mascotDance.active) return false;
+  if (mascotMove.keys.size || joystickInput.lengthSq() > 0 || mascotMove.destination) {
+    stopMascotDance();
+    return false;
+  }
+
+  const frames = mascotDance.frames;
+  mascotDance.elapsed += dt;
+  if (mascotDance.elapsed >= frames[frames.length - 1].at) {
+    stopMascotDance({ resumeIdleCamera: true });
+    return false;
+  }
+
+  let frameIndex = 0;
+  while (
+    frameIndex < frames.length - 2
+    && mascotDance.elapsed > frames[frameIndex + 1].at
+  ) frameIndex++;
+  const from = frames[frameIndex];
+  const to = frames[frameIndex + 1];
+  const segmentProgress = (mascotDance.elapsed - from.at) / (to.at - from.at);
+  const eased = segmentProgress * segmentProgress * (3 - 2 * segmentProgress);
+
+  applyDanceTuple(mascot.dancePivot, 'position', from.pivot, to.pivot, eased);
+  applyDanceTuple(mascot.dancePivot, 'rotation', from.root, to.root, eased);
+  applyDanceTuple(mascot.torso, 'rotation', from.torso, to.torso, eased);
+  applyDanceTuple(mascot.head, 'rotation', from.head, to.head, eased);
+  applyDanceTuple(mascot.armL, 'rotation', from.armL, to.armL, eased);
+  applyDanceTuple(mascot.armR, 'rotation', from.armR, to.armR, eased);
+  applyDanceTuple(mascot.legL, 'rotation', from.legL, to.legL, eased);
+  applyDanceTuple(mascot.legR, 'rotation', from.legR, to.legR, eased);
+  return true;
 }
 
 function poseMascotAtInstrument(kind) {
@@ -1468,6 +1805,7 @@ function requestInstrumentView(kind) {
   const preset = INSTRUMENT_VIEW_PRESETS[kind];
   if (!preset || mascotMove.fall || flyT >= 0) return;
   if (instrumentView.kind === kind && ['approaching', 'entering', 'focused'].includes(instrumentView.phase)) return;
+  stopMascotDance();
   if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
   setInstrumentViewPhase('approaching', kind);
   mascotMove.keys.clear();
@@ -1555,6 +1893,7 @@ function beginMoveJoystick(event) {
   if (!started || ui.modalOpen || mascotMove.fall) return;
   if (instrumentView.phase !== 'idle') return;
   event.preventDefault();
+  stopMascotDance();
   controls.autoRotate = false;
   clearTimeout(idleTimer);
   finishOnboard();
@@ -1580,6 +1919,18 @@ mobileExit?.addEventListener('pointerdown', (event) => {
   leaveInstrumentView();
   navigator.vibrate?.(18);
 });
+mobileExit?.addEventListener('click', (event) => {
+  // Pointer activation already exits on pointerdown for responsive touch UI.
+  if (event.detail !== 0) return;
+  leaveInstrumentView();
+  navigator.vibrate?.(18);
+});
+mobileExit?.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  leaveInstrumentView();
+  navigator.vibrate?.(18);
+});
 for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
   mobileExit?.addEventListener(eventName, () => mobileExit.classList.remove('pressed'));
 }
@@ -1593,6 +1944,7 @@ function clampMascotPoint(point) {
 
 function setMascotDestination(point) {
   if (mascotMove.fall || instrumentView.phase !== 'idle') return;
+  stopMascotDance();
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
   mascotMove.destination = clampMascotPoint(point.clone());
@@ -1602,6 +1954,7 @@ function setMascotDestination(point) {
 
 function beginMascotFall(direction) {
   if (mascotMove.fall) return;
+  stopMascotDance();
   leaveInstrumentView({ immediate: true });
   mascotMove.destination = null;
   mascotMove.destinationKind = null;
@@ -1632,6 +1985,7 @@ function beginMascotFall(direction) {
     material.needsUpdate = true;
   }
   mascot.group.rotation.x = 0;
+  syncDanceButtonAvailability();
   navigator.vibrate?.([45, 35, 70]);
 }
 
@@ -1639,15 +1993,7 @@ function respawnMascot() {
   const completedFall = mascotMove.fall;
   mascotMove.fall = null;
   mascot.group.position.copy(mascotMove.spawn);
-  mascot.group.scale.setScalar(mascotBaseScale);
-  mascot.group.rotation.x = 0;
-  mascot.group.rotation.z = 0;
-  mascot.torso.rotation.z = 0;
-  mascot.head.rotation.z = 0;
-  mascot.legL.rotation.x = 0;
-  mascot.legR.rotation.x = 0;
-  mascot.armL.rotation.x = 0;
-  mascot.armR.rotation.x = 0;
+  resetMascotPose();
   for (const { object, renderOrder } of mascotFallMeshes) object.renderOrder = renderOrder;
   for (const [material, state] of mascotFallMaterialStates) {
     material.transparent = state.transparent;
@@ -1674,6 +2020,7 @@ function respawnMascot() {
     controls.target.add(mobileFollowDelta);
     camera.position.add(mobileFollowDelta);
   }
+  syncDanceButtonAvailability();
   ui.toast('Не втечеш ;)', 2200);
 }
 
@@ -1737,6 +2084,27 @@ for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
   mobilePlay.addEventListener(eventName, () => mobilePlay.classList.remove('pressed'));
 }
 
+function updateMascotTracking(dt) {
+  if (mascotLabel) {
+    const bob = prefersReducedMotion.matches ? 0 : Math.sin(performance.now() * 0.003) * 0.04;
+    mascotLabel.position.set(
+      mascot.group.position.x,
+      mascot.group.position.y + MASCOT_LABEL_Y + bob,
+      mascot.group.position.z,
+    );
+    const pulse = prefersReducedMotion.matches ? 1 : 1 + Math.sin(performance.now() * 0.004) * 0.06;
+    mascotLabel.scale.setScalar(0.55 * pulse);
+  }
+
+  if (isMobileGameMode() && flyT < 0 && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')) {
+    mobileFollowTarget.set(mascot.group.position.x, 1.35, mascot.group.position.z - 0.25);
+    mobileFollowDelta.subVectors(mobileFollowTarget, controls.target)
+      .multiplyScalar(Math.min(1, dt * 2.2));
+    controls.target.add(mobileFollowDelta);
+    camera.position.add(mobileFollowDelta);
+  }
+}
+
 function updateMascot(dt) {
   if (!started || ui.modalOpen || flyT >= 0) return;
   if (mascotMove.fall) {
@@ -1771,6 +2139,10 @@ function updateMascot(dt) {
         mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + MASCOT_LABEL_Y, mascot.group.position.z);
       }
     }
+    return;
+  }
+  if (updateMascotDance(dt)) {
+    updateMascotTracking(dt);
     return;
   }
   const direction = new THREE.Vector3(
@@ -1847,24 +2219,7 @@ function updateMascot(dt) {
   mascot.torso.rotation.z = walking ? Math.sin(mascotMove.phase) * 0.035 : 0;
   mascot.head.rotation.z = walking ? -Math.sin(mascotMove.phase) * 0.025 : 0;
 
-  if (mascotLabel) {
-    const bob = prefersReducedMotion.matches ? 0 : Math.sin(performance.now() * 0.003) * 0.04;
-    mascotLabel.position.set(
-      mascot.group.position.x,
-      mascot.group.position.y + MASCOT_LABEL_Y + bob,
-      mascot.group.position.z,
-    );
-    const pulse = prefersReducedMotion.matches ? 1 : 1 + Math.sin(performance.now() * 0.004) * 0.06;
-    mascotLabel.scale.setScalar(0.55 * pulse);
-  }
-
-  if (isMobileGameMode() && flyT < 0 && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')) {
-    mobileFollowTarget.set(mascot.group.position.x, 1.35, mascot.group.position.z - 0.25);
-    mobileFollowDelta.subVectors(mobileFollowTarget, controls.target)
-      .multiplyScalar(Math.min(1, dt * 2.2));
-    controls.target.add(mobileFollowDelta);
-    camera.position.add(mobileFollowDelta);
-  }
+  updateMascotTracking(dt);
 }
 
 const INSTRUMENT_STYLE = {
@@ -2913,6 +3268,7 @@ window.addEventListener('keyup', (e) => {
 const DRUM_KEYS = { KeyA: 'kick', KeyS: 'snare', KeyD: 'hihat', KeyF: 'tom2', KeyG: 'crash' };
 window.addEventListener('keydown', (e) => {
   if (!started || ui.modalOpen || e.repeat) return;
+  if (e.target.closest?.('button, a, input, select, textarea, [contenteditable="true"]')) return;
   if (e.code in DRUM_KEYS) {
     const part = DRUM_KEYS[e.code];
     playMusicalEvent({ type: 'drum', part, vel: 1, vibe: 4 });
@@ -2985,6 +3341,13 @@ ui.el.soundBtn?.addEventListener('click', (event) => {
   else closeSoundMixer();
 });
 
+danceButton?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  closeSoundMixer();
+  ui.closeNav();
+  startMascotDance();
+});
+
 soundMuteBtn?.addEventListener('click', (event) => {
   event.stopPropagation();
   setMasterMuted(!muted);
@@ -3017,7 +3380,16 @@ ui.toggleNav = (...args) => {
 const _uiOpen = ui.open.bind(ui);
 ui.open = (...args) => {
   closeSoundMixer();
-  return _uiOpen(...args);
+  stopMascotDance();
+  const result = _uiOpen(...args);
+  syncDanceButtonAvailability();
+  return result;
+};
+const _uiCloseAll = ui.closeAll.bind(ui);
+ui.closeAll = (...args) => {
+  const result = _uiCloseAll(...args);
+  syncDanceButtonAvailability();
+  return result;
 };
 
 // ============================================================
@@ -3136,17 +3508,22 @@ window.addEventListener('pageshow', () => {
 
 // idle auto-rotate
 let idleTimer = null;
+function scheduleIdleCameraRotation(delay = 9000) {
+  clearTimeout(idleTimer);
+  if (isMobileGameMode() || instrumentView.phase !== 'idle') return;
+  idleTimer = setTimeout(() => {
+    if (!ui.modalOpen && instrumentView.phase === 'idle' && !mascotDance.active) {
+      controls.autoRotate = true;
+    }
+  }, delay);
+}
+
 controls.addEventListener('start', () => {
   controls.autoRotate = false;
   clearTimeout(idleTimer);
 });
 controls.addEventListener('end', () => {
-  clearTimeout(idleTimer);
-  if (!isMobileGameMode() && instrumentView.phase === 'idle') {
-    idleTimer = setTimeout(() => {
-      if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
-    }, 9000);
-  }
+  scheduleIdleCameraRotation();
 });
 
 // ticker
@@ -3182,12 +3559,9 @@ function animate() {
       flyT = -1;
       controls.enabled = true;
       ui.showHUD();
+      syncDanceButtonAvailability();
       startOnboard();
-      if (!isMobileGameMode()) {
-        idleTimer = setTimeout(() => {
-          if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
-        }, 6000);
-      }
+      scheduleIdleCameraRotation(6000);
     }
   } else if (!updateInstrumentViewCamera(dt) && controls.enabled) {
     controls.update();
@@ -3299,6 +3673,7 @@ Promise.race([
     camera.lookAt(TARGET);
     controls.enabled = true;
     ui.showHUD();
+    syncDanceButtonAvailability();
     startOnboard();
     resetBrowserPageZoom();
     syncRendererToWindow();
