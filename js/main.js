@@ -1155,6 +1155,8 @@ const mascotMove = {
   spawn: new THREE.Vector3(-0.75, 0, -0.6),
   fall: null,
 };
+// HUD logo click: tektonik routine state (only toggled via the logo).
+const dance = { active: false, t: 0, yaw: 0, loop: 0 };
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');
 const moveStick = document.getElementById('move-stick');
@@ -1175,6 +1177,7 @@ const loopPause = document.getElementById('loop-pause');
 const loopClear = document.getElementById('loop-clear');
 const loopStatus = document.getElementById('loop-status');
 const loopKeyHint = document.getElementById('loop-key-hint');
+const danceBtn = document.getElementById('logo-btn'); // HUD logo doubles as the dance toggle
 const joystickInput = new THREE.Vector2();
 const cameraForwardXZ = new THREE.Vector3();
 const cameraRightXZ = new THREE.Vector3();
@@ -1293,6 +1296,63 @@ function resetMascotPose() {
   mascot.armR.rotation.set(0, 0, 0.12);
   mascot.legL.rotation.set(0, 0, 0);
   mascot.legR.rotation.set(0, 0, 0);
+}
+
+// ---- mascot dance (HUD logo click — tektonik routine) ----
+const DANCE_BPM = 122;
+
+function setDancing(next) {
+  const on = Boolean(next) && started && !ui.modalOpen && !mascotMove.fall
+    && flyT < 0 && instrumentView.phase === 'idle';
+  if (on === dance.active) return;
+  dance.active = on;
+  if (on) {
+    dance.t = 0;
+    dance.loop = 0;
+    dance.yaw = mascot.group.rotation.y;
+    ui.closeNav();
+  }
+  danceBtn?.classList.toggle('dancing', on);
+  danceBtn?.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+// 8-beat tektonik loop: overhead arm sweeps + bounce, spin on the last two beats.
+function updateMascotDance(dt) {
+  dance.t += dt;
+  const beat = dance.t * (DANCE_BPM / 60);
+  const rad = beat * Math.PI * 2;
+  const loop = beat % 8; // 8-beat routine
+  if (loop < dance.loop) dance.yaw = mascot.group.rotation.y; // wrapped after a spin
+  dance.loop = loop;
+
+  const sweep = Math.sin(rad);
+  const raise = Math.sin(rad * 0.5);
+
+  // tektonik arms: alternating overhead sweeps with a quick flick
+  mascot.armL.rotation.z = -(0.35 + Math.max(0, raise) * 2.1) + Math.sin(rad * 2) * 0.16;
+  mascot.armR.rotation.z = 0.35 + Math.max(0, -raise) * 2.1 + Math.cos(rad * 2) * 0.16;
+  mascot.armL.rotation.x = Math.cos(rad * 0.5) * 0.5 + sweep * 0.3;
+  mascot.armR.rotation.x = Math.sin(rad * 0.5) * 0.5 - sweep * 0.3;
+
+  // bounce on the beat + hips / head groove
+  mascot.group.position.y = Math.abs(sweep) * 0.085;
+  mascot.torso.rotation.z = sweep * 0.13;
+  mascot.head.rotation.z = -sweep * 0.1;
+  mascot.head.rotation.x = Math.sin(rad * 2) * 0.05;
+
+  // alternating footwork
+  mascot.legL.rotation.x = Math.max(0, sweep) * 0.55;
+  mascot.legR.rotation.x = Math.max(0, -sweep) * 0.55;
+  mascot.legL.rotation.z = -0.06;
+  mascot.legR.rotation.z = 0.06;
+
+  // gentle sway, full spin on the last two beats of the loop
+  if (loop >= 6) {
+    const k = easeInOut(Math.min(1, (loop - 6) / 2));
+    mascot.group.rotation.y = dance.yaw + k * Math.PI * 2;
+  } else {
+    mascot.group.rotation.y = dance.yaw + Math.sin(rad * 0.25) * 0.3;
+  }
 }
 
 function poseMascotAtInstrument(kind) {
@@ -1469,6 +1529,7 @@ function requestInstrumentView(kind) {
   if (!preset || mascotMove.fall || flyT >= 0) return;
   if (instrumentView.kind === kind && ['approaching', 'entering', 'focused'].includes(instrumentView.phase)) return;
   if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
+  setDancing(false);
   setInstrumentViewPhase('approaching', kind);
   mascotMove.keys.clear();
   releaseMoveJoystick();
@@ -1602,6 +1663,7 @@ function setMascotDestination(point) {
 
 function beginMascotFall(direction) {
   if (mascotMove.fall) return;
+  setDancing(false);
   leaveInstrumentView({ immediate: true });
   mascotMove.destination = null;
   mascotMove.destinationKind = null;
@@ -1789,6 +1851,11 @@ function updateMascot(dt) {
     direction.addScaledVector(cameraForwardXZ, -joystickInput.y);
   }
 
+  // Any walk input / queued destination takes the mascot out of the dance.
+  if (dance.active && (direction.lengthSq() > 0 || mascotMove.destination || instrumentView.phase !== 'idle')) {
+    setDancing(false);
+  }
+
   if (direction.lengthSq() > 0) {
     if (instrumentView.phase !== 'idle') {
       // Focus stays until ✕ — ignore walk input while approaching / seated.
@@ -1817,7 +1884,7 @@ function updateMascot(dt) {
     }
   }
 
-  const walking = direction.lengthSq() > 0;
+  const walking = !dance.active && direction.lengthSq() > 0;
   if (walking) {
     const moveStrength = Math.min(1, direction.length());
     direction.normalize();
@@ -1837,15 +1904,25 @@ function updateMascot(dt) {
     }
   }
 
-  const stride = walking ? Math.sin(mascotMove.phase) * 0.58 : 0;
-  const relax = Math.min(1, dt * 10);
-  mascot.legL.rotation.x = THREE.MathUtils.lerp(mascot.legL.rotation.x, stride, relax);
-  mascot.legR.rotation.x = THREE.MathUtils.lerp(mascot.legR.rotation.x, -stride, relax);
-  mascot.armL.rotation.x = THREE.MathUtils.lerp(mascot.armL.rotation.x, -stride * 0.75, relax);
-  mascot.armR.rotation.x = THREE.MathUtils.lerp(mascot.armR.rotation.x, stride * 0.75, relax);
-  mascot.group.position.y = walking ? Math.abs(Math.sin(mascotMove.phase * 2)) * 0.035 : 0;
-  mascot.torso.rotation.z = walking ? Math.sin(mascotMove.phase) * 0.035 : 0;
-  mascot.head.rotation.z = walking ? -Math.sin(mascotMove.phase) * 0.025 : 0;
+  if (dance.active) {
+    updateMascotDance(dt);
+  } else {
+    const stride = walking ? Math.sin(mascotMove.phase) * 0.58 : 0;
+    const relax = Math.min(1, dt * 10);
+    mascot.legL.rotation.x = THREE.MathUtils.lerp(mascot.legL.rotation.x, stride, relax);
+    mascot.legR.rotation.x = THREE.MathUtils.lerp(mascot.legR.rotation.x, -stride, relax);
+    mascot.armL.rotation.x = THREE.MathUtils.lerp(mascot.armL.rotation.x, -stride * 0.75, relax);
+    mascot.armR.rotation.x = THREE.MathUtils.lerp(mascot.armR.rotation.x, stride * 0.75, relax);
+    // Relax dance-only rotations back to neutral (no-ops outside the dance).
+    mascot.armL.rotation.z = THREE.MathUtils.lerp(mascot.armL.rotation.z, -0.12, relax);
+    mascot.armR.rotation.z = THREE.MathUtils.lerp(mascot.armR.rotation.z, 0.12, relax);
+    mascot.legL.rotation.z = THREE.MathUtils.lerp(mascot.legL.rotation.z, 0, relax);
+    mascot.legR.rotation.z = THREE.MathUtils.lerp(mascot.legR.rotation.z, 0, relax);
+    mascot.head.rotation.x = THREE.MathUtils.lerp(mascot.head.rotation.x, 0, relax);
+    mascot.group.position.y = walking ? Math.abs(Math.sin(mascotMove.phase * 2)) * 0.035 : 0;
+    mascot.torso.rotation.z = walking ? Math.sin(mascotMove.phase) * 0.035 : 0;
+    mascot.head.rotation.z = walking ? -Math.sin(mascotMove.phase) * 0.025 : 0;
+  }
 
   if (mascotLabel) {
     const bob = prefersReducedMotion.matches ? 0 : Math.sin(performance.now() * 0.003) * 0.04;
@@ -2998,6 +3075,20 @@ for (const fader of soundFaders) {
     if (fader.dataset.bus === 'mic' && Number(fader.value) <= 0) silenceHeldVocal();
   });
 }
+
+// ---- dance (HUD logo click) — toggle mascot tektonik routine ----
+danceBtn?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  setDancing(!dance.active);
+});
+
+// debug hook (headless testing)
+window.__mascotDebug = () => ({
+  y: mascot.group.position.y,
+  armLz: mascot.armL.rotation.z,
+  armRz: mascot.armR.rotation.z,
+  dancing: dance.active,
+});
 
 document.addEventListener('pointerdown', (event) => {
   if (!soundMixer || soundMixer.hidden) return;

@@ -118,6 +118,8 @@ Distant tap / swipe on an instrument: **walk + camera approach only** — no pre
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus seats the mascot and reframes the camera.
 
+**Dance** (click the HUD logo): toggles a **tektonik** routine — procedural 8-beat loop (overhead arm sweeps + bounce, full spin on the last two beats). Limbs relax smoothly on stop. Walk input, instrument approach, or a stage fall stops the dance.
+
 ---
 
 ## 5. Interaction map
@@ -134,6 +136,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 | `1–8` | Piano whites |
 | Space | Guitar strum (held chord or open strings) |
 | `L` | Loop pedal (after first VIBE fill unlock) |
+| HUD logo click | Toggle mascot tektonik dance |
 | Esc | Dismiss onboard / close sound mixer (does **not** leave instrument focus) |
 | ✕ (`#mobile-exit`) | Leave instrument focus (desktop + mobile) |
 
@@ -164,7 +167,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
-| HUD | Logo, VIBE, nav (кроки / правила / ціни), **sound mixer** |
+| HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **sound mixer** |
 | Sound mixer | Per-instrument faders + master mute (speaker button) |
 | Modals | Steps, rules, **interactive pricing mixer** |
 | Chord / vocal pads | Instrument play helpers while focused |
