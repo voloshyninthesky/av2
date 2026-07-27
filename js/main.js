@@ -2750,11 +2750,9 @@ function trigger(mesh) {
       break;
     }
     case 'piano': {
-      if (u.freq !== undefined) {
-        playMusicalEvent({ type: 'piano', freq: u.freq, vel: 1, vibe: 3.5 });
-      } else {
-        playMusicalEvent({ type: 'piano', freq: 523.25, vel: 0.82, vibe: 3.5 });
-      }
+      // Keys only — cabinet / lid / bench must not trigger a fallback note.
+      if (u.freq === undefined) return;
+      playMusicalEvent({ type: 'piano', freq: u.freq, vel: 1, vibe: 3.5 });
       break;
     }
     case 'guitar': {
