@@ -1488,7 +1488,11 @@ function applyFocusedControlLimits() {
   controls.minPolarAngle = 0.42;
   controls.maxPolarAngle = 1.48;
   if (instrumentView.kind === 'guitar') {
-    const azimuth = controls.getAzimuthalAngle();
+    // OrbitControls' cached spherical angle can still describe the pre-focus
+    // camera until its first update. Anchor the lock to the animation endpoint
+    // itself so enabling controls cannot reframe the guitar.
+    const offset = camera.position.clone().sub(controls.target);
+    const azimuth = Math.atan2(offset.x, offset.z);
     controls.minAzimuthAngle = azimuth - 0.18;
     controls.maxAzimuthAngle = azimuth + 0.18;
   } else {
