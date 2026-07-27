@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260727-07';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260726-03';
-import { UI } from './ui.js?v=20260725-06';
+import { UI } from './ui.js?v=20260727-09';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');

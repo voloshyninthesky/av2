@@ -150,6 +150,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 - **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys must both work. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
 - Chord pad while guitar-focused; vocal pad while mic-focused.
 - HUD collapses to menu drawer on small screens.
+- Keyboard key legend (`#keys-hint`) and drag hint are **desktop-only** — hidden on phones and tablets (`max-width: 720px` or coarse pointer / no hover).
 
 ### VIBE meter
 

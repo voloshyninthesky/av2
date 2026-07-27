@@ -127,6 +127,14 @@ export class UI {
 
   showHUD() {
     this.el.hud.classList.remove('hidden');
+    // Phones / tablets use on-screen controls — keyboard & drag legends stay off.
+    const touchUi = window.innerWidth <= 720
+      || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    if (touchUi) {
+      this.el.keysHint.classList.add('hidden');
+      this.el.dragHint.classList.add('hidden');
+      return;
+    }
     this.el.keysHint.classList.remove('hidden');
     this.el.dragHint.classList.remove('hidden');
     setTimeout(() => this.el.dragHint.classList.add('hidden'), 9000);

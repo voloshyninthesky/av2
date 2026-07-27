@@ -1015,6 +1015,10 @@ html[data-instrument-view="focused"] #hud {
 #webgl-fail p { font-size: 15px; line-height: 1.6; }
 
 /* ============ RESPONSIVE ============ */
+/* Keyboard / drag legends are desktop-only — hide on phones and tablets. */
+@media (max-width: 720px), (hover: none) and (pointer: coarse) {
+  #keys-hint, #drag-hint { display: none !important; }
+}
 @media (max-width: 900px) {
   .inst-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -1055,7 +1059,6 @@ html[data-instrument-view="focused"] #hud {
     font-size: 10px; letter-spacing: .06em; text-align: left;
   }
   .icon-btn { width: 36px; height: 36px; }
-  #keys-hint, #drag-hint { display: none; }
   #zoom-controls {
     right: max(10px, env(safe-area-inset-right));
     top: auto; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 108px);
