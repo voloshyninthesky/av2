@@ -329,7 +329,10 @@ function buildStage() {
   // venue floor
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(80, 80),
-    new THREE.MeshStandardMaterial({ color: 0x120d1a, roughness: 0.4, metalness: 0.2 })
+    // Keep the under-stage floor visually neutral. Real spotlights without
+    // mobile shadow maps otherwise shine through the platform onto this plane,
+    // which looks like volumetric beam geometry hanging over the void.
+    new THREE.MeshBasicMaterial({ color: 0x07040d, fog: true })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.6;
@@ -691,6 +694,57 @@ function updateSlideshow(dt) {
 
 // ---- truss + spotlights + visible cones ----
 const spotHeads = [];
+const STAGE_BEAM_BOUNDS = new THREE.Vector4(-7.98, 7.98, -4.98, 3.98);
+
+function visibleBeamMaterial(color, clipToStage = false) {
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.05,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    fog: false,
+  });
+  if (!clipToStage) return material;
+
+  // The volumetric shell is decorative, so keep it within the actual platform
+  // footprint. A short fade avoids a hard shader cut at the wooden stage edge.
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.stageBeamBounds = { value: STAGE_BEAM_BOUNDS };
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vBeamWorldPosition;',
+      )
+      .replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvBeamWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nuniform vec4 stageBeamBounds;\nvarying vec3 vBeamWorldPosition;',
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        `
+          float beamFade = 0.24;
+          float beamStageMask =
+            smoothstep(stageBeamBounds.x, stageBeamBounds.x + beamFade, vBeamWorldPosition.x) *
+            (1.0 - smoothstep(stageBeamBounds.y - beamFade, stageBeamBounds.y, vBeamWorldPosition.x)) *
+            smoothstep(stageBeamBounds.z, stageBeamBounds.z + beamFade, vBeamWorldPosition.z) *
+            (1.0 - smoothstep(stageBeamBounds.w - beamFade, stageBeamBounds.w, vBeamWorldPosition.z));
+          diffuseColor.a *= beamStageMask;
+          if (diffuseColor.a < 0.001) discard;
+          #include <opaque_fragment>
+        `,
+      );
+  };
+  material.customProgramCacheKey = () => 'stage-clipped-visible-beam-v1';
+  return material;
+}
+
 /** Dim procedural HDR for lacquer/chrome reflections (no external assets). */
 function installStageEnvironment() {
   try {
@@ -806,11 +860,7 @@ function buildLights() {
     const len = from.distanceTo(coneEnd);
     const cone = new THREE.Mesh(
       new THREE.CylinderGeometry(0.09, coneEndRadius, len, 24, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: s.color, transparent: true, opacity: 0.05,
-        blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-        depthWrite: false, fog: false,
-      })
+      visibleBeamMaterial(s.color, Number.isFinite(s.coneFloorY)),
     );
     cone.position.copy(from).add(coneEnd).multiplyScalar(0.5);
     const dir = new THREE.Vector3().subVectors(coneEnd, from).normalize();
@@ -2253,6 +2303,77 @@ function guitarFretHit(hit) {
 
 // Track each finger separately so pads and instrument play remain independent.
 const activePointers = new Map();
+const FOCUSED_ORBIT_THRESHOLD = 12;
+const FOCUSED_PINCH_THRESHOLD = 9;
+let focusedInstrumentPinch = null;
+
+function focusedTouchPointers() {
+  if (!isMultiTouchInstrumentFocus()) return [];
+  return [...activePointers.entries()]
+    .filter(([, info]) => info.pointerType === 'touch' && (info.mode === 'play' || info.mode === 'tap'))
+    .map(([pointerId, info]) => ({ pointerId, info }));
+}
+
+function seedFocusedInstrumentPinch() {
+  const touches = focusedTouchPointers();
+  if (touches.length < 2 || !touches.some(({ info }) => info.mode === 'play')) {
+    focusedInstrumentPinch = null;
+    return;
+  }
+  const pair = touches.slice(0, 2);
+  const ids = pair.map(({ pointerId }) => pointerId);
+  if (focusedInstrumentPinch
+    && focusedInstrumentPinch.ids.every((pointerId) => ids.includes(pointerId))) return;
+  const [a, b] = pair.map(({ info }) => new THREE.Vector2(info.currentX, info.currentY));
+  focusedInstrumentPinch = {
+    ids,
+    startDistance: a.distanceTo(b),
+    active: false,
+  };
+}
+
+/**
+ * Decide whether a focused piano/drum touch belongs to playing or the camera.
+ * OrbitControls still receives pointerdown, but movement is held until intent
+ * is clear: horizontal piano travel plays, vertical travel orbits, pinch zooms.
+ */
+function focusedInstrumentGesture(e, info) {
+  if (info.pointerType !== 'touch' || !isMultiTouchInstrumentFocus()) return 'pass';
+  info.currentX = e.clientX;
+  info.currentY = e.clientY;
+
+  const pinch = focusedInstrumentPinch;
+  if (pinch?.ids.includes(e.pointerId)) {
+    const participants = pinch.ids.map((pointerId) => activePointers.get(pointerId));
+    if (participants.every(Boolean)) {
+      const [a, b] = participants.map((pointer) => (
+        new THREE.Vector2(pointer.currentX, pointer.currentY)
+      ));
+      if (!pinch.active && Math.abs(a.distanceTo(b) - pinch.startDistance) >= FOCUSED_PINCH_THRESHOLD) {
+        pinch.active = true;
+        for (const pointer of participants) {
+          pointer.usedCameraGesture = true;
+          if (pointer.mode === 'play') pointer.gestureIntent = 'orbit';
+        }
+      }
+      if (pinch.active) return 'camera';
+      return info.mode === 'play' ? 'instrument' : 'block';
+    }
+  }
+
+  if (info.mode !== 'play') return 'pass';
+  if (info.gestureIntent === 'orbit') return 'camera';
+  if (info.gestureIntent === 'play') return 'instrument';
+
+  const dx = e.clientX - info.x;
+  const dy = e.clientY - info.y;
+  if (Math.hypot(dx, dy) >= FOCUSED_ORBIT_THRESHOLD) {
+    const pianoGliss = instrumentView.kind === 'piano' && Math.abs(dx) >= Math.abs(dy) * 0.9;
+    info.gestureIntent = pianoGliss ? 'play' : 'orbit';
+    if (info.gestureIntent === 'orbit') info.usedCameraGesture = true;
+  }
+  return info.gestureIntent === 'orbit' ? 'camera' : 'instrument';
+}
 
 canvas.addEventListener('pointerdown', (e) => {
   if (!started || ui.modalOpen || flyT >= 0) return;
@@ -2260,17 +2381,23 @@ canvas.addEventListener('pointerdown', (e) => {
   if (isMultiTouchInstrumentFocus()) {
     const mesh = hitInteractableAt(e.clientX, e.clientY);
     if (mesh && mesh.userData.instrument === instrumentView.kind) {
-      // Steal this finger from OrbitControls so a second finger can play too.
+      // Mouse/pen stays instrument-only. Touch pointerdown also reaches
+      // OrbitControls; pointermove arbitration below decides play vs camera.
       e.preventDefault();
-      e.stopImmediatePropagation();
+      if (e.pointerType !== 'touch') e.stopImmediatePropagation();
       try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       activePointers.set(e.pointerId, {
         mode: 'play',
         x: e.clientX,
         y: e.clientY,
+        currentX: e.clientX,
+        currentY: e.clientY,
         t: performance.now(),
         token: playTokenForMesh(mesh),
+        pointerType: e.pointerType,
+        gestureIntent: 'pending',
       });
+      seedFocusedInstrumentPinch();
       trigger(mesh);
       return;
     }
@@ -2331,13 +2458,26 @@ canvas.addEventListener('pointerdown', (e) => {
     mode: 'tap',
     x: e.clientX,
     y: e.clientY,
+    currentX: e.clientX,
+    currentY: e.clientY,
     t: performance.now(),
+    pointerType: e.pointerType,
   });
+  seedFocusedInstrumentPinch();
 }, { capture: true, passive: false });
 
 canvas.addEventListener('pointermove', (e) => {
   const info = activePointers.get(e.pointerId);
   if (!info) return;
+  info.currentX = e.clientX;
+  info.currentY = e.clientY;
+
+  const focusedGesture = focusedInstrumentGesture(e, info);
+  if (focusedGesture === 'camera') return;
+  if (focusedGesture === 'instrument' || focusedGesture === 'block') {
+    e.stopImmediatePropagation();
+    if (focusedGesture === 'block') return;
+  }
 
   if (info.mode === 'guitar-approach') {
     if (info.approached) return;
@@ -2463,6 +2603,7 @@ canvas.addEventListener('pointermove', (e) => {
 function endActivePointer(e) {
   const info = activePointers.get(e.pointerId);
   activePointers.delete(e.pointerId);
+  seedFocusedInstrumentPinch();
   if (!info) return;
 
   if (info.mode === 'guitar-approach') {
@@ -2480,7 +2621,7 @@ function endActivePointer(e) {
     return;
   }
 
-  if (info.mode !== 'tap') return;
+  if (info.mode !== 'tap' || info.usedCameraGesture) return;
   const dx = e.clientX - info.x;
   const dy = e.clientY - info.y;
   const dt = performance.now() - info.t;
@@ -2489,7 +2630,10 @@ function endActivePointer(e) {
 }
 
 canvas.addEventListener('pointerup', endActivePointer, { capture: true });
-canvas.addEventListener('pointercancel', (e) => { activePointers.delete(e.pointerId); }, { capture: true });
+canvas.addEventListener('pointercancel', (e) => {
+  activePointers.delete(e.pointerId);
+  seedFocusedInstrumentPinch();
+}, { capture: true });
 window.addEventListener('pointermove', onPointerMove, { passive: true });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 

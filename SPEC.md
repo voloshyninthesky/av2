@@ -87,7 +87,7 @@ Mute chosen before the context exists is honored when `init` runs.
 
 ### Stage
 
-- Wooden platform, gold front trim, footlights (emissive + point lights).
+- Wooden platform, gold front trim, footlights (emissive + point lights). Downward volumetric spotlight shells meet the platform top and fade at its finite X/Z footprint; no beam geometry hangs over the surrounding void. The larger under-stage venue plane is intentionally unlit so non-shadow-casting mobile spotlights cannot create false beam spill below the platform.
 - Back wall, curtains, valance, speaker stacks.
 - Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate.
 - Soft neon **vadymbek** credit on the **back** of the screen (clickable link hit target).
@@ -198,6 +198,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 - **ГРАТИ** when in reach → approach / focus.
 - ✕ exit when approaching / entering / focused.
 - Touch instruments when focused (multitouch piano / drums; chord hold + independent strum / pluck for guitar).
+- Focused piano/drums arbitrate play vs camera without requiring an empty-screen start: taps play immediately; a horizontal piano slide keeps glissando; a vertical drag beyond `12 px` orbits; two-finger distance change beyond `9 px` zooms and suppresses further note traversal until release.
 - **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys must both work. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
 - Chord pad while guitar-focused; vocal pad while mic-focused.
 - HUD collapses to menu drawer on small screens.
@@ -348,6 +349,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - `prefers-reduced-motion`: cut ambient / onboard pulse animations.
 - WebGL fail → `#webgl-fail` panel.
 - Scope Mobile Safari / Chrome pinch and double-tap guards to live instrument controls and status toasts. Preserve chord↔canvas multitouch and allow normal zoom / scroll inside informational overlays.
+- In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
 - No secrets in repo; prices are public marketing data.
 
