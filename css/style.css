@@ -42,7 +42,9 @@ html, body {
 }
 /* Once on stage: no browser pinch-zoom between UI chrome and the canvas. */
 html.stage-live,
-html.stage-live body {
+html.stage-live body,
+html.telegram-webview,
+html.telegram-webview body {
   touch-action: none;
 }
 
@@ -58,6 +60,7 @@ html.stage-live body {
 button, a, .pill-btn, .icon-btn, .nav-btn {
   touch-action: manipulation;
 }
+/* Keep chrome tappable under a second finger (pedal + instrument). Canvas stays none. */
 html.stage-live #intro,
 html.stage-live #hud,
 html.stage-live #onboard,
@@ -75,7 +78,7 @@ html.stage-live a,
 html.stage-live .pill-btn,
 html.stage-live .icon-btn,
 html.stage-live .nav-btn {
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }

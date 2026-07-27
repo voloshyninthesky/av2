@@ -26,6 +26,30 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
 
+// ---- Telegram in-app browser / Mini App ----
+// Vertical/side swipes can dismiss Telegram's webview. Mini Apps can call
+// disableVerticalSwipes(); plain in-app browser only gets best-effort touch claiming.
+function isTelegramEnvironment() {
+  const tg = window.Telegram?.WebApp;
+  if (tg && (typeof tg.initData === 'string' || tg.platform)) return true;
+  return /Telegram/i.test(navigator.userAgent || '');
+}
+
+function initTelegramEnvironment() {
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    try {
+      tg.ready?.();
+      tg.expand?.();
+      if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
+    } catch (_) { /* older Telegram clients */ }
+  }
+  if (isTelegramEnvironment()) {
+    document.documentElement.classList.add('telegram-webview');
+  }
+}
+initTelegramEnvironment();
+
 // ============================================================
 // RENDERER / SCENE / CAMERA
 // ============================================================
@@ -2129,13 +2153,15 @@ document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: fa
 {
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (e) => {
-    if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
+    if (eventInvolvesUiChrome(e)) return;
     const now = performance.now();
     if (now - lastTouchEnd < 320) e.preventDefault();
     lastTouchEnd = now;
-    // If a pinch still slipped through, nudge the viewport meta back to 1×.
-    requestAnimationFrame(resetBrowserPageZoom);
   }, { passive: false, capture: true });
+  // If a pinch still slipped through, nudge the viewport meta back to 1×.
+  document.addEventListener('touchend', () => {
+    requestAnimationFrame(resetBrowserPageZoom);
+  }, { passive: true, capture: true });
 }
 
 const VIEWPORT_META_BASE = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
@@ -2167,13 +2193,57 @@ function syncRendererToWindow() {
   composer && composer.setSize(window.innerWidth, window.innerHeight);
 }
 
+// Pedal / pads / HUD sit above the canvas. preventDefault on a 2nd-finger
+// touchstart suppresses that finger's pointer events — so never claim multitouch
+// when any active touch is on UI chrome (loop pedal + drum must work together).
+const UI_TOUCH_CHROME = '#loop-pedal, #vocal-pad, #chord-pad, #mobile-controls, #zoom-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
+
+function isUiChromeElement(el) {
+  return Boolean(el?.closest?.(`${UI_TOUCH_CHROME}, .panel, input, textarea, [contenteditable="true"]`));
+}
+
+function touchListHitsChrome(touchList) {
+  if (!touchList?.length) return false;
+  for (let i = 0; i < touchList.length; i++) {
+    const t = touchList[i];
+    if (isUiChromeElement(document.elementFromPoint(t.clientX, t.clientY))) return true;
+  }
+  return false;
+}
+
+function eventInvolvesUiChrome(event) {
+  return isUiChromeElement(event.target)
+    || touchListHitsChrome(event.touches)
+    || touchListHitsChrome(event.changedTouches);
+}
+
 function blockStageBrowserPageZoom(event) {
+  if (eventInvolvesUiChrome(event)) return;
+  const inTelegram = document.documentElement.classList.contains('telegram-webview');
+  // Telegram: claim single-finger drags so the shell doesn't treat them as
+  // dismiss / back gestures. Multi-touch still blocked after stage start —
+  // but only when every finger is on the stage (not pedal + instrument).
+  if (inTelegram && event.cancelable) {
+    if (event.type === 'touchmove' || (event.touches && event.touches.length >= 2)) {
+      event.preventDefault();
+      return;
+    }
+  }
   if (!started) return;
-  if (event.target?.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
   if (event.touches && event.touches.length >= 2) event.preventDefault();
 }
 document.addEventListener('touchstart', blockStageBrowserPageZoom, { passive: false, capture: true });
 document.addEventListener('touchmove', blockStageBrowserPageZoom, { passive: false, capture: true });
+document.addEventListener('gesturestart', (e) => {
+  if (!document.documentElement.classList.contains('telegram-webview') && !started) return;
+  if (eventInvolvesUiChrome(e)) return;
+  if (e.cancelable) e.preventDefault();
+}, { passive: false, capture: true });
+document.addEventListener('gesturechange', (e) => {
+  if (!document.documentElement.classList.contains('telegram-webview') && !started) return;
+  if (eventInvolvesUiChrome(e)) return;
+  if (e.cancelable) e.preventDefault();
+}, { passive: false, capture: true });
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
@@ -2579,9 +2649,19 @@ function toggleLoopRecording() {
   else if (loop.state === 'paused') resumeLoop();
 }
 
-loopToggle.addEventListener('click', toggleLoopRecording);
-loopPause.addEventListener('click', () => loop.state === 'paused' ? resumeLoop() : pauseLoop());
-loopClear.addEventListener('click', clearRecordedLoop);
+// pointerdown (not click): click is often dropped when another finger is already
+// down on the canvas, because multitouch touchstart preventDefault kills synthesis.
+function bindLoopPedalPress(el, fn) {
+  el.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    fn(event);
+  });
+}
+bindLoopPedalPress(loopToggle, toggleLoopRecording);
+bindLoopPedalPress(loopPause, () => (loop.state === 'paused' ? resumeLoop() : pauseLoop()));
+bindLoopPedalPress(loopClear, clearRecordedLoop);
 renderLoopState(false);
 
 // ---- microphone note pad ----
@@ -2684,12 +2764,11 @@ for (const button of chordButtons) {
 }
 
 // Hold chord + second-finger strum: stop Safari/Chrome page pinch-zoom (not orbit dolly).
+// Do not preventDefault on pad↔canvas multitouch touchstart — that drops the strum finger.
 function blockGuitarBrowserPageZoom(event) {
   if (!isGuitarPlayFocus()) return;
-  const onPad = Boolean(event.target?.closest?.('#chord-pad'));
-  if (onPad || heldGuitarChord || (event.touches && event.touches.length >= 2)) {
-    event.preventDefault();
-  }
+  if (eventInvolvesUiChrome(event)) return;
+  if (event.touches && event.touches.length >= 2 && event.cancelable) event.preventDefault();
 }
 document.addEventListener('touchstart', blockGuitarBrowserPageZoom, { passive: false, capture: true });
 document.addEventListener('touchmove', blockGuitarBrowserPageZoom, { passive: false, capture: true });
