@@ -44,14 +44,14 @@ Non-goals: accounts, payments, CMS, sample libraries, native apps.
 Static site, no build step. ES modules + import map for Three.js.
 
 ```
-index.html          # shell, modals, HUD, pads, sound mixer
+index.html          # shell, modals, HUD, pads, sound mixer; loads telegram-web-app.js
 css/style.css       # design system + overlays
 fonts/              # self-hosted faces
 img/                # slideshow photos
 js/
-  main.js           # scene, interaction, loop, onboard, pads
+  main.js           # scene, interaction, loop, onboard, pads, audio unlock
   instruments.js    # procedural drums / piano / guitar / mic
-  audio.js          # Web Audio synth + per-instrument buses
+  audio.js          # Web Audio synth + buses + unlock/resume
   ui.js             # HUD, modals, chip, toast
   pricing.js        # interactive price mixer
 prices.json         # lesson prices + promos
@@ -67,6 +67,18 @@ deploy/nginx/       # legacy VPS nginx conf (optional / historical)
 
 **Audio buses:** `drums` | `piano` | `guitar` | `mic` → master (mute). Default guitar level **0.6** (40% quieter than the others).
 
+### Audio unlock
+
+Mobile / in-app browsers often leave `AudioContext` **suspended** (silent until refresh). Engine must:
+
+- Unlock on Enter and every play path (`init` + `resume`).
+- Prime with a tiny silent buffer inside the user-gesture turn.
+- Retry `resume()` shortly after wake; recreate context if `closed`.
+- Re-wake on `pointerdown` / `touchstart` / `keydown`, `visibilitychange` → visible, and `pageshow`.
+- Resume when unmuting the master.
+
+Mute chosen before the context exists is honored when `init` runs.
+
 ---
 
 ## 4. Scene
@@ -79,6 +91,7 @@ deploy/nginx/       # legacy VPS nginx conf (optional / historical)
 - Soft neon **vadymbek** credit on the **back** of the screen (clickable link hit target).
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).
 - Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). Soft orbit (lower rotate/zoom speed, higher damping). Extra zoom-in headroom vs older builds.
+- After Enter: `html.stage-live` — fixed layout, `touch-action` guards, `visualViewport` scale reset to fight Chrome iOS letterboxing from stuck page zoom.
 
 ### Instruments (procedural meshes)
 
@@ -86,7 +99,7 @@ deploy/nginx/       # legacy VPS nginx conf (optional / historical)
 |------|------|
 | `mic` / vocal | Vocal pad notes; formant-ish synth |
 | `guitar` | Fretted neck taps; body swipe-strum; hold chord pad while strumming; Space strum |
-| `piano` | Keys + `1–8` whites (multitouch when focused) |
+| `piano` | **Keys only** (`freq` on mesh) + `1–8` whites (multitouch when focused). Cabinet / lid / bench do not play. |
 | `drums` | Kit parts + `A–G` (multitouch when focused) |
 
 Hover (fine pointer): emissive glow.  
@@ -131,6 +144,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 - **ГРАТИ** when in reach → approach / focus.
 - ✕ exit when approaching / entering / focused.
 - Touch instruments when focused (multitouch piano / drums / fretted guitar).
+- **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys must both work. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
 - Chord pad while guitar-focused; vocal pad while mic-focused.
 - HUD collapses to menu drawer on small screens.
 
@@ -140,7 +154,7 @@ Playing adds vibe. At 100%: surprise (fireworks / loop unlock). Meter decays whe
 
 ### Loop pedal
 
-Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop.
+Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop. Must remain usable while another finger is playing an instrument.
 
 ---
 
@@ -227,7 +241,19 @@ Dismiss: play, move, **ЗРОЗУМІЛО**, Esc. Persists via `localStorage`. S
 
 ---
 
-## 10. Deploy
+## 10. Telegram / in-app browser
+
+Best-effort only when opened inside Telegram:
+
+- Load `https://telegram.org/js/telegram-web-app.js`; call `ready()`, `expand()`, and `disableVerticalSwipes()` when available (**Mini App** API 7.7+).
+- Detect Telegram UA / `Telegram.WebApp` → `html.telegram-webview` + touch claiming so the shell is less likely to steal stage drags.
+- **Limit:** a plain in-app browser link cannot fully block native header / edge dismiss gestures. Full control requires wrapping the site as a Telegram Mini App, not only opening the URL.
+
+Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + instrument multitouch keeps working.
+
+---
+
+## 11. Deploy
 
 **Primary:** GitHub Pages (Actions).
 
@@ -235,7 +261,7 @@ Dismiss: play, move, **ЗРОЗУМІЛО**, Esc. Persists via `localStorage`. S
 - Artifact: `css fonts img js vendor index.html prices.json piano-notes.json .nojekyll CNAME`.
 - Custom domain: `vibe.ton.zone` → CNAME `voloshyninthesky.github.io` (Porkbun DNS).
 - Enforce HTTPS in Pages settings after DNS verifies.
-- **Cache bust:** bump `?v=` on `css/style.css`, `js/main.js`, and module imports as needed.
+- **Cache bust:** bump `?v=` on `css/style.css`, `js/main.js`, and module imports as needed (including `audio.js` when unlock behavior changes).
 
 **Legacy (optional):** nginx release dirs under `/var/www/vibe.ton.zone/releases/<UTC>/` via `deploy/nginx/` — superseded by Pages for the live custom domain.
 
@@ -243,18 +269,19 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
 ---
 
-## 11. Quality bar
+## 12. Quality bar
 
-- Works on desktop and mobile Safari / Chrome.
+- Works on desktop and mobile Safari / Chrome (and best-effort Telegram in-app browser).
 - Keyboard focus visible on overlay controls.
 - `prefers-reduced-motion`: cut ambient / onboard pulse animations.
 - WebGL fail → `#webgl-fail` panel.
-- Block Mobile Safari page pinch / double-tap zoom that breaks the fixed layout; guitar focus blocks page pinch while fretting/strumming.
+- Block Mobile Safari / Chrome page pinch / double-tap zoom that breaks the fixed layout; guitar focus blocks page pinch while fretting/strumming — without breaking chrome↔canvas multitouch.
+- No stuck-silent sessions from a suspended `AudioContext` after backgrounding when the next user gesture can unlock.
 - No secrets in repo; prices are public marketing data.
 
 ---
 
-## 12. Change checklist
+## 13. Change checklist
 
 When changing behavior:
 
