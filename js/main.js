@@ -4136,13 +4136,13 @@ function addVibe(n) {
     vibeCooldown = performance.now() + 4000;
     const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
     spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
-    ui.toast(
-      justUnlocked
-        ? 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>'
-        : 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">Сцена — твоя</span>',
-      4200,
-      'vibe-max',
-    );
+    if (justUnlocked) {
+      ui.toast(
+        'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
+        4200,
+        'vibe-max',
+      );
+    }
     vibe = 55;
     setTimeout(() => ui.setVibe(vibe), 600);
   }
