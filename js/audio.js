@@ -419,9 +419,10 @@ export class AudioEngine {
   startPiano(freq, vel = 1, at = null) {
     if (this._silent()) return null;
     const t = this._at(at);
+    const peak = Math.max(0.0001, 0.5 * vel);
     const out = this.ctx.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(0.5 * vel, t + 0.006);
+    out.gain.exponentialRampToValueAtTime(peak, t + 0.006);
     const lp = this.ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.setValueAtTime(Math.min(4200, freq * 6), t);
@@ -456,10 +457,18 @@ export class AudioEngine {
         const now = this.ctx.currentTime;
         const releaseAt = Number.isFinite(atTime) ? Math.max(now, atTime) : now;
         try {
-          if (out.gain.cancelAndHoldAtTime) out.gain.cancelAndHoldAtTime(releaseAt);
-          else {
+          // Live finger-up: hold the current level, then fade.
+          // Ahead-of-time (loop playback): pin the sustain peak at releaseAt.
+          // cancelAndHoldAtTime + an early exponentialRamp attaches to the
+          // attack peak in Chromium and decays across the whole hold window.
+          if (releaseAt > now + 0.02) {
             out.gain.cancelScheduledValues(releaseAt);
-            out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || 0.0001), releaseAt);
+            out.gain.setValueAtTime(peak, releaseAt);
+          } else if (out.gain.cancelAndHoldAtTime) {
+            out.gain.cancelAndHoldAtTime(releaseAt);
+          } else {
+            out.gain.cancelScheduledValues(releaseAt);
+            out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || peak), releaseAt);
           }
           out.gain.exponentialRampToValueAtTime(0.0001, releaseAt + release);
           for (const source of sources) source.stop(releaseAt + release + 0.04);
@@ -659,9 +668,10 @@ export class AudioEngine {
   startVocal(freq = 329.63, vowel = 1, vel = 1, at = null) {
     if (this._silent()) return null;
     const t = this._at(at);
+    const peak = Math.max(0.0001, 0.26 * vel);
     const out = this.ctx.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(0.26 * vel, t + 0.035);
+    out.gain.exponentialRampToValueAtTime(peak, t + 0.035);
     out.connect(this._bus('mic'));
 
     const formants = [
@@ -716,10 +726,16 @@ export class AudioEngine {
         clearTimeout(voice.safetyTimer);
         clearTimeout(voice.cleanupTimer);
         voice.stopAt = releaseAt;
-        if (out.gain.cancelAndHoldAtTime) out.gain.cancelAndHoldAtTime(releaseAt);
-        else {
+        // Same as piano: ahead-of-time stop must pin the sustain peak.
+        // cancelAndHoldAtTime + early ramp decays across the whole hold in Chromium.
+        if (releaseAt > now + 0.02) {
           out.gain.cancelScheduledValues(releaseAt);
-          out.gain.setValueAtTime(Math.max(0.0001, Math.min(0.26 * vel, out.gain.value || 0.26 * vel)), releaseAt);
+          out.gain.setValueAtTime(peak, releaseAt);
+        } else if (out.gain.cancelAndHoldAtTime) {
+          out.gain.cancelAndHoldAtTime(releaseAt);
+        } else {
+          out.gain.cancelScheduledValues(releaseAt);
+          out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || peak), releaseAt);
         }
         out.gain.exponentialRampToValueAtTime(0.0001, releaseAt + 0.24);
         for (const source of sources) {
