@@ -46,7 +46,7 @@ Non-goals: accounts, payments, CMS, sample libraries, native apps.
 Static site, no build step. ES modules + import map for Three.js.
 
 ```
-index.html          # shell, modals, HUD, pads, sound mixer; loads telegram-web-app.js
+index.html          # shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
 css/style.css       # design system + overlays
 fonts/              # self-hosted faces
 img/                # slideshow photos
@@ -213,7 +213,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / `WASD` / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**Customization** (HUD person icon button next to the sound mixer → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), six skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height (70–145%) / build (65–150%) sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look, while **В РУСІ** toggles the walk-in-place preview; horizontal drag remains the sole orientation control.
+**Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), six skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height (70–145%) / build (65–150%) sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look, while **В РУСІ** toggles the walk-in-place preview; horizontal drag remains the sole orientation control.
 
 Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v2`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
 
@@ -266,7 +266,7 @@ Rules:
 | Drag across strings while guitar-focused | Directional guitar strum (pointer) |
 | `L` | Loop pedal (after first VIBE fill unlock) |
 | HUD logo click | Toggle mascot tektonik dance |
-| Esc | Dismiss onboard / close sound mixer (does **not** leave instrument focus) |
+| Esc | Dismiss onboard / close settings mixer (does **not** leave instrument focus) |
 | ✕ (`#mobile-exit`) | Leave instrument focus (desktop + mobile) |
 
 ### Mobile
@@ -299,8 +299,8 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
-| HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **sound mixer** |
-| Sound mixer | Per-instrument faders + master mute (speaker button) |
+| HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
+| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v1`, default `67`) at the top, then per-instrument volume faders + master mute |
 | Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
@@ -313,7 +313,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 - Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
-- A live horizontal **Світло** fader sits at the top of the settings / volume mixer (gear icon) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v1` (default `67`) and stays independent of Glamour / Pixel / Auto.
+- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v1` (default `67`) and stays independent of Glamour / Pixel / Auto. Instrument volumes and master mute remain in the same panel below the light fader.
 
 ### Pricing mixer
 
@@ -605,4 +605,4 @@ When changing behavior:
 
 1. Update code + `?v=` cache query.
 2. Update this `SPEC.md` if contracts or UX change.
-3. Push to `main` (Pages deploy) and verify live HTML contains the new `?v=` and expected markup (`onboard`, pricing mixer, chord pad, sound mixer, etc.).
+3. Push to `main` (Pages deploy) and verify live HTML contains the new `?v=` and expected markup (`onboard`, pricing mixer, chord pad, settings mixer, etc.).
