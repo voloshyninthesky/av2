@@ -146,7 +146,7 @@ Desktop keyboard sound does **not** require instrument focus (see §5).
 These items are planned, but they are not blockers for the current framing / pose milestone:
 
 1. **Reliable key surface:** piano-local hit plane, dead-gap removal, black-key priority, captured pointers, held key state, ordered glissando, and robust multi-finger chords.
-2. **Gesture ownership:** explicit key-versus-camera start zones, horizontal glissando hysteresis, vertical orbit after `12 px`, pinch takeover after `9 px`, and loop-pedal + key multitouch.
+2. **Gesture ownership:** a pointer on keys, drums, guitar strings / frets, or the chord pad claims that finger so OrbitControls cannot rotate or zoom from it; empty canvas still orbits / pinches. Loop-pedal + key multitouch stays supported.
 3. **Performance feedback:** one piano-note event driving audio, key travel, glow, note-following hands, VIBE, haptics, and loop capture; at least `16` voices and click-free same-pitch replacement. First play queues a once-per-instrument price chip shown after leaving focus.
 4. **Discoverability and access:** first-focus hints (`Торкайся клавіш — можна кількома пальцями` / `Клікай клавіші або грай 1–8`) and an accessible DOM `#piano-pad` strip for `C4–C5`. Desktop `#keys-hint` also advertises jam play without focus.
 5. **Expressive controls:** sustain pedal, full two-octave computer-keyboard mapping, MIDI input, velocity-sensitive touch / pen input, and selectable octave.
@@ -161,8 +161,8 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - Global instrument shortcuts ignore key events originating from buttons, links, form fields, or editable content; the focused control handles those events itself.
 - Focus frames the soundhole, all six strings, and the first five frets from a near-front angle, two `+` zoom steps closer than the base guitar framing. On resize / orientation change, fit that play area again.
 - The mascot and guitar must read as one performance pose: fretting hand at the neck, picking hand at the soundhole. String motion and hand motion carry the action; whole-body guitar wobble stays subtle.
-- Use separate guitar-local raycast proxies for approach, strum, and fret selection. A pointer captured by a play zone cannot orbit the camera until it ends.
-- Start from a composed focused frame, then leave horizontal orbit and zoom available. Zoom buttons remain available.
+- Use separate guitar-local raycast proxies for approach, strum, and fret selection. A pointer captured by a play zone or by the chord pad cannot orbit / zoom the camera until it ends.
+- Start from a composed focused frame, then leave horizontal orbit and zoom available from empty canvas (and the `+` / `−` controls). Zoom buttons remain available.
 
 #### Strum and pluck
 
@@ -277,8 +277,8 @@ Rules:
 - ✕ exit when approaching / entering / focused.
 - Leaving any instrument focus must reset the floating joystick, thumb, active pointer identity, and movement vector before the walk controls return. This includes a lost / cancelled iOS pointer while the joystick is hidden during guitar focus.
 - Touch instruments when focused (multitouch piano / drums; chord hold + independent strum / pluck for guitar).
-- Focused piano/drums arbitrate play vs camera without requiring an empty-screen start: taps play immediately; a horizontal piano slide keeps glissando; a vertical drag beyond `12 px` orbits; two-finger distance change beyond `9 px` zooms and suppresses further note traversal until release.
-- **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys must both work. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
+- Focused piano / drums / guitar play surfaces claim their fingers: taps and glissandi / strums play without rotating or pinching the camera. Orbit and pinch stay available from empty canvas around the instrument.
+- **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys/strings must both work. Chord-pad presses also claim their finger so they cannot drive orbit. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
 - Chord pad while guitar-focused; vocal pad while mic-focused.
 - HUD collapses to menu drawer on small screens.
 - Keyboard key legend (`#keys-hint`) and drag hint are **desktop-only** — hidden on phones and tablets (`max-width: 720px` or coarse pointer / no hover).
