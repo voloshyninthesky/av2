@@ -73,6 +73,25 @@ html.stage-live .nav-btn {
   touch-action: manipulation;
 }
 
+/* Telegram in-app browser: keep the live stage from rubber-banding into a dismiss. */
+html.telegram-webview.stage-live,
+html.telegram-webview.stage-live body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+html.telegram-webview.stage-live #scene {
+  touch-action: none;
+}
+html.telegram-webview.stage-live .panel {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
 .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
 
 .sr-only {
