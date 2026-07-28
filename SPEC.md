@@ -67,7 +67,7 @@ deploy/nginx/       # live VPS nginx release target
 
 **Stack:** Three.js (WebGL), OrbitControls, EffectComposer + UnrealBloomPass, Web Audio API.
 
-**Audio buses:** `drums` | `piano` | `guitar` | `mic` → master (mute). Default guitar level **0.6** (40% quieter than the others).
+**Audio buses:** `drums` | `piano` | `guitar` | `mic` → master. Default guitar level **0.6** (40% quieter than the others).
 
 ### Audio unlock
 
@@ -79,7 +79,6 @@ Mobile / in-app browsers often leave `AudioContext` **suspended** (silent until 
 - Re-wake on `pointerdown` / `touchstart` / `keydown`, `visibilitychange` → visible, and `pageshow`.
 - Mark the audio route for a guarded context rebuild after backgrounding, page restore, window blur, or an interrupted mobile Audio Session—even if the old context incorrectly still reports `running`.
 - Request the mobile Audio Session `playback` route where the browser exposes that API, and preserve loop phase / active vocal state across a context rebuild.
-- Resume when unmuting the master.
 
 Mute chosen before the context exists is honored when `init` runs.
 
@@ -245,7 +244,7 @@ Rules:
 1. **Simultaneous:** held piano notes, drum hits, a held guitar chord + Space strums, and a held vocal may all be active in the same window. Audio buses already mix; do not mute sibling instruments when one receives a key. Walk keys never steal instrument codes.
 2. **No focus required for keyboard sound.** Focus still reframes the camera, shows pads, and enables mesh / pad pointer play.
 3. **One owner per physical key.** Never bind the same `KeyboardEvent.code` to two instruments or to both walk and play.
-4. **Release hygiene:** `keyup`, window blur, visibility hidden, mute, and focus exit clear held piano notes, keyboard guitar chord, and held keyboard vocal for that session path. Walk key sets clear on `keyup` / blur as today.
+4. **Release hygiene:** `keyup`, window blur, visibility hidden, and focus exit clear held piano notes, keyboard guitar chord, and held keyboard vocal for that session path. Walk key sets clear on `keyup` / blur as today.
 5. **Price chips:** first audible play of an instrument (keyboard or pointer) still queues the once-per-instrument chip. If that play happened without focus, show the chip after the visitor next leaves any instrument focus, or after ~2 s of silence from that instrument if they never focused it.
 6. **`#keys-hint` (desktop-only):** reflect the jam map, e.g. `WASD` / стрілки / клік · `E` · `L` · `Z X C V B` ударні · `1–8` піаніно · `Q R T Y U I`+пробіл гітара · `N M , . /` вокал.
 7. **Mobile unchanged:** no jam keyboard; pads + focused multitouch only. Hide `#keys-hint` as today.
@@ -300,7 +299,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
-| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v2`, default `78`) at the top, then per-instrument volume faders + master mute |
+| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v2`, default `78`) at the top, then per-instrument volume faders |
 | Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
@@ -313,7 +312,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 - Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
-- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v2` (default `78`) and stays independent of Glamour / Pixel / Auto. Instrument volumes and master mute remain in the same panel below the light fader.
+- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v2` (default `78`) and stays independent of Glamour / Pixel / Auto. Instrument volumes remain in the same panel below the light fader.
 
 ### Pricing mixer
 
@@ -515,7 +514,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - Holding `N` (vocal) together with `3` (piano) and tapping `X` (snare) keeps all three buses audible; focusing piano must not silence drums / vocal / guitar keyboard routes.
 - `WASD` and arrows move the mascot while idle; `W` / `A` / `S` / `D` never trigger drums, guitar, or vocal. No `KeyboardEvent.code` is shared across walk/approach, loop, piano, drums, guitar, or vocal maps (`E` stays approach-only while idle; guitar Em is `Q`).
 - A visitor can hold `W` to walk and tap `Z` / `1` / Space in the same session without the walk key stealing instrument input (play keys fire; walk continues on remaining held walk keys).
-- `keyup`, blur, `visibilitychange` → hidden, master mute, and ✕ exit clear held piano keys, keyboard guitar chord, and held keyboard vocal without stuck sustains.
+- `keyup`, blur, `visibilitychange` → hidden, and ✕ exit clear held piano keys, keyboard guitar chord, and held keyboard vocal without stuck sustains.
 - Mobile / coarse-pointer shells ignore the jam keyboard and keep focus-gated pads; `#keys-hint` stays desktop-only and lists the jam map including `WASD`.
 
 ---

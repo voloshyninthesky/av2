@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260728-18';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
-import { UI } from './ui.js?v=20260728-22';
+import { UI } from './ui.js?v=20260728-23';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -5127,11 +5127,9 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-// ---- sound mixer (HUD) — per-instrument levels + master mute ----
+// ---- sound mixer (HUD) — per-instrument levels ----
 const soundMixer = document.getElementById('sound-mixer');
-const soundMuteBtn = document.getElementById('sound-mute-btn');
 const soundFaders = [...(soundMixer?.querySelectorAll('input[data-bus]') || [])];
-let muted = false;
 
 function silenceHeldVocal() {
   clearInterval(heldVocalPulseTimer);
@@ -5188,26 +5186,6 @@ function beginKeyboardVocal(code) {
   return true;
 }
 
-function syncSoundMuteUi() {
-  ui.setSoundMuted(muted);
-  if (soundMuteBtn) {
-    soundMuteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-    soundMuteBtn.textContent = muted ? 'УВІМК' : 'ВИМК';
-  }
-}
-
-function setMasterMuted(next) {
-  muted = Boolean(next);
-  audio.init();
-  audio.setMuted(muted);
-  if (!muted) audio.resume();
-  if (muted) {
-    silenceHeldVocal();
-    releaseAllHeldPianoNotes();
-  }
-  syncSoundMuteUi();
-}
-
 function closeSoundMixer() {
   if (!soundMixer || soundMixer.hidden) return;
   soundMixer.hidden = true;
@@ -5224,18 +5202,12 @@ function openSoundMixer() {
   }
   soundMixer.hidden = false;
   ui.el.soundBtn?.setAttribute('aria-expanded', 'true');
-  syncSoundMuteUi();
 }
 
 ui.el.soundBtn?.addEventListener('click', (event) => {
   event.stopPropagation();
   if (soundMixer?.hidden) openSoundMixer();
   else closeSoundMixer();
-});
-
-soundMuteBtn?.addEventListener('click', (event) => {
-  event.stopPropagation();
-  setMasterMuted(!muted);
 });
 
 for (const fader of soundFaders) {

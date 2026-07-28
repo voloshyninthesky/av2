@@ -296,6 +296,4 @@ export class UI {
     this.el.vibeFill.style.width = `${Math.max(0, Math.min(100, v))}%`;
     this.el.vibe.classList.toggle('max', v >= 100);
   }
-
-  setSoundMuted(m) { this.el.soundBtn.classList.toggle('off', m); }
 }

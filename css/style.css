@@ -218,8 +218,6 @@ html.stage-live .nav-btn {
   backdrop-filter: blur(6px);
 }
 .icon-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
-.icon-btn.off { color: rgba(253, 251, 247, .35); }
-.icon-btn.off svg { opacity: .4; }
 
 .sound-wrap { position: relative; }
 #sound-mixer {
@@ -237,15 +235,6 @@ html.stage-live .nav-btn {
 }
 .sound-mixer-head .mono {
   font-size: 10px; letter-spacing: .18em; color: rgba(253, 251, 247, .72);
-}
-.sound-mute-btn {
-  border: 1px solid rgba(253, 251, 247, .28); border-radius: 999px;
-  background: rgba(158, 51, 202, .35); color: var(--cream);
-  font: 700 10px/1 'Unbounded', sans-serif; letter-spacing: .08em;
-  padding: 7px 10px; cursor: pointer;
-}
-.sound-mute-btn[aria-pressed="true"] {
-  background: rgba(253, 251, 247, .12); color: rgba(253, 251, 247, .45);
 }
 .sound-fader {
   display: grid; gap: 5px;
