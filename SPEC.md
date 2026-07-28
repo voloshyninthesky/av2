@@ -89,6 +89,7 @@ Mute chosen before the context exists is honored when `init` runs.
 
 - Wooden platform, gold front trim, footlights (emissive + point lights). Downward volumetric spotlight shells meet the platform top and fade at its finite X/Z footprint; no beam geometry hangs over the surrounding void. The larger under-stage venue plane is intentionally unlit so non-shadow-casting mobile spotlights cannot create false beam spill below the platform.
 - Back wall, curtains, valance, speaker stacks.
+- Mascot walking uses X/Z colliders around the instruments and speaker stacks. Keyboard / stick movement slides along their edges; instrument approaches stop at the closest clear edge before focus, and exiting a seated focus pose returns the mascot to clear floor.
 - Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate.
 - Soft neon **vadymbek** credit on the **back** of the screen (clickable link hit target).
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).

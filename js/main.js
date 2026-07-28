@@ -463,6 +463,7 @@ function signatureTexture() {
 
 function buildStage() {
   const g = new THREE.Group();
+  g.userData.walkColliderRoots = [];
 
   // venue floor
   const floor = new THREE.Mesh(
@@ -590,6 +591,7 @@ function buildStage() {
     spk.position.set(s * 6.4, 0, 3.2);
     spk.rotation.y = -s * 0.35;
     g.add(spk);
+    g.userData.walkColliderRoots.push({ id: `speaker-${s < 0 ? 'left' : 'right'}`, root: spk });
   }
 
   return g;
@@ -1742,6 +1744,201 @@ const instrumentGroups = { drums: drums.group, piano: piano.group, guitar: guita
 const instrumentWorldPositions = Object.fromEntries(
   Object.keys(instrumentGroups).map((kind) => [kind, new THREE.Vector3()]),
 );
+const walkColliderRoots = [
+  ...Object.entries(instrumentGroups).map(([id, root]) => ({ id, root })),
+  ...(stage.userData.walkColliderRoots || []),
+];
+const walkColliders = [];
+const WALK_COLLISION_STEP = 0.08;
+const WALK_ROUTE_CLEARANCE = 0.1;
+
+function visibleWalkBounds(root) {
+  const bounds = new THREE.Box3().makeEmpty();
+  root.updateWorldMatrix(true, true);
+  root.traverse((object) => {
+    if (!object.isMesh || !object.visible || object.userData.walkCollider === false) return;
+    const geometry = object.geometry;
+    if (!geometry) return;
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    if (!geometry.boundingBox) return;
+    bounds.union(geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+  });
+  return bounds;
+}
+
+function refreshWalkColliders() {
+  walkColliders.length = 0;
+  for (const { id, root } of walkColliderRoots) {
+    const bounds = visibleWalkBounds(root);
+    if (bounds.isEmpty()) continue;
+    walkColliders.push({
+      id,
+      minX: bounds.min.x,
+      maxX: bounds.max.x,
+      minZ: bounds.min.z,
+      maxZ: bounds.max.z,
+    });
+  }
+}
+
+function mascotWalkRadius() {
+  return 0.29 * mascotBaseScale * (mascotCfg.width / 100) + 0.075;
+}
+
+function expandedWalkCollider(collider, padding = mascotWalkRadius()) {
+  return {
+    minX: collider.minX - padding,
+    maxX: collider.maxX + padding,
+    minZ: collider.minZ - padding,
+    maxZ: collider.maxZ + padding,
+  };
+}
+
+function pointHitsWalkCollider(point, padding = mascotWalkRadius()) {
+  for (const collider of walkColliders) {
+    const bounds = expandedWalkCollider(collider, padding);
+    if (point.x >= bounds.minX && point.x <= bounds.maxX && point.z >= bounds.minZ && point.z <= bounds.maxZ) {
+      return { collider, bounds };
+    }
+  }
+  return null;
+}
+
+function segmentHitsWalkBounds(a, b, bounds) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  let near = 0;
+  let far = 1;
+  for (const [origin, delta, min, max] of [
+    [a.x, dx, bounds.minX, bounds.maxX],
+    [a.z, dz, bounds.minZ, bounds.maxZ],
+  ]) {
+    if (Math.abs(delta) < 1e-8) {
+      if (origin < min || origin > max) return false;
+      continue;
+    }
+    const first = (min - origin) / delta;
+    const last = (max - origin) / delta;
+    near = Math.max(near, Math.min(first, last));
+    far = Math.min(far, Math.max(first, last));
+    if (near > far) return false;
+  }
+  return true;
+}
+
+function mascotWalkSegmentIsClear(a, b, padding = mascotWalkRadius()) {
+  return !walkColliders.some((collider) => segmentHitsWalkBounds(a, b, expandedWalkCollider(collider, padding)));
+}
+
+function projectMascotToWalkablePoint(point) {
+  const projected = clampMascotPoint(point.clone());
+  const edgeGap = 0.015;
+  for (let attempt = 0; attempt < walkColliders.length * 2; attempt++) {
+    const hit = pointHitsWalkCollider(projected);
+    if (!hit) break;
+    const { bounds } = hit;
+    const candidates = [
+      new THREE.Vector3(bounds.minX - edgeGap, 0, projected.z),
+      new THREE.Vector3(bounds.maxX + edgeGap, 0, projected.z),
+      new THREE.Vector3(projected.x, 0, bounds.minZ - edgeGap),
+      new THREE.Vector3(projected.x, 0, bounds.maxZ + edgeGap),
+    ];
+    candidates.sort((a, b) => a.distanceToSquared(projected) - b.distanceToSquared(projected));
+    projected.copy(clampMascotPoint(candidates[0]));
+  }
+  return projected;
+}
+
+function planMascotWalkRoute(start, destination) {
+  const from = clampMascotPoint(start.clone());
+  const to = projectMascotToWalkablePoint(destination);
+  const radius = mascotWalkRadius();
+  if (mascotWalkSegmentIsClear(from, to, radius)) return [to];
+
+  const nodes = [from, to];
+  for (const collider of walkColliders) {
+    const bounds = expandedWalkCollider(collider, radius + WALK_ROUTE_CLEARANCE);
+    for (const [x, z] of [
+      [bounds.minX, bounds.minZ], [bounds.minX, bounds.maxZ],
+      [bounds.maxX, bounds.minZ], [bounds.maxX, bounds.maxZ],
+    ]) {
+      const corner = clampMascotPoint(new THREE.Vector3(x, 0, z));
+      if (!pointHitsWalkCollider(corner, radius)) nodes.push(corner);
+    }
+  }
+
+  const costs = Array(nodes.length).fill(Infinity);
+  const previous = Array(nodes.length).fill(-1);
+  const visited = Array(nodes.length).fill(false);
+  costs[0] = 0;
+  for (let pass = 0; pass < nodes.length; pass++) {
+    let current = -1;
+    for (let index = 0; index < nodes.length; index++) {
+      if (!visited[index] && (current < 0 || costs[index] < costs[current])) current = index;
+    }
+    if (current < 0 || !Number.isFinite(costs[current]) || current === 1) break;
+    visited[current] = true;
+    for (let next = 0; next < nodes.length; next++) {
+      if (visited[next] || !mascotWalkSegmentIsClear(nodes[current], nodes[next], radius)) continue;
+      const cost = costs[current] + nodes[current].distanceTo(nodes[next]);
+      if (cost < costs[next]) {
+        costs[next] = cost;
+        previous[next] = current;
+      }
+    }
+  }
+  if (!Number.isFinite(costs[1])) return [to];
+  const route = [];
+  for (let index = 1; index !== 0; index = previous[index]) {
+    if (index < 0) return [to];
+    route.push(nodes[index].clone());
+  }
+  return route.reverse();
+}
+
+function nearestInstrumentWalkPoint(kind, origin) {
+  const collider = walkColliders.find((candidate) => candidate.id === kind);
+  if (!collider) return null;
+
+  // Arrive at the closest clear edge of an instrument rather than walking to
+  // the seated/performance pose inside its geometry. The focus transition can
+  // then place the mascot precisely, without making their visible route take
+  // an arbitrary long way around the same instrument.
+  const bounds = expandedWalkCollider(collider, mascotWalkRadius());
+  const edgeGap = 0.06;
+  const point = new THREE.Vector3(
+    THREE.MathUtils.clamp(origin.x, bounds.minX, bounds.maxX),
+    0,
+    THREE.MathUtils.clamp(origin.z, bounds.minZ, bounds.maxZ),
+  );
+  if (origin.x <= bounds.minX) point.x = bounds.minX - edgeGap;
+  else if (origin.x >= bounds.maxX) point.x = bounds.maxX + edgeGap;
+  if (origin.z <= bounds.minZ) point.z = bounds.minZ - edgeGap;
+  else if (origin.z >= bounds.maxZ) point.z = bounds.maxZ + edgeGap;
+  return clampMascotPoint(point);
+}
+
+function moveMascotWithColliders(direction, distance) {
+  const steps = Math.max(1, Math.ceil(distance / WALK_COLLISION_STEP));
+  const step = direction.clone().multiplyScalar(distance / steps);
+  const radius = mascotWalkRadius();
+  for (let index = 0; index < steps; index++) {
+    const position = mascot.group.position;
+    const proposed = clampMascotPoint(position.clone().add(step));
+    if (!pointHitsWalkCollider(proposed, radius)) {
+      position.copy(proposed);
+      continue;
+    }
+    const xSlide = position.clone();
+    xSlide.x = proposed.x;
+    if (!pointHitsWalkCollider(xSlide, radius)) position.x = xSlide.x;
+    const zSlide = position.clone();
+    zSlide.z = proposed.z;
+    if (!pointHitsWalkCollider(zSlide, radius)) position.z = zSlide.z;
+  }
+}
+
+refreshWalkColliders();
 
 const INSTRUMENT_VIEW_PRESETS = {
   drums: {
@@ -2046,6 +2243,11 @@ function finishInstrumentReturn() {
     resetMascotPose();
     mascot.group.position.y = 0;
   }
+  // Focus poses deliberately place the mascot at an instrument (on a piano
+  // bench or drum throne, for example). Once control returns, move them to
+  // clear floor so collision handling cannot leave them trapped in it.
+  mascot.group.position.copy(projectMascotToWalkablePoint(mascot.group.position));
+  mascot.group.position.y = 0;
   if (home) {
     camera.position.copy(home.position);
     controls.target.copy(home.target);
@@ -2143,11 +2345,19 @@ function requestInstrumentView(kind) {
   releaseMoveJoystick();
   controls.autoRotate = false;
   clearTimeout(idleTimer);
-  const route = [...preset.approach, preset.mascot].map((point) => {
+  const route = [];
+  let routeStart = mascot.group.position.clone();
+  for (const point of preset.approach) {
     const world = instrumentLocalToWorld(kind, point);
     world.y = 0;
-    return clampMascotPoint(world);
-  });
+    const segment = planMascotWalkRoute(routeStart, world);
+    route.push(...segment);
+    routeStart = segment[segment.length - 1] || routeStart;
+  }
+  const walkTarget = nearestInstrumentWalkPoint(kind, routeStart)
+    || instrumentLocalToWorld(kind, preset.mascot).setY(0);
+  const finalSegment = planMascotWalkRoute(routeStart, walkTarget);
+  route.push(...finalSegment);
   mascotMove.waypoints = route;
   mascotMove.destinationKind = kind;
   mascotMove.destination = mascotMove.waypoints.shift() || null;
@@ -2264,8 +2474,9 @@ function clampMascotPoint(point) {
 function setMascotDestination(point) {
   if (mascotMove.fall || instrumentView.phase !== 'idle') return;
   mascotMove.destinationKind = null;
-  mascotMove.waypoints.length = 0;
-  mascotMove.destination = clampMascotPoint(point.clone());
+  const route = planMascotWalkRoute(mascot.group.position, point);
+  mascotMove.waypoints = route;
+  mascotMove.destination = mascotMove.waypoints.shift() || null;
   controls.autoRotate = false;
   finishOnboard();
 }
@@ -2585,8 +2796,7 @@ function updateMascot(dt) {
   if (walking) {
     const moveStrength = Math.min(1, direction.length());
     direction.normalize();
-    mascot.group.position.addScaledVector(direction, mascotMove.speed * dt * moveStrength);
-    clampMascotPoint(mascot.group.position);
+    moveMascotWithColliders(direction, mascotMove.speed * dt * moveStrength);
     const targetRotation = Math.atan2(direction.x, direction.z);
     const rotationDelta = Math.atan2(Math.sin(targetRotation - mascot.group.rotation.y), Math.cos(targetRotation - mascot.group.rotation.y));
     mascot.group.rotation.y += rotationDelta * Math.min(1, dt * 10);
