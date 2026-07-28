@@ -3,13 +3,9 @@
 // ============================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AudioEngine } from './audio.js?v=20260727-16';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260727-10';
-import { UI } from './ui.js?v=20260727-18';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-11';
+import { UI } from './ui.js?v=20260728-19';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -20,14 +16,35 @@ const params = new URLSearchParams(location.search);
 const ui = new UI();
 const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
-const isMobileGameMode = () => window.innerWidth <= 720 ||
-  window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
+const mobileHardware = coarsePointer.matches
+  || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+const forcedQuality = params.get('quality');
+const deviceMemory = Number(navigator.deviceMemory) || null;
+const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
+const lowEndHardware = (deviceMemory !== null && deviceMemory <= 4)
+  || (hardwareConcurrency !== null && hardwareConcurrency <= 4)
+  || navigator.connection?.saveData === true;
+const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
+const isLowEndMobileGameMode = () => forcedQuality === 'low'
+  || (forcedQuality !== 'high' && mobileHardware && lowEndHardware);
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
 const DESKTOP_MAX_PIXEL_RATIO = 2;
 const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
+document.documentElement.dataset.qualityTier = isLowEndMobileGameMode() ? 'low-mobile' : 'full';
+document.documentElement.dataset.postprocessing = 'off';
+document.documentElement.dataset.frameRateCap = isLowEndMobileGameMode() ? '30' : 'native';
+const postprocessingModules = isLowEndMobileGameMode()
+  ? Promise.resolve(null)
+  : Promise.all([
+    import('three/addons/postprocessing/EffectComposer.js'),
+    import('three/addons/postprocessing/RenderPass.js'),
+    import('three/addons/postprocessing/UnrealBloomPass.js'),
+    import('three/addons/postprocessing/OutputPass.js'),
+  ]);
 
 // ---- Telegram in-app browser / Mini App ----
 // Vertical/side swipes can dismiss Telegram's webview. Mini Apps can call
@@ -52,6 +69,7 @@ function initTelegramEnvironment() {
   }
 }
 initTelegramEnvironment();
+window.__telegramReady?.then(initTelegramEnvironment);
 
 // ============================================================
 // RENDERER / SCENE / CAMERA
@@ -71,7 +89,8 @@ renderer.setPixelRatio(Math.min(
   isMobileGameMode() ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
 ));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !isLowEndMobileGameMode();
+document.documentElement.dataset.shadows = renderer.shadowMap.enabled ? 'on' : 'off';
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
@@ -377,17 +396,20 @@ function buildStage() {
     roughness: 0.5,
   });
   const bulbGeom = new THREE.SphereGeometry(0.05, 10, 8);
+  const bulbs = new THREE.InstancedMesh(bulbGeom, bulbMat, 9);
+  const bulbMatrix = new THREE.Matrix4();
   for (let i = 0; i < 9; i++) {
     const x = -6 + i * 1.5;
-    const b = new THREE.Mesh(bulbGeom, bulbMat);
-    b.position.set(x, 0.06, 3.9);
-    g.add(b);
+    bulbs.setMatrixAt(i, bulbMatrix.makeTranslation(x, 0.06, 3.9));
     if (i % 2 === 0) {
       const pl = new THREE.PointLight(0xffc878, mobileLighting ? 10 : 16, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
     }
   }
+  bulbs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  bulbs.computeBoundingSphere();
+  g.add(bulbs);
 
   // backdrop wall
   const wall = new THREE.Mesh(
@@ -400,9 +422,10 @@ function buildStage() {
   // curtains
   const curt = curtainTexture();
   const curtMat = new THREE.MeshStandardMaterial({ map: curt, roughness: 0.88 });
+  const sideCurtainGeometry = new THREE.PlaneGeometry(3.4, 9.4);
   stageAmbience.curtains.length = 0;
   for (const s of [-1, 1]) {
-    const c = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 9.4), curtMat);
+    const c = new THREE.Mesh(sideCurtainGeometry, curtMat);
     c.position.set(s * 7.9, 4.1, -3.9);
     c.rotation.y = -s * 0.3;
     c.userData.baseRotY = c.rotation.y;
@@ -428,9 +451,16 @@ function buildStage() {
   // speaker stacks
   const spkMat = new THREE.MeshStandardMaterial({ color: 0x0d0a12, roughness: 0.55 });
   const coneMat = new THREE.MeshStandardMaterial({ color: 0x1f1a26, roughness: 0.8 });
+  const speakerBoxGeometry = new THREE.BoxGeometry(1.15, 2.0, 0.95);
+  const speakerPlateGeometry = new THREE.BoxGeometry(0.4, 0.12, 0.02);
+  const speakerPlateMaterial = new THREE.MeshStandardMaterial({
+    color: 0xD1A13B,
+    metalness: 0.8,
+    roughness: 0.3,
+  });
   for (const s of [-1, 1]) {
     const spk = new THREE.Group();
-    const box = new THREE.Mesh(new THREE.BoxGeometry(1.15, 2.0, 0.95), spkMat);
+    const box = new THREE.Mesh(speakerBoxGeometry, spkMat);
     box.position.y = 1.0;
     box.castShadow = true;
     spk.add(box);
@@ -441,8 +471,8 @@ function buildStage() {
       spk.add(woofer);
     }
     const plate = new THREE.Mesh(
-      new THREE.BoxGeometry(0.4, 0.12, 0.02),
-      new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.8, roughness: 0.3 })
+      speakerPlateGeometry,
+      speakerPlateMaterial,
     );
     plate.position.set(0, 1.92, 0.49);
     spk.add(plate);
@@ -545,6 +575,8 @@ function buildScreen() {
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
   );
   nameHit.position.set(0.52, 0, 0.01);
+  // Raycaster still tests invisible meshes, while the renderer skips this collider.
+  nameHit.visible = false;
   nameHit.userData.link = 'https://vadymbek.top';
   nameHit.name = 'credit-link';
   signature.add(nameHit);
@@ -566,48 +598,83 @@ const screenCorners = [
 const screenCenterWorld = new THREE.Vector3();
 const screenNormalWorld = new THREE.Vector3();
 const screenQuaternionWorld = new THREE.Quaternion();
+const screenTowardCamera = new THREE.Vector3();
+const projectedScreenCorners = screenCorners.map(() => new THREE.Vector3());
+const slideshowLayoutCache = {
+  initialized: false,
+  width: 0,
+  height: 0,
+  cameraWorld: new THREE.Matrix4(),
+  projection: new THREE.Matrix4(),
+  screenWorld: new THREE.Matrix4(),
+};
+
+function setSlideshowNavStyle(property, value) {
+  if (slideshowNav.style[property] !== value) slideshowNav.style[property] = value;
+}
 
 function updateSlideshowNavLayout() {
   if (slideshowNav.hidden || !slideshowScreen) return;
   slideshowScreen.updateWorldMatrix(true, false);
+  camera.updateMatrixWorld();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  if (
+    slideshowLayoutCache.initialized
+    && slideshowLayoutCache.width === viewportWidth
+    && slideshowLayoutCache.height === viewportHeight
+    && slideshowLayoutCache.cameraWorld.equals(camera.matrixWorld)
+    && slideshowLayoutCache.projection.equals(camera.projectionMatrix)
+    && slideshowLayoutCache.screenWorld.equals(slideshowScreen.matrixWorld)
+  ) return;
+  slideshowLayoutCache.initialized = true;
+  slideshowLayoutCache.width = viewportWidth;
+  slideshowLayoutCache.height = viewportHeight;
+  slideshowLayoutCache.cameraWorld.copy(camera.matrixWorld);
+  slideshowLayoutCache.projection.copy(camera.projectionMatrix);
+  slideshowLayoutCache.screenWorld.copy(slideshowScreen.matrixWorld);
+
   slideshowScreen.getWorldPosition(screenCenterWorld);
   slideshowScreen.getWorldQuaternion(screenQuaternionWorld);
   screenNormalWorld.set(0, 0, 1).applyQuaternion(screenQuaternionWorld);
-  const towardCamera = camera.position.clone().sub(screenCenterWorld).normalize();
-  const facingCamera = screenNormalWorld.dot(towardCamera);
+  screenTowardCamera.copy(camera.position).sub(screenCenterWorld).normalize();
+  const facingCamera = screenNormalWorld.dot(screenTowardCamera);
   if (facingCamera <= 0.02) {
-    slideshowNav.style.visibility = 'hidden';
+    setSlideshowNavStyle('visibility', 'hidden');
     return;
   }
 
-  const projected = screenCorners.map((corner) => {
-    const point = slideshowScreen.localToWorld(corner.clone()).project(camera);
-    return {
-      x: (point.x * 0.5 + 0.5) * window.innerWidth,
-      y: (-point.y * 0.5 + 0.5) * window.innerHeight,
-      z: point.z,
-    };
-  });
-  const xs = projected.map((point) => point.x);
-  const ys = projected.map((point) => point.y);
-  const left = Math.min(...xs);
-  const right = Math.max(...xs);
-  const top = Math.min(...ys);
-  const bottom = Math.max(...ys);
+  let left = Infinity;
+  let right = -Infinity;
+  let top = Infinity;
+  let bottom = -Infinity;
+  let inFront = true;
+  for (let i = 0; i < screenCorners.length; i++) {
+    const point = projectedScreenCorners[i]
+      .copy(screenCorners[i])
+      .applyMatrix4(slideshowScreen.matrixWorld)
+      .project(camera);
+    const x = (point.x * 0.5 + 0.5) * viewportWidth;
+    const y = (-point.y * 0.5 + 0.5) * viewportHeight;
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+    inFront &&= point.z > -1 && point.z < 1;
+  }
   const width = right - left;
   const height = bottom - top;
-  const onScreen = right > 0 && left < window.innerWidth && bottom > 0 && top < window.innerHeight;
-  const inFront = projected.every((point) => point.z > -1 && point.z < 1);
+  const onScreen = right > 0 && left < viewportWidth && bottom > 0 && top < viewportHeight;
   if (!onScreen || !inFront || width < 70 || height < 45) {
-    slideshowNav.style.visibility = 'hidden';
+    setSlideshowNavStyle('visibility', 'hidden');
     return;
   }
 
-  slideshowNav.style.visibility = 'visible';
-  slideshowNav.style.left = `${left}px`;
-  slideshowNav.style.top = `${top}px`;
-  slideshowNav.style.width = `${width}px`;
-  slideshowNav.style.height = `${height}px`;
+  setSlideshowNavStyle('visibility', 'visible');
+  setSlideshowNavStyle('left', `${left}px`);
+  setSlideshowNavStyle('top', `${top}px`);
+  setSlideshowNavStyle('width', `${width}px`);
+  setSlideshowNavStyle('height', `${height}px`);
 }
 
 function setSlide(index) {
@@ -689,7 +756,7 @@ async function loadSlideTextures() {
 
   // `slides.json` is the complete manifest of images in /img that belong in the slideshow.
   // Keeping it separate lets the stage load every supplied slide without bundling a stale list in the app.
-  const files = await fetch('img/slides.json', { cache: 'no-store' })
+  const files = await fetch('img/slides.json')
     .then((response) => response.ok ? response.json() : fallbackFiles)
     .then((files) => Array.isArray(files) && files.length ? files : fallbackFiles)
     .catch(() => fallbackFiles);
@@ -873,13 +940,15 @@ function buildLights() {
   fill.target.position.set(0, 0.8, 0);
   g.add(fill, fill.target);
 
+  const spotlightHousingGeometry = new THREE.CylinderGeometry(0.09, 0.13, 0.3, 12);
+  const spotlightLensGeometry = new THREE.CircleGeometry(0.1, 16);
   for (const s of spots) {
     const head = new THREE.Group();
     const y = s.y ?? 6.62, z = s.z ?? 1.6;
-    const housing = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.3, 12), trussMat);
+    const housing = new THREE.Mesh(spotlightHousingGeometry, trussMat);
     head.add(housing);
     const lens = new THREE.Mesh(
-      new THREE.CircleGeometry(0.1, 16),
+      spotlightLensGeometry,
       new THREE.MeshBasicMaterial({ color: s.color, fog: false })
     );
     lens.position.y = -0.16;
@@ -894,7 +963,7 @@ function buildLights() {
     const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.5, 0.65, 1.6);
     spot.position.set(s.x, y, z);
     spot.target.position.copy(s.target);
-    if (s.shadow) {
+    if (s.shadow && !isLowEndMobileGameMode()) {
       spot.castShadow = true;
       const shadowSize = isMobileGameMode() ? 512 : 2048;
       spot.shadow.mapSize.set(shadowSize, shadowSize);
@@ -938,21 +1007,47 @@ function buildLights() {
 function buildDust() {
   const N = 320;
   const pos = new Float32Array(N * 3);
-  const meta = [];
+  const motion = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     pos[i * 3] = (Math.random() - 0.5) * 16;
     pos[i * 3 + 1] = Math.random() * 6.5 + 0.2;
     pos[i * 3 + 2] = Math.random() * 10 - 4.5;
-    meta.push({ sp: 0.05 + Math.random() * 0.12, ph: Math.random() * Math.PI * 2, sw: 0.2 + Math.random() * 0.5 });
+    motion[i * 3] = 0.05 + Math.random() * 0.12;
+    motion[i * 3 + 1] = Math.random() * Math.PI * 2;
+    motion[i * 3 + 2] = 0.2 + Math.random() * 0.5;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aDustMotion', new THREE.BufferAttribute(motion, 3));
+  const dustTime = { value: 0 };
   const mat = new THREE.PointsMaterial({
     color: 0xe8c169, size: 0.035, transparent: true, opacity: 0.55,
     blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
   });
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uDustTime = dustTime;
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        attribute vec3 aDustMotion;
+        uniform float uDustTime;`,
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `float dustSpeed = aDustMotion.x;
+        float dustPhase = aDustMotion.y;
+        float dustSway = aDustMotion.z;
+        vec3 transformed = vec3(position);
+        transformed.x += dustSway * (cos(dustPhase) - cos(uDustTime * 0.35 + dustPhase));
+        transformed.y = mod(position.y - 0.1 + dustSpeed * uDustTime, 6.9) + 0.1;
+        transformed.z += 0.7857143 * dustSway
+          * (sin(uDustTime * 0.28 + dustPhase) - sin(dustPhase));`,
+      );
+  };
+  mat.customProgramCacheKey = () => 'gpu-dust-drift-v1';
   const pts = new THREE.Points(geo, mat);
-  pts.userData.meta = meta;
+  pts.userData.time = dustTime;
   return pts;
 }
 
@@ -2030,18 +2125,31 @@ function playNearestInstrument() {
 }
 
 function updateMobilePlayAvailability() {
+  if (!isMobileGameMode()) return;
   const now = performance.now();
   if (now - updateMobilePlayAvailability.lastCheck < 90) return;
   updateMobilePlayAvailability.lastCheck = now;
   const nearest = started && !ui.modalOpen && !mascotMove.fall ? nearestInstrument() : null;
   const available = Boolean(nearest && nearest.distance <= mobileInstrumentReach());
+  const label = available
+    ? `Грати на інструменті: ${nearest.kind}`
+    : 'Підійди ближче до інструмента щоб заграти';
+  if (
+    updateMobilePlayAvailability.available === available
+    && updateMobilePlayAvailability.label === label
+    && updateMobilePlayAvailability.started === started
+  ) return;
+  updateMobilePlayAvailability.available = available;
+  updateMobilePlayAvailability.label = label;
+  updateMobilePlayAvailability.started = started;
   mobilePlay.disabled = !available;
   mobilePlayHint.hidden = !started || available;
-  mobilePlay.setAttribute('aria-label', available
-    ? `Грати на інструменті: ${nearest.kind}`
-    : 'Підійди ближче до інструмента щоб заграти');
+  mobilePlay.setAttribute('aria-label', label);
 }
 updateMobilePlayAvailability.lastCheck = -Infinity;
+updateMobilePlayAvailability.available = null;
+updateMobilePlayAvailability.label = '';
+updateMobilePlayAvailability.started = null;
 
 mobilePlay.addEventListener('pointerdown', (event) => {
   event.preventDefault();
@@ -2860,7 +2968,9 @@ function refitActiveInstrumentView() {
 function syncRendererToWindow() {
   fitCameraToViewport();
   applyMobileOrbitPolicy();
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = !isLowEndMobileGameMode();
+  document.documentElement.dataset.shadows = renderer.shadowMap.enabled ? 'on' : 'off';
+  slideshowLayoutCache.initialized = false;
   syncMobileInstrumentChrome();
   if (instrumentView.home && instrumentView.phase !== 'idle') {
     instrumentView.home.maxDistance = controls.maxDistance;
@@ -3642,9 +3752,9 @@ function openCreditLink(hit) {
   return true;
 }
 
-function creditLinkAtPointer() {
+function creditLinkAtPointer(rayReady = false) {
   if (!creditLinks.length) return null;
-  raycaster.setFromCamera(pointer, camera);
+  if (!rayReady) raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(creditLinks, false);
   return hits[0] || null;
 }
@@ -3947,19 +4057,50 @@ ui.open = (...args) => {
 // POST-PROCESSING
 // ============================================================
 let composer = null;
-try {
-  composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    isMobileGameMode() ? 0.28 : 0.45,
-    0.5,
-    0.85,
-  );
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
-} catch (e) {
-  composer = null;
+let bloomPass = null;
+
+async function initPostprocessing() {
+  let modules = null;
+  try {
+    modules = await postprocessingModules;
+  } catch (_) {
+    return;
+  }
+  if (!modules) return;
+  try {
+    const [
+      { EffectComposer },
+      { RenderPass },
+      { UnrealBloomPass },
+      { OutputPass },
+    ] = modules;
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      isMobileGameMode() ? 0.28 : 0.45,
+      0.5,
+      0.85,
+    );
+    // Bloom only processes fullscreen color. Depth/stencil attachments on its
+    // eleven internal targets consume memory without affecting the result.
+    const bloomTargets = [
+      bloomPass.renderTargetBright,
+      ...bloomPass.renderTargetsHorizontal,
+      ...bloomPass.renderTargetsVertical,
+    ];
+    for (const target of bloomTargets) {
+      target.depthBuffer = false;
+      target.stencilBuffer = false;
+    }
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+    document.documentElement.dataset.postprocessing = 'on';
+  } catch (_) {
+    composer?.dispose();
+    composer = null;
+    bloomPass = null;
+  }
 }
 window.__qualityDebug = () => {
   const lightCounts = { point: 0, spot: 0, shadowCasting: 0 };
@@ -3970,9 +4111,14 @@ window.__qualityDebug = () => {
   });
   return {
     mobile: isMobileGameMode(),
+    tier: isLowEndMobileGameMode() ? 'low-mobile' : 'full',
+    deviceMemory,
+    hardwareConcurrency,
     pixelRatio: renderer.getPixelRatio(),
     postprocessing: Boolean(composer),
+    bloom: Boolean(bloomPass),
     shadows: renderer.shadowMap.enabled,
+    frameRateCap: isLowEndMobileGameMode() ? 30 : null,
     lightCounts,
     slidesLoaded: Math.max(0, ss.texs.length - 1),
   };
@@ -4181,13 +4327,15 @@ let lastRenderedFrameAt = -Infinity;
 function renderIntervalMs() {
   if (!started) return 1000 / 10;
   if (ui.modalOpen) return 1000 / 15;
+  if (isLowEndMobileGameMode()) return 1000 / 30;
   return 0;
 }
 
 function animate(frameTime = performance.now()) {
   requestAnimationFrame(animate);
+  if (document.hidden) return;
   const interval = renderIntervalMs();
-  if (interval && frameTime - lastRenderedFrameAt < interval) return;
+  if (interval && frameTime - lastRenderedFrameAt < interval - 0.5) return;
   lastRenderedFrameAt = frameTime;
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
@@ -4248,19 +4396,8 @@ function animate(frameTime = performance.now()) {
     }
   }
 
-  // dust drift
-  {
-    const p = dust.geometry.attributes.position.array;
-    const meta = dust.userData.meta;
-    for (let i = 0; i < meta.length; i++) {
-      const m = meta[i];
-      p[i * 3 + 1] += m.sp * dt;
-      p[i * 3] += Math.sin(t * 0.35 + m.ph) * m.sw * dt * 0.35;
-      p[i * 3 + 2] += Math.cos(t * 0.28 + m.ph) * m.sw * dt * 0.22;
-      if (p[i * 3 + 1] > 7) p[i * 3 + 1] = 0.1;
-    }
-    dust.geometry.attributes.position.needsUpdate = true;
-  }
+  // Dust motion is evaluated in the vertex shader; only one scalar changes.
+  dust.userData.time.value = t;
 
   // vibe decay
   if (vibe > 0 && performance.now() - lastVibeAdd > 1500) {
@@ -4270,8 +4407,8 @@ function animate(frameTime = performance.now()) {
 
   // hover raycast
   if (started && !ui.modalOpen && canHover.matches) {
-    const overLink = creditLinkAtPointer();
     raycaster.setFromCamera(pointer, camera);
+    const overLink = creditLinkAtPointer(true);
     const hits = raycaster.intersectObjects(interactables, false);
     const hit = hits.length ? hits[0].object : null;
     if (hit !== hovered) {
@@ -4296,15 +4433,19 @@ function animate(frameTime = performance.now()) {
   if (firstFrame) {
     firstFrame = false;
     window.__sceneReady = true;
+    document.documentElement.dataset.sceneReady = 'true';
   }
 }
 
 // ============================================================
 // INIT (wait for fonts so canvas textures look right)
 // ============================================================
-Promise.race([
-  document.fonts ? document.fonts.ready : Promise.resolve(),
-  new Promise((r) => setTimeout(r, 3500)),
+Promise.all([
+  Promise.race([
+    document.fonts ? document.fonts.ready : Promise.resolve(),
+    new Promise((r) => setTimeout(r, 3500)),
+  ]),
+  initPostprocessing(),
 ]).then(() => {
   drums.refreshLogo?.();
   const credit = stage.getObjectByName('credit-signature');

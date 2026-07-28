@@ -2,8 +2,6 @@
 // ART VIBE — HUD & overlay UI manager
 // ============================================================
 
-import { PricingPicker } from './pricing.js?v=20260725-02';
-
 export class UI {
   constructor() {
     this.el = {
@@ -33,9 +31,31 @@ export class UI {
     this.current = null;
     this._toastTimer = null;
     this._chipTimer = null;
-    this.pricing = new PricingPicker(this.modals.pricing);
-    this.pricing.init();
+    this.pricing = null;
+    this._pricingPromise = null;
     this._bind();
+    const warmPricing = () => { this._ensurePricing(); };
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(warmPricing, { timeout: 1800 });
+    } else {
+      window.setTimeout(warmPricing, 400);
+    }
+  }
+
+  async _ensurePricing() {
+    if (!this._pricingPromise) {
+      this._pricingPromise = import('./pricing.js?v=20260728-03')
+        .then(({ PricingPicker }) => {
+          this.pricing = new PricingPicker(this.modals.pricing);
+          return this.pricing.init().then(() => this.pricing);
+        })
+        .catch((error) => {
+          console.warn('UI: pricing module failed to initialize', error);
+          this._pricingPromise = null;
+          return null;
+        });
+    }
+    return this._pricingPromise;
   }
 
   _bind() {
@@ -103,9 +123,14 @@ export class UI {
     this.current = name;
     window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: true, name } }));
     if (name === 'pricing') {
-      this.pricing.selectInstrument(anchor || this.pricing.state.instrument);
-      requestAnimationFrame(() => {
-        this.modals.pricing.querySelector('#price-board')?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      const requestedInstrument = anchor || this.pricing?.state.instrument || 'vocal';
+      this._ensurePricing().then((pricing) => {
+        if (!pricing) return;
+        pricing.selectInstrument(requestedInstrument);
+        if (this.current !== 'pricing') return;
+        requestAnimationFrame(() => {
+          this.modals.pricing.querySelector('#price-board')?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+        });
       });
       return;
     }

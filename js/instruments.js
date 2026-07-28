@@ -324,26 +324,52 @@ export function buildPiano() {
   shelf.position.set(0, 0.6, 0.42);
   piano.add(shelf);
   // cheek blocks
+  const cheeks = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.07, 0.1, 0.36),
+    bodyMat,
+    2,
+  );
+  const pianoInstance = new THREE.Object3D();
+  let pianoInstanceIndex = 0;
   for (const s of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.36), bodyMat);
-    cheek.position.set(s * 0.945, 0.66, 0.42);
-    piano.add(cheek);
+    pianoInstance.position.set(s * 0.945, 0.66, 0.42);
+    pianoInstance.rotation.set(0, 0, 0);
+    pianoInstance.updateMatrix();
+    cheeks.setMatrixAt(pianoInstanceIndex++, pianoInstance.matrix);
   }
+  cheeks.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  cheeks.computeBoundingSphere();
+  piano.add(cheeks);
   // pedals
   const lyre = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.34, 0.06), bodyMat);
   lyre.position.set(0, 0.3, 0.24);
   piano.add(lyre);
+  const pedals = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.05, 0.02, 0.12),
+    trimMat,
+    3,
+  );
   for (let i = -1; i <= 1; i++) {
-    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.12), trimMat);
-    pedal.position.set(i * 0.09, 0.14, 0.3);
-    piano.add(pedal);
+    pianoInstance.position.set(i * 0.09, 0.14, 0.3);
+    pianoInstance.rotation.set(0, 0, 0);
+    pianoInstance.updateMatrix();
+    pedals.setMatrixAt(i + 1, pianoInstance.matrix);
   }
+  pedals.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  pedals.computeBoundingSphere();
+  piano.add(pedals);
   // music book
   const standBoard = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 0.3), bodyMat);
   standBoard.position.set(0, 1.28, 0.32);
   standBoard.rotation.x = -0.5;
   piano.add(standBoard);
   const pageMat = std(CREAM, { roughness: 0.88 });
+  const noteLines = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.22, 0.002, 0.012),
+    std(INK),
+    6,
+  );
+  let noteLineIndex = 0;
   const sheetPages = [];
   for (const s of [-1, 1]) {
     const page = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.005, 0.24), pageMat);
@@ -356,13 +382,15 @@ export function buildPiano() {
     sheetPages.push(page);
     // note lines
     for (let l = 0; l < 3; l++) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.002, 0.012), std(INK));
-      line.position.set(s * 0.155, 1.315 + l * 0.028, 0.352 - l * 0.014);
-      line.rotation.x = -0.5;
-      line.rotation.y = s * -0.14;
-      piano.add(line);
+      pianoInstance.position.set(s * 0.155, 1.315 + l * 0.028, 0.352 - l * 0.014);
+      pianoInstance.rotation.set(-0.5, s * -0.14, 0);
+      pianoInstance.updateMatrix();
+      noteLines.setMatrixAt(noteLineIndex++, pianoInstance.matrix);
     }
   }
+  noteLines.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  noteLines.computeBoundingSphere();
+  piano.add(noteLines);
 
   // ---- keys: two octaves C4..C6 ----
   const WHITE_W = 0.118, WHITE_D = 0.3, GAP = 0.004;
@@ -410,11 +438,21 @@ export function buildPiano() {
   const bench = new THREE.Group();
   const bSeat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.09, 0.34), bodyMat);
   bench.add(bSeat);
+  const benchLegs = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.025, 0.02, 0.5, 8),
+    bodyMat,
+    4,
+  );
+  let benchLegIndex = 0;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.5, 8), bodyMat);
-    leg.position.set(sx * 0.44, -0.29, sz * 0.12);
-    bench.add(leg);
+    pianoInstance.position.set(sx * 0.44, -0.29, sz * 0.12);
+    pianoInstance.rotation.set(0, 0, 0);
+    pianoInstance.updateMatrix();
+    benchLegs.setMatrixAt(benchLegIndex++, pianoInstance.matrix);
   }
+  benchLegs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  benchLegs.computeBoundingSphere();
+  bench.add(benchLegs);
   bench.position.set(0, 0.54, 1.15);
   piano.add(bench);
 
@@ -514,40 +552,76 @@ export function buildGuitar() {
   body.add(nut);
 
   const fretMat = metal(GOLD, 0.4);
+  const guitarInstance = new THREE.Object3D();
+  const frets = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.078, 0.005, 0.014),
+    fretMat,
+    FRET_COUNT,
+  );
   for (let f = 1; f <= FRET_COUNT; f++) {
-    const fret = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.005, 0.014), fretMat);
-    fret.position.set(0, fretY(f), 0.082);
-    body.add(fret);
+    guitarInstance.position.set(0, fretY(f), 0.082);
+    guitarInstance.rotation.set(0, 0, 0);
+    guitarInstance.scale.setScalar(1);
+    guitarInstance.updateMatrix();
+    frets.setMatrixAt(f - 1, guitarInstance.matrix);
   }
+  frets.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  frets.computeBoundingSphere();
+  body.add(frets);
   // position markers (3, 5, 7, 9, 12)
   const dotMat = std(0xf5efe3, { roughness: 0.55 });
-  for (const f of [3, 5, 7, 9, 12]) {
+  const markerFrets = [3, 5, 7, 9, 12];
+  const markers = new THREE.InstancedMesh(
+    new THREE.CircleGeometry(0.007, 10),
+    dotMat,
+    6,
+  );
+  let markerIndex = 0;
+  for (const f of markerFrets) {
     const y = (fretY(f - 1) + fretY(f)) * 0.5;
     if (f === 12) {
       for (const sx of [-0.018, 0.018]) {
-        const d = new THREE.Mesh(new THREE.CircleGeometry(0.006, 10), dotMat);
-        d.position.set(sx, y, 0.082);
-        body.add(d);
+        guitarInstance.position.set(sx, y, 0.082);
+        guitarInstance.rotation.set(0, 0, 0);
+        guitarInstance.scale.setScalar(0.006 / 0.007);
+        guitarInstance.updateMatrix();
+        markers.setMatrixAt(markerIndex++, guitarInstance.matrix);
       }
     } else {
-      const d = new THREE.Mesh(new THREE.CircleGeometry(0.007, 10), dotMat);
-      d.position.set(0, y, 0.082);
-      body.add(d);
+      guitarInstance.position.set(0, y, 0.082);
+      guitarInstance.rotation.set(0, 0, 0);
+      guitarInstance.scale.setScalar(1);
+      guitarInstance.updateMatrix();
+      markers.setMatrixAt(markerIndex++, guitarInstance.matrix);
     }
   }
+  markers.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  markers.computeBoundingSphere();
+  body.add(markers);
 
   // headstock + tuners
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.2, 0.045), woodDark);
   head.position.set(0, 1.3, 0.045);
   body.add(head);
+  const pegMaterial = metal(0xd9d9e2);
+  const pegs = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.014, 0.014, 0.05, 8),
+    pegMaterial,
+    6,
+  );
+  let pegIndex = 0;
   for (let i = 0; i < 3; i++) {
     for (const sd of [-1, 1]) {
-      const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.05, 8), metal(0xd9d9e2));
-      peg.rotation.z = Math.PI / 2;
-      peg.position.set(sd * 0.08, 1.24 + i * 0.06, 0.045);
-      body.add(peg);
+      guitarInstance.position.set(sd * 0.08, 1.24 + i * 0.06, 0.045);
+      guitarInstance.rotation.set(0, 0, Math.PI / 2);
+      guitarInstance.scale.setScalar(1);
+      guitarInstance.updateMatrix();
+      pegs.setMatrixAt(pegIndex++, guitarInstance.matrix);
     }
   }
+  pegs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  pegs.computeBoundingSphere();
+  body.add(pegs);
 
   // Strings + dedicated play zones. A single fretboard plane replaces the
   // overlapping per-string/per-fret hit boxes; the soundhole plane owns strums.
@@ -586,6 +660,7 @@ export function buildGuitar() {
   const STRUM_Y = 0.08;
   const strumPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.56), hitMat);
   strumPlane.position.set(0, STRUM_Y, 0.145);
+  strumPlane.visible = false;
   Object.assign(strumPlane.userData, {
     instrument: 'guitar',
     guitarZone: 'strum',
@@ -595,6 +670,7 @@ export function buildGuitar() {
 
   const fretboardPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.82), hitMat);
   fretboardPlane.position.set(0, 0.83, 0.13);
+  fretboardPlane.visible = false;
   Object.assign(fretboardPlane.userData, {
     instrument: 'guitar',
     guitarZone: 'fretboard',
@@ -608,6 +684,7 @@ export function buildGuitar() {
   // Broad approach / hover target, intentionally ignored once guitar play is focused.
   const approachCollider = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.92, 0.34), hitMat);
   approachCollider.position.set(0, 0.52, 0.01);
+  approachCollider.visible = false;
   Object.assign(approachCollider.userData, {
     instrument: 'guitar',
     guitarZone: 'approach',
@@ -724,19 +801,37 @@ export function buildMic() {
   const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.14, 8, 18), chrome);
   headGroup.add(capsule);
   // grille rings
+  const micInstance = new THREE.Object3D();
+  const grilleRings = new THREE.InstancedMesh(
+    new THREE.TorusGeometry(0.097, 0.009, 8, 26),
+    darkMetal,
+    5,
+  );
   for (let i = 0; i < 5; i++) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.097, 0.009, 8, 26), darkMetal);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = -0.08 + i * 0.045;
-    headGroup.add(ring);
+    micInstance.position.set(0, -0.08 + i * 0.045, 0);
+    micInstance.rotation.set(Math.PI / 2, 0, 0);
+    micInstance.updateMatrix();
+    grilleRings.setMatrixAt(i, micInstance.matrix);
   }
+  grilleRings.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  grilleRings.computeBoundingSphere();
+  headGroup.add(grilleRings);
   // vertical ribs
+  const grilleRibs = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.008, 0.2, 0.008),
+    darkMetal,
+    6,
+  );
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.2, 0.008), darkMetal);
-    rib.position.set(Math.cos(a) * 0.096, 0, Math.sin(a) * 0.096);
-    headGroup.add(rib);
+    micInstance.position.set(Math.cos(a) * 0.096, 0, Math.sin(a) * 0.096);
+    micInstance.rotation.set(0, 0, 0);
+    micInstance.updateMatrix();
+    grilleRibs.setMatrixAt(i, micInstance.matrix);
   }
+  grilleRibs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  grilleRibs.computeBoundingSphere();
+  headGroup.add(grilleRibs);
   // gold band
   const band = new THREE.Mesh(new THREE.TorusGeometry(0.096, 0.014, 8, 26), metal(GOLD, 0.3));
   band.rotation.x = Math.PI / 2;
@@ -760,17 +855,21 @@ export function buildMic() {
   const pulse = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 8, 40), pulseMat);
   pulse.rotation.x = Math.PI / 2;
   pulse.position.y = 0.02;
+  pulse.visible = false;
   mic.add(pulse);
 
   const micHitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
   const lowHit = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.24, 0.65), micHitMat);
   lowHit.position.y = 0.12;
+  lowHit.visible = false;
   mic.add(lowHit);
   const midHit = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.76, 0.3), micHitMat);
   midHit.position.y = 0.86;
+  midHit.visible = false;
   mic.add(midHit);
   const highHit = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), micHitMat);
   highHit.position.y = 1.55;
+  highHit.visible = false;
   mic.add(highHit);
 
   markInteract(headGroup, { instrument: 'mic', vocalFreq: 392.0, vocalVowel: 2 });
@@ -787,7 +886,7 @@ export function buildMic() {
     group: mic,
     label: 'Вокал',
     labelAnchor: new THREE.Vector3(0, 2.2, 0),
-    sing() { bob = 1; pulseT = 1; },
+    sing() { bob = 1; pulseT = 1; pulse.visible = true; },
     update(dt) {
       time += dt;
       bob *= Math.pow(0.02, dt);
@@ -800,6 +899,7 @@ export function buildMic() {
         const p = 1 - pulseT;
         pulse.scale.setScalar(1 + p * 3.2);
         pulseMat.opacity = pulseT * 0.7;
+        if (pulseT === 0) pulse.visible = false;
       }
     },
   };

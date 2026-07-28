@@ -28,6 +28,7 @@ export class PricingPicker {
     this.root = root;
     this.data = null;
     this.ready = false;
+    this._initPromise = null;
     this.state = {
       instrument: 'vocal',
       format: 'single',
@@ -52,7 +53,13 @@ export class PricingPicker {
     };
   }
 
-  async init() {
+  init() {
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = this._load();
+    return this._initPromise;
+  }
+
+  async _load() {
     try {
       const res = await fetch('prices.json?v=20260725-02');
       if (!res.ok) throw new Error(`prices.json ${res.status}`);
