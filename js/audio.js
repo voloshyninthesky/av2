@@ -18,6 +18,7 @@ export class AudioEngine {
     this._guitarPrewarmQueue = [];
     this._guitarPrewarmScheduled = false;
     this._activeVocals = new Set();
+    this._activePianoVoices = new Set();
     this._contextGeneration = 0;
     this._needsRecovery = false;
     this._resumeFailures = 0;
@@ -114,6 +115,7 @@ export class AudioEngine {
       muted: this.muted,
       recoveryPending: this._needsRecovery,
       resumeFailures: this._resumeFailures,
+      activePianoVoices: this._activePianoVoices.size,
       audioSessionState: navigator.audioSession?.state ?? 'unsupported',
       audioSessionType: navigator.audioSession?.type ?? 'unsupported',
     };
@@ -151,6 +153,8 @@ export class AudioEngine {
     this._clearResumeWatch();
     for (const voice of [...this._activeVocals]) voice.cancel?.();
     this._activeVocals.clear();
+    for (const voice of [...this._activePianoVoices]) voice.cancel?.();
+    this._activePianoVoices.clear();
     this.ctx = null;
     this.master = null;
     this.buses = { drums: null, piano: null, guitar: null, mic: null };
@@ -273,6 +277,7 @@ export class AudioEngine {
     this.master.gain.setValueAtTime(this.muted ? 0 : 0.9, t);
     if (this.muted) {
       for (const voice of [...this._activeVocals]) voice.cancel?.();
+      this.mutePiano();
       this.muteGuitar();
     } else {
       this.resume();
@@ -411,11 +416,12 @@ export class AudioEngine {
 
   // ---------------- PIANO ----------------
 
-  piano(freq, vel = 1, at = null) {
-    if (this._silent()) return;
+  startPiano(freq, vel = 1, at = null) {
+    if (this._silent()) return null;
     const t = this._at(at);
     const out = this.ctx.createGain();
-    this._env(out, t, 0.5 * vel, 0.006, 1.6);
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.5 * vel, t + 0.006);
     const lp = this.ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.setValueAtTime(Math.min(4200, freq * 6), t);
@@ -427,6 +433,7 @@ export class AudioEngine {
       { mult: 2, type: 'sine', gain: 0.32 },
       { mult: 3.01, type: 'sine', gain: 0.1 },
     ];
+    const sources = [];
     for (const p of partials) {
       const o = this.ctx.createOscillator();
       const og = this.ctx.createGain();
@@ -435,8 +442,61 @@ export class AudioEngine {
       o.detune.value = (Math.random() - 0.5) * 4;
       og.gain.value = p.gain;
       o.connect(og).connect(out);
-      o.start(t); o.stop(t + 1.8);
+      o.start(t);
+      sources.push(o);
     }
+
+    const voice = {
+      released: false,
+      cleanupTimer: null,
+      release: (atTime = null, release = 0.34) => {
+        if (voice.released || !this.ctx) return;
+        voice.released = true;
+        clearTimeout(voice.cleanupTimer);
+        const now = this.ctx.currentTime;
+        const releaseAt = Number.isFinite(atTime) ? Math.max(now, atTime) : now;
+        try {
+          if (out.gain.cancelAndHoldAtTime) out.gain.cancelAndHoldAtTime(releaseAt);
+          else {
+            out.gain.cancelScheduledValues(releaseAt);
+            out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || 0.0001), releaseAt);
+          }
+          out.gain.exponentialRampToValueAtTime(0.0001, releaseAt + release);
+          for (const source of sources) source.stop(releaseAt + release + 0.04);
+        } catch (_) { /* oscillator may already be stopped */ }
+        voice.cleanupTimer = setTimeout(() => {
+          this._activePianoVoices.delete(voice);
+        }, Math.max(0, (releaseAt + release + 0.08 - now) * 1000));
+      },
+      cancel: () => {
+        if (voice.released || !this.ctx) return;
+        voice.released = true;
+        clearTimeout(voice.cleanupTimer);
+        const now = this.ctx.currentTime;
+        try {
+          out.gain.cancelScheduledValues(now);
+          out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || 0.0001), now);
+          out.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+          for (const source of sources) source.stop(now + 0.06);
+        } catch (_) { /* oscillator may already be stopped */ }
+        this._activePianoVoices.delete(voice);
+      },
+    };
+    this._activePianoVoices.add(voice);
+    return voice;
+  }
+
+  mutePiano(at = null) {
+    if (!this.ctx) return;
+    const t = this._at(at);
+    for (const voice of [...this._activePianoVoices]) voice.release?.(t, 0.06);
+  }
+
+  piano(freq, vel = 1, at = null, duration = 1.6) {
+    const startAt = this.ctx ? this._at(at) : null;
+    const voice = this.startPiano(freq, vel, startAt);
+    if (voice) voice.release(startAt + Math.max(0.08, duration));
+    return voice;
   }
 
   // ---------------- GUITAR (Karplus–Strong) ----------------

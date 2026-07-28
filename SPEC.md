@@ -102,7 +102,7 @@ Mute chosen before the context exists is honored when `init` runs.
 |------|------|
 | `mic` / vocal | Vocal pad notes; formant-ish synth |
 | `guitar` | Two-hand chord play: choose / hold a chord, then cross or pluck the strings; fret taps are a secondary solo shortcut |
-| `piano` | **Keys only** (`freq` on mesh) + `1–8` whites (multitouch when focused). Cabinet / lid / bench do not play. |
+| `piano` | **Keys only** (`freq` on mesh) + `1–8` whites (multitouch when focused). Press and hold a key to sustain it; release, cancel, focus exit, mute, or backgrounding releases it. Cabinet / lid / bench do not play. |
 | `drums` | Kit parts + `A–G` (multitouch when focused) |
 
 Hover (fine pointer): emissive glow.  
@@ -110,12 +110,13 @@ Distant tap / swipe on an instrument: **walk + camera approach only** — no pre
 
 ### Piano performance mode
 
-**Current milestone:** improve only the piano focus composition and the mascot's seated performance pose. Existing key input, glissando, multitouch, audio, VIBE, loop, and camera gestures remain unchanged in this milestone. Focus / `E` / **ГРАТИ** still never starts a melody.
+**Current milestone:** improve the piano focus composition and the mascot's seated performance pose, plus reliable held-note sustain for direct key play. Focus / `E` / **ГРАТИ** still never starts a melody.
 
 #### Focus framing — current
 
 - Treat the keybed as the primary subject, the mascot's hands / forearms as the secondary subject, and the upper body / face as supporting context. Do not shrink the keys merely to keep the entire mascot in frame.
-- Use a high, near-player three-quarter camera angle that clearly separates the black keys from the white keys and shows the front edge of the white keys. Avoid a flat side view, a straight top-down view, and cabinet-heavy framing.
+- Use a high oblique-overhead camera from the pianist's opposite side: the complete keybed reads along the left and the seated mascot / bench read on the right. Clearly separate black and white keys; avoid a flat side view or a perfectly vertical top-down view.
+- Keep the piano cabinet clean in focus: no music book, sheet pages, note lines, or music-rest board.
 - Frame the complete two-octave keybed plus both hands inside a measured safe rectangle. Derive that rectangle from `visualViewport`, safe-area insets, and the actual bounds of the HUD, loop pedal, zoom controls, and ✕ exit control.
 - Target roughly `76–86%` of the safe width for the projected keybed on desktop / landscape and `84–92%` on phone portrait. Preserve at least `16 px` of visual margin around the keys and hands.
 - Use piano-local bounds and anchors, transformed to world space, instead of viewport-specific world offsets. A base camera preset may establish the angle, but safe-rectangle fitting owns the final distance and target offset.
@@ -129,6 +130,7 @@ Distant tap / swipe on an instrument: **walk + camera approach only** — no pre
 - Build the pose in piano-local space so it remains correct when the piano moves / rotates and across all saved mascot height and build values.
 - Center the pelvis over the bench, keep the seat contact believable, and place both feet on or just above the stage floor in front of the bench. Legs must not pass through the bench, piano base, or pedal assembly.
 - Use a small forward torso lean and a gentle downward head angle so the mascot reads as watching the keys. Keep the shoulders relaxed rather than lifted toward the ears.
+- Keep the head centered over the torso and slightly toward the keybed. Include the posed head and visible hair bounds in the measured focus subject so rear-perspective magnification or viewport clipping cannot make the head appear detached or oversized.
 - Place the left hand above the lower half of the keybed and the right hand above the upper half, each roughly one key-height above the key tops. Keep wrists inside the keyboard width and elbows slightly open so the arms do not cross through the torso.
 - Both hands and enough of each forearm must remain visible in the focused safe rectangle. The arms may overlap the cabinet, but must not cover a large continuous section of playable keys.
 - Solve arm orientation toward piano-local hand anchors and clamp the result to comfortable ranges. Avoid one fixed pair of arm Euler angles that only works for the default mascot proportions.

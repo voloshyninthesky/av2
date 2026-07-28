@@ -358,40 +358,6 @@ export function buildPiano() {
   pedals.instanceMatrix.setUsage(THREE.StaticDrawUsage);
   pedals.computeBoundingSphere();
   piano.add(pedals);
-  // music book
-  const standBoard = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 0.3), bodyMat);
-  standBoard.position.set(0, 1.28, 0.32);
-  standBoard.rotation.x = -0.5;
-  piano.add(standBoard);
-  const pageMat = std(CREAM, { roughness: 0.88 });
-  const noteLines = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(0.22, 0.002, 0.012),
-    std(INK),
-    6,
-  );
-  let noteLineIndex = 0;
-  const sheetPages = [];
-  for (const s of [-1, 1]) {
-    const page = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.005, 0.24), pageMat);
-    page.position.set(s * 0.155, 1.31, 0.35);
-    page.rotation.x = -0.5;
-    page.rotation.y = s * -0.14;
-    page.userData.baseRotY = page.rotation.y;
-    page.userData.side = s;
-    piano.add(page);
-    sheetPages.push(page);
-    // note lines
-    for (let l = 0; l < 3; l++) {
-      pianoInstance.position.set(s * 0.155, 1.315 + l * 0.028, 0.352 - l * 0.014);
-      pianoInstance.rotation.set(-0.5, s * -0.14, 0);
-      pianoInstance.updateMatrix();
-      noteLines.setMatrixAt(noteLineIndex++, pianoInstance.matrix);
-    }
-  }
-  noteLines.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-  noteLines.computeBoundingSphere();
-  piano.add(noteLines);
-
   // ---- keys: two octaves C4..C6 ----
   const WHITE_W = 0.118, WHITE_D = 0.3, GAP = 0.004;
   const whiteGeom = new THREE.BoxGeometry(WHITE_W, 0.035, WHITE_D);
@@ -468,15 +434,17 @@ export function buildPiano() {
     label: 'Піаніно',
     labelAnchor: new THREE.Vector3(0, 2.45, 0.2),
     press(key) { key.userData.press = 1; },
+    hold(key, held) {
+      if (!key?.userData) return;
+      key.userData.held = Boolean(held);
+      if (held) key.userData.press = 1;
+    },
     update(dt, t = 0) {
       for (const k of keys) {
         const u = k.userData;
-        u.press = Math.max(0, u.press - dt * 5);
+        u.press = u.held ? 1 : Math.max(0, u.press - dt * 5);
         const dip = (u.black ? 0.016 : 0.02) * Math.min(1, u.press * 1.4);
         k.position.y = u.baseY - dip;
-      }
-      for (const page of sheetPages) {
-        page.rotation.y = page.userData.baseRotY + Math.sin(t * 1.4 + page.userData.side) * 0.018;
       }
       trimMat.emissiveIntensity = 0.06 + Math.sin(t * 1.8) * 0.035;
     },

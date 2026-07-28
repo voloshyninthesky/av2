@@ -3,8 +3,8 @@
 // ============================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { AudioEngine } from './audio.js?v=20260728-17';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-11';
+import { AudioEngine } from './audio.js?v=20260728-18';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
 import { UI } from './ui.js?v=20260728-22';
 
 // ---- error collector (debug / headless testing) ----
@@ -1960,9 +1960,9 @@ const INSTRUMENT_VIEW_PRESETS = {
     seated: true,
     approach: [],
     // Base direction only: the measured piano fitter owns distance and offset.
-    camera: new THREE.Vector3(0.75, 3.65, 1.9),
-    cameraMobile: new THREE.Vector3(0.65, 3.75, 2.05),
-    target: new THREE.Vector3(0, 0.72, 0.5),
+    camera: new THREE.Vector3(-2.1, 3.85, 1.45),
+    cameraMobile: new THREE.Vector3(-1.75, 3.95, 1.55),
+    target: new THREE.Vector3(0, 0.78, 0.55),
     arms: [-0.94, -0.98],
   },
   guitar: {
@@ -2049,6 +2049,7 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   } else if (phase !== 'focused') {
     hideVocalPad();
     hideChordPad();
+    releaseAllHeldPianoNotes();
     controls.enableZoom = true;
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
     clearGuitarInteractionState();
@@ -2211,6 +2212,28 @@ function pianoWorldPoints(localPoints) {
   return localPoints.map((point) => instrumentLocalToWorld('piano', point));
 }
 
+function pianoMascotHeadWorldPoints() {
+  const pose = createPianoMascotPose();
+  const mascotMatrix = new THREE.Matrix4().compose(
+    pose.position,
+    pose.group,
+    mascot.group.scale,
+  );
+  const headMatrix = new THREE.Matrix4().compose(
+    pose.headPosition,
+    pose.head,
+    new THREE.Vector3(1, 1, 1),
+  ).premultiply(mascotMatrix);
+  // Cover the face, cap, back hair, and the visible root of the long locks.
+  // The framing fitter can then protect the head across appearance presets
+  // without depending on whichever pose happens to be applied this frame.
+  const headBounds = new THREE.Box3(
+    new THREE.Vector3(-0.34, -0.6, -0.32),
+    new THREE.Vector3(0.34, 0.35, 0.34),
+  );
+  return boxCorners(headBounds).map((point) => point.applyMatrix4(headMatrix));
+}
+
 function fitPianoFocusFrame(preset) {
   const safeRect = pianoFocusSafeRect();
   const keyLocalPoints = boxCorners(pianoKeybedLocalBounds);
@@ -2220,7 +2243,10 @@ function fitPianoFocusFrame(preset) {
     PIANO_HAND_ANCHORS.armR,
   ];
   const keyPoints = pianoWorldPoints(keyLocalPoints);
-  const subjectPoints = pianoWorldPoints(subjectLocalPoints);
+  const subjectPoints = [
+    ...pianoWorldPoints(subjectLocalPoints),
+    ...pianoMascotHeadWorldPoints(),
+  ];
   const subjectLocalBounds = new THREE.Box3().setFromPoints(subjectLocalPoints);
   const subjectCenterLocal = subjectLocalBounds.getCenter(new THREE.Vector3());
   subjectCenterLocal.y += 0.035;
@@ -2405,8 +2431,11 @@ function createPianoMascotPose() {
     position,
     group: groupQuaternion,
     torso: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.1, 0, 0)),
-    headPosition: new THREE.Vector3(0, 1.48, -0.22),
-    head: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.16, 0, 0)),
+    // Keep the head over the torso and slightly toward the keybed. A negative
+    // local Z moves it toward the behind-player focus camera, exaggerating the
+    // hair shell and hiding the face through perspective.
+    headPosition: new THREE.Vector3(0, 1.52, 0.04),
+    head: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.1, 0, 0)),
     armLPosition,
     armRPosition,
     armL: pianoArmQuaternion(
@@ -2681,6 +2710,7 @@ function leaveInstrumentView({ immediate = false } = {}) {
   // floating joystick visible after returning from an instrument.
   releaseMoveJoystick();
   const leavingKind = instrumentView.kind;
+  if (leavingKind === 'piano') releaseAllHeldPianoNotes();
   if (leavingKind === 'guitar') {
     clearGuitarInteractionState();
     audio.muteGuitar();
@@ -3536,6 +3566,8 @@ function guitarFretHit(hit) {
 
 // Track each finger separately so pads and instrument play remain independent.
 const activePointers = new Map();
+const heldPianoNotes = new Set();
+const keyboardPianoNotes = new Map();
 const FOCUSED_ORBIT_THRESHOLD = 12;
 const FOCUSED_PINCH_THRESHOLD = 9;
 let focusedInstrumentPinch = null;
@@ -3586,7 +3618,11 @@ function focusedInstrumentGesture(e, info) {
         pinch.active = true;
         for (const pointer of participants) {
           pointer.usedCameraGesture = true;
-          if (pointer.mode === 'play') pointer.gestureIntent = 'orbit';
+          if (pointer.mode === 'play') {
+            pointer.gestureIntent = 'orbit';
+            releaseHeldPianoNote(pointer.pianoHold, { cancel: true });
+            pointer.pianoHold = null;
+          }
         }
       }
       if (pinch.active) return 'camera';
@@ -3603,7 +3639,11 @@ function focusedInstrumentGesture(e, info) {
   if (Math.hypot(dx, dy) >= FOCUSED_ORBIT_THRESHOLD) {
     const pianoGliss = instrumentView.kind === 'piano' && Math.abs(dx) >= Math.abs(dy) * 0.9;
     info.gestureIntent = pianoGliss ? 'play' : 'orbit';
-    if (info.gestureIntent === 'orbit') info.usedCameraGesture = true;
+    if (info.gestureIntent === 'orbit') {
+      info.usedCameraGesture = true;
+      releaseHeldPianoNote(info.pianoHold, { cancel: true });
+      info.pianoHold = null;
+    }
   }
   return info.gestureIntent === 'orbit' ? 'camera' : 'instrument';
 }
@@ -3619,7 +3659,7 @@ canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       if (e.pointerType !== 'touch') e.stopImmediatePropagation();
       try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-      activePointers.set(e.pointerId, {
+      const pointerInfo = {
         mode: 'play',
         x: e.clientX,
         y: e.clientY,
@@ -3629,9 +3669,12 @@ canvas.addEventListener('pointerdown', (e) => {
         token: playTokenForMesh(mesh),
         pointerType: e.pointerType,
         gestureIntent: 'pending',
-      });
+        pianoHold: null,
+      };
+      activePointers.set(e.pointerId, pointerInfo);
       seedFocusedInstrumentPinch();
-      trigger(mesh);
+      if (instrumentView.kind === 'piano') pointerInfo.pianoHold = beginHeldPianoNote(mesh);
+      else trigger(mesh);
       return;
     }
   }
@@ -3739,7 +3782,12 @@ canvas.addEventListener('pointermove', (e) => {
     const token = playTokenForMesh(mesh);
     if (token === info.token) return;
     info.token = token;
-    trigger(mesh);
+    if (instrumentView.kind === 'piano') {
+      releaseHeldPianoNote(info.pianoHold);
+      info.pianoHold = beginHeldPianoNote(mesh);
+    } else {
+      trigger(mesh);
+    }
     return;
   }
 
@@ -3835,6 +3883,7 @@ canvas.addEventListener('pointermove', (e) => {
 
 function endActivePointer(e) {
   const info = activePointers.get(e.pointerId);
+  releaseHeldPianoNote(info?.pianoHold, { cancel: Boolean(info?.usedCameraGesture) });
   activePointers.delete(e.pointerId);
   seedFocusedInstrumentPinch();
   if (!info) return;
@@ -3864,6 +3913,8 @@ function endActivePointer(e) {
 
 canvas.addEventListener('pointerup', endActivePointer, { capture: true });
 canvas.addEventListener('pointercancel', (e) => {
+  const info = activePointers.get(e.pointerId);
+  releaseHeldPianoNote(info?.pianoHold, { cancel: true });
   activePointers.delete(e.pointerId);
   seedFocusedInstrumentPinch();
 }, { capture: true });
@@ -4223,7 +4274,7 @@ function playMusicalEvent(event, { record = true, at = null, feedback = true } =
     else if (event.part === 'crash') audio.crash(velocity, startAt);
     else audio.tom(event.part === 'tom1' ? 150 : (event.part === 'floor' ? 95 : 120), velocity, startAt);
   } else if (event.type === 'piano') {
-    audio.piano(event.freq, velocity, startAt);
+    audio.piano(event.freq, velocity, startAt, event.duration ?? 1.6);
   } else if (event.type === 'guitar-pluck') {
     audio.pluck(event.freqHz ?? event.freq, velocity, startAt, {
       stringIndex: event.stringIndex ?? 0,
@@ -4365,6 +4416,7 @@ function startBaseLoopRecording() {
   loopProgressBar.style.width = '0%';
   loop.autoCloseTimer = setTimeout(() => finishBaseLoopRecording(true), LOOP_MAX_SECONDS * 1000);
   captureHeldVocalIntoLoop();
+  captureHeldPianoIntoLoop();
   renderLoopState();
   navigator.vibrate?.(30);
 }
@@ -4372,7 +4424,7 @@ function startBaseLoopRecording() {
 function finishBaseLoopRecording(automatic = false) {
   if (loop.state !== 'recording') return;
   clearTimeout(loop.autoCloseTimer);
-  if (!loop.events.length && !heldLoopCapture) {
+  if (!loop.events.length && !heldLoopCapture && !heldPianoNotes.size) {
     loop.state = 'empty';
     loop.duration = 0;
     renderLoopState();
@@ -4383,6 +4435,7 @@ function finishBaseLoopRecording(automatic = false) {
   loop.duration = Math.max(1, Math.ceil(rawDuration / 0.125) * 0.125);
   // Finalize sustain after loop length is known so held vocals cap correctly.
   finishHeldLoopCapture();
+  finishHeldPianoLoopCaptures();
   if (!loop.events.length) {
     loop.state = 'empty';
     loop.duration = 0;
@@ -4406,6 +4459,7 @@ function startLoopOverdub() {
   loop.activeLayer = loop.layers + 1;
   loop.layerStartCount = loop.events.length;
   captureHeldVocalIntoLoop();
+  captureHeldPianoIntoLoop();
   renderLoopState();
   ui.toast('Новий шар — грай поверх loop', 1700);
   navigator.vibrate?.(24);
@@ -4414,6 +4468,7 @@ function startLoopOverdub() {
 function finishLoopOverdub() {
   if (loop.state !== 'overdubbing') return;
   finishHeldLoopCapture();
+  finishHeldPianoLoopCaptures();
   const added = loop.events.length - loop.layerStartCount;
   if (added > 0) {
     loop.layers = loop.activeLayer;
@@ -4448,6 +4503,7 @@ function resumeLoop() {
 function clearRecordedLoop() {
   clearTimeout(loop.autoCloseTimer);
   finishHeldLoopCapture();
+  for (const held of heldPianoNotes) finalizeHeldPianoLoopCapture(held, { cancel: true });
   stopLoopScheduler();
   loop.state = 'empty';
   loop.events = [];
@@ -4745,6 +4801,85 @@ function trigger(mesh) {
   }
 }
 
+function beginHeldPianoNote(key) {
+  if (!key?.userData || !Number.isFinite(key.userData.freq)) return null;
+  audio.init();
+  audio.resume();
+  const event = { type: 'piano', freq: key.userData.freq, vel: 1, vibe: 3.5 };
+  const startedAt = audio.ctx?.currentTime ?? 0;
+  const captured = captureLoopEvent({ ...event, duration: 0.12 }, startedAt);
+  if (captured) captured.durationPending = true;
+
+  const held = {
+    key,
+    voice: audio.startPiano(event.freq, event.vel),
+    captured,
+    startedAt,
+    captureFinished: false,
+  };
+  heldPianoNotes.add(held);
+  piano.hold(key, true);
+  finishOnboard();
+  runMusicalVisual(event, true);
+  return held;
+}
+
+function finalizeHeldPianoLoopCapture(held, { cancel = false } = {}) {
+  if (!held?.captured || held.captureFinished) return;
+  held.captureFinished = true;
+  const event = held.captured;
+  if (cancel) {
+    const index = loop.events.indexOf(event);
+    if (index !== -1) loop.events.splice(index, 1);
+    return;
+  }
+  const now = audio.ctx?.currentTime ?? held.startedAt;
+  const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : LOOP_MAX_SECONDS;
+  event.duration = Math.min(maximum, Math.max(0.12, now - held.startedAt));
+  delete event.durationPending;
+  if (loop.duration > 0 && audio.ctx) {
+    const currentCycle = Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration);
+    event.playFromCycle = Math.max(event.playFromCycle, currentCycle + 1);
+  }
+}
+
+function releaseHeldPianoNote(held, { cancel = false } = {}) {
+  if (!held) return;
+  finalizeHeldPianoLoopCapture(held, { cancel });
+  held.voice?.release?.();
+  piano.hold(held.key, false);
+  heldPianoNotes.delete(held);
+}
+
+function releaseAllHeldPianoNotes({ cancel = false } = {}) {
+  for (const held of [...heldPianoNotes]) releaseHeldPianoNote(held, { cancel });
+  keyboardPianoNotes.clear();
+}
+
+function finishHeldPianoLoopCaptures() {
+  for (const held of heldPianoNotes) finalizeHeldPianoLoopCapture(held);
+}
+
+function captureHeldPianoIntoLoop() {
+  if (!audio.ctx) return;
+  for (const held of heldPianoNotes) {
+    if (held.captured && !held.captureFinished) continue;
+    const startedAt = audio.ctx.currentTime;
+    const captured = captureLoopEvent({
+      type: 'piano',
+      freq: held.key.userData.freq,
+      vel: 1,
+      vibe: 3.5,
+      duration: 0.12,
+    }, startedAt);
+    if (!captured) continue;
+    captured.durationPending = true;
+    held.captured = captured;
+    held.startedAt = startedAt;
+    held.captureFinished = false;
+  }
+}
+
 function openCreditLink(hit) {
   const url = hit?.object?.userData?.link;
   if (!url) return false;
@@ -4816,6 +4951,11 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
   if (e.code.startsWith('Arrow')) mascotMove.keys.delete(e.code);
+  if (keyboardPianoNotes.has(e.code)) {
+    const heldPiano = keyboardPianoNotes.get(e.code);
+    releaseHeldPianoNote(heldPiano);
+    keyboardPianoNotes.delete(e.code);
+  }
   const guitarChord = GUITAR_KEY_CHORDS[e.code];
   if (guitarChord && keyboardGuitarChord === guitarChord) {
     keyboardGuitarChord = null;
@@ -4834,7 +4974,7 @@ window.addEventListener('keydown', (e) => {
     const idx = Number(e.code.slice(5)) - 1;
     const key = whiteKeys[idx];
     if (key) {
-      playMusicalEvent({ type: 'piano', freq: key.userData.freq, vel: 1, vibe: 3.5 });
+      keyboardPianoNotes.set(e.code, beginHeldPianoNote(key));
     }
   } else if (e.code === 'Space' && isGuitarPlayFocus()) {
     e.preventDefault();
@@ -4870,7 +5010,10 @@ function setMasterMuted(next) {
   audio.init();
   audio.setMuted(muted);
   if (!muted) audio.resume();
-  if (muted) silenceHeldVocal();
+  if (muted) {
+    silenceHeldVocal();
+    releaseAllHeldPianoNotes();
+  }
   syncSoundMuteUi();
 }
 
@@ -5773,12 +5916,14 @@ document.addEventListener('visibilitychange', () => {
   }
   if (document.visibilityState === 'hidden') {
     audio.markForRecovery();
+    releaseAllHeldPianoNotes();
     clearGuitarInteractionState();
     audio.muteGuitar();
   }
 });
 window.addEventListener('blur', () => {
   audio.markForRecovery();
+  releaseAllHeldPianoNotes();
   clearGuitarInteractionState();
   audio.muteGuitar();
 });
