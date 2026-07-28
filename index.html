@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260728-30">
+<link rel="stylesheet" href="css/style.css?v=20260728-31">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -78,10 +78,15 @@
     <button class="icon-btn" id="mascot-btn" type="button" data-open="mascot" title="Твій образ — змінити маскота" aria-label="Твій образ — змінити маскота">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg>
     </button>
-    <div class="sound-wrap">
+    <div class="sound-light-stack">
       <button class="icon-btn" id="sound-btn" type="button" title="Гучність інструментів" aria-label="Гучність" aria-expanded="false" aria-controls="sound-mixer">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path id="sound-icon" fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
       </button>
+      <label id="light-controls" class="light-fader" for="stage-light-level" title="Яскравість сцени">
+        <span class="light-fader-icon" aria-hidden="true">☀</span>
+        <input type="range" id="stage-light-level" class="light-fader-range" min="0" max="130" step="1" value="67" aria-label="Яскравість сцени" aria-valuetext="67 відсотків">
+        <output id="stage-light-level-val" class="mono" for="stage-light-level">67%</output>
+      </label>
       <div id="sound-mixer" hidden role="dialog" aria-label="Гучність інструментів">
         <div class="sound-mixer-head">
           <span class="mono">МІКШЕР</span>
@@ -116,14 +121,6 @@
 <div id="zoom-controls" hidden aria-label="Масштаб сцени">
   <button id="zoom-in" type="button" aria-label="Наблизити сцену" title="Наблизити">+</button>
   <button id="zoom-out" type="button" aria-label="Віддалити сцену" title="Віддалити">−</button>
-</div>
-
-<div id="light-controls" hidden aria-label="Яскравість сцени">
-  <label class="light-fader" for="stage-light-level" title="Яскравість сцени">
-    <span class="light-fader-icon" aria-hidden="true">☀</span>
-    <input type="range" id="stage-light-level" class="light-fader-range" min="0" max="130" step="5" value="50" aria-label="Яскравість сцени" aria-valuetext="50 відсотків">
-    <output id="stage-light-level-val" class="mono" for="stage-light-level">50%</output>
-  </label>
 </div>
 
 <div id="loop-pedal" data-state="empty" role="group" aria-label="Loop-педаль" hidden>
@@ -531,6 +528,6 @@
     });
   })();
 </script>
-  <script type="module" src="js/main.js?v=20260728-74"></script>
+  <script type="module" src="js/main.js?v=20260728-75"></script>
 </body>
 </html>
