@@ -740,6 +740,15 @@ html[data-instrument-view="focused"] #mobile-play {
 html[data-instrument-view="focused"] #hud {
   opacity: .72;
 }
+/* Piano focus gives the measured keybed the full canvas; the global shortcut
+   legend otherwise crosses the keys in short landscape browser windows. */
+html[data-instrument="piano"][data-instrument-view="entering"] #keys-hint,
+html[data-instrument="piano"][data-instrument-view="focused"] #keys-hint,
+html[data-instrument="piano"][data-instrument-view="entering"] #drag-hint,
+html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
+  opacity: 0;
+  pointer-events: none;
+}
 
 @media (min-width: 721px) {
   #loop-pedal { right: 134px; bottom: 24px; }

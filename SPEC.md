@@ -108,6 +108,45 @@ Mute chosen before the context exists is honored when `init` runs.
 Hover (fine pointer): emissive glow.  
 Distant tap / swipe on an instrument: **walk + camera approach only** — no preview sound. Sound starts after focus.
 
+### Piano performance mode
+
+**Current milestone:** improve only the piano focus composition and the mascot's seated performance pose. Existing key input, glissando, multitouch, audio, VIBE, loop, and camera gestures remain unchanged in this milestone. Focus / `E` / **ГРАТИ** still never starts a melody.
+
+#### Focus framing — current
+
+- Treat the keybed as the primary subject, the mascot's hands / forearms as the secondary subject, and the upper body / face as supporting context. Do not shrink the keys merely to keep the entire mascot in frame.
+- Use a high, near-player three-quarter camera angle that clearly separates the black keys from the white keys and shows the front edge of the white keys. Avoid a flat side view, a straight top-down view, and cabinet-heavy framing.
+- Frame the complete two-octave keybed plus both hands inside a measured safe rectangle. Derive that rectangle from `visualViewport`, safe-area insets, and the actual bounds of the HUD, loop pedal, zoom controls, and ✕ exit control.
+- Target roughly `76–86%` of the safe width for the projected keybed on desktop / landscape and `84–92%` on phone portrait. Preserve at least `16 px` of visual margin around the keys and hands.
+- Use piano-local bounds and anchors, transformed to world space, instead of viewport-specific world offsets. A base camera preset may establish the angle, but safe-rectangle fitting owns the final distance and target offset.
+- The camera target should sit near the visual center of the keybed, biased slightly toward the mascot so the hands and seated posture remain legible. Shift the camera target to place the subject in the safe rectangle; do not tilt by moving the camera below the keybed.
+- The camera transition endpoint is the authoritative focused frame. Derive focused azimuth / polar limits from that endpoint before re-enabling OrbitControls so the first controls update cannot snap or reframe it.
+- Keep the focused distance envelope that preserves key readability, while leaving horizontal orbit, pinch / wheel zoom, and the `+` / `−` controls available. Zoom must not move the keyboard behind fixed UI.
+- Refit on focus, resize, orientation change, and `visualViewport` change. During an active entry transition, update its destination rather than teleporting the camera. Once focused, refit in one short eased correction; use an immediate correction under `prefers-reduced-motion`.
+
+#### Mascot performance pose — current
+
+- Build the pose in piano-local space so it remains correct when the piano moves / rotates and across all saved mascot height and build values.
+- Center the pelvis over the bench, keep the seat contact believable, and place both feet on or just above the stage floor in front of the bench. Legs must not pass through the bench, piano base, or pedal assembly.
+- Use a small forward torso lean and a gentle downward head angle so the mascot reads as watching the keys. Keep the shoulders relaxed rather than lifted toward the ears.
+- Place the left hand above the lower half of the keybed and the right hand above the upper half, each roughly one key-height above the key tops. Keep wrists inside the keyboard width and elbows slightly open so the arms do not cross through the torso.
+- Both hands and enough of each forearm must remain visible in the focused safe rectangle. The arms may overlap the cabinet, but must not cover a large continuous section of playable keys.
+- Solve arm orientation toward piano-local hand anchors and clamp the result to comfortable ranges. Avoid one fixed pair of arm Euler angles that only works for the default mascot proportions.
+- Blend from the walk / idle pose into the seated ready pose during the existing camera transition. There must be no one-frame position, scale, limb, or yaw pop when entering focus.
+- Hold a calm ready pose while focused. This milestone does not add note-following hands; only a subtle breathing / wrist settle is allowed, and it is disabled under `prefers-reduced-motion`.
+- On ✕ exit, restore the neutral mascot pose before returning control and project the mascot to clear walkable floor as today. Repeated focus / exit cycles must not accumulate transform drift.
+
+#### Piano interaction roadmap
+
+These items are planned, but they are not blockers for the current framing / pose milestone:
+
+1. **Reliable key surface:** piano-local hit plane, dead-gap removal, black-key priority, captured pointers, held key state, ordered glissando, and robust multi-finger chords.
+2. **Gesture ownership:** explicit key-versus-camera start zones, horizontal glissando hysteresis, vertical orbit after `12 px`, pinch takeover after `9 px`, and loop-pedal + key multitouch.
+3. **Performance feedback:** one piano-note event driving audio, key travel, glow, note-following hands, VIBE, price chips, haptics, and loop capture; at least `16` voices and click-free same-pitch replacement.
+4. **Discoverability and access:** first-focus hints (`Торкайся клавіш — можна кількома пальцями` / `Клікай клавіші або грай 1–8`) and an accessible DOM `#piano-pad` strip for `C4–C5`.
+5. **Expressive controls:** sustain pedal, full two-octave computer-keyboard mapping, MIDI input, velocity-sensitive touch / pen input, and selectable octave.
+6. **Learning layer:** optional guided phrases, hand-separated exercises, metronome, and note-name overlays. These may read `piano-notes.json`, but focus itself remains silent.
+
 ### Guitar performance mode
 
 The primary mental model is **two hands**: the fretting hand chooses the sound; the picking hand creates it. Chord / fret input alone stays silent.
@@ -117,7 +156,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - Focus frames the soundhole, all six strings, and the first five frets from a near-front angle, two `+` zoom steps closer than the base guitar framing. On resize / orientation change, fit that play area again.
 - The mascot and guitar must read as one performance pose: fretting hand at the neck, picking hand at the soundhole. String motion and hand motion carry the action; whole-body guitar wobble stays subtle.
 - Use separate guitar-local raycast proxies for approach, strum, and fret selection. A pointer captured by a play zone cannot orbit the camera until it ends.
-- Keep a narrow focused azimuth range so the strings remain readable. Derive that range from the camera transition endpoint so enabling orbit controls does not shift the settled frame. Zoom buttons remain available.
+- Start from a composed focused frame, then leave horizontal orbit and zoom available. Zoom buttons remain available.
 
 #### Strum and pluck
 
@@ -303,6 +342,21 @@ A recorded strum carries serializable per-string data. `direction` is `bass-to-t
 
 The loop pedal preserves this order, velocity, and timing instead of rebuilding a generic chord on playback.
 
+### Roadmap: piano runtime event
+
+The planned piano feedback / loop milestone will use one attack event. `key` is the stable note identity; `freqHz` is serialized so loop playback does not depend on a later mesh lookup:
+
+```js
+{
+  type: "piano",
+  key: "C4",
+  freqHz: 261.63,
+  velocity: 0.78
+}
+```
+
+A glissando emits one event for each newly crossed key in order. The loop pedal preserves each event's timing and velocity; pointer identity and camera-gesture state are never recorded.
+
 ### `av2.mascot.v2` (localStorage)
 
 Mascot customization, migrated from `av2.mascot.v1`, merged over defaults, and validated on load (unknown / malformed values fall back per field):
@@ -391,6 +445,17 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
 - No secrets in repo; prices are public marketing data.
+
+### Piano framing / pose acceptance
+
+- At `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, the complete keybed and both hands remain inside the measured safe rectangle with at least `16 px` of visual margin.
+- The projected keybed occupies `76–86%` of safe width on desktop / landscape and `84–92%` on phone portrait. Black / white key relationships and the white-key front edge remain readable.
+- The first stable piano-focused frame exactly matches the camera transition endpoint. Re-enabling OrbitControls does not snap, rotate, zoom, or shift the target.
+- HUD, loop pedal, zoom controls, safe-area insets, and ✕ do not cover the keybed or either hand. Opening a VIBE toast or price chip does not make the play area unusable.
+- The seated pose remains believable at the mascot height / build extremes: pelvis on the bench, feet near the floor, hands over separate keyboard regions, relaxed shoulders, and no visible body / furniture intersections.
+- Entering focus blends cleanly from the preceding walk / idle pose. Ten consecutive piano focus → ✕ cycles produce no transform drift, stuck seated limbs, or return-position regression.
+- Resize, orientation, and `visualViewport` changes during entry update the transition destination; the focused frame never flashes through an obsolete preset or teleports between compositions.
+- Under `prefers-reduced-motion`, framing and pose remain complete and readable without breathing / wrist motion or a long transition.
 
 ### Guitar acceptance
 

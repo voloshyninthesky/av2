@@ -1375,6 +1375,7 @@ function buildMascot() {
       palm.scale.set(1.05, 0.85, 1.15);
       palm.position.y = -length - radius * 0.35;
       pivot.add(palm);
+      pivot.userData.hand = palm;
     }
     group.add(pivot);
     return pivot;
@@ -1409,6 +1410,8 @@ function buildMascot() {
 
   return {
     group, torso, head, armL, armR, legL, legR,
+    handL: armL.userData.hand,
+    handR: armR.userData.hand,
     custom: {
       mats, hairMat, skinMat: skin, hairBack, hairCap, hairTail, locks, accessoryGroups,
       mouths: { soft: softSmile, wide: wideSmile, neutral: neutralMouth },
@@ -1952,14 +1955,14 @@ const INSTRUMENT_VIEW_PRESETS = {
     arms: [-0.88, -1.05],
   },
   piano: {
-    mascot: new THREE.Vector3(0, 0.07, 1.15),
+    mascot: new THREE.Vector3(0, 0.07, 1.02),
     yaw: Math.PI,
     seated: true,
     approach: [],
-    // Steeper overhead: look down onto keys from behind-left.
-    camera: new THREE.Vector3(1.25, 3.55, 2.45),
-    cameraMobile: new THREE.Vector3(1.4, 4.05, 2.9),
-    target: new THREE.Vector3(-0.05, 0.52, 0.32),
+    // Base direction only: the measured piano fitter owns distance and offset.
+    camera: new THREE.Vector3(0.75, 3.65, 1.9),
+    cameraMobile: new THREE.Vector3(0.65, 3.75, 2.05),
+    target: new THREE.Vector3(0, 0.72, 0.5),
     arms: [-0.94, -0.98],
   },
   guitar: {
@@ -1989,6 +1992,7 @@ const instrumentView = {
   phase: 'idle',
   kind: null,
   transition: null,
+  refit: null,
   home: null,
 };
 
@@ -2012,9 +2016,14 @@ function syncMobileInstrumentChrome() {
 function syncInstrumentExposure() {
   const portrait = window.innerWidth / window.innerHeight < 1;
   const baseExposure = portrait ? 0.98 : 1.12;
-  renderer.toneMappingExposure = instrumentView.phase === 'focused' && instrumentView.kind === 'guitar'
-    ? baseExposure * 0.78
-    : baseExposure;
+  const performancePhase = instrumentView.phase === 'entering' || instrumentView.phase === 'focused';
+  if (performancePhase && instrumentView.kind === 'piano') {
+    renderer.toneMappingExposure = baseExposure * 0.48;
+  } else if (performancePhase && instrumentView.kind === 'guitar') {
+    renderer.toneMappingExposure = baseExposure * 0.78;
+  } else {
+    renderer.toneMappingExposure = baseExposure;
+  }
 }
 
 function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
@@ -2053,16 +2062,366 @@ function instrumentLocalToWorld(kind, point) {
   return group.localToWorld(point.clone());
 }
 
+const PIANO_FRAME_MARGIN = 16;
+const PIANO_HAND_ANCHORS = {
+  armL: new THREE.Vector3(0.38, 0.72, 0.67),
+  armR: new THREE.Vector3(-0.38, 0.72, 0.67),
+};
+const pianoFitCamera = camera.clone();
+let pianoFrameDebug = null;
+
+function objectBoundsInAncestor(objects, ancestor) {
+  const bounds = new THREE.Box3();
+  const objectBounds = new THREE.Box3();
+  const inverse = new THREE.Matrix4();
+  ancestor.updateWorldMatrix(true, true);
+  inverse.copy(ancestor.matrixWorld).invert();
+  for (const object of objects) {
+    if (!object?.isMesh || !object.geometry) continue;
+    if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+    if (!object.geometry.boundingBox) continue;
+    object.updateWorldMatrix(true, false);
+    objectBounds.copy(object.geometry.boundingBox)
+      .applyMatrix4(object.matrixWorld)
+      .applyMatrix4(inverse);
+    bounds.union(objectBounds);
+  }
+  return bounds;
+}
+
+const pianoKeybedLocalBounds = objectBoundsInAncestor(piano.keys, piano.group);
+
+function boxCorners(box) {
+  const { min, max } = box;
+  return [
+    new THREE.Vector3(min.x, min.y, min.z),
+    new THREE.Vector3(max.x, min.y, min.z),
+    new THREE.Vector3(min.x, max.y, min.z),
+    new THREE.Vector3(max.x, max.y, min.z),
+    new THREE.Vector3(min.x, min.y, max.z),
+    new THREE.Vector3(max.x, min.y, max.z),
+    new THREE.Vector3(min.x, max.y, max.z),
+    new THREE.Vector3(max.x, max.y, max.z),
+  ];
+}
+
+function visibleChromeRect(element) {
+  if (!element || element.hidden) return null;
+  const style = getComputedStyle(element);
+  if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.03) return null;
+  const rect = element.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+  };
+}
+
+function rectIntersection(a, b) {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+function validPianoSafeRect(rect) {
+  return rect.right - rect.left >= 160 && rect.bottom - rect.top >= 150;
+}
+
+function pianoSafeRectScore(rect, viewport) {
+  const width = rect.right - rect.left;
+  const height = rect.bottom - rect.top;
+  const viewportWidth = viewport.right - viewport.left;
+  const centerX = (rect.left + rect.right) * 0.5;
+  const viewportCenterX = (viewport.left + viewport.right) * 0.5;
+  // The keybed is intrinsically wide: prefer a shorter full-width region above
+  // controls over a tall narrow strip beside them on phone portrait.
+  const widthBias = Math.pow(width / viewportWidth, 3);
+  return width * height * widthBias - Math.abs(centerX - viewportCenterX) * 18;
+}
+
+function pianoFocusSafeRect() {
+  const vv = window.visualViewport;
+  const viewport = {
+    left: (vv?.offsetLeft || 0) + PIANO_FRAME_MARGIN,
+    top: (vv?.offsetTop || 0) + PIANO_FRAME_MARGIN,
+    right: (vv?.offsetLeft || 0) + (vv?.width || window.innerWidth) - PIANO_FRAME_MARGIN,
+    bottom: (vv?.offsetTop || 0) + (vv?.height || window.innerHeight) - PIANO_FRAME_MARGIN,
+  };
+  const blockers = [
+    document.getElementById('hud'),
+    zoomControls,
+    loopPedal,
+    mobileExit,
+    document.getElementById('chip'),
+    document.getElementById('toast'),
+  ].map(visibleChromeRect).filter(Boolean).map((rect) => ({
+    left: rect.left - 8,
+    top: rect.top - 8,
+    right: rect.right + 8,
+    bottom: rect.bottom + 8,
+  }));
+
+  let candidates = [viewport];
+  for (const blocker of blockers) {
+    const next = [];
+    for (const rect of candidates) {
+      if (!rectIntersection(rect, blocker)) {
+        next.push(rect);
+        continue;
+      }
+      const splits = [
+        { ...rect, bottom: Math.min(rect.bottom, blocker.top) },
+        { ...rect, top: Math.max(rect.top, blocker.bottom) },
+        { ...rect, right: Math.min(rect.right, blocker.left) },
+        { ...rect, left: Math.max(rect.left, blocker.right) },
+      ];
+      next.push(...splits.filter(validPianoSafeRect));
+    }
+    candidates = next
+      .sort((a, b) => pianoSafeRectScore(b, viewport) - pianoSafeRectScore(a, viewport))
+      .slice(0, 48);
+  }
+  return candidates[0] || viewport;
+}
+
+function projectedBounds(points, projectionCamera) {
+  const bounds = {
+    left: Infinity,
+    top: Infinity,
+    right: -Infinity,
+    bottom: -Infinity,
+  };
+  for (const point of points) {
+    const ndc = point.clone().project(projectionCamera);
+    const x = (ndc.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-ndc.y * 0.5 + 0.5) * window.innerHeight;
+    bounds.left = Math.min(bounds.left, x);
+    bounds.top = Math.min(bounds.top, y);
+    bounds.right = Math.max(bounds.right, x);
+    bounds.bottom = Math.max(bounds.bottom, y);
+  }
+  bounds.width = bounds.right - bounds.left;
+  bounds.height = bounds.bottom - bounds.top;
+  bounds.centerX = (bounds.left + bounds.right) * 0.5;
+  bounds.centerY = (bounds.top + bounds.bottom) * 0.5;
+  return bounds;
+}
+
+function pianoWorldPoints(localPoints) {
+  return localPoints.map((point) => instrumentLocalToWorld('piano', point));
+}
+
+function fitPianoFocusFrame(preset) {
+  const safeRect = pianoFocusSafeRect();
+  const keyLocalPoints = boxCorners(pianoKeybedLocalBounds);
+  const subjectLocalPoints = [
+    ...keyLocalPoints,
+    PIANO_HAND_ANCHORS.armL,
+    PIANO_HAND_ANCHORS.armR,
+  ];
+  const keyPoints = pianoWorldPoints(keyLocalPoints);
+  const subjectPoints = pianoWorldPoints(subjectLocalPoints);
+  const subjectLocalBounds = new THREE.Box3().setFromPoints(subjectLocalPoints);
+  const subjectCenterLocal = subjectLocalBounds.getCenter(new THREE.Vector3());
+  subjectCenterLocal.y += 0.035;
+  subjectCenterLocal.z += 0.055;
+  const subjectCenter = instrumentLocalToWorld('piano', subjectCenterLocal);
+  const pianoWorldQuaternion = piano.group.getWorldQuaternion(new THREE.Quaternion());
+  const eyeDirection = preset.camera.clone().sub(preset.target).normalize()
+    .applyQuaternion(pianoWorldQuaternion).normalize();
+  const right = new THREE.Vector3().crossVectors(camera.up, eyeDirection).normalize();
+  const viewUp = new THREE.Vector3().crossVectors(eyeDirection, right).normalize();
+  const safeWidth = safeRect.right - safeRect.left;
+  const safeHeight = safeRect.bottom - safeRect.top;
+  const safeCenterX = (safeRect.left + safeRect.right) * 0.5;
+  const safeCenterY = (safeRect.top + safeRect.bottom) * 0.5;
+  const portrait = window.innerHeight > window.innerWidth;
+  const desiredKeyWidth = safeWidth * (portrait ? 0.88 : 0.81);
+  const tanHalfV = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+  const desiredNdcX = (safeCenterX / window.innerWidth) * 2 - 1;
+  const desiredNdcY = 1 - (safeCenterY / window.innerHeight) * 2;
+  let position = new THREE.Vector3();
+  let target = new THREE.Vector3();
+
+  const placeCamera = (distance) => {
+    const halfHeight = distance * tanHalfV;
+    const halfWidth = halfHeight * camera.aspect;
+    position.copy(subjectCenter).addScaledVector(eyeDirection, distance);
+    target.copy(subjectCenter)
+      .addScaledVector(right, -desiredNdcX * halfWidth)
+      .addScaledVector(viewUp, -desiredNdcY * halfHeight);
+    pianoFitCamera.copy(camera);
+    pianoFitCamera.position.copy(position);
+    pianoFitCamera.up.copy(camera.up);
+    pianoFitCamera.lookAt(target);
+    pianoFitCamera.updateMatrixWorld(true);
+  };
+
+  let distance = THREE.MathUtils.clamp(preset.camera.distanceTo(preset.target), 1.6, 5.4);
+  for (let iteration = 0; iteration < 8; iteration++) {
+    placeCamera(distance);
+    const keyBounds = projectedBounds(keyPoints, pianoFitCamera);
+    const subjectBounds = projectedBounds(subjectPoints, pianoFitCamera);
+    const widthScale = keyBounds.width / desiredKeyWidth;
+    const fitScale = Math.max(subjectBounds.width / safeWidth, subjectBounds.height / safeHeight);
+    const scale = Math.max(widthScale, fitScale);
+    if (Math.abs(scale - 1) < 0.004) break;
+    distance = THREE.MathUtils.clamp(distance * scale, 1.35, 6.2);
+  }
+
+  placeCamera(distance);
+  for (let iteration = 0; iteration < 2; iteration++) {
+    const bounds = projectedBounds(subjectPoints, pianoFitCamera);
+    const dx = safeCenterX - bounds.centerX;
+    const dy = safeCenterY - bounds.centerY;
+    const worldPerPixelY = (2 * distance * tanHalfV) / window.innerHeight;
+    const worldPerPixelX = worldPerPixelY * camera.aspect;
+    const shift = right.clone().multiplyScalar(-dx * worldPerPixelX)
+      .addScaledVector(viewUp, dy * worldPerPixelY);
+    position.add(shift);
+    target.add(shift);
+    pianoFitCamera.position.copy(position);
+    pianoFitCamera.lookAt(target);
+    pianoFitCamera.updateMatrixWorld(true);
+  }
+
+  pianoFrameDebug = {
+    safeRect: { ...safeRect },
+    keybedBounds: projectedBounds(keyPoints, pianoFitCamera),
+    subjectBounds: projectedBounds(subjectPoints, pianoFitCamera),
+    targetWidthRatio: desiredKeyWidth / safeWidth,
+    keybedLocalBounds: {
+      min: pianoKeybedLocalBounds.min.toArray(),
+      max: pianoKeybedLocalBounds.max.toArray(),
+    },
+    distance,
+    position: position.toArray(),
+    target: target.toArray(),
+  };
+  document.documentElement.dataset.pianoFrameDebug = JSON.stringify(pianoFrameDebug);
+  return { position: position.clone(), target: target.clone() };
+}
+
+function instrumentViewFrame(kind, preset) {
+  if (kind === 'piano') return fitPianoFocusFrame(preset);
+  return {
+    position: instrumentLocalToWorld(kind, instrumentViewCameraPoint(kind, preset)),
+    target: instrumentLocalToWorld(kind, preset.target),
+  };
+}
+
 function resetMascotPose() {
   applyMascotScale();
   mascot.group.rotation.x = 0;
   mascot.group.rotation.z = 0;
   mascot.torso.rotation.set(0, 0, 0);
+  mascot.head.position.set(0, 1.56, 0);
   mascot.head.rotation.set(0, 0, 0);
+  mascot.armL.position.set(-0.34, 1.28, 0);
+  mascot.armR.position.set(0.34, 1.28, 0);
   mascot.armL.rotation.set(0, 0, -0.12);
   mascot.armR.rotation.set(0, 0, 0.12);
   mascot.legL.rotation.set(0, 0, 0);
   mascot.legR.rotation.set(0, 0, 0);
+}
+
+function captureMascotInstrumentPose() {
+  return {
+    position: mascot.group.position.clone(),
+    group: mascot.group.quaternion.clone(),
+    torso: mascot.torso.quaternion.clone(),
+    headPosition: mascot.head.position.clone(),
+    head: mascot.head.quaternion.clone(),
+    armLPosition: mascot.armL.position.clone(),
+    armRPosition: mascot.armR.position.clone(),
+    armL: mascot.armL.quaternion.clone(),
+    armR: mascot.armR.quaternion.clone(),
+    legL: mascot.legL.quaternion.clone(),
+    legR: mascot.legR.quaternion.clone(),
+  };
+}
+
+function applyMascotInstrumentPose(pose) {
+  mascot.group.position.copy(pose.position);
+  mascot.group.quaternion.copy(pose.group);
+  mascot.torso.quaternion.copy(pose.torso);
+  mascot.head.position.copy(pose.headPosition);
+  mascot.head.quaternion.copy(pose.head);
+  mascot.armL.position.copy(pose.armLPosition);
+  mascot.armR.position.copy(pose.armRPosition);
+  mascot.armL.quaternion.copy(pose.armL);
+  mascot.armR.quaternion.copy(pose.armR);
+  mascot.legL.quaternion.copy(pose.legL);
+  mascot.legR.quaternion.copy(pose.legR);
+}
+
+function interpolateMascotInstrumentPose(from, to, amount) {
+  mascot.group.position.lerpVectors(from.position, to.position, amount);
+  mascot.group.quaternion.slerpQuaternions(from.group, to.group, amount);
+  mascot.torso.quaternion.slerpQuaternions(from.torso, to.torso, amount);
+  mascot.head.position.lerpVectors(from.headPosition, to.headPosition, amount);
+  mascot.head.quaternion.slerpQuaternions(from.head, to.head, amount);
+  mascot.armL.position.lerpVectors(from.armLPosition, to.armLPosition, amount);
+  mascot.armR.position.lerpVectors(from.armRPosition, to.armRPosition, amount);
+  mascot.armL.quaternion.slerpQuaternions(from.armL, to.armL, amount);
+  mascot.armR.quaternion.slerpQuaternions(from.armR, to.armR, amount);
+  mascot.legL.quaternion.slerpQuaternions(from.legL, to.legL, amount);
+  mascot.legR.quaternion.slerpQuaternions(from.legR, to.legR, amount);
+}
+
+function pianoArmQuaternion(shoulderPosition, targetWorld, inverseMascotMatrix) {
+  const targetLocal = targetWorld.clone().applyMatrix4(inverseMascotMatrix);
+  const direction = targetLocal.sub(shoulderPosition).normalize();
+  const downward = Math.max(0.08, -direction.y);
+  const x = THREE.MathUtils.clamp(-Math.atan2(direction.z, downward), -1.24, -0.48);
+  const z = THREE.MathUtils.clamp(Math.atan2(direction.x, downward), -0.32, 0.32);
+  return new THREE.Quaternion().setFromEuler(new THREE.Euler(x, 0, z, 'XYZ'));
+}
+
+function createPianoMascotPose() {
+  const preset = INSTRUMENT_VIEW_PRESETS.piano;
+  const scaleY = mascot.group.scale.y;
+  const benchTop = 0.585;
+  const hipLocalY = 0.76;
+  const mascotLocalPosition = preset.mascot.clone();
+  mascotLocalPosition.y = benchTop - hipLocalY * scaleY;
+  const position = instrumentLocalToWorld('piano', mascotLocalPosition);
+  const pianoQuaternion = piano.group.getWorldQuaternion(new THREE.Quaternion());
+  const groupQuaternion = pianoQuaternion.multiply(
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), preset.yaw),
+  );
+  const targetMatrix = new THREE.Matrix4().compose(
+    position,
+    groupQuaternion,
+    mascot.group.scale,
+  );
+  const inverseTargetMatrix = targetMatrix.clone().invert();
+  const normalizedHeight = THREE.MathUtils.clamp((mascotCfg.height - 70) / 75, 0, 1);
+  const legAngle = THREE.MathUtils.lerp(-0.38, -0.92, normalizedHeight);
+  const armLPosition = new THREE.Vector3(-0.4, 1.26, 0.08);
+  const armRPosition = new THREE.Vector3(0.4, 1.26, 0.08);
+
+  return {
+    position,
+    group: groupQuaternion,
+    torso: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.1, 0, 0)),
+    headPosition: new THREE.Vector3(0, 1.48, -0.22),
+    head: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.16, 0, 0)),
+    armLPosition,
+    armRPosition,
+    armL: pianoArmQuaternion(
+      armLPosition,
+      instrumentLocalToWorld('piano', PIANO_HAND_ANCHORS.armL),
+      inverseTargetMatrix,
+    ),
+    armR: pianoArmQuaternion(
+      armRPosition,
+      instrumentLocalToWorld('piano', PIANO_HAND_ANCHORS.armR),
+      inverseTargetMatrix,
+    ),
+    legL: new THREE.Quaternion().setFromEuler(new THREE.Euler(legAngle, 0, -0.08)),
+    legR: new THREE.Quaternion().setFromEuler(new THREE.Euler(legAngle - 0.04, 0, 0.08)),
+  };
 }
 
 // ---- mascot dance (HUD logo click — tektonik routine) ----
@@ -2127,6 +2486,18 @@ function poseMascotAtInstrument(kind) {
   const group = instrumentGroups[kind];
   if (!preset || !group) return;
   resetMascotPose();
+  if (kind === 'piano') {
+    applyMascotInstrumentPose(createPianoMascotPose());
+    if (mascotLabel) {
+      mascotLabel.visible = false;
+      mascotLabel.position.set(
+        mascot.group.position.x,
+        mascot.group.position.y + mascotLabelY(),
+        mascot.group.position.z,
+      );
+    }
+    return;
+  }
   mascot.group.position.copy(instrumentLocalToWorld(kind, preset.mascot));
   mascot.group.rotation.y = group.rotation.y + preset.yaw;
   mascot.armL.rotation.x = preset.arms[0];
@@ -2180,24 +2551,56 @@ function applyFocusedControlLimits() {
   controls.maxDistance = isMobileGameMode() ? 5.5 : 4.4;
   controls.minPolarAngle = 0.42;
   controls.maxPolarAngle = 1.48;
-  if (instrumentView.kind === 'guitar') {
-    // OrbitControls' cached spherical angle can still describe the pre-focus
-    // camera until its first update. Anchor the lock to the animation endpoint
-    // itself so enabling controls cannot reframe the guitar.
+  if (instrumentView.kind === 'piano') {
     const offset = camera.position.clone().sub(controls.target);
+    const distance = Math.max(0.001, offset.length());
     const azimuth = Math.atan2(offset.x, offset.z);
-    controls.minAzimuthAngle = azimuth - 0.18;
-    controls.maxAzimuthAngle = azimuth + 0.18;
+    const polar = Math.acos(THREE.MathUtils.clamp(offset.y / distance, -1, 1));
+    controls.minDistance = Math.max(FOCUSED_MIN_DISTANCE, distance * 0.7);
+    controls.maxDistance = Math.max(controls.minDistance + 0.2, distance * 1.38);
+    // Keep the measured distance envelope, but leave horizontal orbit free so
+    // the focused frame remains a starting composition rather than a lock.
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    controls.minPolarAngle = Math.max(0.34, polar - 0.12);
+    controls.maxPolarAngle = Math.min(1.42, polar + 0.12);
+  } else if (instrumentView.kind === 'guitar') {
+    // Guitar focus also starts from a composed frame, but horizontal orbit is
+    // intentionally unrestricted once the transition has settled.
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
   } else {
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
   }
 }
 
-function startInstrumentCameraTransition(phase, kind, position, target, duration) {
+function syncControlsAtInstrumentFrame(position, target) {
+  const damping = controls.enableDamping;
+  controls.enableDamping = false;
+  camera.position.copy(position);
+  controls.target.copy(target);
+  // Flush a stale damped orbit delta, then restore and synchronize the exact
+  // transition endpoint so the first enabled frame cannot visibly snap.
+  controls.update();
+  camera.position.copy(position);
+  controls.target.copy(target);
+  controls.update();
+  controls.enableDamping = damping;
+}
+
+function startInstrumentCameraTransition(
+  phase,
+  kind,
+  position,
+  target,
+  duration,
+  { mascotPose = null } = {},
+) {
   clearTimeout(idleTimer);
   controls.autoRotate = false;
   controls.enabled = false;
+  instrumentView.refit = null;
   instrumentView.transition = {
     elapsed: 0,
     duration,
@@ -2205,6 +2608,7 @@ function startInstrumentCameraTransition(phase, kind, position, target, duration
     fromTarget: controls.target.clone(),
     toPosition: position.clone(),
     toTarget: target.clone(),
+    mascotPose,
   };
   setInstrumentViewPhase(phase, kind);
 }
@@ -2218,19 +2622,28 @@ function activateInstrumentView(kind) {
   mascotMove.waypoints.length = 0;
   mascotMove.keys.clear();
   releaseMoveJoystick();
-  poseMascotAtInstrument(kind);
+  let mascotPose = null;
+  if (kind === 'piano') {
+    mascotPose = {
+      from: captureMascotInstrumentPose(),
+      to: createPianoMascotPose(),
+    };
+  } else {
+    poseMascotAtInstrument(kind);
+  }
   if (kind === 'guitar') {
     audio.init();
     audio.resume();
     audio.prewarmGuitar(allGuitarPitches());
   }
-  const cameraPoint = instrumentViewCameraPoint(kind, preset);
+  const frame = instrumentViewFrame(kind, preset);
   startInstrumentCameraTransition(
     'entering',
     kind,
-    instrumentLocalToWorld(kind, cameraPoint),
-    instrumentLocalToWorld(kind, preset.target),
+    frame.position,
+    frame.target,
     prefersReducedMotion.matches ? 0.18 : 0.78,
+    { mascotPose },
   );
 }
 
@@ -2257,6 +2670,7 @@ function finishInstrumentReturn() {
   controls.autoRotate = false;
   controls.update();
   instrumentView.transition = null;
+  instrumentView.refit = null;
   instrumentView.home = null;
   setInstrumentViewPhase('idle');
 }
@@ -2276,6 +2690,7 @@ function leaveInstrumentView({ immediate = false } = {}) {
   if (instrumentView.phase === 'approaching') {
     mascotMove.destination = null;
     instrumentView.transition = null;
+    instrumentView.refit = null;
     instrumentView.home = null;
     setInstrumentViewPhase('idle');
     return;
@@ -2313,23 +2728,48 @@ function leaveInstrumentView({ immediate = false } = {}) {
 
 function updateInstrumentViewCamera(dt) {
   const transition = instrumentView.transition;
-  if (!transition) return false;
-  transition.elapsed += dt;
-  const k = Math.min(1, transition.elapsed / transition.duration);
+  if (transition) {
+    transition.elapsed += dt;
+    const k = Math.min(1, transition.elapsed / transition.duration);
+    const eased = easeInOut(k);
+    camera.position.lerpVectors(transition.fromPosition, transition.toPosition, eased);
+    controls.target.lerpVectors(transition.fromTarget, transition.toTarget, eased);
+    if (transition.mascotPose) {
+      interpolateMascotInstrumentPose(
+        transition.mascotPose.from,
+        transition.mascotPose.to,
+        eased,
+      );
+    }
+    camera.lookAt(controls.target);
+    if (k >= 1) {
+      if (transition.mascotPose) applyMascotInstrumentPose(transition.mascotPose.to);
+      instrumentView.transition = null;
+      if (instrumentView.phase === 'entering') {
+        applyFocusedControlLimits();
+        syncControlsAtInstrumentFrame(transition.toPosition, transition.toTarget);
+        controls.enabled = true;
+        setInstrumentViewPhase('focused', instrumentView.kind);
+      } else if (instrumentView.phase === 'returning') {
+        finishInstrumentReturn();
+      }
+    }
+    return true;
+  }
+
+  const refit = instrumentView.refit;
+  if (!refit) return false;
+  refit.elapsed += dt;
+  const k = Math.min(1, refit.elapsed / refit.duration);
   const eased = easeInOut(k);
-  camera.position.lerpVectors(transition.fromPosition, transition.toPosition, eased);
-  controls.target.lerpVectors(transition.fromTarget, transition.toTarget, eased);
+  camera.position.lerpVectors(refit.fromPosition, refit.toPosition, eased);
+  controls.target.lerpVectors(refit.fromTarget, refit.toTarget, eased);
   camera.lookAt(controls.target);
   if (k >= 1) {
-    instrumentView.transition = null;
-    if (instrumentView.phase === 'entering') {
-      applyFocusedControlLimits();
-      controls.enabled = true;
-      controls.update();
-      setInstrumentViewPhase('focused', instrumentView.kind);
-    } else if (instrumentView.phase === 'returning') {
-      finishInstrumentReturn();
-    }
+    instrumentView.refit = null;
+    applyFocusedControlLimits();
+    syncControlsAtInstrumentFrame(refit.toPosition, refit.toTarget);
+    controls.enabled = true;
   }
   return true;
 }
@@ -3488,18 +3928,33 @@ function refitActiveInstrumentView() {
   if (!kind || !['entering', 'focused'].includes(instrumentView.phase)) return;
   const preset = INSTRUMENT_VIEW_PRESETS[kind];
   if (!preset) return;
-  const cameraPoint = instrumentViewCameraPoint(kind, preset);
-  const nextPosition = instrumentLocalToWorld(kind, cameraPoint);
-  const nextTarget = instrumentLocalToWorld(kind, preset.target);
+  const frame = instrumentViewFrame(kind, preset);
+  const nextPosition = frame.position;
+  const nextTarget = frame.target;
   syncInstrumentExposure();
   if (instrumentView.phase === 'entering' && instrumentView.transition) {
     instrumentView.transition.toPosition.copy(nextPosition);
     instrumentView.transition.toTarget.copy(nextTarget);
     return;
   }
+  if (kind === 'piano' && !prefersReducedMotion.matches) {
+    controls.enabled = false;
+    instrumentView.refit = {
+      elapsed: 0,
+      duration: 0.22,
+      fromPosition: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      toPosition: nextPosition.clone(),
+      toTarget: nextTarget.clone(),
+    };
+    return;
+  }
+  instrumentView.refit = null;
   camera.position.copy(nextPosition);
   controls.target.copy(nextTarget);
-  controls.update();
+  applyFocusedControlLimits();
+  syncControlsAtInstrumentFrame(nextPosition, nextTarget);
+  controls.enabled = true;
 }
 
 function syncRendererToWindow() {
@@ -3512,7 +3967,6 @@ function syncRendererToWindow() {
   if (instrumentView.home && instrumentView.phase !== 'idle') {
     instrumentView.home.maxDistance = controls.maxDistance;
   }
-  if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused') applyFocusedControlLimits();
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (composer) {
     composer.setPixelRatio(renderer.getPixelRatio());
@@ -4472,6 +4926,45 @@ window.__mascotDebug = () => ({
   armRz: mascot.armR.rotation.z,
   dancing: dance.active,
 });
+window.__pianoDebug = () => {
+  piano.group.updateWorldMatrix(true, true);
+  mascot.group.updateWorldMatrix(true, true);
+  camera.updateMatrixWorld(true);
+  const keyPoints = pianoWorldPoints(boxCorners(pianoKeybedLocalBounds));
+  const handScreen = [mascot.handL, mascot.handR].map((hand) => {
+    const world = hand.getWorldPosition(new THREE.Vector3());
+    const ndc = world.clone().project(camera);
+    return {
+      world: world.toArray(),
+      screen: [
+        (ndc.x * 0.5 + 0.5) * window.innerWidth,
+        (-ndc.y * 0.5 + 0.5) * window.innerHeight,
+      ],
+    };
+  });
+  const safeRect = pianoFocusSafeRect();
+  const keybedBounds = projectedBounds(keyPoints, camera);
+  return {
+    phase: instrumentView.phase,
+    kind: instrumentView.kind,
+    safeRect,
+    keybedBounds,
+    keybedWidthRatio: keybedBounds.width / Math.max(1, safeRect.right - safeRect.left),
+    hands: handScreen,
+    camera: camera.position.toArray(),
+    target: controls.target.toArray(),
+    pose: {
+      mascotPosition: mascot.group.position.toArray(),
+      torso: mascot.torso.rotation.toArray(),
+      head: mascot.head.rotation.toArray(),
+      armL: mascot.armL.rotation.toArray(),
+      armR: mascot.armR.rotation.toArray(),
+      legL: mascot.legL.rotation.toArray(),
+      legR: mascot.legR.rotation.toArray(),
+    },
+    fitted: pianoFrameDebug,
+  };
+};
 
 // ---- mascot customization (ОБРАЗ modal) ----
 const mascotModal = document.getElementById('modal-mascot');
