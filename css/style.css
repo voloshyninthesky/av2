@@ -815,17 +815,18 @@ html[data-instrument-view="focused"] #hud {
 
 /* ---- scene quality ---- */
 .quality-panel {
-  max-width: 780px;
+  max-width: 660px; padding: 30px clamp(18px, 4vw, 38px) 24px;
   background:
     radial-gradient(80% 90% at 100% 0%, rgba(158, 51, 202, .15), transparent 58%),
     var(--cream);
 }
+.quality-panel .panel-title { font-size: clamp(27px, 4.2vw, 42px); margin-bottom: 18px; }
 .quality-options {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
 }
 .quality-option {
-  min-height: 220px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
-  padding: 18px; text-align: left; border: 2px solid rgba(23, 18, 28, .2); border-radius: 16px;
+  min-height: 116px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 9px;
+  padding: 14px; text-align: left; border: 2px solid rgba(23, 18, 28, .2); border-radius: 14px;
   color: var(--ink); background: rgba(253, 251, 247, .68); cursor: pointer;
   transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
@@ -839,9 +840,8 @@ html[data-instrument-view="focused"] #hud {
   display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
   color: var(--cream); background: var(--purple); font-size: 15px;
 }
-.quality-option strong { font: 800 17px/1.18 'Unbounded', sans-serif; }
-.quality-option > span:last-child { font-size: 13px; line-height: 1.5; color: rgba(23, 18, 28, .7); }
-.quality-current { margin: 20px 0 0; font-size: 11px; letter-spacing: .13em; color: rgba(23, 18, 28, .58); }
+.quality-option strong { font: 800 15px/1.2 'Unbounded', sans-serif; }
+.quality-current { margin: 14px 0 0; font-size: 10px; letter-spacing: .13em; color: rgba(23, 18, 28, .58); }
 .quality-current strong { color: var(--purple); }
 
 /* ---- steps ---- */
@@ -1231,9 +1231,13 @@ html[data-instrument-view="focused"] #hud {
   }
   .panel-title { margin-bottom: 8px; }
   .panel-lead { margin-bottom: 20px; font-size: 14px; }
-  .quality-options { grid-template-columns: 1fr; gap: 9px; }
-  .quality-option { min-height: 0; padding: 14px; gap: 7px; }
-  .quality-option > span:last-child { font-size: 12px; }
+  .quality-panel { padding: 22px 14px 18px; }
+  .quality-panel .panel-title { font-size: 27px; margin-bottom: 14px; }
+  .quality-options { grid-template-columns: 1fr; gap: 6px; }
+  .quality-option { min-height: 58px; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; }
+  .quality-option-top { flex: none; }
+  .quality-option strong { font-size: 12px; text-align: right; }
+  .quality-current { margin-top: 11px; }
   .rules-score::before { left: 17px; }
   .rule-block { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px 0 18px; }
   .rule-num span { width: 34px; height: 34px; font-size: 13px; }
