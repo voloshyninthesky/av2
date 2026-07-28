@@ -2,8 +2,8 @@
 
 Interactive marketing experience for **Art Vibe Studio** (music lessons): a WebGL 3D stage where visitors walk a mascot, play instruments, and open booking info (steps, rules, prices).
 
-- **Live:** https://vibe.ton.zone  
-- **Repo / Pages:** https://github.com/voloshyninthesky/av2 → GitHub Pages (`custom domain` `vibe.ton.zone`)  
+- **Live:** https://vibe2.ton.zone  
+- **Repo / release:** https://github.com/voloshyninthesky/av2 → versioned Nginx releases (`vibe2.ton.zone`)  
 - **Locale:** Ukrainian (`lang="uk"`)  
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTA:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/)  
@@ -60,7 +60,7 @@ vendor/three/       # vendored Three.js
 CNAME               # vibe.ton.zone for GitHub Pages
 .nojekyll
 .github/workflows/  # Deploy to GitHub Pages
-deploy/nginx/       # legacy VPS nginx conf (optional / historical)
+deploy/nginx/       # live VPS nginx release target
 ```
 
 **Stack:** Three.js (WebGL), OrbitControls, EffectComposer + UnrealBloomPass, Web Audio API.
@@ -197,8 +197,9 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 
 - Small left **move zone** + floating stick under finger.
 - Soft one-finger orbit; two-finger dolly/pan.
-- **ГРАТИ** when in reach → approach / focus.
+- **ГРАТИ** when in reach → approach / focus. Outside reach it stays visually disabled but remains an accessible tap target: the first unavailable tap shows, once, `Підійди до інструмента ближче щоб заграти`.
 - ✕ exit when approaching / entering / focused.
+- Leaving any instrument focus must reset the floating joystick, thumb, active pointer identity, and movement vector before the walk controls return. This includes a lost / cancelled iOS pointer while the joystick is hidden during guitar focus.
 - Touch instruments when focused (multitouch piano / drums; chord hold + independent strum / pluck for guitar).
 - Focused piano/drums arbitrate play vs camera without requiring an empty-screen start: taps play immediately; a horizontal piano slide keeps glissando; a vertical drag beyond `12 px` orbits; two-finger distance change beyond `9 px` zooms and suppresses further note traversal until release.
 - **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord pad, vocal pad, or other HUD chrome and another on the kit/keys must both work. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
@@ -220,14 +221,21 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 
 | Overlay | Purpose |
 |---------|---------|
-| Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in |
+| Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **sound mixer** |
 | Sound mixer | Per-instrument faders + master mute (speaker button) |
-| Modals | **Mascot customization**, steps, rules, **interactive pricing mixer** |
+| Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing |
 | Toast / tooltip | Short feedback |
+
+### Scene style
+
+- A separate three-position `3D` HUD switch opens the compact **Стиль сцени** modal; it is not a nav-menu item.
+- The visible styles are **AUTO**, **GLAMOUR** (maximum details), and **PIXEL** (energy saving). Internally they retain the persisted values `auto`, `high`, and `low` in `localStorage` key `av2.quality.v1`.
+- **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
+- **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
 
 ### Pricing mixer
 
@@ -305,6 +313,12 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 }
 ```
 
+### First-run UI state (localStorage)
+
+- `av2.onboard.v1` records dismissal of the onboarding tip.
+- A first-run click on **ЗРОЗУМІЛО** closes onboarding and opens the mascot customization modal once; `av2.mascot.after-onboard.v1` records that handoff. Other onboarding dismissals do not open it.
+- `av2.mobile-play-hint.v1` records the one-time unavailable-**ГРАТИ** proximity hint.
+
 ---
 
 ## 8. URL query flags
@@ -328,7 +342,7 @@ Default copy:
 
 > Вітаємо на сцені Art Vibe! Сьогодні вона повністю твоя. По ній можна ходити, а на інструментах — грати.
 
-Dismiss: play, move, **ЗРОЗУМІЛО**, Esc. Persists via `localStorage`. Soft purple pulse on the mic while active (disabled under reduced motion).
+Dismiss: play, move, **ЗРОЗУМІЛО**, Esc. Persists via `localStorage`. A first-run **ЗРОЗУМІЛО** then opens mascot customization once; the other dismissal routes do not. Soft purple pulse on the mic while active (disabled under reduced motion).
 
 ## 10. Telegram / in-app browser
 
@@ -352,7 +366,7 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 - Enforce HTTPS in Pages settings after DNS verifies.
 - **Cache bust:** bump `?v=` on `css/style.css`, `js/main.js`, and module imports as needed (including `audio.js` when unlock behavior changes).
 
-**Legacy (optional):** nginx release dirs under `/var/www/vibe.ton.zone/releases/<UTC>/` via `deploy/nginx/` — superseded by Pages for the live custom domain.
+**Live VPS release:** nginx release dirs under `/var/www/vibe2.ton.zone/releases/<UTC>/` via `deploy/nginx/`. Update all three Nginx `root` entries, validate with `nginx -t`, reload, and move `current` only after the new release is ready.
 
 Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
@@ -372,12 +386,14 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 ### Guitar acceptance
 
 - In a five-person first-use test, at least four players make an open strum within `8 s` and a chorded strum within `20 s` after the camera settles, without verbal help.
+- The first stable guitar-focused frame must match the camera transition endpoint; enabling orbit controls and the focused azimuth limits must not snap, reframe, or otherwise move the view after the animation.
 - No guitar sound occurs outside stable guitar focus, including Space, chord keys, distant taps, camera transitions, and focus on another instrument.
 - A complete stroke excites each crossed eligible string once and in directional order; motion along the strings stays silent. Muted strings neither sound nor animate.
 - Soft and hard strokes are audibly distinct. Reversing direction can immediately produce the reverse string order without false retriggers.
 - Twenty consecutive chord-hold + second-pointer strums work on supported iPhone Safari and Android Chrome without page zoom, orbit motion, lost pointers, or a stuck chord.
 - Chord targets are at least `48 × 48` CSS px with `8 px` separation. The strum zone remains usable at the smallest supported viewport and after portrait / landscape changes.
 - Pointer cancel, focus exit, visibility loss, and page backgrounding clear every held chord, active stroke, and captured guitar pointer.
+- Repeated guitar focus → ✕ exits on iPhone Safari restore the joystick to its non-floating home state; a lost joystick pointer-up may never leave only the blurred stick backdrop behind.
 - Input-to-audio scheduling is at most `16 ms`; target measured input-to-audible latency is at most `50 ms` desktop and `80 ms` on reference mobile devices.
 - Audio and per-string visual onset differ by at most `33 ms`. Reduced motion removes idle shimmer, not essential play feedback.
 - A physical string has at most one active voice; retrigger and mute ramps do not click. First play performs no synchronous synthesis-table generation in the input handler.
