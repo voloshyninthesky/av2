@@ -4319,6 +4319,7 @@ const onboardText = document.getElementById('onboard-text');
 const onboardOk = document.getElementById('onboard-ok');
 const ONBOARD_KEY = 'av2.onboard.v1';
 const INTRO_SESSION_KEY = 'av2.intro.v1';
+const MASCOT_ONBOARD_KEY = 'av2.mascot.after-onboard.v1';
 const onboard = { active: false, pulsing: false };
 
 function markIntroSeen() {
@@ -4362,6 +4363,17 @@ function startOnboard() {
   onboardEl.hidden = false;
 }
 
+function openMascotAfterFirstOnboard() {
+  let shouldOpen = false;
+  try {
+    shouldOpen = !localStorage.getItem(MASCOT_ONBOARD_KEY);
+    if (shouldOpen) localStorage.setItem(MASCOT_ONBOARD_KEY, '1');
+  } catch {
+    shouldOpen = true;
+  }
+  if (shouldOpen) requestAnimationFrame(() => ui.open('mascot'));
+}
+
 function updateOnboardPulse(t) {
   if (!onboard.active || prefersReducedMotion.matches) return;
   if (hovered && hovered.userData.instrument !== 'mic') return;
@@ -4378,7 +4390,11 @@ function updateOnboardPulse(t) {
   onboard.pulsing = true;
 }
 
-onboardOk?.addEventListener('click', finishOnboard);
+onboardOk?.addEventListener('click', () => {
+  const completedFirstOnboard = onboard.active;
+  finishOnboard();
+  if (completedFirstOnboard) openMascotAfterFirstOnboard();
+});
 onboardEl?.addEventListener('click', (e) => {
   if (e.target !== onboardEl && e.target !== onboardText) return;
   finishOnboard();
