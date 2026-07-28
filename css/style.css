@@ -679,6 +679,14 @@ html.guitar-fretting #scene {
   box-shadow: 0 6px 16px rgba(0, 0, 0, .28); backdrop-filter: blur(8px);
   pointer-events: none;
 }
+
+/* Backdrop capture makes the browser composite every glass control over the
+   canvas. On the low mobile tier the existing translucent fills remain, while
+   the expensive capture/blur pass is removed. */
+html.low-mobile body * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
 @keyframes playPulse {
   to { filter: brightness(1.15); box-shadow: 0 4px 18px rgba(0, 0, 0, .35), 0 0 22px rgba(209, 161, 59, .5); }
 }

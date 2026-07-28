@@ -22,13 +22,17 @@ const mobileHardware = coarsePointer.matches
 const forcedQuality = params.get('quality');
 const deviceMemory = Number(navigator.deviceMemory) || null;
 const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
-const lowEndHardware = (deviceMemory !== null && deviceMemory <= 4)
-  || (hardwareConcurrency !== null && hardwareConcurrency <= 4)
+// Android device-memory reports are deliberately coarse (and often rounded up),
+// so include the 6 GB / 6-core class.  Those phones commonly have an entry GPU
+// even when their CPU looks capable on paper.
+const lowEndHardware = (deviceMemory !== null && deviceMemory <= 6)
+  || (hardwareConcurrency !== null && hardwareConcurrency <= 6)
   || navigator.connection?.saveData === true;
 const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
 const isLowEndMobileGameMode = () => forcedQuality === 'low'
   || (forcedQuality !== 'high' && mobileHardware && lowEndHardware);
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
+const LOW_END_MOBILE_MAX_PIXEL_RATIO = 1;
 const DESKTOP_MAX_PIXEL_RATIO = 2;
 const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -37,6 +41,7 @@ const creditLinks = [];
 document.documentElement.dataset.qualityTier = isLowEndMobileGameMode() ? 'low-mobile' : 'full';
 document.documentElement.dataset.postprocessing = 'off';
 document.documentElement.dataset.frameRateCap = isLowEndMobileGameMode() ? '30' : 'native';
+document.documentElement.classList.toggle('low-mobile', isLowEndMobileGameMode());
 const postprocessingModules = isLowEndMobileGameMode()
   ? Promise.resolve(null)
   : Promise.all([
@@ -77,17 +82,27 @@ window.__telegramReady?.then(initTelegramEnvironment);
 const canvas = document.getElementById('scene');
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    // MSAA multiplies the memory bandwidth of every scene render. At native
+    // device resolution it has little practical benefit on the low tier.
+    antialias: !isLowEndMobileGameMode(),
+    powerPreference: 'high-performance',
+  });
   if (!renderer.getContext()) throw new Error('no webgl');
 } catch (err) {
   document.getElementById('webgl-fail').hidden = false;
   document.getElementById('intro').style.display = 'none';
   throw err;
 }
-renderer.setPixelRatio(Math.min(
-  window.devicePixelRatio,
-  isMobileGameMode() ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
-));
+function renderPixelRatio() {
+  const maximum = isMobileGameMode()
+    ? (isLowEndMobileGameMode() ? LOW_END_MOBILE_MAX_PIXEL_RATIO : MOBILE_MAX_PIXEL_RATIO)
+    : DESKTOP_MAX_PIXEL_RATIO;
+  return Math.min(window.devicePixelRatio || 1, maximum);
+}
+
+renderer.setPixelRatio(renderPixelRatio());
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = !isLowEndMobileGameMode();
 document.documentElement.dataset.shadows = renderer.shadowMap.enabled ? 'on' : 'off';
@@ -118,7 +133,6 @@ function pullCameraTowardTarget(point, factor = START_ZOOM_FACTOR) {
 
 function fitCameraToViewport() {
   const portrait = window.innerWidth / window.innerHeight < 1;
-  const mobile = isMobileGameMode();
   if (portrait) {
     // Portrait intentionally crops the far stage wings and brings the player
     // into the action, closer to a third-person mobile game camera.
@@ -135,10 +149,7 @@ function fitCameraToViewport() {
     renderer.toneMappingExposure = 1.12;
   }
   // A coarse-pointer phone stays capped in landscape as well as portrait.
-  renderer.setPixelRatio(Math.min(
-    window.devicePixelRatio,
-    mobile ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
-  ));
+  renderer.setPixelRatio(renderPixelRatio());
   pullCameraTowardTarget(CAM_END);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -386,9 +397,7 @@ function buildStage() {
   trim.position.set(0, -0.02, 4.02);
   g.add(trim);
 
-  // Preserve the full stage-light layout on mobile; intensity is reduced
-  // instead so the original warm shaping and depth remain intact.
-  const mobileLighting = isMobileGameMode();
+  const lowEndLighting = isLowEndMobileGameMode();
   const bulbMat = new THREE.MeshStandardMaterial({
     color: 0x332211,
     emissive: 0xD1A13B,
@@ -401,8 +410,10 @@ function buildStage() {
   for (let i = 0; i < 9; i++) {
     const x = -6 + i * 1.5;
     bulbs.setMatrixAt(i, bulbMatrix.makeTranslation(x, 0.06, 3.9));
-    if (i % 2 === 0) {
-      const pl = new THREE.PointLight(0xffc878, mobileLighting ? 10 : 16, 4.2, 2);
+    // Bulbs retain their emissive look. The five tiny point lights, however,
+    // are evaluated by every PBR fragment and are not perceptible on a phone.
+    if (i % 2 === 0 && !lowEndLighting) {
+      const pl = new THREE.PointLight(0xffc878, 16, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
     }
@@ -928,10 +939,10 @@ function buildLights() {
 
   const spots = [
     { x: -4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025 },
-    { x: -1.55, color: 0xD1A13B, intensity: 800, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025 },
+    { x: -1.55, color: 0xD1A13B, intensity: 800, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025, lowPriority: true },
     { x: 1.55, color: 0xfff0d8, intensity: 700, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, coneFloorY: 0.025, shadow: true },
     { x: 4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025 },
-    { x: 0, color: 0x7a1fa2, intensity: 420, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5 },
+    { x: 0, color: 0x7a1fa2, intensity: 420, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5, lowPriority: true },
   ];
 
   // broad warm front fill (no visible cone) so instruments read well
@@ -960,21 +971,26 @@ function buildLights() {
     g.add(head);
     spotHeads.push({ head, lensMat: lens.material, base: s.color });
 
-    const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.5, 0.65, 1.6);
-    spot.position.set(s.x, y, z);
-    spot.target.position.copy(s.target);
-    if (s.shadow && !isLowEndMobileGameMode()) {
-      spot.castShadow = true;
-      const shadowSize = isMobileGameMode() ? 512 : 2048;
-      spot.shadow.mapSize.set(shadowSize, shadowSize);
-      spot.shadow.bias = -0.0002;
-      spot.shadow.normalBias = 0.035;
-      spot.shadow.focus = 1;
-      spot.shadow.camera.near = 1.5;
-      spot.shadow.camera.far = 16;
-      spot.shadow.camera.updateProjectionMatrix();
+    // Keep every visible fixture and beam but omit the two least noticeable
+    // real light sources on the low tier. This reduces per-fragment PBR work
+    // without making the truss look incomplete.
+    if (!isLowEndMobileGameMode() || !s.lowPriority) {
+      const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.5, 0.65, 1.6);
+      spot.position.set(s.x, y, z);
+      spot.target.position.copy(s.target);
+      if (s.shadow && !isLowEndMobileGameMode()) {
+        spot.castShadow = true;
+        const shadowSize = isMobileGameMode() ? 512 : 2048;
+        spot.shadow.mapSize.set(shadowSize, shadowSize);
+        spot.shadow.bias = -0.0002;
+        spot.shadow.normalBias = 0.035;
+        spot.shadow.focus = 1;
+        spot.shadow.camera.near = 1.5;
+        spot.shadow.camera.far = 16;
+        spot.shadow.camera.updateProjectionMatrix();
+      }
+      g.add(spot, spot.target);
     }
-    g.add(spot, spot.target);
 
     // Visible beam: SpotLight targets steer the light but do not stop it.
     // Extend stage beams along the same ray until they meet the platform top,
@@ -992,7 +1008,7 @@ function buildLights() {
     }
     const len = from.distanceTo(coneEnd);
     const cone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.09, coneEndRadius, len, 24, 1, true),
+      new THREE.CylinderGeometry(0.09, coneEndRadius, len, isLowEndMobileGameMode() ? 12 : 24, 1, true),
       visibleBeamMaterial(s.color, Number.isFinite(s.coneFloorY)),
     );
     cone.position.copy(from).add(coneEnd).multiplyScalar(0.5);
@@ -1005,7 +1021,7 @@ function buildLights() {
 
 // ---- dust particles ----
 function buildDust() {
-  const N = 320;
+  const N = isLowEndMobileGameMode() ? 120 : 320;
   const pos = new Float32Array(N * 3);
   const motion = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
