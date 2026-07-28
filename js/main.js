@@ -1338,6 +1338,8 @@ function buildMascot() {
 // ============================================================
 const MASCOT_KEY = 'av2.mascot.v1';
 const MASCOT_DEFAULTS = { hair: 'long', hairColor: '5a2f22', outfit: 'stage', height: 100, width: 100 };
+const MASCOT_HEIGHT_RANGE = { min: 70, max: 145 };
+const MASCOT_WIDTH_RANGE = { min: 65, max: 150 };
 
 const MASCOT_HAIR_STYLES = {
   long: { back: { s: [1.08, 1.55, 0.82], p: [0, -0.13, -0.05] }, cap: { s: [1, 1, 1], p: [0, 0.04, 0.05] }, locks: { s: [0.72, 3.3, 0.7], y: -0.28 } },
@@ -1363,8 +1365,8 @@ const mascotCfg = (() => {
       if (saved.hair in MASCOT_HAIR_STYLES) cfg.hair = saved.hair;
       if (typeof saved.hairColor === 'string' && /^[0-9a-fA-F]{6}$/.test(saved.hairColor)) cfg.hairColor = saved.hairColor;
       if (saved.outfit in MASCOT_OUTFITS) cfg.outfit = saved.outfit;
-      if (Number.isFinite(saved.height)) cfg.height = THREE.MathUtils.clamp(Math.round(saved.height), 85, 115);
-      if (Number.isFinite(saved.width)) cfg.width = THREE.MathUtils.clamp(Math.round(saved.width), 80, 125);
+      if (Number.isFinite(saved.height)) cfg.height = THREE.MathUtils.clamp(Math.round(saved.height), MASCOT_HEIGHT_RANGE.min, MASCOT_HEIGHT_RANGE.max);
+      if (Number.isFinite(saved.width)) cfg.width = THREE.MathUtils.clamp(Math.round(saved.width), MASCOT_WIDTH_RANGE.min, MASCOT_WIDTH_RANGE.max);
     }
   } catch { /* ignore */ }
   return cfg;
