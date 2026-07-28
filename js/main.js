@@ -13,8 +13,8 @@ window.addEventListener('error', (e) => { errlog.textContent += `ERR: ${e.messag
 window.addEventListener('unhandledrejection', (e) => { errlog.textContent += `REJ: ${e.reason}\n`; });
 
 const params = new URLSearchParams(location.search);
-const QUALITY_PREFERENCE_KEY = 'av2.quality.v1';
-const LIGHT_LEVEL_KEY = 'av2.lights.v1';
+const QUALITY_PREFERENCE_KEY = 'av2.quality.v2';
+const LIGHT_LEVEL_KEY = 'av2.lights.v2';
 const LIGHT_LEVEL_MIN = 0;
 const LIGHT_LEVEL_MAX = 130;
 const LIGHT_LEVEL_DEFAULT = 78;
@@ -1513,8 +1513,7 @@ function buildMascot() {
 // ============================================================
 // MASCOT CUSTOMIZATION (persisted in localStorage)
 // ============================================================
-const MASCOT_KEY = 'av2.mascot.v2';
-const MASCOT_LEGACY_KEY = 'av2.mascot.v1';
+const MASCOT_KEY = 'av2.mascot.v3';
 const MASCOT_DEFAULTS = {
   hair: 'long',
   hairColor: '5a2f22',
@@ -1588,18 +1587,10 @@ function mascotAppearanceSnapshot(source = mascotCfg) {
 
 const mascotCfg = (() => {
   let saved = null;
-  let migrated = false;
   try {
-    const current = localStorage.getItem(MASCOT_KEY);
-    const legacy = current ? null : localStorage.getItem(MASCOT_LEGACY_KEY);
-    saved = JSON.parse(current || legacy || 'null');
-    migrated = !current && Boolean(legacy);
+    saved = JSON.parse(localStorage.getItem(MASCOT_KEY) || 'null');
   } catch { /* storage is optional */ }
-  const cfg = validateMascotAppearance(saved);
-  if (migrated) {
-    try { localStorage.setItem(MASCOT_KEY, JSON.stringify(cfg)); } catch { /* ignore */ }
-  }
-  return cfg;
+  return validateMascotAppearance(saved);
 })();
 
 function saveMascotConfig() {
@@ -1813,7 +1804,7 @@ const moveThumb = document.getElementById('move-thumb');
 const mobilePlay = document.getElementById('mobile-play');
 const mobileExit = document.getElementById('mobile-exit');
 const mobilePlayHint = document.getElementById('mobile-play-hint');
-const MOBILE_PLAY_HINT_KEY = 'av2.mobile-play-hint.v1';
+const MOBILE_PLAY_HINT_KEY = 'av2.mobile-play-hint.v2';
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
 const zoomOut = document.getElementById('zoom-out');
@@ -6021,9 +6012,9 @@ const intro = document.getElementById('intro');
 const onboardEl = document.getElementById('onboard');
 const onboardText = document.getElementById('onboard-text');
 const onboardOk = document.getElementById('onboard-ok');
-const ONBOARD_KEY = 'av2.onboard.v1';
-const INTRO_SESSION_KEY = 'av2.intro.v1';
-const MASCOT_ONBOARD_KEY = 'av2.mascot.after-onboard.v1';
+const ONBOARD_KEY = 'av2.onboard.v2';
+const INTRO_SESSION_KEY = 'av2.intro.v2';
+const MASCOT_ONBOARD_KEY = 'av2.mascot.after-onboard.v2';
 const onboard = { active: false, pulsing: false };
 
 function markIntroSeen() {

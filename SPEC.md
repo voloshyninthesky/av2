@@ -215,7 +215,7 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 
 **Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), six skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height (70–145%) / build (65–150%) sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look, while **В РУСІ** toggles the walk-in-place preview; horizontal drag remains the sole orientation control.
 
-Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v2`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
+Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v3`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
 
 **Dance** (click the HUD logo): toggles a **tektonik** routine — procedural 8-beat loop (overhead arm sweeps + bounce, full spin on the last two beats). Limbs relax smoothly on stop. Walk input, instrument approach, or a stage fall stops the dance.
 
@@ -298,9 +298,9 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Overlay | Purpose |
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
-| Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
+| Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
-| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v1`, default `78`) at the top, then per-instrument volume faders + master mute |
+| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v2`, default `78`) at the top, then per-instrument volume faders + master mute |
 | Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
@@ -309,11 +309,11 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 ### Scene style
 
 - A separate three-position `3D` HUD switch opens the compact **Стиль сцени** modal; it is not a nav-menu item.
-- The visible styles are ordered **GLAMOUR** (maximum details), **PIXEL** (energy saving), then **AUTO**. The style names carry the primary visual emphasis; their Ukrainian descriptions are secondary. Internally they retain the persisted values `high`, `low`, and `auto` in `localStorage` key `av2.quality.v1`.
+- The visible styles are ordered **GLAMOUR** (maximum details), **PIXEL** (energy saving), then **AUTO**. The style names carry the primary visual emphasis; their Ukrainian descriptions are secondary. Internally they retain the persisted values `high`, `low`, and `auto` in `localStorage` key `av2.quality.v2`.
 - Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
-- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v1` (default `78`) and stays independent of Glamour / Pixel / Auto. Instrument volumes and master mute remain in the same panel below the light fader.
+- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v2` (default `78`) and stays independent of Glamour / Pixel / Auto. Instrument volumes and master mute remain in the same panel below the light fader.
 
 ### Pricing mixer
 
@@ -392,9 +392,9 @@ The planned piano feedback / loop milestone will use one attack event. `key` is 
 
 A glissando emits one event for each newly crossed key in order. The loop pedal preserves each event's timing and velocity; pointer identity and camera-gesture state are never recorded.
 
-### `av2.mascot.v2` (localStorage)
+### `av2.mascot.v3` (localStorage)
 
-Mascot customization, migrated from `av2.mascot.v1`, merged over defaults, and validated on load (unknown / malformed values fall back per field):
+Mascot customization, merged over defaults and validated on load (unknown / malformed values fall back per field). Older `av2.mascot.v1` / `av2.mascot.v2` values are intentionally ignored so a key bump resets appearance for returning visitors:
 
 ```js
 {
@@ -411,11 +411,12 @@ Mascot customization, migrated from `av2.mascot.v1`, merged over defaults, and v
 }
 ```
 
-### First-run UI state (localStorage)
+### First-run UI state (localStorage / sessionStorage)
 
-- `av2.onboard.v1` records dismissal of the onboarding tip.
-- A first-run click on **ЗРОЗУМІЛО** closes onboarding and opens the mascot customization modal once; `av2.mascot.after-onboard.v1` records that handoff. Other onboarding dismissals do not open it.
-- `av2.mobile-play-hint.v1` records the one-time unavailable-**ГРАТИ** proximity hint.
+- `av2.onboard.v2` records dismissal of the onboarding tip.
+- A first-run click on **ЗРОЗУМІЛО** closes onboarding and opens the mascot customization modal once; `av2.mascot.after-onboard.v2` records that handoff. Other onboarding dismissals do not open it.
+- `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
+- `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
 ---
 
@@ -581,11 +582,11 @@ All options reuse or toggle cached geometry and shared materials. Changing a cho
 
 ### Persistence and migration
 
-- `av2.mascot.v2` is the source contract. If it is absent and a valid `av2.mascot.v1` value exists, migrate it once by copying every valid v1 field and applying defaults for new fields. A malformed v2 field falls back independently and never invalidates the whole look.
+- `av2.mascot.v3` is the source contract. Prior mascot keys are not migrated. A malformed v3 field falls back independently and never invalidates the whole look.
 - The editor holds `openingConfig` and a live draft separately; only **ГОТОВО** writes storage.
 
 - `openingConfig`, drafts, undo state, and preview angle are session-only. Preview angle is not part of the saved appearance.
-- The current appearance must keep working if v2 is removed or storage is unavailable; fall back to defaults without blocking entry to the stage.
+- The current appearance must keep working if v3 is removed or storage is unavailable; fall back to defaults without blocking entry to the stage.
 
 ### Acceptance
 
