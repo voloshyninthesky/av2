@@ -1815,6 +1815,7 @@ const mobileExit = document.getElementById('mobile-exit');
 const mobilePlayHint = document.getElementById('mobile-play-hint');
 const MOBILE_PLAY_HINT_KEY = 'av2.mobile-play-hint.v1';
 const zoomControls = document.getElementById('zoom-controls');
+const lightControls = document.getElementById('light-controls');
 const zoomIn = document.getElementById('zoom-in');
 const zoomOut = document.getElementById('zoom-out');
 const loopPedal = document.getElementById('loop-pedal');
@@ -4155,7 +4156,7 @@ function syncRendererToWindow() {
 // Pedal / pads / HUD sit above the canvas. preventDefault on a 2nd-finger
 // touchstart suppresses that finger's pointer events — so never claim multitouch
 // when any active touch is on UI chrome (loop pedal + drum must work together).
-const UI_TOUCH_CHROME = '#loop-pedal, #vocal-pad, #chord-pad, #mobile-controls, #zoom-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
+const UI_TOUCH_CHROME = '#loop-pedal, #vocal-pad, #chord-pad, #mobile-controls, #zoom-controls, #light-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
 
 function isUiChromeElement(el) {
   return Boolean(el?.closest?.(`${UI_TOUCH_CHROME}, .panel, input, textarea, [contenteditable="true"]`));
@@ -6114,6 +6115,7 @@ function startExperience(withAudio = true) {
   intro.classList.add('gone');
   mobileControls.classList.add('active');
   zoomControls.hidden = false;
+  if (lightControls) lightControls.hidden = false;
   flyT = 0;
   resetBrowserPageZoom();
   syncRendererToWindow();
@@ -6128,6 +6130,7 @@ function startWithoutIntro() {
   intro.classList.add('gone');
   mobileControls.classList.add('active');
   zoomControls.hidden = false;
+  if (lightControls) lightControls.hidden = false;
   camera.position.copy(CAM_END);
   camera.lookAt(TARGET);
   controls.enabled = true;
