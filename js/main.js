@@ -4319,6 +4319,7 @@ const onboardText = document.getElementById('onboard-text');
 const onboardOk = document.getElementById('onboard-ok');
 const ONBOARD_KEY = 'av2.onboard.v1';
 const INTRO_SESSION_KEY = 'av2.intro.v1';
+const MASCOT_WELCOME_KEY = 'av2.mascot.welcome.v1';
 const onboard = { active: false, pulsing: false };
 
 function markIntroSeen() {
@@ -4360,6 +4361,21 @@ function startOnboard() {
   onboard.active = true;
   onboardText.textContent = 'Вітаємо на сцені Art Vibe! Сьогодні вона повністю твоя. По ній можна ходити, а на інструментах — грати.';
   onboardEl.hidden = false;
+}
+
+function startStageWelcome() {
+  let showMascotCustomization = false;
+  try {
+    showMascotCustomization = !localStorage.getItem(MASCOT_WELCOME_KEY);
+    if (showMascotCustomization) localStorage.setItem(MASCOT_WELCOME_KEY, '1');
+  } catch {
+    showMascotCustomization = true;
+  }
+  if (showMascotCustomization) {
+    requestAnimationFrame(() => ui.open('mascot'));
+  } else {
+    startOnboard();
+  }
 }
 
 function updateOnboardPulse(t) {
@@ -4412,7 +4428,7 @@ function startWithoutIntro() {
   camera.lookAt(TARGET);
   controls.enabled = true;
   ui.showHUD();
-  startOnboard();
+  startStageWelcome();
   resetBrowserPageZoom();
   syncRendererToWindow();
 }
@@ -4563,7 +4579,7 @@ function animate(frameTime = performance.now()) {
       flyT = -1;
       controls.enabled = true;
       ui.showHUD();
-      startOnboard();
+      startStageWelcome();
       if (!isMobileGameMode()) {
         idleTimer = setTimeout(() => {
           if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
