@@ -26,6 +26,7 @@ export class UI {
       steps: document.getElementById('modal-steps'),
       rules: document.getElementById('modal-rules'),
       pricing: document.getElementById('modal-pricing'),
+      quality: document.getElementById('modal-quality'),
       mascot: document.getElementById('modal-mascot'),
     };
     this.current = null;
@@ -66,7 +67,7 @@ export class UI {
     document.querySelectorAll('[data-close]').forEach((b) =>
       b.addEventListener('click', () => this.closeAll()));
 
-    for (const key of ['steps', 'rules', 'pricing']) {
+    for (const key of ['steps', 'rules', 'pricing', 'quality']) {
       this.modals[key].addEventListener('click', (e) => {
         if (e.target === this.modals[key]) this.closeAll();
       });

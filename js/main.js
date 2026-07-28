@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260727-16';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-11';
-import { UI } from './ui.js?v=20260728-19';
+import { UI } from './ui.js?v=20260728-20';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -13,12 +13,47 @@ window.addEventListener('error', (e) => { errlog.textContent += `ERR: ${e.messag
 window.addEventListener('unhandledrejection', (e) => { errlog.textContent += `REJ: ${e.reason}\n`; });
 
 const params = new URLSearchParams(location.search);
+const QUALITY_PREFERENCE_KEY = 'av2.quality.v1';
+const QUALITY_OPTIONS = new Set(['auto', 'high', 'low']);
+let savedQuality = null;
+try { savedQuality = localStorage.getItem(QUALITY_PREFERENCE_KEY); } catch (_) { /* storage is optional */ }
+const queryQuality = params.get('quality');
+const forcedQuality = QUALITY_OPTIONS.has(queryQuality)
+  ? queryQuality
+  : (QUALITY_OPTIONS.has(savedQuality) ? savedQuality : 'auto');
 const ui = new UI();
 const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
+const qualityNames = { auto: 'АВТО', high: 'ПОВНА', low: 'ЕКОНОМНА' };
+const qualityCurrent = document.getElementById('quality-current');
+const qualityButtons = [...document.querySelectorAll('[data-quality]')];
+
+function syncQualityPreferenceUi() {
+  for (const button of qualityButtons) {
+    const selected = button.dataset.quality === forcedQuality;
+    button.classList.toggle('is-on', selected);
+    button.setAttribute('aria-checked', selected ? 'true' : 'false');
+  }
+  if (qualityCurrent) qualityCurrent.textContent = qualityNames[forcedQuality] || qualityNames.auto;
+}
+
+function setQualityPreference(nextQuality) {
+  if (!QUALITY_OPTIONS.has(nextQuality) || nextQuality === forcedQuality) return;
+  try { localStorage.setItem(QUALITY_PREFERENCE_KEY, nextQuality); } catch (_) { /* storage is optional */ }
+  const nextUrl = new URL(location.href);
+  nextUrl.searchParams.set('quality', nextQuality);
+  location.assign(nextUrl.href);
+}
+
+for (const button of qualityButtons) {
+  button.addEventListener('click', () => setQualityPreference(button.dataset.quality));
+}
+window.addEventListener('av2:modal', (event) => {
+  if (event.detail?.open && event.detail.name === 'quality') syncQualityPreferenceUi();
+});
+syncQualityPreferenceUi();
 const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
 const isAndroid = /Android/i.test(navigator.userAgent || '');
-const forcedQuality = params.get('quality');
 const deviceMemory = Number(navigator.deviceMemory) || null;
 const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
 const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
