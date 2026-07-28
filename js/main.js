@@ -1565,6 +1565,7 @@ const moveThumb = document.getElementById('move-thumb');
 const mobilePlay = document.getElementById('mobile-play');
 const mobileExit = document.getElementById('mobile-exit');
 const mobilePlayHint = document.getElementById('mobile-play-hint');
+const MOBILE_PLAY_HINT_KEY = 'av2.mobile-play-hint.v1';
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
 const zoomOut = document.getElementById('zoom-out');
@@ -2241,8 +2242,9 @@ function updateMobilePlayAvailability() {
   updateMobilePlayAvailability.available = available;
   updateMobilePlayAvailability.label = label;
   updateMobilePlayAvailability.started = started;
-  mobilePlay.disabled = !available;
-  mobilePlayHint.hidden = !started || available;
+  mobilePlay.disabled = false;
+  mobilePlay.classList.toggle('is-disabled', !available);
+  mobilePlay.setAttribute('aria-disabled', available ? 'false' : 'true');
   mobilePlay.setAttribute('aria-label', label);
 }
 updateMobilePlayAvailability.lastCheck = -Infinity;
@@ -2250,10 +2252,40 @@ updateMobilePlayAvailability.available = null;
 updateMobilePlayAvailability.label = '';
 updateMobilePlayAvailability.started = null;
 
+function showMobilePlayHintOnce() {
+  let shown = false;
+  try {
+    shown = localStorage.getItem(MOBILE_PLAY_HINT_KEY) === '1';
+    if (!shown) localStorage.setItem(MOBILE_PLAY_HINT_KEY, '1');
+  } catch { /* storage is optional */ }
+  if (shown || !mobilePlayHint) return;
+  mobilePlayHint.hidden = false;
+  clearTimeout(showMobilePlayHintOnce.timer);
+  showMobilePlayHintOnce.timer = setTimeout(() => { mobilePlayHint.hidden = true; }, 3200);
+}
+
+function mobilePlayIsUnavailable() {
+  return mobilePlay.getAttribute('aria-disabled') === 'true';
+}
+
+let lastMobilePlayPointerAt = -Infinity;
 mobilePlay.addEventListener('pointerdown', (event) => {
   event.preventDefault();
-  if (mobilePlay.disabled) return;
+  if (mobilePlayIsUnavailable()) {
+    showMobilePlayHintOnce();
+    return;
+  }
   mobilePlay.classList.add('pressed');
+  lastMobilePlayPointerAt = performance.now();
+  playNearestInstrument();
+  navigator.vibrate?.(22);
+});
+mobilePlay.addEventListener('click', () => {
+  if (mobilePlayIsUnavailable()) {
+    showMobilePlayHintOnce();
+    return;
+  }
+  if (performance.now() - lastMobilePlayPointerAt < 700) return;
   playNearestInstrument();
   navigator.vibrate?.(22);
 });
