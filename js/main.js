@@ -1805,6 +1805,7 @@ const mobilePlay = document.getElementById('mobile-play');
 const mobileExit = document.getElementById('mobile-exit');
 const mobilePlayHint = document.getElementById('mobile-play-hint');
 const MOBILE_PLAY_HINT_KEY = 'av2.mobile-play-hint.v2';
+let lastMobilePlayPointerAt = -Infinity;
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIn = document.getElementById('zoom-in');
 const zoomOut = document.getElementById('zoom-out');
@@ -2091,9 +2092,10 @@ function setSceneLabelsVisible(visible) {
 }
 
 function syncMobileInstrumentChrome() {
-  const busy = ['approaching', 'entering', 'focused', 'returning'].includes(instrumentView.phase);
-  // ✕ is the only way out of instrument focus (desktop + mobile).
-  const showExit = busy && instrumentView.phase !== 'returning';
+  // Show ✕ only once seated (entering/focused). Revealing it during approaching
+  // would put it under the same finger that just pressed ГРАТИ, and the
+  // synthesized click would instantly cancel the approach.
+  const showExit = instrumentView.phase === 'entering' || instrumentView.phase === 'focused';
   if (mobileExit) mobileExit.hidden = !showExit;
 }
 
@@ -3028,10 +3030,19 @@ moveSurface?.addEventListener('pointerup', releaseMoveJoystick);
 moveSurface?.addEventListener('pointercancel', releaseMoveJoystick);
 moveSurface?.addEventListener('lostpointercapture', releaseMoveJoystick);
 
-mobileExit?.addEventListener('pointerdown', () => {
+mobileExit?.addEventListener('pointerdown', (event) => {
+  // Ignore a ghost click-through from the ГРАТИ tap that just started approach.
+  if (performance.now() - lastMobilePlayPointerAt < 500) {
+    event.preventDefault();
+    return;
+  }
   mobileExit.classList.add('pressed');
 });
-mobileExit?.addEventListener('click', () => {
+mobileExit?.addEventListener('click', (event) => {
+  if (performance.now() - lastMobilePlayPointerAt < 500) {
+    event.preventDefault();
+    return;
+  }
   leaveInstrumentView();
   navigator.vibrate?.(18);
 });
@@ -3167,7 +3178,7 @@ function playNearestInstrument() {
   audio.init();
   audio.resume();
   const alreadyInPosition = instrumentView.kind === nearest.kind
-    && ['entering', 'focused'].includes(instrumentView.phase);
+    && ['approaching', 'entering', 'focused'].includes(instrumentView.phase);
   if (alreadyInPosition) return true;
   requestInstrumentView(nearest.kind);
   return true;
@@ -3217,9 +3228,9 @@ function mobilePlayIsUnavailable() {
   return mobilePlay.getAttribute('aria-disabled') === 'true';
 }
 
-let lastMobilePlayPointerAt = -Infinity;
 mobilePlay.addEventListener('pointerdown', (event) => {
   event.preventDefault();
+  event.stopPropagation();
   if (mobilePlayIsUnavailable()) {
     showMobilePlayHintOnce();
     return;
@@ -3229,12 +3240,16 @@ mobilePlay.addEventListener('pointerdown', (event) => {
   playNearestInstrument();
   navigator.vibrate?.(22);
 });
-mobilePlay.addEventListener('click', () => {
+// Keyboard / accessibility activation only — pointer path already ran on pointerdown.
+mobilePlay.addEventListener('click', (event) => {
+  if (performance.now() - lastMobilePlayPointerAt < 700) {
+    event.preventDefault();
+    return;
+  }
   if (mobilePlayIsUnavailable()) {
     showMobilePlayHintOnce();
     return;
   }
-  if (performance.now() - lastMobilePlayPointerAt < 700) return;
   playNearestInstrument();
   navigator.vibrate?.(22);
 });

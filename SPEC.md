@@ -273,7 +273,7 @@ Rules:
 - Small left **move zone** + floating stick under finger.
 - Soft one-finger orbit; two-finger dolly/pan.
 - **ГРАТИ** when in reach → approach / focus. Outside reach it stays visually disabled but remains an accessible tap target: the first unavailable tap shows, once, `Підійди до інструмента ближче щоб заграти`.
-- ✕ exit when approaching / entering / focused.
+- ✕ exit when entering / focused (not during approaching — avoids the same tap that pressed **ГРАТИ** hitting ✕ after the play button hides).
 - Leaving any instrument focus must reset the floating joystick, thumb, active pointer identity, and movement vector before the walk controls return. This includes a lost / cancelled iOS pointer while the joystick is hidden during guitar focus.
 - Touch instruments when focused (multitouch piano / drums; chord hold + independent strum / pluck for guitar).
 - Focused piano / drums / guitar play surfaces claim their fingers: taps and glissandi / strums play without rotating or pinching the camera. Orbit and pinch stay available from empty canvas around the instrument.
