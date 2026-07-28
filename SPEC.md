@@ -167,7 +167,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**Customization** (HUD person icon button next to the sound mixer → `#modal-mascot`): зачіска (довге / шапочка / коротке / мінімум), колір волосся (5 swatches; also recolors brows), одяг (4 palettes: Сцена / Фірмовий / Джинс / Ніч — recolor nine shared outfit material slots in place), зріст (70–145%) and статура (65–150%) sliders (non-uniform group scale; the fall shrink and pointer-arrow height stay proportional). Applies live to the 3D mascot, persists in `localStorage` `av2.mascot.v1` (JSON, validated on load), reset button restores defaults. While the modal is open the camera tweens to frame the mascot (leaving any instrument focus first; compact screens aim into the strip above the bottom-sheet panel) and returns on close. The modal never closes on backdrop tap — ✕ / ГОТОВО / Esc only.
+**Customization** (HUD person icon button next to the sound mixer → `#modal-mascot`): зачіска (довге / шапочка / коротке / мінімум), посмішка (легка / широка / рівна), колір волосся (5 swatches; also recolors brows), одяг (4 palettes: Сцена / Фірмовий / Джинс / Ніч — recolor nine shared outfit material slots in place), зріст (70–145%) and статура (65–150%) sliders (non-uniform group scale; the fall shrink and pointer-arrow height stay proportional). Applies live to the 3D mascot, persists in `localStorage` `av2.mascot.v1` (JSON, validated on load), reset button restores defaults. While the modal is open the camera tweens to frame the mascot (leaving any instrument focus first; compact screens aim into the strip above the bottom-sheet panel) and returns on close. The modal never closes on backdrop tap — ✕ / ГОТОВО / Esc only.
 
 **Dance** (click the HUD logo): toggles a **tektonik** routine — procedural 8-beat loop (overhead arm sweeps + bounce, full spin on the last two beats). Limbs relax smoothly on stop. Walk input, instrument approach, or a stage fall stops the dance.
 
@@ -307,6 +307,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 {
   hair: "long",        // "long" | "bob" | "short" | "buzz"
   hairColor: "5a2f22", // 6-digit hex, no '#'
+  smile: "soft",       // "soft" | "wide" | "neutral"
   outfit: "stage",     // "stage" | "vibe" | "denim" | "night"
   height: 100,         // percent, 70–145
   width: 100           // percent, 65–150

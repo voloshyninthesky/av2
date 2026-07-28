@@ -314,6 +314,15 @@
       </div>
 
       <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-mascot-smile">УСМІШКА</span>
+        <div class="chip-row" id="mascot-smile-row" role="radiogroup" aria-labelledby="lbl-mascot-smile">
+          <button type="button" class="choice-chip is-on" data-mascot-smile="soft" role="radio" aria-checked="true">Легка</button>
+          <button type="button" class="choice-chip" data-mascot-smile="wide" role="radio" aria-checked="false">Широка</button>
+          <button type="button" class="choice-chip" data-mascot-smile="neutral" role="radio" aria-checked="false">Рівна</button>
+        </div>
+      </div>
+
+      <div class="mixer-section">
         <span class="mixer-label mono" id="lbl-mascot-hair-color">КОЛІР ВОЛОССЯ</span>
         <div class="chip-row swatch-row" id="mascot-color-row" role="radiogroup" aria-labelledby="lbl-mascot-hair-color">
           <button type="button" class="swatch is-on" data-mascot-color="5a2f22" role="radio" aria-checked="true" aria-label="Каштанове" style="--sw:#5a2f22"></button>
@@ -440,6 +449,6 @@
     });
   })();
 </script>
-<script type="module" src="js/main.js?v=20260728-42"></script>
+<script type="module" src="js/main.js?v=20260728-43"></script>
 </body>
 </html>

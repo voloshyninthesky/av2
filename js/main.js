@@ -1276,9 +1276,17 @@ function buildMascot() {
     brow.rotation.z = -Math.sign(x) * 0.1;
     head.add(brow);
   }
-  const lips = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.016, 0.014), rose);
-  lips.position.set(0, -0.085, 0.29);
-  head.add(lips);
+  const neutralMouth = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.016, 0.014), rose);
+  neutralMouth.position.set(0, -0.085, 0.29);
+  head.add(neutralMouth);
+  const softSmile = new THREE.Mesh(new THREE.TorusGeometry(0.047, 0.006, 5, 10, Math.PI), rose);
+  softSmile.position.set(0, -0.065, 0.292);
+  softSmile.rotation.z = Math.PI;
+  head.add(softSmile);
+  const wideSmile = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.007, 5, 12, Math.PI), rose);
+  wideSmile.position.set(0, -0.045, 0.292);
+  wideSmile.rotation.z = Math.PI;
+  head.add(wideSmile);
   for (const x of [-0.285, 0.285]) {
     const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.009, 6, 14), silver);
     hoop.position.set(x, -0.02, 0.035);
@@ -1330,14 +1338,14 @@ function buildMascot() {
     if (object.isMesh) object.castShadow = true;
   });
 
-  return { group, torso, head, armL, armR, legL, legR, custom: { mats, hairMat, hairBack, hairCap, locks } };
+  return { group, torso, head, armL, armR, legL, legR, custom: { mats, hairMat, hairBack, hairCap, locks, mouths: { soft: softSmile, wide: wideSmile, neutral: neutralMouth } } };
 }
 
 // ============================================================
 // MASCOT CUSTOMIZATION (persisted in localStorage)
 // ============================================================
 const MASCOT_KEY = 'av2.mascot.v1';
-const MASCOT_DEFAULTS = { hair: 'long', hairColor: '5a2f22', outfit: 'stage', height: 100, width: 100 };
+const MASCOT_DEFAULTS = { hair: 'long', hairColor: '5a2f22', smile: 'soft', outfit: 'stage', height: 100, width: 100 };
 const MASCOT_HEIGHT_RANGE = { min: 70, max: 145 };
 const MASCOT_WIDTH_RANGE = { min: 65, max: 150 };
 
@@ -1354,6 +1362,7 @@ const MASCOT_OUTFITS = {
   denim: { top: 0xFDFBF7, panel: 0x5B82A6, stripes: 0xFDFBF7, sleeveL: 0x5B82A6, sleeveR: 0x5B82A6, shoulder: 0xD1A13B, collar: 0xFDFBF7, pants: 0x3a5a8c, shoes: 0xFDFBF7 },
   night: { top: 0x241a2e, panel: 0x9E33CA, stripes: 0xD1A13B, sleeveL: 0x241a2e, sleeveR: 0x241a2e, shoulder: 0x9E33CA, collar: 0xD1A13B, pants: 0x17121c, shoes: 0x9E33CA },
 };
+const MASCOT_SMILES = new Set(['soft', 'wide', 'neutral']);
 
 const mascotCfg = (() => {
   const cfg = { ...MASCOT_DEFAULTS };
@@ -1364,6 +1373,7 @@ const mascotCfg = (() => {
     if (saved && typeof saved === 'object') {
       if (saved.hair in MASCOT_HAIR_STYLES) cfg.hair = saved.hair;
       if (typeof saved.hairColor === 'string' && /^[0-9a-fA-F]{6}$/.test(saved.hairColor)) cfg.hairColor = saved.hairColor;
+      if (MASCOT_SMILES.has(saved.smile)) cfg.smile = saved.smile;
       if (saved.outfit in MASCOT_OUTFITS) cfg.outfit = saved.outfit;
       if (Number.isFinite(saved.height)) cfg.height = THREE.MathUtils.clamp(Math.round(saved.height), MASCOT_HEIGHT_RANGE.min, MASCOT_HEIGHT_RANGE.max);
       if (Number.isFinite(saved.width)) cfg.width = THREE.MathUtils.clamp(Math.round(saved.width), MASCOT_WIDTH_RANGE.min, MASCOT_WIDTH_RANGE.max);
@@ -1492,6 +1502,7 @@ function applyMascotConfig() {
     }
   }
   cu.hairMat.color.setHex(parseInt(mascotCfg.hairColor, 16));
+  for (const [smile, mouth] of Object.entries(cu.mouths)) mouth.visible = smile === mascotCfg.smile;
   const outfit = MASCOT_OUTFITS[mascotCfg.outfit] || MASCOT_OUTFITS.stage;
   for (const slot in outfit) cu.mats[slot].color.setHex(outfit[slot]);
   applyMascotScale();
@@ -4087,6 +4098,7 @@ function syncMascotModal() {
   };
   syncGroup('[data-mascot-hair]', 'mascotHair', mascotCfg.hair);
   syncGroup('[data-mascot-color]', 'mascotColor', mascotCfg.hairColor);
+  syncGroup('[data-mascot-smile]', 'mascotSmile', mascotCfg.smile);
   syncGroup('[data-mascot-outfit]', 'mascotOutfit', mascotCfg.outfit);
   if (mascotHeightInput) mascotHeightInput.value = String(mascotCfg.height);
   if (mascotWidthInput) mascotWidthInput.value = String(mascotCfg.width);
@@ -4108,6 +4120,8 @@ if (mascotModal) {
     btn.addEventListener('click', () => setMascotConfig({ hair: btn.dataset.mascotHair })));
   mascotModal.querySelectorAll('[data-mascot-color]').forEach((btn) =>
     btn.addEventListener('click', () => setMascotConfig({ hairColor: btn.dataset.mascotColor })));
+  mascotModal.querySelectorAll('[data-mascot-smile]').forEach((btn) =>
+    btn.addEventListener('click', () => setMascotConfig({ smile: btn.dataset.mascotSmile })));
   mascotModal.querySelectorAll('[data-mascot-outfit]').forEach((btn) =>
     btn.addEventListener('click', () => setMascotConfig({ outfit: btn.dataset.mascotOutfit })));
   mascotHeightInput?.addEventListener('input', () => setMascotConfig({ height: Number(mascotHeightInput.value) }));
