@@ -1517,7 +1517,7 @@ const MASCOT_KEY = 'av2.mascot.v3';
 const MASCOT_DEFAULTS = {
   hair: 'long',
   hairColor: '5a2f22',
-  smile: 'soft',
+  smile: 'neutral',
   outfit: 'stage',
   outfitPrimary: 'default',
   outfitAccent: 'default',

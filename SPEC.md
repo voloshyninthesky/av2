@@ -400,7 +400,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 {
   hair: "long",             // "long" | "bob" | "short" | "buzz" | "tied"
   hairColor: "5a2f22",      // 6-digit hex, no '#'
-  smile: "soft",            // "soft" | "wide" | "neutral"
+  smile: "neutral",         // "soft" | "wide" | "neutral"
   outfit: "stage",          // "stage" | "vibe" | "denim" | "night"
   outfitPrimary: "default", // "default" | "purple" | "gold" | "denim" | "ink"
   outfitAccent: "default",  // "default" | "purple" | "gold" | "cream" | "green"
