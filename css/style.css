@@ -334,6 +334,34 @@ html.stage-live .nav-btn {
 .nav-btn.gold { background: var(--gold); color: var(--ink); border-color: var(--gold); }
 .nav-btn.gold:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
 
+/* Separate scene-quality control. The three-position knob is a status display;
+   selecting it opens the full quality panel rather than changing a mode blindly. */
+.quality-switch {
+  min-height: 42px; display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 10px 4px 5px; border: 2px solid rgba(253, 251, 247, .35); border-radius: 999px;
+  color: var(--cream); background: rgba(23, 18, 28, .55); cursor: pointer;
+  backdrop-filter: blur(8px); transition: border-color .2s, background .2s, transform .15s;
+}
+.quality-switch:hover { border-color: var(--gold); background: rgba(42, 15, 58, .8); transform: translateY(-2px); }
+.quality-switch:active { transform: translateY(0); }
+.quality-switch:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.quality-switch-track {
+  position: relative; width: 31px; height: 31px; display: flex; align-items: center; justify-content: center; gap: 2px;
+  padding: 5px; border-radius: 50%; color: var(--cream); background: var(--purple);
+}
+.quality-switch-track i { width: 3px; height: 7px; border-radius: 99px; background: rgba(253, 251, 247, .5); }
+.quality-switch-track i:nth-child(2) { height: 13px; background: rgba(253, 251, 247, .78); }
+.quality-switch-track i:nth-child(3) { height: 19px; }
+.quality-switch-track b {
+  position: absolute; bottom: 4px; left: 4px; width: 7px; height: 7px; border-radius: 50%;
+  border: 1px solid rgba(23, 18, 28, .55); background: var(--gold); transition: left .22s ease, bottom .22s ease;
+}
+.quality-switch[data-quality-tier="auto"] .quality-switch-track b { left: 12px; bottom: 12px; }
+.quality-switch[data-quality-tier="high"] .quality-switch-track b { left: 20px; bottom: 20px; }
+.quality-switch-copy { display: grid; gap: 1px; text-align: left; line-height: 1; }
+.quality-switch-copy .mono { font-size: 7px; letter-spacing: .18em; color: rgba(253, 251, 247, .58); }
+.quality-switch-copy strong { font: 800 9px/1 'Unbounded', sans-serif; letter-spacing: .08em; }
+
 #keys-hint {
   position: fixed; bottom: 16px; left: 18px; z-index: 40;
   font-size: 11px; letter-spacing: .06em; color: rgba(253, 251, 247, .55);
@@ -1155,6 +1183,12 @@ html[data-instrument-view="focused"] #hud {
     font-size: 10px; letter-spacing: .06em; text-align: left;
   }
   .icon-btn { width: 36px; height: 36px; }
+  .quality-switch { width: 36px; min-height: 36px; padding: 2px; justify-content: center; gap: 0; }
+  .quality-switch-track { width: 28px; height: 28px; }
+  .quality-switch-track b { width: 6px; height: 6px; }
+  .quality-switch[data-quality-tier="auto"] .quality-switch-track b { left: 11px; bottom: 11px; }
+  .quality-switch[data-quality-tier="high"] .quality-switch-track b { left: 18px; bottom: 18px; }
+  .quality-switch-copy { display: none; }
   #zoom-controls {
     right: max(10px, env(safe-area-inset-right));
     top: auto; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 108px);

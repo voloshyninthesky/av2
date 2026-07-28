@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260728-20">
+<link rel="stylesheet" href="css/style.css?v=20260728-21">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -66,9 +66,12 @@
     <div class="hud-nav-links" id="hud-nav-links">
       <button class="pill-btn nav-btn" data-open="steps">ЯК ЗАПИСАТИСЯ?</button>
       <button class="pill-btn nav-btn" data-open="rules">ПРАВИЛА</button>
-      <button class="pill-btn nav-btn" data-open="quality">ПОТУЖНІСТЬ</button>
       <button class="pill-btn nav-btn gold" data-open="pricing">ЦІНИ</button>
     </div>
+    <button class="quality-switch" type="button" data-open="quality" data-quality-tier="auto" aria-label="Якість сцени: авто. Змінити" title="Якість сцени — змінити">
+      <span class="quality-switch-track" aria-hidden="true"><i></i><i></i><i></i><b></b></span>
+      <span class="quality-switch-copy" aria-hidden="true"><span class="mono">3D</span><strong id="quality-switch-value">АВТО</strong></span>
+    </button>
     <button class="icon-btn" id="menu-btn" type="button" title="Меню" aria-label="Меню" aria-expanded="false" aria-controls="hud-nav-links">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>
     </button>
@@ -441,6 +444,6 @@
     });
   })();
 </script>
-<script type="module" src="js/main.js?v=20260728-33"></script>
+<script type="module" src="js/main.js?v=20260728-34"></script>
 </body>
 </html>

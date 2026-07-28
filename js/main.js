@@ -26,6 +26,8 @@ const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
 const qualityNames = { auto: 'АВТО', high: 'ПОВНА', low: 'ЕКОНОМНА' };
 const qualityCurrent = document.getElementById('quality-current');
+const qualitySwitch = document.querySelector('.quality-switch');
+const qualitySwitchValue = document.getElementById('quality-switch-value');
 const qualityButtons = [...document.querySelectorAll('[data-quality]')];
 
 function syncQualityPreferenceUi() {
@@ -35,6 +37,13 @@ function syncQualityPreferenceUi() {
     button.setAttribute('aria-checked', selected ? 'true' : 'false');
   }
   if (qualityCurrent) qualityCurrent.textContent = qualityNames[forcedQuality] || qualityNames.auto;
+  if (qualitySwitch) {
+    const qualityName = qualityNames[forcedQuality] || qualityNames.auto;
+    qualitySwitch.dataset.qualityTier = forcedQuality;
+    qualitySwitch.setAttribute('aria-label', `Якість сцени: ${qualityName}. Змінити`);
+    qualitySwitch.title = `Якість сцени: ${qualityName}`;
+    if (qualitySwitchValue) qualitySwitchValue.textContent = qualityName;
+  }
 }
 
 function setQualityPreference(nextQuality) {
