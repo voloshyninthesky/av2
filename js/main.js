@@ -26,9 +26,12 @@ const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
 const qualityNames = { auto: 'AUTO', high: 'GLAMOUR', low: 'PIXEL' };
 const qualityCurrent = document.getElementById('quality-current');
+const qualityStatusPrefix = document.getElementById('quality-status-prefix');
 const qualitySwitch = document.querySelector('.quality-switch');
 const qualitySwitchValue = document.getElementById('quality-switch-value');
+const qualityOptions = document.querySelector('.quality-options');
 const qualityButtons = [...document.querySelectorAll('[data-quality]')];
+let qualityChangePending = false;
 
 function syncQualityPreferenceUi() {
   for (const button of qualityButtons) {
@@ -46,19 +49,44 @@ function syncQualityPreferenceUi() {
   }
 }
 
-function setQualityPreference(nextQuality) {
-  if (!QUALITY_OPTIONS.has(nextQuality) || nextQuality === forcedQuality) return;
+function resetQualityPendingUi() {
+  qualityChangePending = false;
+  qualityOptions?.classList.remove('is-loading');
+  for (const button of qualityButtons) {
+    button.disabled = false;
+    button.classList.remove('is-loading');
+    button.removeAttribute('aria-busy');
+  }
+  if (qualityStatusPrefix) qualityStatusPrefix.textContent = 'ВИБРАНО: ';
+  syncQualityPreferenceUi();
+}
+
+function setQualityPreference(nextQuality, button) {
+  if (qualityChangePending || !QUALITY_OPTIONS.has(nextQuality) || nextQuality === forcedQuality) return;
+  qualityChangePending = true;
+  const qualityName = qualityNames[nextQuality] || qualityNames.auto;
+  qualityOptions?.classList.add('is-loading');
+  for (const option of qualityButtons) option.disabled = true;
+  button?.classList.add('is-loading');
+  button?.setAttribute('aria-busy', 'true');
+  if (qualityStatusPrefix) qualityStatusPrefix.textContent = 'ЗАВАНТАЖЕННЯ: ';
+  if (qualityCurrent) qualityCurrent.textContent = qualityName;
   try { localStorage.setItem(QUALITY_PREFERENCE_KEY, nextQuality); } catch (_) { /* storage is optional */ }
   const nextUrl = new URL(location.href);
   nextUrl.searchParams.set('quality', nextQuality);
-  location.assign(nextUrl.href);
+  requestAnimationFrame(() => {
+    window.setTimeout(() => location.assign(nextUrl.href), 140);
+  });
 }
 
 for (const button of qualityButtons) {
-  button.addEventListener('click', () => setQualityPreference(button.dataset.quality));
+  button.addEventListener('click', () => setQualityPreference(button.dataset.quality, button));
 }
 window.addEventListener('av2:modal', (event) => {
   if (event.detail?.open && event.detail.name === 'quality') syncQualityPreferenceUi();
+});
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && qualityChangePending) resetQualityPendingUi();
 });
 syncQualityPreferenceUi();
 const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');

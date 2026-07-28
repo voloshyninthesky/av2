@@ -235,7 +235,8 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 ### Scene style
 
 - A separate three-position `3D` HUD switch opens the compact **Стиль сцени** modal; it is not a nav-menu item.
-- The visible styles are **AUTO**, **GLAMOUR** (maximum details), and **PIXEL** (energy saving). Internally they retain the persisted values `auto`, `high`, and `low` in `localStorage` key `av2.quality.v1`.
+- The visible styles are ordered **GLAMOUR** (maximum details), **PIXEL** (energy saving), then **AUTO**. The style names carry the primary visual emphasis; their Ukrainian descriptions are secondary. Internally they retain the persisted values `high`, `low`, and `auto` in `localStorage` key `av2.quality.v1`.
+- Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
 
