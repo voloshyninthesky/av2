@@ -448,8 +448,7 @@ Best-effort only when opened inside Telegram:
 
 - Load `https://telegram.org/js/telegram-web-app.js`; call `ready()`, `expand()`, and `disableVerticalSwipes()` when available (**Mini App** API 7.7+).
 - Detect Telegram UA / `Telegram.WebApp` → `html.telegram-webview` + touch claiming so the shell is less likely to steal stage drags.
-- On the live stage, Telegram claiming covers **single-finger** canvas `touchstart` / `touchmove` as well as multi-touch (HUD / pads stay exempt). Fixed `body` + `touch-action: none` reduce rubber-band dismiss mid-stage.
-- **Limit:** a plain in-app browser link still cannot fully block native header / edge dismiss gestures. Full vertical-swipe control requires wrapping the site as a Telegram Mini App, not only opening the URL.
+- **Limit:** a plain in-app browser link cannot fully block native header / edge dismiss gestures. Full control requires wrapping the site as a Telegram Mini App, not only opening the URL.
 
 Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + instrument multitouch keeps working.
 

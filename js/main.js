@@ -4075,10 +4075,6 @@ function isLiveStageZoomLocked() {
   return started && !ui.modalOpen;
 }
 
-function isStageOrbitSurface(el) {
-  return el === canvas || el?.id === 'scene';
-}
-
 function blockStageBrowserPageZoom(event) {
   const zoomLocked = isLiveStageZoomLocked();
   const touchCount = event.touches?.length || 0;
@@ -4090,21 +4086,15 @@ function blockStageBrowserPageZoom(event) {
     return;
   }
   if (eventInvolvesUiChrome(event)) return;
-
   const inTelegram = document.documentElement.classList.contains('telegram-webview');
-  // Telegram in-app browser: claim single-finger stage touches on start AND move.
-  // Multi-touch was already claimed; one-finger orbit otherwise becomes a dismiss /
-  // back swipe. Chrome / pads stay exempt above. Edge / header gestures may still
-  // win natively — Mini App disableVerticalSwipes is the only full control.
-  if (inTelegram && zoomLocked && event.cancelable) {
-    const onCanvas = isStageOrbitSurface(event.target);
-    const movingOnStage = event.type === 'touchmove' && touchCount >= 1;
-    if (onCanvas || movingOnStage || touchCount >= 2) {
+  // Telegram: claim single-finger stage drags so the shell doesn't treat them
+  // as dismiss / back gestures. Live-stage multi-touch is handled above.
+  if (inTelegram && event.cancelable) {
+    if (event.type === 'touchmove' || (event.touches && event.touches.length >= 2)) {
       event.preventDefault();
       return;
     }
   }
-
   if (!zoomLocked) return;
   if (touchCount >= 2 && event.cancelable) event.preventDefault();
 }
