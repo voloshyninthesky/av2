@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260728-23">
+<link rel="stylesheet" href="css/style.css?v=20260728-26">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -296,67 +296,141 @@
 </div>
 
 <!-- ======= MODAL: ОБРАЗ (mascot customization) ======= -->
-<div id="modal-mascot" class="overlay" hidden>
+<div id="modal-mascot" class="overlay" role="dialog" aria-modal="true" aria-labelledby="mascot-title" aria-describedby="mascot-lead" hidden>
+  <div id="mascot-preview-zone" aria-label="Попередній перегляд маскота. Проведи горизонтально, щоб повернути.">
+    <p class="mascot-preview-hint mono" aria-hidden="true">ПРОВЕДИ, ЩОБ ПОВЕРНУТИ</p>
+    <div class="mascot-preview-actions">
+      <button type="button" class="preview-btn" id="mascot-motion" aria-label="Увімкнути або вимкнути рух" aria-pressed="false">В РУСІ</button>
+    </div>
+  </div>
+
   <div class="panel mascot-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>ТВІЙ ГЕРОЙ</span></div>
-    <h2 class="panel-title">Твій образ<span class="dot">.</span></h2>
+    <div class="mascot-editor-head">
+      <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>ТВІЙ ГЕРОЙ</span></div>
+      <h2 class="panel-title" id="mascot-title">Твій образ<span class="dot">.</span></h2>
+      <p class="sr-only" id="mascot-lead">Обери деталі образу. Зміни видно на маскоті одразу і зберігаються після натискання Готово.</p>
 
-    <div class="mascot-mixer">
-      <div class="mixer-section">
-        <span class="mixer-label mono" id="lbl-mascot-hair">ЗАЧІСКА</span>
-        <div class="chip-row" id="mascot-hair-row" role="radiogroup" aria-labelledby="lbl-mascot-hair">
-          <button type="button" class="choice-chip is-on" data-mascot-hair="long" role="radio" aria-checked="true">Довге</button>
-          <button type="button" class="choice-chip" data-mascot-hair="bob" role="radio" aria-checked="false">Шапочка</button>
-          <button type="button" class="choice-chip" data-mascot-hair="short" role="radio" aria-checked="false">Коротке</button>
-          <button type="button" class="choice-chip" data-mascot-hair="buzz" role="radio" aria-checked="false">Мінімум</button>
-        </div>
-      </div>
-
-      <div class="mixer-section">
-        <span class="mixer-label mono" id="lbl-mascot-smile">УСМІШКА</span>
-        <div class="chip-row" id="mascot-smile-row" role="radiogroup" aria-labelledby="lbl-mascot-smile">
-          <button type="button" class="choice-chip is-on" data-mascot-smile="soft" role="radio" aria-checked="true">Легка</button>
-          <button type="button" class="choice-chip" data-mascot-smile="wide" role="radio" aria-checked="false">Широка</button>
-          <button type="button" class="choice-chip" data-mascot-smile="neutral" role="radio" aria-checked="false">Рівна</button>
-        </div>
-      </div>
-
-      <div class="mixer-section">
-        <span class="mixer-label mono" id="lbl-mascot-hair-color">КОЛІР ВОЛОССЯ</span>
-        <div class="chip-row swatch-row" id="mascot-color-row" role="radiogroup" aria-labelledby="lbl-mascot-hair-color">
-          <button type="button" class="swatch is-on" data-mascot-color="5a2f22" role="radio" aria-checked="true" aria-label="Каштанове" style="--sw:#5a2f22"></button>
-          <button type="button" class="swatch" data-mascot-color="241a14" role="radio" aria-checked="false" aria-label="Чорне" style="--sw:#241a14"></button>
-          <button type="button" class="swatch" data-mascot-color="c9a35f" role="radio" aria-checked="false" aria-label="Блонд" style="--sw:#c9a35f"></button>
-          <button type="button" class="swatch" data-mascot-color="a14d2d" role="radio" aria-checked="false" aria-label="Руде" style="--sw:#a14d2d"></button>
-          <button type="button" class="swatch" data-mascot-color="9E33CA" role="radio" aria-checked="false" aria-label="Фіолетове" style="--sw:#9E33CA"></button>
-        </div>
-      </div>
-
-      <div class="mixer-section">
-        <span class="mixer-label mono" id="lbl-mascot-outfit">ОДЯГ</span>
-        <div class="chip-row" id="mascot-outfit-row" role="radiogroup" aria-labelledby="lbl-mascot-outfit">
-          <button type="button" class="choice-chip is-on" data-mascot-outfit="stage" role="radio" aria-checked="true">Сцена</button>
-          <button type="button" class="choice-chip" data-mascot-outfit="vibe" role="radio" aria-checked="false">Фірмовий</button>
-          <button type="button" class="choice-chip" data-mascot-outfit="denim" role="radio" aria-checked="false">Джинс</button>
-          <button type="button" class="choice-chip" data-mascot-outfit="night" role="radio" aria-checked="false">Ніч</button>
-        </div>
-      </div>
-
-      <div class="mixer-section">
-        <label class="mixer-label mono" for="mascot-height">ЗРІСТ · <output id="mascot-height-val">100%</output></label>
-        <input type="range" class="mascot-range" id="mascot-height" min="70" max="145" step="1" value="100">
-      </div>
-
-      <div class="mixer-section">
-        <label class="mixer-label mono" for="mascot-width">СТАТУРА · <output id="mascot-width-val">100%</output></label>
-        <input type="range" class="mascot-range" id="mascot-width" min="65" max="150" step="1" value="100">
+      <div class="mascot-tabs" role="tablist" aria-label="Категорії образу">
+        <button type="button" role="tab" id="mascot-tab-face" aria-controls="mascot-section-face" aria-selected="true" data-mascot-tab="face">ОБЛИЧЧЯ</button>
+        <button type="button" role="tab" id="mascot-tab-outfit" aria-controls="mascot-section-outfit" aria-selected="false" tabindex="-1" data-mascot-tab="outfit">ОДЯГ</button>
+        <button type="button" role="tab" id="mascot-tab-shape" aria-controls="mascot-section-shape" aria-selected="false" tabindex="-1" data-mascot-tab="shape">ФОРМА</button>
       </div>
     </div>
 
-    <div class="panel-actions">
-      <button class="pill-btn outline big" id="mascot-reset" type="button">СКИНУТИ</button>
-      <button class="pill-btn gold big" data-close type="button">ГОТОВО ›</button>
+    <div class="mascot-editor-scroll">
+      <section class="mascot-category is-active" id="mascot-section-face" role="tabpanel" aria-labelledby="mascot-tab-face" data-mascot-section="face">
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-hair">ЗАЧІСКА · <b id="mascot-hair-name">ДОВГЕ</b></span>
+          <div class="chip-row" id="mascot-hair-row" role="radiogroup" aria-labelledby="lbl-mascot-hair">
+            <button type="button" class="choice-chip is-on" data-mascot-hair="long" role="radio" aria-checked="true" tabindex="0">Довге</button>
+            <button type="button" class="choice-chip" data-mascot-hair="bob" role="radio" aria-checked="false" tabindex="-1">Боб</button>
+            <button type="button" class="choice-chip" data-mascot-hair="short" role="radio" aria-checked="false" tabindex="-1">Коротке</button>
+            <button type="button" class="choice-chip" data-mascot-hair="buzz" role="radio" aria-checked="false" tabindex="-1">Мінімум</button>
+            <button type="button" class="choice-chip" data-mascot-hair="tied" role="radio" aria-checked="false" tabindex="-1">Зібране</button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-smile">УСМІШКА · <b id="mascot-smile-name">ЛЕГКА</b></span>
+          <div class="chip-row" id="mascot-smile-row" role="radiogroup" aria-labelledby="lbl-mascot-smile">
+            <button type="button" class="choice-chip is-on" data-mascot-smile="soft" role="radio" aria-checked="true" tabindex="0">Легка</button>
+            <button type="button" class="choice-chip" data-mascot-smile="wide" role="radio" aria-checked="false" tabindex="-1">Широка</button>
+            <button type="button" class="choice-chip" data-mascot-smile="neutral" role="radio" aria-checked="false" tabindex="-1">Рівна</button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-hair-color">КОЛІР ВОЛОССЯ · <b id="mascot-color-name">КАШТАНОВЕ</b></span>
+          <div class="chip-row swatch-row" id="mascot-color-row" role="radiogroup" aria-labelledby="lbl-mascot-hair-color">
+            <button type="button" class="swatch is-on" data-mascot-color="5a2f22" role="radio" aria-checked="true" tabindex="0" aria-label="Каштанове" style="--sw:#5a2f22"></button>
+            <button type="button" class="swatch" data-mascot-color="241a14" role="radio" aria-checked="false" tabindex="-1" aria-label="Чорне" style="--sw:#241a14"></button>
+            <button type="button" class="swatch" data-mascot-color="c9a35f" role="radio" aria-checked="false" tabindex="-1" aria-label="Блонд" style="--sw:#c9a35f"></button>
+            <button type="button" class="swatch" data-mascot-color="a14d2d" role="radio" aria-checked="false" tabindex="-1" aria-label="Руде" style="--sw:#a14d2d"></button>
+            <button type="button" class="swatch" data-mascot-color="9E33CA" role="radio" aria-checked="false" tabindex="-1" aria-label="Фіолетове" style="--sw:#9E33CA"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-skin">ТОН ШКІРИ · <b id="mascot-skin-name">ТЕПЛИЙ</b></span>
+          <div class="chip-row swatch-row" id="mascot-skin-row" role="radiogroup" aria-labelledby="lbl-mascot-skin">
+            <button type="button" class="swatch" data-mascot-skin="tone-1" role="radio" aria-checked="false" tabindex="-1" aria-label="Глибокий" style="--sw:#6f3f2d"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-2" role="radio" aria-checked="false" tabindex="-1" aria-label="Насичений" style="--sw:#9a6247"></button>
+            <button type="button" class="swatch is-on" data-mascot-skin="tone-3" role="radio" aria-checked="true" tabindex="0" aria-label="Теплий" style="--sw:#f2c4a6"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-4" role="radio" aria-checked="false" tabindex="-1" aria-label="Золотий" style="--sw:#d99b72"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-5" role="radio" aria-checked="false" tabindex="-1" aria-label="Світлий" style="--sw:#f6d7c5"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-6" role="radio" aria-checked="false" tabindex="-1" aria-label="Нейтральний" style="--sw:#c98765"></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="mascot-category" id="mascot-section-outfit" role="tabpanel" aria-labelledby="mascot-tab-outfit" data-mascot-section="outfit" hidden>
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-outfit">ПАЛІТРА · <b id="mascot-outfit-name">СЦЕНА</b></span>
+          <div class="outfit-grid" id="mascot-outfit-row" role="radiogroup" aria-labelledby="lbl-mascot-outfit">
+            <button type="button" class="outfit-choice is-on" data-mascot-outfit="stage" role="radio" aria-checked="true" tabindex="0"><span class="outfit-colors" style="--c1:#FDFBF7;--c2:#233f9d;--c3:#008542"></span><b>Сцена</b></button>
+            <button type="button" class="outfit-choice" data-mascot-outfit="vibe" role="radio" aria-checked="false" tabindex="-1"><span class="outfit-colors" style="--c1:#FDFBF7;--c2:#9E33CA;--c3:#D1A13B"></span><b>Фірмовий</b></button>
+            <button type="button" class="outfit-choice" data-mascot-outfit="denim" role="radio" aria-checked="false" tabindex="-1"><span class="outfit-colors" style="--c1:#FDFBF7;--c2:#5B82A6;--c3:#D1A13B"></span><b>Джинс</b></button>
+            <button type="button" class="outfit-choice" data-mascot-outfit="night" role="radio" aria-checked="false" tabindex="-1"><span class="outfit-colors" style="--c1:#241a2e;--c2:#9E33CA;--c3:#D1A13B"></span><b>Ніч</b></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-primary">ОСНОВНИЙ КОЛІР · <b id="mascot-primary-name">З ПАЛІТРИ</b></span>
+          <div class="chip-row swatch-row" role="radiogroup" aria-labelledby="lbl-mascot-primary">
+            <button type="button" class="swatch palette-default is-on" data-mascot-primary="default" role="radio" aria-checked="true" tabindex="0" aria-label="З палітри"></button>
+            <button type="button" class="swatch" data-mascot-primary="purple" role="radio" aria-checked="false" tabindex="-1" aria-label="Фіолетовий" style="--sw:#9E33CA"></button>
+            <button type="button" class="swatch" data-mascot-primary="gold" role="radio" aria-checked="false" tabindex="-1" aria-label="Золотий" style="--sw:#D1A13B"></button>
+            <button type="button" class="swatch" data-mascot-primary="denim" role="radio" aria-checked="false" tabindex="-1" aria-label="Джинсовий" style="--sw:#5B82A6"></button>
+            <button type="button" class="swatch" data-mascot-primary="ink" role="radio" aria-checked="false" tabindex="-1" aria-label="Темний" style="--sw:#17121c"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-accent">АКЦЕНТ · <b id="mascot-accent-name">З ПАЛІТРИ</b></span>
+          <div class="chip-row swatch-row" role="radiogroup" aria-labelledby="lbl-mascot-accent">
+            <button type="button" class="swatch palette-default is-on" data-mascot-accent="default" role="radio" aria-checked="true" tabindex="0" aria-label="З палітри"></button>
+            <button type="button" class="swatch" data-mascot-accent="purple" role="radio" aria-checked="false" tabindex="-1" aria-label="Фіолетовий" style="--sw:#9E33CA"></button>
+            <button type="button" class="swatch" data-mascot-accent="gold" role="radio" aria-checked="false" tabindex="-1" aria-label="Золотий" style="--sw:#D1A13B"></button>
+            <button type="button" class="swatch" data-mascot-accent="cream" role="radio" aria-checked="false" tabindex="-1" aria-label="Кремовий" style="--sw:#FDFBF7"></button>
+            <button type="button" class="swatch" data-mascot-accent="green" role="radio" aria-checked="false" tabindex="-1" aria-label="Зелений" style="--sw:#008542"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-accessory">АКСЕСУАР · <b id="mascot-accessory-name">СЕРЕЖКИ</b></span>
+          <div class="chip-row" role="radiogroup" aria-labelledby="lbl-mascot-accessory">
+            <button type="button" class="choice-chip" data-mascot-accessory="none" role="radio" aria-checked="false" tabindex="-1">Немає</button>
+            <button type="button" class="choice-chip is-on" data-mascot-accessory="hoops" role="radio" aria-checked="true" tabindex="0">Сережки</button>
+            <button type="button" class="choice-chip" data-mascot-accessory="glasses" role="radio" aria-checked="false" tabindex="-1">Окуляри</button>
+            <button type="button" class="choice-chip" data-mascot-accessory="headphones" role="radio" aria-checked="false" tabindex="-1">Навушники</button>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="mascot-category" id="mascot-section-shape" role="tabpanel" aria-labelledby="mascot-tab-shape" data-mascot-section="shape" hidden>
+        <div class="mixer-section shape-control">
+          <label class="mixer-label mono" for="mascot-height">ЗРІСТ · <output id="mascot-height-val">100%</output></label>
+          <input type="range" class="mascot-range" id="mascot-height" min="70" max="145" step="1" value="100">
+          <div class="range-labels mono" aria-hidden="true"><span>НИЖЧИЙ</span><span>БАЗОВИЙ</span><span>ВИЩИЙ</span></div>
+        </div>
+
+        <div class="mixer-section shape-control">
+          <label class="mixer-label mono" for="mascot-width">СТАТУРА · <output id="mascot-width-val">100%</output></label>
+          <input type="range" class="mascot-range" id="mascot-width" min="65" max="150" step="1" value="100">
+          <div class="range-labels mono" aria-hidden="true"><span>ВУЖЧА</span><span>БАЗОВА</span><span>ШИРША</span></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="mascot-editor-footer">
+      <div class="mascot-utility-actions">
+        <button class="mascot-text-btn" id="mascot-reset" type="button">СКИНУТИ</button>
+        <button class="mascot-text-btn" id="mascot-undo" type="button" hidden>ПОВЕРНУТИ</button>
+        <button class="mascot-text-btn random" id="mascot-random" type="button" aria-label="Випадковий образ">РАНДОМ</button>
+      </div>
+      <button class="pill-btn gold big" id="mascot-commit" type="button">ГОТОВО ›</button>
     </div>
   </div>
 </div>
@@ -449,6 +523,6 @@
     });
   })();
 </script>
-<script type="module" src="js/main.js?v=20260728-43"></script>
+<script type="module" src="js/main.js?v=20260728-47"></script>
 </body>
 </html>

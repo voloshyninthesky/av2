@@ -34,6 +34,8 @@ export class UI {
     this._chipTimer = null;
     this.pricing = null;
     this._pricingPromise = null;
+    this._modalTrigger = null;
+    this._isolatedElements = new Map();
     this._bind();
     const warmPricing = () => { this._ensurePricing(); };
     if (typeof window.requestIdleCallback === 'function') {
@@ -61,9 +63,9 @@ export class UI {
 
   _bind() {
     document.querySelectorAll('[data-open]').forEach((b) =>
-      b.addEventListener('click', () => this.open(b.dataset.open)));
+      b.addEventListener('click', () => this.open(b.dataset.open, null, b)));
     document.querySelectorAll('[data-goto]').forEach((b) =>
-      b.addEventListener('click', () => this.open(b.dataset.goto)));
+      b.addEventListener('click', () => this.open(b.dataset.goto, null, b)));
     document.querySelectorAll('[data-close]').forEach((b) =>
       b.addEventListener('click', () => this.closeAll()));
 
@@ -111,18 +113,77 @@ export class UI {
     this.el.toast.addEventListener('gesturestart', dismissToastGesture, { passive: false });
     this.el.toast.addEventListener('gesturechange', dismissToastGesture, { passive: false });
     window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' && this.current) this._trapModalFocus(e);
       if (e.key === 'Escape') { this.closeAll(); this.closeNav(); }
     });
   }
 
-  open(name, anchor) {
-    this.closeAll();
+  _focusableElements(modal) {
+    if (!modal) return [];
+    return [...modal.querySelectorAll(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )].filter((element) => !element.hidden && element.getClientRects().length > 0);
+  }
+
+  _trapModalFocus(event) {
+    const modal = this.modals[this.current];
+    const focusable = this._focusableElements(modal);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  _isolateModal(modal) {
+    this._releaseModalIsolation();
+    for (const element of document.body.children) {
+      if (element === modal || element.tagName === 'SCRIPT') continue;
+      this._isolatedElements.set(element, {
+        inert: Boolean(element.inert),
+        ariaHidden: element.getAttribute('aria-hidden'),
+      });
+      element.inert = true;
+      element.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  _releaseModalIsolation() {
+    for (const [element, previous] of this._isolatedElements) {
+      element.inert = previous.inert;
+      if (previous.ariaHidden === null) element.removeAttribute('aria-hidden');
+      else element.setAttribute('aria-hidden', previous.ariaHidden);
+    }
+    this._isolatedElements.clear();
+  }
+
+  _focusModal(name) {
+    if (this.current !== name) return;
+    const modal = this.modals[name];
+    const preferred = name === 'mascot'
+      ? modal?.querySelector('[data-mascot-tab][aria-selected="true"]')
+      : null;
+    (preferred || this._focusableElements(modal)[0])?.focus();
+  }
+
+  open(name, anchor, trigger = null) {
+    if (this.current) this.closeAll({ restoreFocus: false });
     this.closeNav();
     const m = this.modals[name];
     if (!m) return;
+    this._modalTrigger = trigger
+      || (name === 'mascot' ? document.getElementById('mascot-btn') : document.activeElement);
     m.hidden = false;
     this.current = name;
+    this._focusModal(name);
+    this._isolateModal(m);
     window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: true, name } }));
+    requestAnimationFrame(() => this._focusModal(name));
     if (name === 'pricing') {
       const requestedInstrument = anchor || this.pricing?.state.instrument || 'vocal';
       this._ensurePricing().then((pricing) => {
@@ -148,11 +209,15 @@ export class UI {
     }
   }
 
-  closeAll() {
+  closeAll({ restoreFocus = true } = {}) {
     const closed = this.current;
     for (const key in this.modals) this.modals[key].hidden = true;
     this.current = null;
     window.dispatchEvent(new CustomEvent('av2:modal', { detail: { open: false, name: closed } }));
+    this._releaseModalIsolation();
+    const trigger = this._modalTrigger;
+    this._modalTrigger = null;
+    if (restoreFocus && trigger?.isConnected) requestAnimationFrame(() => trigger.focus());
   }
 
   get modalOpen() { return this.current !== null; }

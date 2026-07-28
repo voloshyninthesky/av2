@@ -167,7 +167,9 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**Customization** (HUD person icon button next to the sound mixer → `#modal-mascot`): зачіска (довге / шапочка / коротке / мінімум), посмішка (легка / широка / рівна), колір волосся (5 swatches; also recolors brows), одяг (4 palettes: Сцена / Фірмовий / Джинс / Ніч — recolor nine shared outfit material slots in place), зріст (70–145%) and статура (65–150%) sliders (non-uniform group scale; the fall shrink and pointer-arrow height stay proportional). Applies live to the 3D mascot, persists in `localStorage` `av2.mascot.v1` (JSON, validated on load), reset button restores defaults. While the modal is open the camera tweens to frame the mascot (leaving any instrument focus first; compact screens aim into the strip above the bottom-sheet panel) and returns on close. The modal never closes on backdrop tap — ✕ / ГОТОВО / Esc only.
+**Customization** (HUD person icon button next to the sound mixer → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles, three smiles, five hair colors (also recolor brows), six skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height (70–145%) / build (65–150%) sliders. The procedural parts are created once and toggled or recolored in place. A compatible random look and an optional, toggleable walk-in-place preview are included.
+
+Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v2`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
 
 **Dance** (click the HUD logo): toggles a **tektonik** routine — procedural 8-beat loop (overhead arm sweeps + bounce, full spin on the last two beats). Limbs relax smoothly on stop. Walk input, instrument approach, or a stage fall stops the dance.
 
@@ -299,18 +301,22 @@ A recorded strum carries serializable per-string data. `direction` is `bass-to-t
 
 The loop pedal preserves this order, velocity, and timing instead of rebuilding a generic chord on playback.
 
-### `av2.mascot.v1` (localStorage)
+### `av2.mascot.v2` (localStorage)
 
-Mascot customization, merged over defaults and validated on load (unknown / malformed values fall back per field):
+Mascot customization, migrated from `av2.mascot.v1`, merged over defaults, and validated on load (unknown / malformed values fall back per field):
 
 ```js
 {
-  hair: "long",        // "long" | "bob" | "short" | "buzz"
-  hairColor: "5a2f22", // 6-digit hex, no '#'
-  smile: "soft",       // "soft" | "wide" | "neutral"
-  outfit: "stage",     // "stage" | "vibe" | "denim" | "night"
-  height: 100,         // percent, 70–145
-  width: 100           // percent, 65–150
+  hair: "long",             // "long" | "bob" | "short" | "buzz" | "tied"
+  hairColor: "5a2f22",      // 6-digit hex, no '#'
+  smile: "soft",            // "soft" | "wide" | "neutral"
+  outfit: "stage",          // "stage" | "vibe" | "denim" | "night"
+  outfitPrimary: "default", // "default" | "purple" | "gold" | "denim" | "ink"
+  outfitAccent: "default",  // "default" | "purple" | "gold" | "cream" | "green"
+  skinTone: "tone-3",       // "tone-1" … "tone-6"
+  accessory: "hoops",      // "none" | "hoops" | "glasses" | "headphones"
+  height: 100,              // percent, 70–145
+  width: 100                // percent, 65–150
 }
 ```
 
@@ -401,7 +407,86 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
 ---
 
-## 13. Change checklist
+## 13. Mascot customization v2
+
+### Outcomes
+
+The editor should feel like a small dressing room inside the stage, not a settings form.
+
+1. A first-time visitor can make a recognizable change and return to play in **under 30 seconds**.
+2. Every change is visible on the real mascot at a useful scale; the panel never covers the face or the body part being edited.
+3. Exploration is reversible. **ГОТОВО** commits the draft; **✕ / Esc** cancels it and restores the configuration from when the editor opened.
+4. The feature stays lightweight: procedural geometry, shared materials, curated choices, local persistence, and no account or asset download.
+
+### Information architecture and flow
+
+- Use three short categories: **ОБЛИЧЧЯ** (hair, hair color, smile, skin tone), **ОДЯГ** (outfit, color overrides, accessories), and **ФОРМА** (height, build). Do not force a step-by-step wizard; the visitor may switch categories in any order.
+- Keep the category rail, title / close control, and bottom action bar visible. Only the category contents scroll.
+- The first-run handoff after **ЗРОЗУМІЛО** uses this same editor and never requires a choice. **ГОТОВО** is visible immediately so the visitor can keep the default and reach the stage.
+- Selecting an option updates an in-memory draft and the 3D preview immediately. It does not write `localStorage` on every tap or slider tick.
+- **ГОТОВО** writes the validated draft, closes the editor, restores the previous stage camera, and may show the short toast `ОБРАЗ ЗБЕРЕЖЕНО`.
+- **✕ / Esc** restores the opening snapshot in 3D and storage before closing. Backdrop taps remain inert.
+- **СКИНУТИ** changes the draft to defaults but does not close or persist it. Offer an inline **ПОВЕРНУТИ** action until the next edit; committing still requires **ГОТОВО**.
+- **РАНДОМ** chooses a random look only from curated compatible options. It updates the draft and supports the same undo / cancel behavior.
+
+### Responsive composition
+
+| Viewport | Editor | Preview |
+|----------|--------|---------|
+| Desktop / wide tablet | Right rail, `380–440 px`; sticky header and action bar | Safe rectangle in the remaining canvas, centered on the mascot |
+| Phone portrait | Bottom sheet, normally `50–58dvh`; sticky header / categories / actions | Safe rectangle between the HUD and the measured top edge of the sheet |
+| Phone landscape / short viewport | Side rail instead of a bottom sheet when the upper preview strip would be too shallow | Largest unobscured canvas rectangle |
+
+- Derive the preview rectangle from `visualViewport`, safe-area insets, HUD bounds, and the actual panel bounding box. Do not rely on a width breakpoint plus hard-coded camera offsets.
+- Frame **ОБЛИЧЧЯ** as head and shoulders. Frame **ОДЯГ** and **ФОРМА** as a full-body view with a small amount of stage floor visible.
+- Refit on open, category change, resize, orientation change, `visualViewport` change, and after height / build changes. Slider movement may use a throttled refit and settle once input ends so the camera does not visibly jitter.
+- The complete relevant mascot bounds must remain inside the preview rectangle with at least `16 px` visual margin. Hair, shoes, and the customized height extremes count toward those bounds.
+- Horizontal drag in the unobscured preview rotates the mascot around its own Y axis. Preview gestures never orbit the stage camera, move the mascot, or start a dance.
+- Background stage controls are disabled while editing. Panel gestures never leak into raycasting, walking, orbit, zoom, or instrument play.
+- Under `prefers-reduced-motion`, use a short dissolve or immediate reframe instead of a long camera tween; essential live appearance feedback remains.
+
+### Control design
+
+- Use a minimum target of **48 × 48 CSS px** with `8 px` separation for category, choice, swatch, close, and action controls.
+- Replace ambiguous visible hair labels with **Довге / Боб / Коротке / Мінімум** while retaining the existing runtime IDs.
+- Each group label also exposes its selected value, for example `КОЛІР ВОЛОССЯ · КАШТАНОВЕ`.
+- Hair-color and future skin-tone swatches show a selected checkmark and a visible or screen-reader label; color is never the only signal.
+- Outfit choices show the name plus a small 2–3-color palette preview so visitors can predict the result without cycling through every option.
+- Height and build keep their exact percentage output, but also show semantic endpoints. Example: `НИЖЧИЙ — БАЗОВИЙ — ВИЩИЙ` and `ВУЖЧА — БАЗОВА — ШИРША`.
+- Arrow keys move within radio groups; Home / End select the first / last option. Sliders retain native keyboard behavior. Focus returns to the HUD mascot button after close.
+- The modal uses `role="dialog"`, `aria-modal="true"`, an accessible title, a focus trap, and an inert background. Live slider updates do not flood an `aria-live` region.
+
+### Feature set
+
+| Layer | Scope |
+|-------|-------|
+| **Editor foundation** | Measured preview safe rectangle; category rail; sticky actions; draft / commit / cancel model; reset undo; accessible dialog and radio behavior; compact landscape layout |
+| **Identity and delight** | Six curated skin tones applied to face and both hands; drag-to-rotate preview; compatible random look; toggleable **В РУСІ** preview that demonstrates walk motion without changing stage state |
+| **Wardrobe** | Accessories `немає / сережки / окуляри / навушники`; tied hairstyle; curated outfit primary / accent variants |
+
+All options reuse or toggle cached geometry and shared materials. Changing a choice must not allocate new meshes, materials, textures, or synthesis work inside the input handler. Arbitrary uploads, AI avatars, an unrestricted color picker, accounts, and a downloadable wardrobe remain out of scope.
+
+### Persistence and migration
+
+- `av2.mascot.v2` is the source contract. If it is absent and a valid `av2.mascot.v1` value exists, migrate it once by copying every valid v1 field and applying defaults for new fields. A malformed v2 field falls back independently and never invalidates the whole look.
+- The editor holds `openingConfig` and a live draft separately; only **ГОТОВО** writes storage.
+
+- `openingConfig`, drafts, undo state, and preview angle are session-only. Preview angle is not part of the saved appearance.
+- The current appearance must keep working if v2 is removed or storage is unavailable; fall back to defaults without blocking entry to the stage.
+
+### Acceptance
+
+- Validate at `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, including browser chrome / `visualViewport` changes. The relevant mascot bounds never intersect the editor panel or HUD.
+- **ГОТОВО**, **✕**, and the active category remain reachable without scrolling the control body.
+- **ГОТОВО** survives reload. **✕ / Esc** leaves storage unchanged and restores every opening value. Reset → undo returns the exact preceding draft.
+- All combinations remain readable at the height / build extremes and do not detach hands, pointer label, fall scaling, or instrument poses. Test idle, walk, dance, fall, and each instrument focus pose.
+- A 20-change stress pass creates no additional mascot meshes or materials and causes no visible frame hitch.
+- Keyboard-only and screen-reader passes can identify the dialog, current category, selected values, slider values, reset, cancel, and commit controls. Focus never escapes behind the dialog.
+- In a five-person first-use test, at least four visitors change hair or outfit, inspect the preview, and return to the stage within **30 seconds** without verbal help.
+
+---
+
+## 14. Change checklist
 
 When changing behavior:
 
