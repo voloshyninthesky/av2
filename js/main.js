@@ -2985,7 +2985,7 @@ function setJoystickFromPointer(event) {
   const rect = moveStick.getBoundingClientRect();
   const dx = event.clientX - (rect.left + rect.width / 2);
   const dy = event.clientY - (rect.top + rect.height / 2);
-  const maxRadius = rect.width * (moveStick.classList.contains('floating') ? 0.38 : 0.33);
+  const maxRadius = rect.width * 0.33;
   const rawLength = Math.hypot(dx, dy);
   const clamped = Math.min(maxRadius, rawLength);
   const angle = Math.atan2(dy, dx);

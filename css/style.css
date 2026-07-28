@@ -643,8 +643,8 @@ html.guitar-fretting #scene {
 /* Small grab pad around the home stick — leave most of the screen free for orbit/zoom. */
 #move-zone {
   position: relative;
-  width: 140px;
-  height: 140px;
+  width: 172px;
+  height: 172px;
   pointer-events: auto;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
@@ -667,7 +667,6 @@ html.guitar-fretting #scene {
 }
 #move-stick.floating {
   position: fixed; left: auto; right: auto; bottom: auto; margin: 0;
-  width: 132px; height: 132px;
   transform: translate(-50%, -50%);
   opacity: 1; z-index: 45;
 }
@@ -684,7 +683,6 @@ html.guitar-fretting #scene {
   box-shadow: 0 4px 14px rgba(0, 0, 0, .45), 0 0 12px rgba(209, 161, 59, .45);
   pointer-events: none; transition: transform .1s ease-out;
 }
-#move-stick.floating #move-thumb { width: 52px; height: 52px; }
 #move-stick.engaged #move-thumb { transition: none; }
 #mobile-actions {
   position: relative;
@@ -1438,11 +1436,9 @@ html.mascot-editor-open #toast {
 }
 
 @media (max-width: 390px) {
-  #move-zone { width: 128px; height: 128px; }
+  #move-zone { width: 156px; height: 156px; }
   #move-stick { width: 104px; height: 104px; }
   #move-thumb { width: 42px; height: 42px; }
-  #move-stick.floating { width: 120px; height: 120px; }
-  #move-stick.floating #move-thumb { width: 48px; height: 48px; }
   #mobile-play { width: 70px; height: 70px; font-size: 9px; }
   #mobile-exit { width: 62px; height: 62px; font-size: 26px; }
   #mobile-play-hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); width: min(180px, 62vw); font-size: 7px; }
