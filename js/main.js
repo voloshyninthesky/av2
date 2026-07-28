@@ -127,7 +127,6 @@ window.addEventListener('pageshow', (event) => {
 });
 syncQualityPreferenceUi();
 const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
-const isAndroid = /Android/i.test(navigator.userAgent || '');
 // iPadOS may present itself as macOS, so use touch capability as a fallback.
 const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent || '')
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -135,23 +134,22 @@ const deviceMemory = Number(navigator.deviceMemory) || null;
 const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
 const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
 const hasForcedQuality = forcedQuality === 'low' || forcedQuality === 'high';
-const autoMobileQuality = (isAndroid || isAppleMobile)
-  && !hasForcedQuality
+// AUTO begins without expensive effects on every device, then earns full quality
+// by sustaining a representative two-stage render probe. Never treat coarse
+// CPU/RAM browser hints as a proxy for GPU power.
+const autoQualityProbe = !hasForcedQuality
   && navigator.connection?.saveData !== true;
-// Mobile browser CPU/RAM hints are intentionally coarse or absent, so never use
-// them as a proxy for GPU power. Phones begin without expensive effects, then
-// earn full quality by sustaining a representative two-stage render probe.
 let lowMobileQuality = forcedQuality === 'low'
-  || (!hasForcedQuality && (navigator.connection?.saveData === true || autoMobileQuality));
+  || (!hasForcedQuality && (navigator.connection?.saveData === true || autoQualityProbe));
 const mobileQualityProbe = {
-  active: autoMobileQuality,
-  phase: autoMobileQuality ? 'medium' : 'complete',
+  active: autoQualityProbe,
+  phase: autoQualityProbe ? 'medium' : 'complete',
   startedAt: 0,
   lastFrameAt: 0,
   samples: [],
   p90: null,
 };
-const canUpgradeMobileQuality = autoMobileQuality;
+const canUpgradeMobileQuality = autoQualityProbe;
 const isLowEndMobileGameMode = () => lowMobileQuality;
 const isMobileQualityProbe = () => mobileQualityProbe.active;
 const usesLowMobileSceneBudget = () => isLowEndMobileGameMode() && !isMobileQualityProbe();
@@ -274,9 +272,15 @@ try {
   throw err;
 }
 function renderPixelRatio() {
-  const maximum = isMobileGameMode()
-    ? (usesLowMobileSceneBudget() ? LOW_END_MOBILE_MAX_PIXEL_RATIO : MOBILE_MAX_PIXEL_RATIO)
-    : DESKTOP_MAX_PIXEL_RATIO;
+  let maximum = DESKTOP_MAX_PIXEL_RATIO;
+  if (isMobileGameMode()) {
+    maximum = usesLowMobileSceneBudget()
+      ? LOW_END_MOBILE_MAX_PIXEL_RATIO
+      : MOBILE_MAX_PIXEL_RATIO;
+  } else if (usesLowMobileSceneBudget()) {
+    // Desktop PIXEL / settled AUTO-low: ease GPU fill-rate pressure.
+    maximum = LOW_END_MOBILE_MAX_PIXEL_RATIO;
+  }
   return Math.min(window.devicePixelRatio || 1, maximum);
 }
 
@@ -5870,6 +5874,7 @@ window.__qualityDebug = () => {
   return {
     mobile: isMobileGameMode(),
     appleMobile: isAppleMobile,
+    autoProbe: autoQualityProbe,
     tier: qualityTierLabel(),
     deviceMemory,
     hardwareConcurrency,
