@@ -378,7 +378,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - Keyboard focus visible on overlay controls.
 - `prefers-reduced-motion`: cut ambient / onboard pulse animations.
 - WebGL fail → `#webgl-fail` panel.
-- Scope Mobile Safari / Chrome pinch and double-tap guards to live instrument controls and status toasts. Preserve chord↔canvas multitouch and allow normal zoom / scroll inside informational overlays.
+- Lock page-level pinch and double-tap zoom for the whole live stage, including simultaneous joystick + `+` / `−` touches. Keep initial UI control pointer dispatch intact (claim multi-touch on move / Safari `gesture*`, not a chrome `touchstart`) so two-control and pad↔canvas interaction still works. Informational overlays retain normal zoom / scroll.
 - In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
 - No secrets in repo; prices are public marketing data.

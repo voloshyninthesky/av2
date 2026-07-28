@@ -421,9 +421,10 @@ html.stage-live .nav-btn {
   border: 1px solid rgba(253, 251, 247, .18); border-radius: 50%;
   background: rgba(253, 251, 247, .08); color: var(--cream);
   font: 500 22px/1 'Manrope', system-ui, sans-serif; cursor: pointer;
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  touch-action: none; -webkit-tap-highlight-color: transparent;
   transition: background .16s, border-color .16s, color .16s, transform .16s;
 }
+#zoom-controls { touch-action: none; }
 #zoom-controls button:hover, #zoom-controls button:focus-visible {
   background: var(--gold); border-color: var(--gold); color: var(--ink); outline: none;
 }

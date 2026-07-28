@@ -3145,38 +3145,42 @@ function eventInvolvesUiChrome(event) {
     || touchListHitsChrome(event.changedTouches);
 }
 
+function isLiveStageZoomLocked() {
+  return started && !ui.modalOpen;
+}
+
 function blockStageBrowserPageZoom(event) {
+  const zoomLocked = isLiveStageZoomLocked();
+  const touchCount = event.touches?.length || 0;
+  // Do not claim a UI chrome touchstart: on mobile Safari that can suppress a
+  // second control's pointer events. The pinch is blocked on touchmove instead,
+  // which covers joystick + +/- without stealing either control's tap.
+  if (zoomLocked && event.type === 'touchmove' && touchCount >= 2 && event.cancelable) {
+    event.preventDefault();
+    return;
+  }
   if (eventInvolvesUiChrome(event)) return;
   const inTelegram = document.documentElement.classList.contains('telegram-webview');
-  // Telegram: claim single-finger drags so the shell doesn't treat them as
-  // dismiss / back gestures. Multi-touch still blocked after stage start —
-  // but only when every finger is on the stage (not pedal + instrument).
+  // Telegram: claim single-finger stage drags so the shell doesn't treat them
+  // as dismiss / back gestures. Live-stage multi-touch is handled above.
   if (inTelegram && event.cancelable) {
     if (event.type === 'touchmove' || (event.touches && event.touches.length >= 2)) {
       event.preventDefault();
       return;
     }
   }
-  if (!started) return;
-  if (event.touches && event.touches.length >= 2) event.preventDefault();
+  if (!zoomLocked) return;
+  if (touchCount >= 2 && event.cancelable) event.preventDefault();
 }
 document.addEventListener('touchstart', blockStageBrowserPageZoom, { passive: false, capture: true });
 document.addEventListener('touchmove', blockStageBrowserPageZoom, { passive: false, capture: true });
-document.addEventListener('gesturestart', (e) => {
-  if (!document.documentElement.classList.contains('telegram-webview') && !started) return;
-  if (eventInvolvesUiChrome(e)) return;
-  if (e.cancelable) e.preventDefault();
-}, { passive: false, capture: true });
-document.addEventListener('gesturechange', (e) => {
-  if (!document.documentElement.classList.contains('telegram-webview') && !started) return;
-  if (eventInvolvesUiChrome(e)) return;
-  if (e.cancelable) e.preventDefault();
-}, { passive: false, capture: true });
-document.addEventListener('gestureend', (e) => {
-  if (!document.documentElement.classList.contains('telegram-webview') && !started) return;
-  if (eventInvolvesUiChrome(e)) return;
-  if (e.cancelable) e.preventDefault();
-}, { passive: false, capture: true });
+for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(name, (event) => {
+    // Safari emits gesture* even with user-scalable=no. Never exempt HUD
+    // controls here: simultaneous joystick + zoom-button touches are a pinch.
+    if (isLiveStageZoomLocked() && event.cancelable) event.preventDefault();
+  }, { passive: false, capture: true });
+}
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
@@ -3805,8 +3809,9 @@ for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
 // Prevent rapid cross-control taps from being promoted to page zoom by mobile
 // browsers. Informational panels remain zoomable / scrollable.
 document.addEventListener('dblclick', (event) => {
-  if (!event.target.closest?.('#vocal-pad, #chord-pad, #toast')) return;
-  event.preventDefault();
+  if (isLiveStageZoomLocked() || event.target.closest?.('#vocal-pad, #chord-pad, #toast')) {
+    event.preventDefault();
+  }
 }, { passive: false, capture: true });
 
 function playVocalNote(freq, vowel, showPrice = false) {
