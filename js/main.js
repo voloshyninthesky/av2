@@ -14,6 +14,20 @@ window.addEventListener('unhandledrejection', (e) => { errlog.textContent += `RE
 
 const params = new URLSearchParams(location.search);
 const QUALITY_PREFERENCE_KEY = 'av2.quality.v1';
+const LIGHT_LEVEL_KEY = 'av2.lights.v1';
+const LIGHT_LEVEL_MIN = 0;
+const LIGHT_LEVEL_MAX = 130;
+const LIGHT_LEVEL_DEFAULT = 100;
+function readStoredLightLevel() {
+  try {
+    const raw = Number(localStorage.getItem(LIGHT_LEVEL_KEY));
+    if (Number.isFinite(raw)) {
+      return Math.min(LIGHT_LEVEL_MAX, Math.max(LIGHT_LEVEL_MIN, Math.round(raw)));
+    }
+  } catch (_) { /* storage is optional */ }
+  return LIGHT_LEVEL_DEFAULT;
+}
+let stageLightLevel = readStoredLightLevel();
 const QUALITY_OPTIONS = new Set(['auto', 'high', 'low']);
 let savedQuality = null;
 try { savedQuality = localStorage.getItem(QUALITY_PREFERENCE_KEY); } catch (_) { /* storage is optional */ }
@@ -31,7 +45,19 @@ const qualitySwitch = document.querySelector('.quality-switch');
 const qualitySwitchValue = document.getElementById('quality-switch-value');
 const qualityOptions = document.querySelector('.quality-options');
 const qualityButtons = [...document.querySelectorAll('[data-quality]')];
+const lightLevelInput = document.getElementById('stage-light-level');
+const lightLevelValue = document.getElementById('stage-light-level-val');
 let qualityChangePending = false;
+
+function syncLightLevelUi() {
+  if (lightLevelInput) {
+    if (Number(lightLevelInput.value) !== stageLightLevel) {
+      lightLevelInput.value = String(stageLightLevel);
+    }
+    lightLevelInput.setAttribute('aria-valuetext', `${stageLightLevel} відсотків`);
+  }
+  if (lightLevelValue) lightLevelValue.textContent = `${stageLightLevel}%`;
+}
 
 function syncQualityPreferenceUi() {
   for (const button of qualityButtons) {
@@ -47,6 +73,7 @@ function syncQualityPreferenceUi() {
     qualitySwitch.title = `Стиль сцени: ${qualityName}`;
     if (qualitySwitchValue) qualitySwitchValue.textContent = qualityName;
   }
+  syncLightLevelUi();
 }
 
 function resetQualityPendingUi() {
@@ -81,6 +108,14 @@ function setQualityPreference(nextQuality, button) {
 
 for (const button of qualityButtons) {
   button.addEventListener('click', () => setQualityPreference(button.dataset.quality, button));
+}
+if (lightLevelInput) {
+  lightLevelInput.min = String(LIGHT_LEVEL_MIN);
+  lightLevelInput.max = String(LIGHT_LEVEL_MAX);
+  lightLevelInput.value = String(stageLightLevel);
+  const onLightLevelInput = () => setStageLightLevel(lightLevelInput.value);
+  lightLevelInput.addEventListener('input', onLightLevelInput);
+  lightLevelInput.addEventListener('change', onLightLevelInput);
 }
 window.addEventListener('av2:modal', (event) => {
   if (event.detail?.open && event.detail.name === 'quality') syncQualityPreferenceUi();
@@ -125,7 +160,51 @@ const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
-const adaptiveQualityScene = { bulbLights: [], lowPrioritySpots: [], shadowSpots: [], dust: null };
+const adaptiveQualityScene = {
+  bulbLights: [],
+  lowPrioritySpots: [],
+  shadowSpots: [],
+  dimmableLights: [],
+  dimmableEmissives: [],
+  dimmableBeams: [],
+  dust: null,
+};
+function registerDimmableLight(light) {
+  adaptiveQualityScene.dimmableLights.push({ light, base: light.intensity });
+}
+function registerDimmableEmissive(material) {
+  adaptiveQualityScene.dimmableEmissives.push({
+    material,
+    base: material.emissiveIntensity ?? 1,
+  });
+}
+function registerDimmableBeam(material) {
+  adaptiveQualityScene.dimmableBeams.push({
+    material,
+    base: material.opacity,
+  });
+}
+function applyStageLightLevel(level = stageLightLevel) {
+  const next = Math.min(LIGHT_LEVEL_MAX, Math.max(LIGHT_LEVEL_MIN, Math.round(Number(level) || 0)));
+  stageLightLevel = next;
+  const scale = next / 100;
+  for (const entry of adaptiveQualityScene.dimmableLights) {
+    entry.light.intensity = entry.base * scale;
+  }
+  for (const entry of adaptiveQualityScene.dimmableEmissives) {
+    entry.material.emissiveIntensity = entry.base * scale;
+  }
+  for (const entry of adaptiveQualityScene.dimmableBeams) {
+    entry.material.opacity = entry.base * scale;
+  }
+}
+function setStageLightLevel(level, { persist = true } = {}) {
+  applyStageLightLevel(level);
+  if (persist) {
+    try { localStorage.setItem(LIGHT_LEVEL_KEY, String(stageLightLevel)); } catch (_) { /* storage is optional */ }
+  }
+  syncLightLevelUi();
+}
 const qualityTierLabel = () => isMobileQualityProbe()
   ? 'mobile-probe'
   : (isLowEndMobileGameMode() ? 'low-mobile' : 'full');
@@ -504,6 +583,7 @@ function buildStage() {
     emissiveIntensity: 1.6,
     roughness: 0.5,
   });
+  registerDimmableEmissive(bulbMat);
   const bulbGeom = new THREE.SphereGeometry(0.05, 10, 8);
   const bulbs = new THREE.InstancedMesh(bulbGeom, bulbMat, 9);
   const bulbMatrix = new THREE.Matrix4();
@@ -517,6 +597,7 @@ function buildStage() {
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
       adaptiveQualityScene.bulbLights.push(pl);
+      registerDimmableLight(pl);
     }
   }
   bulbs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
@@ -1029,8 +1110,12 @@ function installStageEnvironment() {
 function buildLights() {
   const g = new THREE.Group();
   // Soft sky/ground gradient instead of flat wash — spots keep their punch.
-  g.add(new THREE.HemisphereLight(0x6a4a88, 0x1a0e22, 0.55));
-  g.add(new THREE.AmbientLight(0x584a74, 0.22));
+  const hemi = new THREE.HemisphereLight(0x6a4a88, 0x1a0e22, 0.55);
+  const ambient = new THREE.AmbientLight(0x584a74, 0.22);
+  g.add(hemi);
+  g.add(ambient);
+  registerDimmableLight(hemi);
+  registerDimmableLight(ambient);
 
   // truss bar
   const trussMat = new THREE.MeshStandardMaterial({ color: 0x1a1420, metalness: 0.7, roughness: 0.4 });
@@ -1052,6 +1137,7 @@ function buildLights() {
   fill.position.set(0, 7.5, 14);
   fill.target.position.set(0, 0.8, 0);
   g.add(fill, fill.target);
+  registerDimmableLight(fill);
 
   const spotlightHousingGeometry = new THREE.CylinderGeometry(0.09, 0.13, 0.3, 12);
   const spotlightLensGeometry = new THREE.CircleGeometry(0.1, 16);
@@ -1094,6 +1180,7 @@ function buildLights() {
       }
       if (s.lowPriority) adaptiveQualityScene.lowPrioritySpots.push(spot);
       g.add(spot, spot.target);
+      registerDimmableLight(spot);
     }
 
     // Visible beam: SpotLight targets steer the light but do not stop it.
@@ -1111,9 +1198,11 @@ function buildLights() {
       }
     }
     const len = from.distanceTo(coneEnd);
+    const beamMat = visibleBeamMaterial(s.color, Number.isFinite(s.coneFloorY));
+    registerDimmableBeam(beamMat);
     const cone = new THREE.Mesh(
       new THREE.CylinderGeometry(0.09, coneEndRadius, len, usesLowMobileSceneBudget() ? 12 : 24, 1, true),
-      visibleBeamMaterial(s.color, Number.isFinite(s.coneFloorY)),
+      beamMat,
     );
     cone.position.copy(from).add(coneEnd).multiplyScalar(0.5);
     const dir = new THREE.Vector3().subVectors(coneEnd, from).normalize();
@@ -1582,6 +1671,7 @@ installStageEnvironment();
 const dust = buildDust();
 adaptiveQualityScene.dust = dust;
 applyLowMobileSceneBudget();
+applyStageLightLevel(stageLightLevel);
 scene.add(dust);
 const fireworks = new Fireworks(scene);
 
@@ -5910,6 +6000,7 @@ window.__qualityDebug = () => {
     shadows: renderer.shadowMap.enabled,
     frameRateCap: isMobileQualityProbe() ? 'probe' : (isLowEndMobileGameMode() ? 30 : null),
     mobileProbe: { phase: mobileQualityProbe.phase, p90: mobileQualityProbe.p90 },
+    lightLevel: stageLightLevel,
     lightCounts,
     slidesLoaded: Math.max(0, ss.texs.length - 1),
   };
@@ -6236,8 +6327,9 @@ function animate(frameTime = performance.now()) {
     for (let i = 0; i < spotHeads.length; i++) {
       const lens = spotHeads[i].lensMat;
       const pulse = 0.72 + Math.sin(t * 1.4 + i * 1.1) * 0.28;
+      const lightScale = Math.max(0.18, stageLightLevel / 100);
       lens.color.setHex(spotHeads[i].base);
-      lens.color.multiplyScalar(0.75 + pulse * 0.35);
+      lens.color.multiplyScalar((0.75 + pulse * 0.35) * lightScale);
     }
   }
 

@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260728-28">
+<link rel="stylesheet" href="css/style.css?v=20260728-29">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -221,6 +221,12 @@
         <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✦</span><span class="quality-name">AUTO</span></span>
         <span class="quality-description">Автоматично</span>
       </button>
+    </div>
+
+    <div class="quality-light">
+      <label class="mixer-label mono" for="stage-light-level">СВІТЛО · <output id="stage-light-level-val">100%</output></label>
+      <input type="range" class="quality-light-range" id="stage-light-level" min="0" max="130" step="5" value="100" aria-valuetext="100 відсотків">
+      <div class="range-labels mono" aria-hidden="true"><span>ТЕМНІШЕ</span><span>НОРМА</span><span>ЯСКРАВІШЕ</span></div>
     </div>
 
     <p class="quality-current mono" role="status" aria-live="polite"><span id="quality-status-prefix">ВИБРАНО: </span><strong id="quality-current">AUTO</strong></p>
@@ -523,6 +529,6 @@
     });
   })();
 </script>
-  <script type="module" src="js/main.js?v=20260728-69"></script>
+  <script type="module" src="js/main.js?v=20260728-70"></script>
 </body>
 </html>
