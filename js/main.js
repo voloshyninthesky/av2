@@ -20,9 +20,11 @@ const LIGHT_LEVEL_MAX = 130;
 const LIGHT_LEVEL_DEFAULT = 100;
 function readStoredLightLevel() {
   try {
-    const raw = Number(localStorage.getItem(LIGHT_LEVEL_KEY));
-    if (Number.isFinite(raw)) {
-      return Math.min(LIGHT_LEVEL_MAX, Math.max(LIGHT_LEVEL_MIN, Math.round(raw)));
+    const raw = localStorage.getItem(LIGHT_LEVEL_KEY);
+    if (raw == null || raw === '') return LIGHT_LEVEL_DEFAULT;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) {
+      return Math.min(LIGHT_LEVEL_MAX, Math.max(LIGHT_LEVEL_MIN, Math.round(parsed)));
     }
   } catch (_) { /* storage is optional */ }
   return LIGHT_LEVEL_DEFAULT;
