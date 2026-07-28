@@ -4604,15 +4604,25 @@ function captureHeldVocalIntoLoop() {
   stampHeldLoopCaptureDuration();
 }
 
+function deferHeldLoopEventPlayback(event) {
+  if (!event || !audio.ctx || loop.duration <= 0) return;
+  // Base take closes while state is still "recording" and epoch is unset.
+  // Defer to cycle 1 so live holds do not double with the first playback.
+  // Overdub / playing use a real epoch to skip the current cycle only.
+  if (loop.state === 'recording') {
+    event.playFromCycle = Math.max(event.playFromCycle, 1);
+    return;
+  }
+  const currentCycle = Math.max(0, Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration));
+  event.playFromCycle = Math.max(event.playFromCycle, currentCycle + 1);
+}
+
 function finishHeldLoopCapture() {
   if (!heldLoopCapture || heldLoopCapture.finished) return;
   heldLoopCapture.finished = true;
   stampHeldLoopCaptureDuration();
   delete heldLoopCapture.event.durationPending;
-  if (loop.duration > 0 && audio.ctx) {
-    const currentCycle = Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration);
-    heldLoopCapture.event.playFromCycle = Math.max(heldLoopCapture.event.playFromCycle, currentCycle + 1);
-  }
+  deferHeldLoopEventPlayback(heldLoopCapture.event);
   heldLoopCapture = null;
 }
 
@@ -4862,10 +4872,7 @@ function finalizeHeldPianoLoopCapture(held, { cancel = false } = {}) {
   const maximum = loop.duration > 0 ? Math.max(0.12, loop.duration - 0.06) : LOOP_MAX_SECONDS;
   event.duration = Math.min(maximum, Math.max(0.12, now - held.startedAt));
   delete event.durationPending;
-  if (loop.duration > 0 && audio.ctx) {
-    const currentCycle = Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration);
-    event.playFromCycle = Math.max(event.playFromCycle, currentCycle + 1);
-  }
+  deferHeldLoopEventPlayback(event);
 }
 
 function releaseHeldPianoNote(held, { cancel = false } = {}) {
