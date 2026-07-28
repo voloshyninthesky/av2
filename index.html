@@ -68,9 +68,9 @@
       <button class="pill-btn nav-btn" data-open="rules">ПРАВИЛА</button>
       <button class="pill-btn nav-btn gold" data-open="pricing">ЦІНИ</button>
     </div>
-    <button class="quality-switch" type="button" data-open="quality" data-quality-tier="auto" aria-label="Якість сцени: авто. Змінити" title="Якість сцени — змінити">
+    <button class="quality-switch" type="button" data-open="quality" data-quality-tier="auto" aria-label="Стиль сцени: Auto. Змінити" title="Стиль сцени — змінити">
       <span class="quality-switch-track" aria-hidden="true"><i></i><i></i><i></i><b></b></span>
-      <span class="quality-switch-copy" aria-hidden="true"><span class="mono">3D</span><strong id="quality-switch-value">АВТО</strong></span>
+      <span class="quality-switch-copy" aria-hidden="true"><span class="mono">3D</span><strong id="quality-switch-value">AUTO</strong></span>
     </button>
     <button class="icon-btn" id="menu-btn" type="button" title="Меню" aria-label="Меню" aria-expanded="false" aria-controls="hud-nav-links">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>
@@ -201,33 +201,33 @@
   </div>
 </div>
 
-<!-- ======= MODAL: ПОТУЖНІСТЬ СЦЕНИ ======= -->
+<!-- ======= MODAL: СТИЛЬ СЦЕНИ ======= -->
 <div id="modal-quality" class="overlay" hidden>
   <div class="panel quality-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
     <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>3D РЕЖИМ</span></div>
-    <h2 class="panel-title">Потужність сцени<span class="dot">.</span></h2>
-    <p class="panel-lead">Обери вигляд сцени для свого пристрою. Зміна застосовується одразу після короткого перезапуску.</p>
+    <h2 class="panel-title">Стиль сцени<span class="dot">.</span></h2>
+    <p class="panel-lead">Обери стиль сцени для свого пристрою. Зміна застосовується одразу після короткого перезапуску.</p>
 
-    <div class="quality-options" role="radiogroup" aria-label="Потужність сцени">
+    <div class="quality-options" role="radiogroup" aria-label="Стиль сцени">
       <button class="quality-option" type="button" data-quality="auto" role="radio" aria-checked="false">
-        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✦</span><span class="mono">АВТО</span></span>
-        <strong>Рекомендовано</strong>
+        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✦</span><span class="mono">AUTO</span></span>
+        <strong>Автоматично</strong>
         <span>Сцена сама перевіряє плавність на iPhone та Android. На компʼютерах — повний вигляд.</span>
       </button>
       <button class="quality-option" type="button" data-quality="high" role="radio" aria-checked="false">
-        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✹</span><span class="mono">ПОВНА</span></span>
+        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✹</span><span class="mono">GLAMOUR</span></span>
         <strong>Максимум деталей</strong>
         <span>Тіні, світло та постобробка для потужних телефонів і компʼютерів.</span>
       </button>
       <button class="quality-option" type="button" data-quality="low" role="radio" aria-checked="false">
-        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">◒</span><span class="mono">ЕКОНОМНА</span></span>
-        <strong>Стабільна гра</strong>
+        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">◒</span><span class="mono">PIXEL</span></span>
+        <strong>Енергозберігаючий</strong>
         <span>30 FPS без тіней і bloom — найкращий вибір для слабших телефонів.</span>
       </button>
     </div>
 
-    <p class="quality-current mono" aria-live="polite">ВИБРАНО: <strong id="quality-current">АВТО</strong></p>
+    <p class="quality-current mono" aria-live="polite">ВИБРАНО: <strong id="quality-current">AUTO</strong></p>
   </div>
 </div>
 
@@ -444,6 +444,6 @@
     });
   })();
 </script>
-<script type="module" src="js/main.js?v=20260728-34"></script>
+<script type="module" src="js/main.js?v=20260728-35"></script>
 </body>
 </html>

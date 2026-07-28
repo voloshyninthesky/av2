@@ -24,7 +24,7 @@ const forcedQuality = QUALITY_OPTIONS.has(queryQuality)
 const ui = new UI();
 const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
-const qualityNames = { auto: 'АВТО', high: 'ПОВНА', low: 'ЕКОНОМНА' };
+const qualityNames = { auto: 'AUTO', high: 'GLAMOUR', low: 'PIXEL' };
 const qualityCurrent = document.getElementById('quality-current');
 const qualitySwitch = document.querySelector('.quality-switch');
 const qualitySwitchValue = document.getElementById('quality-switch-value');
@@ -40,8 +40,8 @@ function syncQualityPreferenceUi() {
   if (qualitySwitch) {
     const qualityName = qualityNames[forcedQuality] || qualityNames.auto;
     qualitySwitch.dataset.qualityTier = forcedQuality;
-    qualitySwitch.setAttribute('aria-label', `Якість сцени: ${qualityName}. Змінити`);
-    qualitySwitch.title = `Якість сцени: ${qualityName}`;
+    qualitySwitch.setAttribute('aria-label', `Стиль сцени: ${qualityName}. Змінити`);
+    qualitySwitch.title = `Стиль сцени: ${qualityName}`;
     if (qualitySwitchValue) qualitySwitchValue.textContent = qualityName;
   }
 }
@@ -4318,7 +4318,19 @@ const onboardEl = document.getElementById('onboard');
 const onboardText = document.getElementById('onboard-text');
 const onboardOk = document.getElementById('onboard-ok');
 const ONBOARD_KEY = 'av2.onboard.v1';
+const INTRO_SESSION_KEY = 'av2.intro.v1';
 const onboard = { active: false, pulsing: false };
+
+function markIntroSeen() {
+  try { sessionStorage.setItem(INTRO_SESSION_KEY, '1'); } catch { /* storage is optional */ }
+}
+
+function shouldSkipIntro() {
+  if (params.has('nointro')) return true;
+  const navigation = performance.getEntriesByType?.('navigation')[0];
+  if (navigation?.type === 'reload') return true;
+  try { return sessionStorage.getItem(INTRO_SESSION_KEY) === '1'; } catch { return false; }
+}
 
 function shouldOfferOnboard() {
   if (new URLSearchParams(location.search).has('skiponboard')) return false;
@@ -4375,6 +4387,7 @@ onboardEl?.addEventListener('click', (e) => {
 function startExperience(withAudio = true) {
   if (started) return;
   started = true;
+  markIntroSeen();
   document.documentElement.classList.add('stage-live');
   syncViewportMeta();
   if (withAudio) audio.unlock();
@@ -4382,6 +4395,24 @@ function startExperience(withAudio = true) {
   mobileControls.classList.add('active');
   zoomControls.hidden = false;
   flyT = 0;
+  resetBrowserPageZoom();
+  syncRendererToWindow();
+}
+
+function startWithoutIntro() {
+  if (started) return;
+  started = true;
+  markIntroSeen();
+  document.documentElement.classList.add('stage-live');
+  syncViewportMeta();
+  intro.classList.add('gone');
+  mobileControls.classList.add('active');
+  zoomControls.hidden = false;
+  camera.position.copy(CAM_END);
+  camera.lookAt(TARGET);
+  controls.enabled = true;
+  ui.showHUD();
+  startOnboard();
   resetBrowserPageZoom();
   syncRendererToWindow();
 }
@@ -4645,19 +4676,8 @@ Promise.all([
   renderer.compile(scene, camera);
   animate();
 
-  if (params.has('nointro')) {
-    started = true;
-    document.documentElement.classList.add('stage-live');
-    intro.classList.add('gone');
-    mobileControls.classList.add('active');
-    zoomControls.hidden = false;
-    camera.position.copy(CAM_END);
-    camera.lookAt(TARGET);
-    controls.enabled = true;
-    ui.showHUD();
-    startOnboard();
-    resetBrowserPageZoom();
-    syncRendererToWindow();
+  if (shouldSkipIntro()) {
+    startWithoutIntro();
   } else {
     enterBtn.disabled = false;
     enterBtn.classList.add('ready');
