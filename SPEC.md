@@ -313,7 +313,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 - Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
-- A live horizontal **СВІТЛО** fader sits at the top of the volume mixer (under the speaker button) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v1` (default `67`) and stays independent of Glamour / Pixel / Auto.
+- A live horizontal light fader sits in a second HUD row below the icon controls (right-aligned) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. It is outside the volume mixer. The value persists in `localStorage` key `av2.lights.v1` (default `67`) and stays independent of Glamour / Pixel / Auto.
 
 ### Pricing mixer
 
