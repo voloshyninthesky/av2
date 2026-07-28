@@ -113,7 +113,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 - Guitar input is accepted only during stable guitar focus — never while idle, approaching, entering, returning, or focused on another instrument.
 - Global instrument shortcuts ignore key events originating from buttons, links, form fields, or editable content; the focused control handles those events itself.
-- Focus frames the soundhole, all six strings, and the first five frets from a near-front angle. On resize / orientation change, fit that play area again.
+- Focus frames the soundhole, all six strings, and the first five frets from a near-front angle, two `+` zoom steps closer than the base guitar framing. On resize / orientation change, fit that play area again.
 - The mascot and guitar must read as one performance pose: fretting hand at the neck, picking hand at the soundhole. String motion and hand motion carry the action; whole-body guitar wobble stays subtle.
 - Use separate guitar-local raycast proxies for approach, strum, and fret selection. A pointer captured by a play zone cannot orbit the camera until it ends.
 - Keep a narrow focused azimuth range so the strings remain readable. Derive that range from the camera transition endpoint so enabling orbit controls does not shift the settled frame. Zoom buttons remain available.

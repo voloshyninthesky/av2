@@ -219,6 +219,8 @@ const TARGET = new THREE.Vector3(0, 1.45, -0.3);
 const ZOOM_IN_STEP = 0.82;
 // Match three "+" presses for a closer stage start.
 const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 3;
+// Guitar performance starts two "+" presses closer than its framing preset.
+const GUITAR_FOCUS_ZOOM_FACTOR = ZOOM_IN_STEP ** 2;
 // Allow two extra "+" presses past the previous closest zoom.
 const EXTRA_ZOOM_IN_LEVELS = 2;
 const STAGE_MIN_DISTANCE = 5 * (ZOOM_IN_STEP ** EXTRA_ZOOM_IN_LEVELS);
@@ -1793,6 +1795,12 @@ const instrumentView = {
   home: null,
 };
 
+function instrumentViewCameraPoint(kind, preset) {
+  const point = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
+  if (kind !== 'guitar') return point;
+  return point.clone().sub(preset.target).multiplyScalar(GUITAR_FOCUS_ZOOM_FACTOR).add(preset.target);
+}
+
 function setSceneLabelsVisible(visible) {
   if (mascotLabel && !mascotMove.fall) mascotLabel.visible = visible;
 }
@@ -2019,7 +2027,7 @@ function activateInstrumentView(kind) {
     audio.resume();
     audio.prewarmGuitar(allGuitarPitches());
   }
-  const cameraPoint = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
+  const cameraPoint = instrumentViewCameraPoint(kind, preset);
   startInstrumentCameraTransition(
     'entering',
     kind,
@@ -3270,7 +3278,7 @@ function refitActiveInstrumentView() {
   if (!kind || !['entering', 'focused'].includes(instrumentView.phase)) return;
   const preset = INSTRUMENT_VIEW_PRESETS[kind];
   if (!preset) return;
-  const cameraPoint = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
+  const cameraPoint = instrumentViewCameraPoint(kind, preset);
   const nextPosition = instrumentLocalToWorld(kind, cameraPoint);
   const nextTarget = instrumentLocalToWorld(kind, preset.target);
   syncInstrumentExposure();
