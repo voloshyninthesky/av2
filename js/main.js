@@ -5620,7 +5620,7 @@ if (mascotModal) {
     mascotEditor.committing = true;
     saveMascotConfig();
     ui.closeAll();
-    ui.toast('ОБРАЗ ЗБЕРЕЖЕНО', 1800);
+    ui.toast('Неперевершено!', 1800);
   });
   syncMascotModal();
 }
