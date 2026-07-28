@@ -21,17 +21,26 @@ const isAndroid = /Android/i.test(navigator.userAgent || '');
 const forcedQuality = params.get('quality');
 const deviceMemory = Number(navigator.deviceMemory) || null;
 const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
-// Android device-memory reports are deliberately coarse (and often rounded up),
-// so include the 6 GB / 6-core class.  Those phones commonly have an entry GPU
-// even when their CPU looks capable on paper.
-const lowEndHardware = (deviceMemory !== null && deviceMemory <= 6)
-  || (hardwareConcurrency !== null && hardwareConcurrency <= 6)
-  || navigator.connection?.saveData === true;
 const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
-const isLowEndMobileGameMode = () => forcedQuality === 'low'
-  // iOS exposes deliberately coarse CPU/memory values. Applying the Android
-  // GPU heuristic there incorrectly downgrades devices such as iPhone 15 Pro.
-  || (forcedQuality !== 'high' && isAndroid && lowEndHardware);
+const hasForcedQuality = forcedQuality === 'low' || forcedQuality === 'high';
+const autoAndroidQuality = isAndroid && !hasForcedQuality && navigator.connection?.saveData !== true;
+// Android reports intentionally coarse CPU/RAM values, so never use them as a
+// proxy for GPU power. Unknown Android devices begin without effects, then earn
+// full quality by sustaining a representative two-stage render probe.
+let lowMobileQuality = forcedQuality === 'low'
+  || (!hasForcedQuality && (navigator.connection?.saveData === true || autoAndroidQuality));
+const androidQualityProbe = {
+  active: autoAndroidQuality,
+  phase: autoAndroidQuality ? 'medium' : 'complete',
+  startedAt: 0,
+  lastFrameAt: 0,
+  samples: [],
+  p90: null,
+};
+const canUpgradeAndroidQuality = autoAndroidQuality;
+const isLowEndMobileGameMode = () => lowMobileQuality;
+const isAndroidQualityProbe = () => androidQualityProbe.active;
+const usesLowMobileSceneBudget = () => isLowEndMobileGameMode() && !isAndroidQualityProbe();
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
 const LOW_END_MOBILE_MAX_PIXEL_RATIO = 1;
 const DESKTOP_MAX_PIXEL_RATIO = 2;
@@ -39,18 +48,28 @@ const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
-document.documentElement.dataset.qualityTier = isLowEndMobileGameMode() ? 'low-mobile' : 'full';
+const adaptiveQualityScene = { bulbLights: [], lowPrioritySpots: [], shadowSpots: [], dust: null };
+const qualityTierLabel = () => isAndroidQualityProbe()
+  ? 'android-probe'
+  : (isLowEndMobileGameMode() ? 'low-mobile' : 'full');
+document.documentElement.dataset.qualityTier = qualityTierLabel();
 document.documentElement.dataset.postprocessing = 'off';
-document.documentElement.dataset.frameRateCap = isLowEndMobileGameMode() ? '30' : 'native';
+document.documentElement.dataset.frameRateCap = isAndroidQualityProbe()
+  ? 'probe'
+  : (isLowEndMobileGameMode() ? '30' : 'native');
 document.documentElement.classList.toggle('low-mobile', isLowEndMobileGameMode());
-const postprocessingModules = isLowEndMobileGameMode()
-  ? Promise.resolve(null)
-  : Promise.all([
+let postprocessingModules = null;
+function loadPostprocessingModules() {
+  if (!postprocessingModules) {
+    postprocessingModules = Promise.all([
     import('three/addons/postprocessing/EffectComposer.js'),
     import('three/addons/postprocessing/RenderPass.js'),
     import('three/addons/postprocessing/UnrealBloomPass.js'),
     import('three/addons/postprocessing/OutputPass.js'),
-  ]);
+    ]);
+  }
+  return postprocessingModules;
+}
 
 // ---- Telegram in-app browser / Mini App ----
 // Vertical/side swipes can dismiss Telegram's webview. Mini Apps can call
@@ -98,7 +117,7 @@ try {
 }
 function renderPixelRatio() {
   const maximum = isMobileGameMode()
-    ? (isLowEndMobileGameMode() ? LOW_END_MOBILE_MAX_PIXEL_RATIO : MOBILE_MAX_PIXEL_RATIO)
+    ? (usesLowMobileSceneBudget() ? LOW_END_MOBILE_MAX_PIXEL_RATIO : MOBILE_MAX_PIXEL_RATIO)
     : DESKTOP_MAX_PIXEL_RATIO;
   return Math.min(window.devicePixelRatio || 1, maximum);
 }
@@ -413,10 +432,11 @@ function buildStage() {
     bulbs.setMatrixAt(i, bulbMatrix.makeTranslation(x, 0.06, 3.9));
     // Bulbs retain their emissive look. The five tiny point lights, however,
     // are evaluated by every PBR fragment and are not perceptible on a phone.
-    if (i % 2 === 0 && !lowEndLighting) {
+    if (i % 2 === 0 && (!lowEndLighting || canUpgradeAndroidQuality)) {
       const pl = new THREE.PointLight(0xffc878, 16, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
+      adaptiveQualityScene.bulbLights.push(pl);
     }
   }
   bulbs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
@@ -975,12 +995,12 @@ function buildLights() {
     // Keep every visible fixture and beam but omit the two least noticeable
     // real light sources on the low tier. This reduces per-fragment PBR work
     // without making the truss look incomplete.
-    if (!isLowEndMobileGameMode() || !s.lowPriority) {
+    if (!isLowEndMobileGameMode() || !s.lowPriority || canUpgradeAndroidQuality) {
       const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.5, 0.65, 1.6);
       spot.position.set(s.x, y, z);
       spot.target.position.copy(s.target);
-      if (s.shadow && !isLowEndMobileGameMode()) {
-        spot.castShadow = true;
+      if (s.shadow) {
+        spot.castShadow = !isLowEndMobileGameMode();
         const shadowSize = isMobileGameMode() ? 512 : 2048;
         spot.shadow.mapSize.set(shadowSize, shadowSize);
         spot.shadow.bias = -0.0002;
@@ -989,7 +1009,9 @@ function buildLights() {
         spot.shadow.camera.near = 1.5;
         spot.shadow.camera.far = 16;
         spot.shadow.camera.updateProjectionMatrix();
+        adaptiveQualityScene.shadowSpots.push(spot);
       }
+      if (s.lowPriority) adaptiveQualityScene.lowPrioritySpots.push(spot);
       g.add(spot, spot.target);
     }
 
@@ -1009,7 +1031,7 @@ function buildLights() {
     }
     const len = from.distanceTo(coneEnd);
     const cone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.09, coneEndRadius, len, isLowEndMobileGameMode() ? 12 : 24, 1, true),
+      new THREE.CylinderGeometry(0.09, coneEndRadius, len, usesLowMobileSceneBudget() ? 12 : 24, 1, true),
       visibleBeamMaterial(s.color, Number.isFinite(s.coneFloorY)),
     );
     cone.position.copy(from).add(coneEnd).multiplyScalar(0.5);
@@ -1022,7 +1044,7 @@ function buildLights() {
 
 // ---- dust particles ----
 function buildDust() {
-  const N = isLowEndMobileGameMode() ? 120 : 320;
+  const N = usesLowMobileSceneBudget() ? 120 : 320;
   const pos = new Float32Array(N * 3);
   const motion = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
@@ -1066,6 +1088,15 @@ function buildDust() {
   const pts = new THREE.Points(geo, mat);
   pts.userData.time = dustTime;
   return pts;
+}
+
+function applyLowMobileSceneBudget() {
+  const reduced = usesLowMobileSceneBudget();
+  for (const light of adaptiveQualityScene.bulbLights) light.visible = !reduced;
+  for (const light of adaptiveQualityScene.lowPrioritySpots) light.visible = !reduced;
+  for (const light of adaptiveQualityScene.shadowSpots) light.castShadow = !isLowEndMobileGameMode();
+  const dust = adaptiveQualityScene.dust;
+  if (dust) dust.geometry.setDrawRange(0, reduced ? 120 : dust.geometry.attributes.position.count);
 }
 
 // ---- text sprite labels ----
@@ -1358,6 +1389,8 @@ scene.add(stage);
 scene.add(buildLights());
 installStageEnvironment();
 const dust = buildDust();
+adaptiveQualityScene.dust = dust;
+applyLowMobileSceneBudget();
 scene.add(dust);
 const fireworks = new Fireworks(scene);
 
@@ -4075,15 +4108,18 @@ ui.open = (...args) => {
 // ============================================================
 let composer = null;
 let bloomPass = null;
+let postprocessingInit = null;
 
 async function initPostprocessing() {
+  if (isLowEndMobileGameMode() || composer) return;
+  if (postprocessingInit) return postprocessingInit;
+  postprocessingInit = (async () => {
   let modules = null;
   try {
-    modules = await postprocessingModules;
+    modules = await loadPostprocessingModules();
   } catch (_) {
     return;
   }
-  if (!modules) return;
   try {
     const [
       { EffectComposer },
@@ -4118,6 +4154,82 @@ async function initPostprocessing() {
     composer = null;
     bloomPass = null;
   }
+  })();
+  try {
+    await postprocessingInit;
+  } finally {
+    postprocessingInit = null;
+  }
+}
+
+function disablePostprocessing() {
+  composer?.dispose();
+  composer = null;
+  bloomPass = null;
+  document.documentElement.dataset.postprocessing = 'off';
+}
+
+function syncQualityDomState() {
+  document.documentElement.dataset.qualityTier = qualityTierLabel();
+  document.documentElement.dataset.frameRateCap = isAndroidQualityProbe()
+    ? 'probe'
+    : (isLowEndMobileGameMode() ? '30' : 'native');
+  document.documentElement.classList.toggle('low-mobile', isLowEndMobileGameMode());
+  document.documentElement.dataset.shadows = renderer.shadowMap.enabled ? 'on' : 'off';
+}
+
+function beginAndroidProbeWindow(phase, frameTime) {
+  androidQualityProbe.phase = phase;
+  androidQualityProbe.startedAt = frameTime;
+  androidQualityProbe.lastFrameAt = frameTime;
+  androidQualityProbe.samples.length = 0;
+}
+
+function settleAndroidQuality(low, p90) {
+  androidQualityProbe.active = false;
+  androidQualityProbe.phase = low ? 'low' : 'full';
+  androidQualityProbe.p90 = p90;
+  lowMobileQuality = low;
+  if (low) disablePostprocessing();
+  applyLowMobileSceneBudget();
+  syncRendererToWindow();
+  syncQualityDomState();
+}
+
+function promoteAndroidQuality(frameTime) {
+  lowMobileQuality = false;
+  applyLowMobileSceneBudget();
+  syncRendererToWindow();
+  syncQualityDomState();
+  androidQualityProbe.phase = 'promoting';
+  void initPostprocessing().finally(() => {
+    if (!androidQualityProbe.active || androidQualityProbe.phase !== 'promoting') return;
+    beginAndroidProbeWindow('full', performance.now());
+  });
+}
+
+function updateAndroidQualityProbe(frameTime) {
+  if (!isAndroidQualityProbe() || androidQualityProbe.phase === 'promoting') return;
+  if (!androidQualityProbe.startedAt) {
+    beginAndroidProbeWindow(androidQualityProbe.phase, frameTime);
+    return;
+  }
+  const elapsed = frameTime - androidQualityProbe.startedAt;
+  const delta = frameTime - androidQualityProbe.lastFrameAt;
+  androidQualityProbe.lastFrameAt = frameTime;
+  // Ignore shader/texture warm-up, then take one second of actual frame pacing.
+  if (elapsed > 350 && delta > 0 && delta < 100) androidQualityProbe.samples.push(delta);
+  if (elapsed < 1350 || !androidQualityProbe.samples.length) return;
+  const sorted = [...androidQualityProbe.samples].sort((a, b) => a - b);
+  const p90 = sorted[Math.floor((sorted.length - 1) * 0.9)];
+  if (androidQualityProbe.phase === 'medium') {
+    if (p90 <= 19) promoteAndroidQuality(frameTime);
+    else settleAndroidQuality(true, p90);
+    return;
+  }
+  // Full effects need to remain close to display cadence. Otherwise the app
+  // immediately returns to the stable 30 FPS low budget.
+  settleAndroidQuality(p90 > 22, p90);
 }
 window.__qualityDebug = () => {
   const lightCounts = { point: 0, spot: 0, shadowCasting: 0 };
@@ -4128,14 +4240,15 @@ window.__qualityDebug = () => {
   });
   return {
     mobile: isMobileGameMode(),
-    tier: isLowEndMobileGameMode() ? 'low-mobile' : 'full',
+    tier: qualityTierLabel(),
     deviceMemory,
     hardwareConcurrency,
     pixelRatio: renderer.getPixelRatio(),
     postprocessing: Boolean(composer),
     bloom: Boolean(bloomPass),
     shadows: renderer.shadowMap.enabled,
-    frameRateCap: isLowEndMobileGameMode() ? 30 : null,
+    frameRateCap: isAndroidQualityProbe() ? 'probe' : (isLowEndMobileGameMode() ? 30 : null),
+    androidProbe: { phase: androidQualityProbe.phase, p90: androidQualityProbe.p90 },
     lightCounts,
     slidesLoaded: Math.max(0, ss.texs.length - 1),
   };
@@ -4342,6 +4455,7 @@ let firstFrame = true;
 let lastRenderedFrameAt = -Infinity;
 
 function renderIntervalMs() {
+  if (isAndroidQualityProbe()) return 0;
   if (!started) return 1000 / 10;
   if (ui.modalOpen) return 1000 / 15;
   if (isLowEndMobileGameMode()) return 1000 / 30;
@@ -4446,6 +4560,8 @@ function animate(frameTime = performance.now()) {
 
   if (composer) composer.render();
   else renderer.render(scene, camera);
+
+  updateAndroidQualityProbe(frameTime);
 
   if (firstFrame) {
     firstFrame = false;
