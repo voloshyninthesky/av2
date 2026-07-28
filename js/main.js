@@ -17,8 +17,7 @@ const ui = new UI();
 const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
 const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
-const mobileHardware = coarsePointer.matches
-  || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+const isAndroid = /Android/i.test(navigator.userAgent || '');
 const forcedQuality = params.get('quality');
 const deviceMemory = Number(navigator.deviceMemory) || null;
 const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
@@ -30,7 +29,9 @@ const lowEndHardware = (deviceMemory !== null && deviceMemory <= 6)
   || navigator.connection?.saveData === true;
 const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
 const isLowEndMobileGameMode = () => forcedQuality === 'low'
-  || (forcedQuality !== 'high' && mobileHardware && lowEndHardware);
+  // iOS exposes deliberately coarse CPU/memory values. Applying the Android
+  // GPU heuristic there incorrectly downgrades devices such as iPhone 15 Pro.
+  || (forcedQuality !== 'high' && isAndroid && lowEndHardware);
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
 const LOW_END_MOBILE_MAX_PIXEL_RATIO = 1;
 const DESKTOP_MAX_PIXEL_RATIO = 2;
