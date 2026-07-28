@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { AudioEngine } from './audio.js?v=20260727-16';
+import { AudioEngine } from './audio.js?v=20260728-17';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-11';
 import { UI } from './ui.js?v=20260728-22';
 

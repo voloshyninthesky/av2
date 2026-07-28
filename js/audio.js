@@ -21,7 +21,8 @@ export class AudioEngine {
     this._contextGeneration = 0;
     this._needsRecovery = false;
     this._resumeFailures = 0;
-    this._lastUnlockAt = 0;
+    this._resumeWatchContext = null;
+    this._lastRebuildAt = -Infinity;
   }
 
   init() {
@@ -84,10 +85,21 @@ export class AudioEngine {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
     // Mobile / Telegram WebViews often re-suspend after backgrounding.
+    let hasRun = context.state === 'running';
     context.addEventListener('statechange', () => {
       if (this.ctx !== context) return;
-      if (context.state === 'running') this._resumeFailures = 0;
-      else this._primed = false;
+      if (context.state === 'running') {
+        hasRun = true;
+        this._resumeFailures = 0;
+        this._clearResumeWatch();
+      } else {
+        this._primed = false;
+        // Once output has worked, an unsolicited suspend/interruption/close can
+        // leave iOS and in-app WebViews with a dead route that still looks valid.
+        if (hasRun || context.state === 'interrupted' || context.state === 'closed') {
+          this.markForRecovery();
+        }
+      }
     });
   }
 
@@ -136,9 +148,7 @@ export class AudioEngine {
 
   _resetContext({ close = false } = {}) {
     const previous = this.ctx;
-    clearTimeout(this._resumeRetry1);
-    clearTimeout(this._resumeRetry2);
-    clearTimeout(this._resumeCheck);
+    this._clearResumeWatch();
     for (const voice of [...this._activeVocals]) voice.cancel?.();
     this._activeVocals.clear();
     this.ctx = null;
@@ -151,6 +161,7 @@ export class AudioEngine {
     this._guitarPrewarmScheduled = false;
     this._primed = false;
     this._resumeFailures = 0;
+    this._needsRecovery = false;
     if (close && previous?.state !== 'closed') {
       try {
         previous.close()?.catch?.(() => {});
@@ -170,20 +181,31 @@ export class AudioEngine {
   }
 
   unlock() {
-    const now = performance.now();
-    const duplicateGesture = now - this._lastUnlockAt < 80;
-    this._lastUnlockAt = now;
     this._configureAudioSession();
 
     const stuck = this.ctx
       && this.ctx.state !== 'running'
       && this._resumeFailures > 0;
-    if (!duplicateGesture && this.ctx && (this._needsRecovery || stuck)) {
+    const unusable = this.ctx?.state === 'closed';
+    const needsRebuild = this.ctx && (this._needsRecovery || stuck || unusable);
+    // A single touch can emit both pointerdown and touchstart. Deduplicate only
+    // the destructive rebuild, never the recovery request itself.
+    if (needsRebuild && performance.now() - this._lastRebuildAt >= 80) {
       this._resetContext({ close: true });
+      this._lastRebuildAt = performance.now();
     }
-    this._needsRecovery = false;
     this.init();
     return this.resume();
+  }
+
+  _clearResumeWatch() {
+    clearTimeout(this._resumeRetry1);
+    clearTimeout(this._resumeRetry2);
+    clearTimeout(this._resumeCheck);
+    this._resumeRetry1 = null;
+    this._resumeRetry2 = null;
+    this._resumeCheck = null;
+    this._resumeWatchContext = null;
   }
 
   /**
@@ -204,25 +226,42 @@ export class AudioEngine {
     }
 
     const context = this.ctx;
+    const recordFailure = () => {
+      if (this.ctx !== context || context.state === 'running' || context.state === 'closed') return;
+      this._resumeFailures = Math.max(1, this._resumeFailures + 1);
+      this._primed = false;
+    };
     const wake = () => {
       if (this.ctx !== context || context.state === 'closed') return Promise.resolve(false);
       if (context.state === 'running') return Promise.resolve(true);
       this._prime();
-      return context.resume().then(() => context.state === 'running').catch(() => false);
+      return context.resume()
+        .then(() => {
+          const running = context.state === 'running';
+          if (running) {
+            this._resumeFailures = 0;
+            this._clearResumeWatch();
+          } else {
+            recordFailure();
+          }
+          return running;
+        })
+        .catch(() => {
+          recordFailure();
+          return false;
+        });
     };
 
     const pending = wake();
-    // Flaky in-app browsers sometimes need a couple of deferred retries.
-    clearTimeout(this._resumeRetry1);
-    clearTimeout(this._resumeRetry2);
-    this._resumeRetry1 = setTimeout(() => { wake(); }, 120);
-    this._resumeRetry2 = setTimeout(() => { wake(); }, 450);
-    clearTimeout(this._resumeCheck);
-    this._resumeCheck = setTimeout(() => {
-      if (this.ctx !== context || context.state === 'running' || context.state === 'closed') return;
-      this._resumeFailures++;
-      this._primed = false;
-    }, 850);
+    // Start one context-scoped retry window. Repeated notes must not postpone
+    // failure detection forever while the visitor keeps trying to make sound.
+    if (this._resumeWatchContext !== context) {
+      this._clearResumeWatch();
+      this._resumeWatchContext = context;
+      this._resumeRetry1 = setTimeout(() => { wake(); }, 120);
+      this._resumeRetry2 = setTimeout(() => { wake(); }, 450);
+      this._resumeCheck = setTimeout(recordFailure, 850);
+    }
     return pending;
   }
 
