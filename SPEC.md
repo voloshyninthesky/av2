@@ -286,9 +286,9 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 
 Driven by `prices.json`:
 
-1. Pick instrument (**text-only** buttons — no SVG icons).
+1. Pick instrument (**text-only** buttons — no SVG icons). Selecting an instrument (or opening the mixer on one) defaults to the cheapest option: разовий · shortest / lowest-priced duration (and the cheapest pack size for later абонемент).
 2. Format: разовий / абонемент.
-3. Duration; package size if абонемент.
+3. Duration; package size if абонемент. If the current duration is unavailable for the active format, fall back to the first (cheapest) duration.
 4. Live ticket board (total + ≈ per lesson). Theme: purple vs gold by category.
 
 ### Rules

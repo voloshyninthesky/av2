@@ -32,7 +32,7 @@ export class PricingPicker {
     this.state = {
       instrument: 'vocal',
       format: 'single',
-      duration: 45,
+      duration: 30,
       lessons: 4,
     };
     this.el = {
@@ -78,6 +78,7 @@ export class PricingPicker {
     const key = ANCHOR_MAP[anchor] || 'vocal';
     this.state.instrument = key;
     if (this.ready) {
+      this._applyCheapestDefaults();
       this.render({ flash: true });
     }
   }
@@ -86,6 +87,7 @@ export class PricingPicker {
     this.el.instruments.forEach((btn) => {
       btn.addEventListener('click', () => {
         this.state.instrument = btn.dataset.instrument;
+        this._applyCheapestDefaults();
         this.render();
       });
     });
@@ -107,6 +109,28 @@ export class PricingPicker {
       this.state.lessons = Number(btn.dataset.lessons);
       this.render();
     });
+  }
+
+  /** Prefer the first / cheapest duration and pack for the current instrument. */
+  _applyCheapestDefaults() {
+    this.state.format = 'single';
+    const category = this._category();
+    if (!category) return;
+    const cheapest = category.singleLessons.reduce((best, row) => {
+      if (!best) return row;
+      return row.price < best.price ? row : best;
+    }, null);
+    this.state.duration = cheapest?.durationMinutes
+      ?? category.singleLessons[0]?.durationMinutes
+      ?? this.state.duration;
+    const sub = category.subscriptions.find((r) => r.durationMinutes === this.state.duration)
+      || category.subscriptions[0];
+    const packs = sub?.packages || [];
+    const cheapestPack = packs.reduce((best, pack) => {
+      if (!best) return pack;
+      return pack.price < best.price ? pack : best;
+    }, null);
+    this.state.lessons = cheapestPack?.lessons ?? packs[0]?.lessons ?? this.state.lessons;
   }
 
   _category() {
@@ -142,7 +166,7 @@ export class PricingPicker {
       : category.subscriptions;
     const durations = source.map((row) => row.durationMinutes);
     if (!durations.includes(this.state.duration)) {
-      this.state.duration = durations[Math.min(1, durations.length - 1)] ?? durations[0];
+      this.state.duration = durations[0];
     }
     this.el.durations.innerHTML = durations.map((d) => {
       const on = d === this.state.duration;
@@ -207,6 +231,13 @@ export class PricingPicker {
     if (!this.ready) return;
     const category = this._category();
     if (!category) return;
+
+    // First paint (and any path that never called _applyCheapestDefaults) still
+    // lands on the cheapest duration / pack for the active instrument.
+    if (!this._defaultsReady) {
+      this._applyCheapestDefaults();
+      this._defaultsReady = true;
+    }
 
     this._syncChoiceButtons();
     this._fillDurations(category);
