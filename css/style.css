@@ -221,10 +221,7 @@ html.stage-live .nav-btn {
 .icon-btn.off { color: rgba(253, 251, 247, .35); }
 .icon-btn.off svg { opacity: .4; }
 
-.sound-light-stack {
-  position: relative;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
-}
+.sound-wrap { position: relative; }
 #sound-mixer {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 55;
   width: min(220px, 78vw);
@@ -269,42 +266,29 @@ html.stage-live .nav-btn {
   width: 16px; height: 16px; border-radius: 50%;
   background: var(--gold); border: 2px solid var(--cream); cursor: pointer;
 }
-
-.light-fader {
-  display: inline-flex; align-items: center; gap: 8px;
-  min-height: 34px; padding: 4px 10px 4px 6px;
-  border: 2px solid rgba(253, 251, 247, .35); border-radius: 999px;
-  color: var(--cream); background: rgba(23, 18, 28, .55);
-  backdrop-filter: blur(8px); cursor: pointer;
-  transition: border-color .2s, background .2s, transform .15s;
+.sound-fader.light-fader {
+  padding-bottom: 8px; margin-bottom: 2px;
+  border-bottom: 1px solid rgba(253, 251, 247, .12);
 }
-.light-fader:hover { border-color: var(--gold); background: rgba(42, 15, 58, .8); transform: translateY(-1px); }
-.light-fader:focus-within { border-color: var(--gold); }
-.light-fader-icon {
-  width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center;
-  border-radius: 50%; background: rgba(209, 161, 59, .22);
-  color: var(--gold); font-size: 12px; line-height: 1;
+.sound-fader.light-fader output {
+  color: var(--gold); font-weight: 700; letter-spacing: .04em;
 }
 .light-fader-range {
   -webkit-appearance: none; appearance: none;
-  width: 92px; height: 6px; border-radius: 999px; margin: 0;
+  width: 100%; height: 6px; border-radius: 999px; margin: 0;
   background: rgba(253, 251, 247, .16); outline: none;
   touch-action: none; cursor: pointer;
 }
 .light-fader-range::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: 15px; height: 15px; border-radius: 50%;
+  width: 16px; height: 16px; border-radius: 50%;
   background: var(--gold); border: 2px solid var(--cream); cursor: pointer;
 }
 .light-fader-range::-moz-range-thumb {
-  width: 15px; height: 15px; border-radius: 50%;
+  width: 16px; height: 16px; border-radius: 50%;
   background: var(--gold); border: 2px solid var(--cream); cursor: pointer;
 }
 .light-fader-range:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
-#stage-light-level-val {
-  min-width: 30px; text-align: right;
-  font-size: 9px; letter-spacing: .06em; color: rgba(253, 251, 247, .78);
-}
 
 /* ============ HUD ============ */
 #hud {
@@ -361,7 +345,7 @@ html.stage-live .nav-btn {
 #vibe.max #vibe-fill { animation: vibeFlash .5s linear infinite; }
 @keyframes vibeFlash { 50% { filter: brightness(1.7); } }
 
-.hud-right { display: flex; align-items: flex-start; gap: 8px; position: relative; }
+.hud-right { display: flex; align-items: center; gap: 8px; position: relative; }
 .hud-nav-links { display: flex; align-items: center; gap: 8px; }
 #menu-btn { display: none; }
 .nav-btn {
@@ -1385,11 +1369,6 @@ html.mascot-editor-open #toast {
   }
   #zoom-controls:active, #zoom-controls:focus-within { opacity: .9; }
   #zoom-controls button { width: 32px; height: 32px; font-size: 18px; }
-  .sound-light-stack { gap: 5px; }
-  .light-fader { min-height: 30px; padding: 3px 8px 3px 4px; gap: 6px; }
-  .light-fader-icon { width: 18px; height: 18px; flex-basis: 18px; font-size: 10px; }
-  .light-fader-range { width: 68px; }
-  #stage-light-level-val { min-width: 26px; font-size: 8px; }
   #loop-pedal {
     right: calc(max(14px, env(safe-area-inset-right)) + 88px);
     bottom: max(18px, env(safe-area-inset-bottom));

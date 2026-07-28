@@ -5836,7 +5836,7 @@ window.addEventListener('av2:modal', (event) => {
 
 document.addEventListener('pointerdown', (event) => {
   if (!soundMixer || soundMixer.hidden) return;
-  if (event.target.closest('.sound-light-stack')) return;
+  if (event.target.closest('.sound-wrap')) return;
   closeSoundMixer();
 });
 
