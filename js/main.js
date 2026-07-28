@@ -1994,6 +1994,7 @@ const instrumentView = {
   transition: null,
   refit: null,
   home: null,
+  offerPriceChipOnIdle: null,
 };
 
 function instrumentViewCameraPoint(kind, preset) {
@@ -2681,6 +2682,7 @@ function finishInstrumentReturn() {
   // when that happens, so restoring free movement must also restore its home UI.
   releaseMoveJoystick();
   const home = instrumentView.home;
+  const offerPriceChipKind = instrumentView.offerPriceChipOnIdle;
   if (instrumentView.phase === 'returning') {
     resetMascotPose();
     mascot.group.position.y = 0;
@@ -2701,10 +2703,12 @@ function finishInstrumentReturn() {
   instrumentView.transition = null;
   instrumentView.refit = null;
   instrumentView.home = null;
+  instrumentView.offerPriceChipOnIdle = null;
   setInstrumentViewPhase('idle');
+  if (offerPriceChipKind) flushPendingPriceChip(offerPriceChipKind);
 }
 
-function leaveInstrumentView({ immediate = false } = {}) {
+function leaveInstrumentView({ immediate = false, offerPriceChip = true } = {}) {
   if (instrumentView.phase === 'idle') return;
   // Reset without a pointer id so a captured/lost iOS touch cannot leave the
   // floating joystick visible after returning from an instrument.
@@ -2722,9 +2726,14 @@ function leaveInstrumentView({ immediate = false } = {}) {
     instrumentView.transition = null;
     instrumentView.refit = null;
     instrumentView.home = null;
+    instrumentView.offerPriceChipOnIdle = null;
     setInstrumentViewPhase('idle');
     return;
   }
+  const shouldOfferPriceChip = offerPriceChip
+    && leavingKind
+    && ['entering', 'focused', 'returning'].includes(instrumentView.phase);
+  instrumentView.offerPriceChipOnIdle = shouldOfferPriceChip ? leavingKind : null;
   if (instrumentView.phase === 'returning') {
     if (immediate) {
       resetMascotPose();
@@ -2738,7 +2747,10 @@ function leaveInstrumentView({ immediate = false } = {}) {
     resetMascotPose();
     mascot.group.position.y = 0;
     controls.enabled = true;
+    const offerKind = instrumentView.offerPriceChipOnIdle;
+    instrumentView.offerPriceChipOnIdle = null;
     setInstrumentViewPhase('idle');
+    if (offerKind) flushPendingPriceChip(offerKind);
     return;
   }
   if (immediate) {
@@ -2808,7 +2820,7 @@ function requestInstrumentView(kind) {
   const preset = INSTRUMENT_VIEW_PRESETS[kind];
   if (!preset || mascotMove.fall || flyT >= 0) return;
   if (instrumentView.kind === kind && ['approaching', 'entering', 'focused'].includes(instrumentView.phase)) return;
-  if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
+  if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true, offerPriceChip: false });
   setDancing(false);
   setInstrumentViewPhase('approaching', kind);
   mascotMove.keys.clear();
@@ -2954,7 +2966,7 @@ function setMascotDestination(point) {
 function beginMascotFall(direction) {
   if (mascotMove.fall) return;
   setDancing(false);
-  leaveInstrumentView({ immediate: true });
+  leaveInstrumentView({ immediate: true, offerPriceChip: false });
   mascotMove.destination = null;
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
@@ -4144,11 +4156,13 @@ const PRICE_SLIDES = [
   { kind: 'piano', title: 'Уроки фортепіано', anchor: 'piano' },
 ];
 const shownPriceChips = new Set();
+const pendingPriceChips = new Set();
 
 function chipFor(kind, { force = false } = {}) {
   if (ui.modalOpen) return;
   if (!force && shownPriceChips.has(kind)) return;
   shownPriceChips.add(kind);
+  pendingPriceChips.delete(kind);
   const index = Math.max(0, PRICE_SLIDES.findIndex((slide) => slide.kind === kind));
   const slide = PRICE_SLIDES[index];
   const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind, { force: true });
@@ -4159,6 +4173,17 @@ function chipFor(kind, { force = false } = {}) {
     () => ui.open('pricing', slide.anchor),
     { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
   );
+}
+
+function queuePriceChip(kind) {
+  if (!kind || shownPriceChips.has(kind)) return;
+  pendingPriceChips.add(kind);
+}
+
+function flushPendingPriceChip(kind) {
+  if (!kind || !pendingPriceChips.has(kind) || ui.modalOpen) return;
+  pendingPriceChips.delete(kind);
+  chipFor(kind);
 }
 
 // ---- multi-instrument loop pedal ----
@@ -4253,7 +4278,7 @@ function runMusicalVisual(event, feedback) {
   if (kind !== 'mic') hideVocalPad();
   if (kind === 'mic' && event.showPad !== false) showVocalPad();
   addVibe(event.vibe ?? ({ drums: 4, piano: 3.5, guitar: 5, mic: 4 }[kind] || 3));
-  if (event.showPrice !== false) chipFor(kind);
+  if (event.showPrice !== false) queuePriceChip(kind);
 }
 
 function playMusicalEvent(event, { record = true, at = null, feedback = true } = {}) {
@@ -5450,7 +5475,7 @@ function frameMascotForCustomize() {
 }
 
 function beginMascotEditor() {
-  if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true });
+  if (instrumentView.phase !== 'idle') leaveInstrumentView({ immediate: true, offerPriceChip: false });
   if (mascotMove.fall) respawnMascot();
   setDancing(false);
   resetMascotPose();

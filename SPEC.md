@@ -144,7 +144,7 @@ These items are planned, but they are not blockers for the current framing / pos
 
 1. **Reliable key surface:** piano-local hit plane, dead-gap removal, black-key priority, captured pointers, held key state, ordered glissando, and robust multi-finger chords.
 2. **Gesture ownership:** explicit key-versus-camera start zones, horizontal glissando hysteresis, vertical orbit after `12 px`, pinch takeover after `9 px`, and loop-pedal + key multitouch.
-3. **Performance feedback:** one piano-note event driving audio, key travel, glow, note-following hands, VIBE, price chips, haptics, and loop capture; at least `16` voices and click-free same-pitch replacement.
+3. **Performance feedback:** one piano-note event driving audio, key travel, glow, note-following hands, VIBE, haptics, and loop capture; at least `16` voices and click-free same-pitch replacement. First play queues a once-per-instrument price chip shown after leaving focus.
 4. **Discoverability and access:** first-focus hints (`Торкайся клавіш — можна кількома пальцями` / `Клікай клавіші або грай 1–8`) and an accessible DOM `#piano-pad` strip for `C4–C5`.
 5. **Expressive controls:** sustain pedal, full two-octave computer-keyboard mapping, MIDI input, velocity-sensitive touch / pen input, and selectable octave.
 6. **Learning layer:** optional guided phrases, hand-separated exercises, metronome, and note-name overlays. These may read `piano-notes.json`, but focus itself remains silent.
@@ -196,7 +196,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - Vary excitation, damping, brightness, and stereo position by string and stroke. Add shared acoustic-body resonance; do not replay one byte-identical buffer for every occurrence of a pitch.
 - Progressively pre-warm common guitar pitches during the approach / camera transition without stalling the animation. No synthesis-table generation runs inside the pointer stroke handler.
 - Optional haptic feedback fires once per completed stroke. It scales gently with velocity and never fires per string.
-- Guitar price chips follow normal instrument-play behavior.
+- Guitar price chips follow normal instrument behavior: queued on first play, shown after leaving focus.
 
 #### Later guitar enhancements
 
@@ -271,7 +271,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Sound mixer | Per-instrument faders + master mute (speaker button) |
 | Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
-| Chip | Once-per-instrument price teaser carousel → opens pricing |
+| Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play, shown after leaving that instrument’s focus (not during play). Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
 
 ### Scene style
@@ -453,7 +453,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - At `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, the complete keybed and both hands remain inside the measured safe rectangle with at least `16 px` of visual margin.
 - The projected keybed occupies `76–86%` of safe width on desktop / landscape and `84–92%` on phone portrait. Black / white key relationships and the white-key front edge remain readable.
 - The first stable piano-focused frame exactly matches the camera transition endpoint. Re-enabling OrbitControls does not snap, rotate, zoom, or shift the target.
-- HUD, loop pedal, zoom controls, safe-area insets, and ✕ do not cover the keybed or either hand. Opening a VIBE toast or price chip does not make the play area unusable.
+- HUD, loop pedal, zoom controls, safe-area insets, and ✕ do not cover the keybed or either hand. Opening a VIBE toast does not make the play area unusable. Price chips appear only after leaving focus, so they never cover the keybed during play.
 - The seated pose remains believable at the mascot height / build extremes: pelvis on the bench, feet near the floor, hands over separate keyboard regions, relaxed shoulders, and no visible body / furniture intersections.
 - Entering focus blends cleanly from the preceding walk / idle pose. Ten consecutive piano focus → ✕ cycles produce no transform drift, stuck seated limbs, or return-position regression.
 - Resize, orientation, and `visualViewport` changes during entry update the transition destination; the focused frame never flashes through an obsolete preset or teleports between compositions.
