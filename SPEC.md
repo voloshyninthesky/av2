@@ -300,7 +300,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v1`); mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
-| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v1`, default `67`) at the top, then per-instrument volume faders + master mute |
+| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v1`, default `88`) at the top, then per-instrument volume faders + master mute |
 | Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
@@ -313,7 +313,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 - Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on iPhone / iPad and Android. It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence. Desktop AUTO is full quality.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
-- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v1` (default `67`) and stays independent of Glamour / Pixel / Auto. Instrument volumes and master mute remain in the same panel below the light fader.
+- A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v1` (default `88`) and stays independent of Glamour / Pixel / Auto. Instrument volumes and master mute remain in the same panel below the light fader.
 
 ### Pricing mixer
 

@@ -17,7 +17,7 @@ const QUALITY_PREFERENCE_KEY = 'av2.quality.v1';
 const LIGHT_LEVEL_KEY = 'av2.lights.v1';
 const LIGHT_LEVEL_MIN = 0;
 const LIGHT_LEVEL_MAX = 130;
-const LIGHT_LEVEL_DEFAULT = 67;
+const LIGHT_LEVEL_DEFAULT = 88;
 function readStoredLightLevel() {
   try {
     const raw = localStorage.getItem(LIGHT_LEVEL_KEY);
