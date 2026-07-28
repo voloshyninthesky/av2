@@ -54,28 +54,33 @@ window.addEventListener('av2:modal', (event) => {
 syncQualityPreferenceUi();
 const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
 const isAndroid = /Android/i.test(navigator.userAgent || '');
+// iPadOS may present itself as macOS, so use touch capability as a fallback.
+const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent || '')
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const deviceMemory = Number(navigator.deviceMemory) || null;
 const hardwareConcurrency = Number(navigator.hardwareConcurrency) || null;
 const isMobileGameMode = () => window.innerWidth <= 720 || coarsePointer.matches;
 const hasForcedQuality = forcedQuality === 'low' || forcedQuality === 'high';
-const autoAndroidQuality = isAndroid && !hasForcedQuality && navigator.connection?.saveData !== true;
-// Android reports intentionally coarse CPU/RAM values, so never use them as a
-// proxy for GPU power. Unknown Android devices begin without effects, then earn
-// full quality by sustaining a representative two-stage render probe.
+const autoMobileQuality = (isAndroid || isAppleMobile)
+  && !hasForcedQuality
+  && navigator.connection?.saveData !== true;
+// Mobile browser CPU/RAM hints are intentionally coarse or absent, so never use
+// them as a proxy for GPU power. Phones begin without expensive effects, then
+// earn full quality by sustaining a representative two-stage render probe.
 let lowMobileQuality = forcedQuality === 'low'
-  || (!hasForcedQuality && (navigator.connection?.saveData === true || autoAndroidQuality));
-const androidQualityProbe = {
-  active: autoAndroidQuality,
-  phase: autoAndroidQuality ? 'medium' : 'complete',
+  || (!hasForcedQuality && (navigator.connection?.saveData === true || autoMobileQuality));
+const mobileQualityProbe = {
+  active: autoMobileQuality,
+  phase: autoMobileQuality ? 'medium' : 'complete',
   startedAt: 0,
   lastFrameAt: 0,
   samples: [],
   p90: null,
 };
-const canUpgradeAndroidQuality = autoAndroidQuality;
+const canUpgradeMobileQuality = autoMobileQuality;
 const isLowEndMobileGameMode = () => lowMobileQuality;
-const isAndroidQualityProbe = () => androidQualityProbe.active;
-const usesLowMobileSceneBudget = () => isLowEndMobileGameMode() && !isAndroidQualityProbe();
+const isMobileQualityProbe = () => mobileQualityProbe.active;
+const usesLowMobileSceneBudget = () => isLowEndMobileGameMode() && !isMobileQualityProbe();
 const MOBILE_MAX_PIXEL_RATIO = 1.5;
 const LOW_END_MOBILE_MAX_PIXEL_RATIO = 1;
 const DESKTOP_MAX_PIXEL_RATIO = 2;
@@ -84,12 +89,12 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
 const adaptiveQualityScene = { bulbLights: [], lowPrioritySpots: [], shadowSpots: [], dust: null };
-const qualityTierLabel = () => isAndroidQualityProbe()
-  ? 'android-probe'
+const qualityTierLabel = () => isMobileQualityProbe()
+  ? 'mobile-probe'
   : (isLowEndMobileGameMode() ? 'low-mobile' : 'full');
 document.documentElement.dataset.qualityTier = qualityTierLabel();
 document.documentElement.dataset.postprocessing = 'off';
-document.documentElement.dataset.frameRateCap = isAndroidQualityProbe()
+document.documentElement.dataset.frameRateCap = isMobileQualityProbe()
   ? 'probe'
   : (isLowEndMobileGameMode() ? '30' : 'native');
 document.documentElement.classList.toggle('low-mobile', isLowEndMobileGameMode());
@@ -467,7 +472,7 @@ function buildStage() {
     bulbs.setMatrixAt(i, bulbMatrix.makeTranslation(x, 0.06, 3.9));
     // Bulbs retain their emissive look. The five tiny point lights, however,
     // are evaluated by every PBR fragment and are not perceptible on a phone.
-    if (i % 2 === 0 && (!lowEndLighting || canUpgradeAndroidQuality)) {
+    if (i % 2 === 0 && (!lowEndLighting || canUpgradeMobileQuality)) {
       const pl = new THREE.PointLight(0xffc878, 16, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
@@ -1030,7 +1035,7 @@ function buildLights() {
     // Keep every visible fixture and beam but omit the two least noticeable
     // real light sources on the low tier. This reduces per-fragment PBR work
     // without making the truss look incomplete.
-    if (!isLowEndMobileGameMode() || !s.lowPriority || canUpgradeAndroidQuality) {
+    if (!isLowEndMobileGameMode() || !s.lowPriority || canUpgradeMobileQuality) {
       const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.5, 0.65, 1.6);
       spot.position.set(s.x, y, z);
       spot.target.position.copy(s.target);
@@ -4206,24 +4211,24 @@ function disablePostprocessing() {
 
 function syncQualityDomState() {
   document.documentElement.dataset.qualityTier = qualityTierLabel();
-  document.documentElement.dataset.frameRateCap = isAndroidQualityProbe()
+  document.documentElement.dataset.frameRateCap = isMobileQualityProbe()
     ? 'probe'
     : (isLowEndMobileGameMode() ? '30' : 'native');
   document.documentElement.classList.toggle('low-mobile', isLowEndMobileGameMode());
   document.documentElement.dataset.shadows = renderer.shadowMap.enabled ? 'on' : 'off';
 }
 
-function beginAndroidProbeWindow(phase, frameTime) {
-  androidQualityProbe.phase = phase;
-  androidQualityProbe.startedAt = frameTime;
-  androidQualityProbe.lastFrameAt = frameTime;
-  androidQualityProbe.samples.length = 0;
+function beginMobileProbeWindow(phase, frameTime) {
+  mobileQualityProbe.phase = phase;
+  mobileQualityProbe.startedAt = frameTime;
+  mobileQualityProbe.lastFrameAt = frameTime;
+  mobileQualityProbe.samples.length = 0;
 }
 
-function settleAndroidQuality(low, p90) {
-  androidQualityProbe.active = false;
-  androidQualityProbe.phase = low ? 'low' : 'full';
-  androidQualityProbe.p90 = p90;
+function settleMobileQuality(low, p90) {
+  mobileQualityProbe.active = false;
+  mobileQualityProbe.phase = low ? 'low' : 'full';
+  mobileQualityProbe.p90 = p90;
   lowMobileQuality = low;
   if (low) disablePostprocessing();
   applyLowMobileSceneBudget();
@@ -4231,40 +4236,40 @@ function settleAndroidQuality(low, p90) {
   syncQualityDomState();
 }
 
-function promoteAndroidQuality(frameTime) {
+function promoteMobileQuality(frameTime) {
   lowMobileQuality = false;
   applyLowMobileSceneBudget();
   syncRendererToWindow();
   syncQualityDomState();
-  androidQualityProbe.phase = 'promoting';
+  mobileQualityProbe.phase = 'promoting';
   void initPostprocessing().finally(() => {
-    if (!androidQualityProbe.active || androidQualityProbe.phase !== 'promoting') return;
-    beginAndroidProbeWindow('full', performance.now());
+    if (!mobileQualityProbe.active || mobileQualityProbe.phase !== 'promoting') return;
+    beginMobileProbeWindow('full', performance.now());
   });
 }
 
-function updateAndroidQualityProbe(frameTime) {
-  if (!isAndroidQualityProbe() || androidQualityProbe.phase === 'promoting') return;
-  if (!androidQualityProbe.startedAt) {
-    beginAndroidProbeWindow(androidQualityProbe.phase, frameTime);
+function updateMobileQualityProbe(frameTime) {
+  if (!isMobileQualityProbe() || mobileQualityProbe.phase === 'promoting') return;
+  if (!mobileQualityProbe.startedAt) {
+    beginMobileProbeWindow(mobileQualityProbe.phase, frameTime);
     return;
   }
-  const elapsed = frameTime - androidQualityProbe.startedAt;
-  const delta = frameTime - androidQualityProbe.lastFrameAt;
-  androidQualityProbe.lastFrameAt = frameTime;
+  const elapsed = frameTime - mobileQualityProbe.startedAt;
+  const delta = frameTime - mobileQualityProbe.lastFrameAt;
+  mobileQualityProbe.lastFrameAt = frameTime;
   // Ignore shader/texture warm-up, then take one second of actual frame pacing.
-  if (elapsed > 350 && delta > 0 && delta < 100) androidQualityProbe.samples.push(delta);
-  if (elapsed < 1350 || !androidQualityProbe.samples.length) return;
-  const sorted = [...androidQualityProbe.samples].sort((a, b) => a - b);
+  if (elapsed > 350 && delta > 0 && delta < 100) mobileQualityProbe.samples.push(delta);
+  if (elapsed < 1350 || !mobileQualityProbe.samples.length) return;
+  const sorted = [...mobileQualityProbe.samples].sort((a, b) => a - b);
   const p90 = sorted[Math.floor((sorted.length - 1) * 0.9)];
-  if (androidQualityProbe.phase === 'medium') {
-    if (p90 <= 19) promoteAndroidQuality(frameTime);
-    else settleAndroidQuality(true, p90);
+  if (mobileQualityProbe.phase === 'medium') {
+    if (p90 <= 19) promoteMobileQuality(frameTime);
+    else settleMobileQuality(true, p90);
     return;
   }
   // Full effects need to remain close to display cadence. Otherwise the app
   // immediately returns to the stable 30 FPS low budget.
-  settleAndroidQuality(p90 > 22, p90);
+  settleMobileQuality(p90 > 22, p90);
 }
 window.__qualityDebug = () => {
   const lightCounts = { point: 0, spot: 0, shadowCasting: 0 };
@@ -4275,6 +4280,7 @@ window.__qualityDebug = () => {
   });
   return {
     mobile: isMobileGameMode(),
+    appleMobile: isAppleMobile,
     tier: qualityTierLabel(),
     deviceMemory,
     hardwareConcurrency,
@@ -4282,8 +4288,8 @@ window.__qualityDebug = () => {
     postprocessing: Boolean(composer),
     bloom: Boolean(bloomPass),
     shadows: renderer.shadowMap.enabled,
-    frameRateCap: isAndroidQualityProbe() ? 'probe' : (isLowEndMobileGameMode() ? 30 : null),
-    androidProbe: { phase: androidQualityProbe.phase, p90: androidQualityProbe.p90 },
+    frameRateCap: isMobileQualityProbe() ? 'probe' : (isLowEndMobileGameMode() ? 30 : null),
+    mobileProbe: { phase: mobileQualityProbe.phase, p90: mobileQualityProbe.p90 },
     lightCounts,
     slidesLoaded: Math.max(0, ss.texs.length - 1),
   };
@@ -4490,7 +4496,7 @@ let firstFrame = true;
 let lastRenderedFrameAt = -Infinity;
 
 function renderIntervalMs() {
-  if (isAndroidQualityProbe()) return 0;
+  if (isMobileQualityProbe()) return 0;
   if (!started) return 1000 / 10;
   if (ui.modalOpen) return 1000 / 15;
   if (isLowEndMobileGameMode()) return 1000 / 30;
@@ -4596,7 +4602,7 @@ function animate(frameTime = performance.now()) {
   if (composer) composer.render();
   else renderer.render(scene, camera);
 
-  updateAndroidQualityProbe(frameTime);
+  updateMobileQualityProbe(frameTime);
 
   if (firstFrame) {
     firstFrame = false;
