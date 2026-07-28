@@ -2028,6 +2028,7 @@ function syncInstrumentExposure() {
 }
 
 function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
+  const previousPhase = instrumentView.phase;
   instrumentView.phase = phase;
   instrumentView.kind = phase === 'idle' ? null : kind;
   document.documentElement.dataset.instrumentView = phase;
@@ -2036,6 +2037,7 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
   syncMobileInstrumentChrome();
   syncInstrumentExposure();
+  if (phase === 'focused' && kind) clearKeyboardJamChipTimer(kind);
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);
@@ -2047,14 +2049,22 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
     // Prefer finger strum over page/orbit pinch-zoom while at the guitar.
     controls.enableZoom = false;
     document.documentElement.classList.add('guitar-focused');
-  } else if (phase !== 'focused') {
+  } else if (previousPhase === 'focused' && phase !== 'focused') {
+    // Leaving focus: clear performance holds. Keep keyboard jam alive while
+    // merely approaching / entering from idle so multi-instrument play continues.
     hideVocalPad();
     hideChordPad();
     releaseAllHeldPianoNotes();
+    releaseKeyboardVocal();
     controls.enableZoom = true;
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
     clearGuitarInteractionState();
     audio.muteGuitar();
+  } else if (phase !== 'focused') {
+    hideVocalPad();
+    hideChordPad();
+    controls.enableZoom = true;
+    document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
   }
 }
 
@@ -3226,9 +3236,11 @@ function updateMascot(dt) {
     return;
   }
   const direction = new THREE.Vector3(
-    (mascotMove.keys.has('ArrowRight') ? 1 : 0) - (mascotMove.keys.has('ArrowLeft') ? 1 : 0),
+    ((mascotMove.keys.has('ArrowRight') || mascotMove.keys.has('KeyD')) ? 1 : 0)
+      - ((mascotMove.keys.has('ArrowLeft') || mascotMove.keys.has('KeyA')) ? 1 : 0),
     0,
-    (mascotMove.keys.has('ArrowDown') ? 1 : 0) - (mascotMove.keys.has('ArrowUp') ? 1 : 0),
+    ((mascotMove.keys.has('ArrowDown') || mascotMove.keys.has('KeyS')) ? 1 : 0)
+      - ((mascotMove.keys.has('ArrowUp') || mascotMove.keys.has('KeyW')) ? 1 : 0),
   );
 
   if (joystickInput.lengthSq() > 0) {
@@ -3416,6 +3428,11 @@ function canPlayInstrument(kind) {
   return instrumentView.phase === 'focused' && instrumentView.kind === kind;
 }
 
+/** Desktop keyboard jam: sound without focus. Mobile keeps focus-gated pads only. */
+function canKeyboardJamPlay() {
+  return started && !ui.modalOpen && !isMobileGameMode();
+}
+
 // Six-string voicings, low E → high E. null is a muted string.
 const GUITAR_OPEN_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
 const GUITAR_CHORDS = {
@@ -3427,18 +3444,21 @@ const GUITAR_CHORDS = {
   F: [1, 3, 3, 2, 1, 1],
 };
 const GUITAR_OPEN_SHAPE = [0, 0, 0, 0, 0, 0];
+// Disjoint from WASD walk, approach (E), loop (L), drums, piano, vocal.
 const GUITAR_KEY_CHORDS = {
-  KeyE: 'Em',
-  KeyA: 'Am',
-  KeyC: 'C',
-  KeyD: 'D',
-  KeyG: 'G',
-  KeyF: 'F',
+  KeyQ: 'Em',
+  KeyR: 'Am',
+  KeyT: 'C',
+  KeyY: 'D',
+  KeyU: 'G',
+  KeyI: 'F',
 };
 let heldGuitarChord = null;
 let heldGuitarChordPointer = null;
 let latchedGuitarChord = null;
 let keyboardGuitarChord = null;
+let keyboardVocal = null;
+let keyboardVocalPulseTimer = null;
 let guitarStrokeMotion = 0;
 let guitarStrokeDirection = 1;
 
@@ -3483,8 +3503,9 @@ function fireGuitarStrum(
   stringIndices = null,
   offsetByString = null,
   feedback = true,
+  { focusRequired = true } = {},
 ) {
-  if (!isGuitarPlayFocus()) return false;
+  if (focusRequired && !isGuitarPlayFocus()) return false;
   const shape = currentGuitarShape();
   const order = stringIndices || (
     direction === 'treble-to-bass'
@@ -4183,7 +4204,49 @@ function queuePriceChip(kind) {
 function flushPendingPriceChip(kind) {
   if (!kind || !pendingPriceChips.has(kind) || ui.modalOpen) return;
   pendingPriceChips.delete(kind);
+  clearKeyboardJamChipTimer(kind);
   chipFor(kind);
+}
+
+const KEYBOARD_CHIP_SILENCE_MS = 2000;
+const keyboardJamChipTimers = new Map();
+
+function clearKeyboardJamChipTimer(kind) {
+  if (!kind) return;
+  const timer = keyboardJamChipTimers.get(kind);
+  if (timer) clearTimeout(timer);
+  keyboardJamChipTimers.delete(kind);
+}
+
+function hasActiveKeyboardJamSound(kind) {
+  if (kind === 'piano') return keyboardPianoNotes.size > 0;
+  if (kind === 'guitar') return Boolean(keyboardGuitarChord);
+  if (kind === 'mic') return Boolean(keyboardVocal);
+  return false;
+}
+
+function scheduleKeyboardJamChip(kind) {
+  if (!kind || !pendingPriceChips.has(kind) || shownPriceChips.has(kind)) return;
+  clearKeyboardJamChipTimer(kind);
+  keyboardJamChipTimers.set(kind, setTimeout(() => {
+    keyboardJamChipTimers.delete(kind);
+    if (hasActiveKeyboardJamSound(kind)) {
+      scheduleKeyboardJamChip(kind);
+      return;
+    }
+    if (instrumentView.phase === 'focused' && instrumentView.kind === kind) return;
+    flushPendingPriceChip(kind);
+  }, KEYBOARD_CHIP_SILENCE_MS));
+}
+
+/** Keyboard play without matching focus → chip after ~2s silence (SPEC). */
+function noteKeyboardJamActivity(kind) {
+  if (!kind || !pendingPriceChips.has(kind)) return;
+  if (instrumentView.phase === 'focused' && instrumentView.kind === kind) {
+    clearKeyboardJamChipTimer(kind);
+    return;
+  }
+  scheduleKeyboardJamChip(kind);
 }
 
 // ---- multi-instrument loop pedal ----
@@ -4596,12 +4659,19 @@ function beginHeldLoopCapture(freq, vowel) {
 }
 
 function captureHeldVocalIntoLoop() {
-  if (heldLoopCapture || !heldVocal || !heldVocalButton || heldVocalPointer === null) return;
-  heldLoopCapture = beginHeldLoopCapture(
-    Number(heldVocalButton.dataset.vocalFreq),
-    Number(heldVocalButton.dataset.vocalVowel),
-  );
-  stampHeldLoopCaptureDuration();
+  if (heldLoopCapture) return;
+  if (heldVocal && heldVocalButton && heldVocalPointer !== null) {
+    heldLoopCapture = beginHeldLoopCapture(
+      Number(heldVocalButton.dataset.vocalFreq),
+      Number(heldVocalButton.dataset.vocalVowel),
+    );
+    stampHeldLoopCaptureDuration();
+    return;
+  }
+  if (keyboardVocal) {
+    heldLoopCapture = beginHeldLoopCapture(keyboardVocal.freq, keyboardVocal.vowel);
+    stampHeldLoopCaptureDuration();
+  }
 }
 
 function deferHeldLoopEventPlayback(event) {
@@ -4783,6 +4853,7 @@ for (const button of vocalButtons) {
   button.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     releaseHeldVocal();
+    releaseKeyboardVocal();
     const freq = Number(button.dataset.vocalFreq);
     const vowel = Number(button.dataset.vocalVowel);
     audio.init();
@@ -4947,29 +5018,36 @@ function isEditableHotkeyTarget(target) {
   return Boolean(target?.closest?.('button, a, input, textarea, select, [contenteditable="true"], [role="button"]'));
 }
 
+const WALK_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
+// Disjoint from WASD walk / E approach / L loop / guitar / vocal / piano.
+const DRUM_KEYS = { KeyZ: 'kick', KeyX: 'snare', KeyC: 'hihat', KeyV: 'tom2', KeyB: 'crash' };
+const VOCAL_KEYS = {
+  KeyN: { freq: 261.63, vowel: 0 },
+  KeyM: { freq: 293.66, vowel: 1 },
+  Comma: { freq: 329.63, vowel: 2 },
+  Period: { freq: 349.23, vowel: 0 },
+  Slash: { freq: 392.00, vowel: 1 },
+};
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     finishOnboard();
   }
   if (!started || ui.modalOpen) return;
   if (isEditableHotkeyTarget(e.target)) return;
-  const guitarChord = GUITAR_KEY_CHORDS[e.code];
-  if (guitarChord && isGuitarPlayFocus()) {
-    e.preventDefault();
-    if (!e.repeat) {
-      keyboardGuitarChord = guitarChord;
-      syncChordPadHeld();
-    }
-    return;
-  }
-  if (e.code.startsWith('Arrow')) {
+
+  if (WALK_KEYS.has(e.code)) {
     e.preventDefault();
     if (instrumentView.phase !== 'idle') return;
     mascotMove.keys.add(e.code);
+    return;
   }
+
   if (e.code === 'KeyE' && !e.repeat && instrumentView.phase === 'idle') {
     playNearestInstrument();
+    return;
   }
+
   if (e.code === 'KeyL' && !e.repeat) {
     e.preventDefault();
     if (!loopUnlocked) {
@@ -4978,39 +5056,79 @@ window.addEventListener('keydown', (e) => {
     }
     if (e.shiftKey && loop.state !== 'empty') clearRecordedLoop();
     else toggleLoopRecording();
+    return;
+  }
+
+  if (!canKeyboardJamPlay()) return;
+
+  const guitarChord = GUITAR_KEY_CHORDS[e.code];
+  if (guitarChord) {
+    e.preventDefault();
+    if (!e.repeat) {
+      keyboardGuitarChord = guitarChord;
+      syncChordPadHeld();
+      noteKeyboardJamActivity('guitar');
+    }
+    return;
+  }
+
+  if (e.code in DRUM_KEYS) {
+    if (e.repeat) return;
+    e.preventDefault();
+    playMusicalEvent({ type: 'drum', part: DRUM_KEYS[e.code], vel: 1, vibe: 4 });
+    noteKeyboardJamActivity('drums');
+    return;
+  }
+
+  if (/^Digit[1-8]$/.test(e.code)) {
+    if (e.repeat || keyboardPianoNotes.has(e.code)) return;
+    e.preventDefault();
+    const idx = Number(e.code.slice(5)) - 1;
+    const key = whiteKeys[idx];
+    if (!key) return;
+    keyboardPianoNotes.set(e.code, beginHeldPianoNote(key));
+    noteKeyboardJamActivity('piano');
+    return;
+  }
+
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (e.repeat) return;
+    fireGuitarStrum(
+      1,
+      e.shiftKey ? 'treble-to-bass' : 'bass-to-treble',
+      null,
+      null,
+      true,
+      { focusRequired: false },
+    );
+    noteKeyboardJamActivity('guitar');
+    return;
+  }
+
+  if (e.code in VOCAL_KEYS) {
+    e.preventDefault();
+    if (e.repeat || keyboardVocal?.code === e.code) return;
+    beginKeyboardVocal(e.code);
   }
 });
 
 window.addEventListener('keyup', (e) => {
-  if (e.code.startsWith('Arrow')) mascotMove.keys.delete(e.code);
+  if (WALK_KEYS.has(e.code)) mascotMove.keys.delete(e.code);
   if (keyboardPianoNotes.has(e.code)) {
     const heldPiano = keyboardPianoNotes.get(e.code);
     releaseHeldPianoNote(heldPiano);
     keyboardPianoNotes.delete(e.code);
+    noteKeyboardJamActivity('piano');
   }
   const guitarChord = GUITAR_KEY_CHORDS[e.code];
   if (guitarChord && keyboardGuitarChord === guitarChord) {
     keyboardGuitarChord = null;
     syncChordPadHeld();
+    noteKeyboardJamActivity('guitar');
   }
-});
-
-// ---- keyboard ----
-const DRUM_KEYS = { KeyA: 'kick', KeyS: 'snare', KeyD: 'hihat', KeyF: 'tom2', KeyG: 'crash' };
-window.addEventListener('keydown', (e) => {
-  if (!started || ui.modalOpen || e.repeat || isEditableHotkeyTarget(e.target)) return;
-  if (e.code in DRUM_KEYS && canPlayInstrument('drums')) {
-    const part = DRUM_KEYS[e.code];
-    playMusicalEvent({ type: 'drum', part, vel: 1, vibe: 4 });
-  } else if (/^Digit[1-8]$/.test(e.code) && canPlayInstrument('piano')) {
-    const idx = Number(e.code.slice(5)) - 1;
-    const key = whiteKeys[idx];
-    if (key) {
-      keyboardPianoNotes.set(e.code, beginHeldPianoNote(key));
-    }
-  } else if (e.code === 'Space' && isGuitarPlayFocus()) {
-    e.preventDefault();
-    fireGuitarStrum(1, e.shiftKey ? 'treble-to-bass' : 'bass-to-treble');
+  if (keyboardVocal?.code === e.code) {
+    releaseKeyboardVocal();
   }
 });
 
@@ -5022,11 +5140,57 @@ let muted = false;
 
 function silenceHeldVocal() {
   clearInterval(heldVocalPulseTimer);
+  heldVocalPulseTimer = null;
   finishHeldLoopCapture();
   audio.stopVocal(heldVocal);
   heldVocalButton?.classList.remove('playing');
   heldVocal = null;
   heldVocalButton = null;
+  heldVocalPointer = null;
+  releaseKeyboardVocal();
+}
+
+function releaseKeyboardVocal() {
+  if (!keyboardVocal && !keyboardVocalPulseTimer) return;
+  clearInterval(keyboardVocalPulseTimer);
+  keyboardVocalPulseTimer = null;
+  if (keyboardVocal) {
+    finishHeldLoopCapture();
+    audio.stopVocal(keyboardVocal.voice);
+    noteKeyboardJamActivity('mic');
+  }
+  keyboardVocal = null;
+}
+
+function beginKeyboardVocal(code) {
+  const note = VOCAL_KEYS[code];
+  if (!note || !canKeyboardJamPlay()) return false;
+  clearInterval(heldVocalPulseTimer);
+  heldVocalPulseTimer = null;
+  if (heldVocal) {
+    finishHeldLoopCapture();
+    audio.stopVocal(heldVocal);
+    heldVocalButton?.classList.remove('playing');
+    heldVocal = null;
+    heldVocalButton = null;
+    heldVocalPointer = null;
+  }
+  releaseKeyboardVocal();
+  audio.init();
+  audio.resume();
+  mic.sing();
+  const voice = audio.startVocal(note.freq, note.vowel);
+  heldLoopCapture = beginHeldLoopCapture(note.freq, note.vowel);
+  keyboardVocal = { code, freq: note.freq, vowel: note.vowel, voice };
+  addVibe(3);
+  queuePriceChip('mic');
+  noteKeyboardJamActivity('mic');
+  finishOnboard();
+  keyboardVocalPulseTimer = setInterval(() => {
+    mic.sing();
+    stampHeldLoopCaptureDuration();
+  }, 120);
+  return true;
 }
 
 function syncSoundMuteUi() {
@@ -5925,6 +6089,8 @@ function restoreAfterAudioContextRebuild(snapshot) {
       Number(heldVocalButton.dataset.vocalFreq),
       Number(heldVocalButton.dataset.vocalVowel),
     );
+  } else if (keyboardVocal) {
+    keyboardVocal.voice = audio.startVocal(keyboardVocal.freq, keyboardVocal.vowel);
   }
   resyncLoopPlayback();
 }
@@ -5949,6 +6115,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     audio.markForRecovery();
     releaseAllHeldPianoNotes();
+    releaseKeyboardVocal();
     clearGuitarInteractionState();
     audio.muteGuitar();
   }
@@ -5956,6 +6123,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('blur', () => {
   audio.markForRecovery();
   releaseAllHeldPianoNotes();
+  releaseKeyboardVocal();
   clearGuitarInteractionState();
   audio.muteGuitar();
 });
