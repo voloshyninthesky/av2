@@ -1168,7 +1168,6 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 }
 .mascot-tabs button:focus-visible,
 .outfit-choice:focus-visible,
-.preview-btn:focus-visible,
 .mascot-text-btn:focus-visible {
   outline: 3px solid var(--gold); outline-offset: 2px;
 }
@@ -1286,14 +1285,6 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   color: rgba(253, 251, 247, .72); font-size: 7px; letter-spacing: .12em;
   pointer-events: none;
 }
-.mascot-preview-actions { display: flex; gap: 8px; pointer-events: auto; }
-.preview-btn {
-  min-height: 44px; padding: 8px 12px; border: 1px solid rgba(253, 251, 247, .45);
-  border-radius: 999px; background: rgba(10, 6, 18, .72); color: var(--cream);
-  font: 700 8px/1.2 'Unbounded', sans-serif; letter-spacing: .04em; cursor: pointer;
-  backdrop-filter: blur(8px);
-}
-.preview-btn[aria-pressed="true"] { border-color: var(--gold); background: var(--purple); color: var(--cream); }
 html.mascot-editor-open #keys-hint,
 html.mascot-editor-open #drag-hint,
 html.mascot-editor-open #zoom-controls,
@@ -1497,7 +1488,6 @@ html.mascot-editor-open #toast {
   .mascot-text-btn { min-height: 38px; font-size: 7px; }
   .mascot-editor-footer .pill-btn { min-width: 116px; min-height: 46px; padding: 10px 14px; }
   .mascot-preview-hint { display: none; }
-  .preview-btn { min-height: 40px; padding: 7px 10px; font-size: 7px; }
 }
 
 @media (max-width: 900px) and (orientation: landscape), (max-height: 560px) and (min-aspect-ratio: 1/1) {

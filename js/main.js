@@ -3244,30 +3244,15 @@ for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
 
 function updateMascotEditorPreview(dt) {
   const relax = Math.min(1, dt * 10);
-  if (!mascotEditor.motion || prefersReducedMotion.matches) {
-    mascot.legL.rotation.x = THREE.MathUtils.lerp(mascot.legL.rotation.x, 0, relax);
-    mascot.legR.rotation.x = THREE.MathUtils.lerp(mascot.legR.rotation.x, 0, relax);
-    mascot.armL.rotation.x = THREE.MathUtils.lerp(mascot.armL.rotation.x, 0, relax);
-    mascot.armR.rotation.x = THREE.MathUtils.lerp(mascot.armR.rotation.x, 0, relax);
-    mascot.armL.rotation.z = THREE.MathUtils.lerp(mascot.armL.rotation.z, -0.12, relax);
-    mascot.armR.rotation.z = THREE.MathUtils.lerp(mascot.armR.rotation.z, 0.12, relax);
-    mascot.torso.rotation.z = THREE.MathUtils.lerp(mascot.torso.rotation.z, 0, relax);
-    mascot.head.rotation.z = THREE.MathUtils.lerp(mascot.head.rotation.z, 0, relax);
-    mascot.group.position.y = THREE.MathUtils.lerp(mascot.group.position.y, 0, relax);
-    return;
-  }
-  mascotEditor.motionT += dt;
-  const phase = mascotEditor.motionT * 6.5;
-  const stride = Math.sin(phase) * 0.42;
-  mascot.legL.rotation.x = stride;
-  mascot.legR.rotation.x = -stride;
-  mascot.armL.rotation.x = -stride * 0.72;
-  mascot.armR.rotation.x = stride * 0.72;
-  mascot.armL.rotation.z = -0.16;
-  mascot.armR.rotation.z = 0.16;
-  mascot.torso.rotation.z = Math.sin(phase) * 0.045;
-  mascot.head.rotation.z = -Math.sin(phase) * 0.032;
-  mascot.group.position.y = Math.abs(Math.sin(phase * 2)) * 0.035;
+  mascot.legL.rotation.x = THREE.MathUtils.lerp(mascot.legL.rotation.x, 0, relax);
+  mascot.legR.rotation.x = THREE.MathUtils.lerp(mascot.legR.rotation.x, 0, relax);
+  mascot.armL.rotation.x = THREE.MathUtils.lerp(mascot.armL.rotation.x, 0, relax);
+  mascot.armR.rotation.x = THREE.MathUtils.lerp(mascot.armR.rotation.x, 0, relax);
+  mascot.armL.rotation.z = THREE.MathUtils.lerp(mascot.armL.rotation.z, -0.12, relax);
+  mascot.armR.rotation.z = THREE.MathUtils.lerp(mascot.armR.rotation.z, 0.12, relax);
+  mascot.torso.rotation.z = THREE.MathUtils.lerp(mascot.torso.rotation.z, 0, relax);
+  mascot.head.rotation.z = THREE.MathUtils.lerp(mascot.head.rotation.z, 0, relax);
+  mascot.group.position.y = THREE.MathUtils.lerp(mascot.group.position.y, 0, relax);
 }
 
 function updateMascot(dt) {
@@ -5396,7 +5381,6 @@ const mascotHeightInput = document.getElementById('mascot-height');
 const mascotWidthInput = document.getElementById('mascot-width');
 const mascotCommitButton = document.getElementById('mascot-commit');
 const mascotUndoButton = document.getElementById('mascot-undo');
-const mascotMotionButton = document.getElementById('mascot-motion');
 
 const MASCOT_UI_NAMES = {
   hair: { long: 'ДОВГЕ', bob: 'БОБ', short: 'КОРОТКЕ', buzz: 'МІНІМУМ', tied: 'ЗІБРАНЕ' },
@@ -5435,8 +5419,6 @@ const mascotEditor = {
   openingYaw: 0,
   baseYaw: 0,
   previewAngle: 0,
-  motion: false,
-  motionT: 0,
   dragPointer: null,
   dragStartX: 0,
   dragStartAngle: 0,
@@ -5746,9 +5728,6 @@ function beginMascotEditor() {
   mascotEditor.undoConfig = null;
   mascotEditor.openingYaw = mascot.group.rotation.y;
   mascotEditor.previewAngle = 0;
-  mascotEditor.motion = false;
-  mascotEditor.motionT = 0;
-  if (mascotMotionButton) mascotMotionButton.setAttribute('aria-pressed', 'false');
   mascotEditor.viewDirection.copy(camera.position).sub(controls.target);
   mascotEditor.viewDirection.y = 0;
   if (mascotEditor.viewDirection.lengthSq() < 0.01) mascotEditor.viewDirection.set(0, 0, 1);
@@ -5772,7 +5751,6 @@ function finishMascotEditor(committed) {
   mascotEditor.refitFrame = 0;
   mascotEditor.active = false;
   document.documentElement.classList.remove('mascot-editor-open');
-  mascotEditor.motion = false;
   mascotEditor.dragPointer = null;
   resetMascotPose();
   mascot.group.rotation.y = mascotEditor.openingYaw;
@@ -5787,14 +5765,8 @@ function finishMascotEditor(committed) {
   syncMascotModal();
 }
 
-mascotMotionButton?.addEventListener('click', () => {
-  if (prefersReducedMotion.matches) return;
-  mascotEditor.motion = !mascotEditor.motion;
-  mascotEditor.motionT = 0;
-  mascotMotionButton.setAttribute('aria-pressed', mascotEditor.motion ? 'true' : 'false');
-});
 mascotPreviewZone?.addEventListener('pointerdown', (event) => {
-  if (!mascotEditor.active || event.target.closest('button')) return;
+  if (!mascotEditor.active) return;
   event.preventDefault();
   mascotEditor.dragPointer = event.pointerId;
   mascotEditor.dragStartX = event.clientX;
