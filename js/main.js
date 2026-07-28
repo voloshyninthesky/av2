@@ -1881,6 +1881,9 @@ function activateInstrumentView(kind) {
 }
 
 function finishInstrumentReturn() {
+  // The walk control is hidden while seated. Safari can lose its pointer-up
+  // when that happens, so restoring free movement must also restore its home UI.
+  releaseMoveJoystick();
   const home = instrumentView.home;
   if (instrumentView.phase === 'returning') {
     resetMascotPose();
@@ -1901,6 +1904,9 @@ function finishInstrumentReturn() {
 
 function leaveInstrumentView({ immediate = false } = {}) {
   if (instrumentView.phase === 'idle') return;
+  // Reset without a pointer id so a captured/lost iOS touch cannot leave the
+  // floating joystick visible after returning from an instrument.
+  releaseMoveJoystick();
   const leavingKind = instrumentView.kind;
   if (leavingKind === 'guitar') {
     clearGuitarInteractionState();
