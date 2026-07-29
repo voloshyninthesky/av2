@@ -16,20 +16,20 @@ const params = new URLSearchParams(location.search);
 const QUALITY_PREFERENCE_KEY = 'av2.quality.v2';
 const LIGHT_LEVEL_KEY = 'av2.lights.v2';
 const LIGHT_LEVEL_MIN = 0;
-const LIGHT_LEVEL_MAX = 130;
+const LIGHT_LEVEL_MAX = 100;
 const LIGHT_LEVEL_DEFAULT = 78;
+const LOW_QUALITY_LIGHT_LEVEL_DEFAULT = 100;
 function readStoredLightLevel() {
   try {
     const raw = localStorage.getItem(LIGHT_LEVEL_KEY);
-    if (raw == null || raw === '') return LIGHT_LEVEL_DEFAULT;
+    if (raw == null || raw === '') return null;
     const parsed = Number(raw);
     if (Number.isFinite(parsed)) {
       return Math.min(LIGHT_LEVEL_MAX, Math.max(LIGHT_LEVEL_MIN, Math.round(parsed)));
     }
   } catch (_) { /* storage is optional */ }
-  return LIGHT_LEVEL_DEFAULT;
+  return null;
 }
-let stageLightLevel = readStoredLightLevel();
 const QUALITY_OPTIONS = new Set(['auto', 'high', 'low']);
 let savedQuality = null;
 try { savedQuality = localStorage.getItem(QUALITY_PREFERENCE_KEY); } catch (_) { /* storage is optional */ }
@@ -37,13 +37,18 @@ const queryQuality = params.get('quality');
 const forcedQuality = QUALITY_OPTIONS.has(queryQuality)
   ? queryQuality
   : (QUALITY_OPTIONS.has(savedQuality) ? savedQuality : 'auto');
+const storedLightLevel = readStoredLightLevel();
+let stageLightLevel = storedLightLevel ?? (forcedQuality === 'low'
+  ? LOW_QUALITY_LIGHT_LEVEL_DEFAULT
+  : LIGHT_LEVEL_DEFAULT);
 const ui = new UI();
 const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
-const qualityNames = { auto: 'AUTO', high: 'GLAMOUR', low: 'PIXEL' };
 const qualityOptions = document.querySelector('.quality-options');
 const qualityButtons = [...document.querySelectorAll('[data-quality]')];
 const qualityConfirm = document.getElementById('quality-confirm');
+const qualityConfirmPanel = qualityConfirm?.querySelector('.quality-confirm-panel');
+const qualityConfirmLoader = document.getElementById('quality-confirm-loader');
 const qualityConfirmCancel = document.getElementById('quality-confirm-cancel');
 const qualityConfirmApply = document.getElementById('quality-confirm-apply');
 const lightLevelInput = document.getElementById('stage-light-level');
@@ -83,6 +88,10 @@ function resetQualityPendingUi() {
 
 function closeQualityConfirm() {
   pendingQuality = null;
+  qualityConfirmPanel?.classList.remove('is-loading');
+  if (qualityConfirmLoader) qualityConfirmLoader.hidden = true;
+  if (qualityConfirmCancel) qualityConfirmCancel.disabled = false;
+  if (qualityConfirmApply) qualityConfirmApply.disabled = false;
   if (qualityConfirm) qualityConfirm.hidden = true;
 }
 
@@ -98,7 +107,10 @@ function showQualityConfirm(nextQuality) {
 function setQualityPreference(nextQuality, button) {
   if (qualityChangePending || !QUALITY_OPTIONS.has(nextQuality) || nextQuality === forcedQuality) return;
   qualityChangePending = true;
-  const qualityName = qualityNames[nextQuality] || qualityNames.auto;
+  qualityConfirmPanel?.classList.add('is-loading');
+  if (qualityConfirmLoader) qualityConfirmLoader.hidden = false;
+  if (qualityConfirmCancel) qualityConfirmCancel.disabled = true;
+  if (qualityConfirmApply) qualityConfirmApply.disabled = true;
   qualityOptions?.classList.add('is-loading');
   for (const option of qualityButtons) option.disabled = true;
   button?.classList.add('is-loading');
@@ -107,7 +119,7 @@ function setQualityPreference(nextQuality, button) {
   const nextUrl = new URL(location.href);
   nextUrl.searchParams.set('quality', nextQuality);
   requestAnimationFrame(() => {
-    window.setTimeout(() => location.assign(nextUrl.href), 140);
+    window.setTimeout(() => location.assign(nextUrl.href), 350);
   });
 }
 

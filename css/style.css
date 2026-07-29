@@ -843,6 +843,11 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 .quality-confirm-panel h2 { margin: 0 0 10px; color: var(--purple); font: 800 23px/1.15 'Unbounded', sans-serif; }
 .quality-confirm-panel p { margin: 0; color: rgba(23, 18, 28, .68); font-size: 14px; line-height: 1.45; }
 .quality-confirm-actions { display: flex; justify-content: center; gap: 8px; margin-top: 22px; }
+.quality-confirm-loader { align-items: center; justify-content: center; gap: 8px; margin-top: 20px; color: var(--purple); font: 700 10px/1 'JetBrains Mono', monospace; letter-spacing: .08em; }
+.quality-confirm-loader:not([hidden]) { display: flex; }
+.quality-confirm-loader span { width: 14px; height: 14px; border: 2px solid rgba(158, 51, 202, .22); border-top-color: var(--purple); border-radius: 50%; animation: qualityConfirmLoader .65s linear infinite; }
+.quality-confirm-panel.is-loading .quality-confirm-actions { opacity: .38; pointer-events: none; }
+@keyframes qualityConfirmLoader { to { transform: rotate(360deg); } }
 
 /* ---- steps ---- */
 .steps-list { list-style: none; display: flex; flex-direction: column; gap: 18px; }
@@ -1458,6 +1463,6 @@ html.mascot-editor-open #toast {
 @media (prefers-reduced-motion: reduce) {
   .ticker-track, .intro-bg, #enter-btn.ready, .loop-led, #loop-pedal.unlocking,
   .price-board.flash, .price-board.is-tick .board-amount,
-  .logo-chip.dancing .logo-av { animation: none; }
+  .logo-chip.dancing .logo-av, .quality-confirm-loader span { animation: none; }
   .inst-btn, .choice-chip, .swatch { transition: none; }
 }
