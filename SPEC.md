@@ -301,17 +301,16 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
-| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v2`, default `78`) at the top, then per-instrument volume faders |
-| Modals | **Mascot customization**, compact **scene-style** picker, steps, rules, **interactive pricing mixer** |
+| Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–130%, `av2.lights.v2`, default `78`), a **Гучність** label with per-instrument faders, then the minimal **Графіка** selector |
+| Modals | **Mascot customization**, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
 
-### Scene style
+### Графіка
 
-- A separate three-position `3D` HUD switch opens the compact **Стиль сцени** modal; it is not a nav-menu item.
-- The visible styles are ordered **GLAMOUR** (maximum details), **PIXEL** (energy saving), then **AUTO**. The style names carry the primary visual emphasis; their Ukrainian descriptions are secondary. Internally they retain the persisted values `high`, `low`, and `auto` in `localStorage` key `av2.quality.v2`.
-- Choosing a different style immediately locks the three options, shows a loader inside the chosen option, and announces the pending style before the scene reloads with that quality budget.
+- The settings mixer (gear icon) contains a minimal inline **ГРАФІКА** selector below the volume faders: **GLAMOUR**, **PIXEL**, and **AUTO**. Internally they retain the persisted values `high`, `low`, and `auto` in `localStorage` key `av2.quality.v2`.
+- Choosing a different option opens a confirmation modal explaining that the page will reload. Confirming locks the selector, shows a compact loading state in the chosen option, then reloads the scene with that quality budget.
 - **AUTO** uses a two-stage frame-pacing probe on every device (desktop, iPhone / iPad, and Android). It begins without expensive shadows or postprocessing, promotes only sustained smooth devices, and returns to the stable low budget if full effects miss cadence.
 - **GLAMOUR** and **PIXEL** are explicit overrides. PIXEL is the stable 30 FPS, no-shadows / no-bloom budget; GLAMOUR enables the full scene budget.
 - A live horizontal **Світло** fader sits at the top of the settings mixer (gear icon → **Налаштування**) and scales stage lights, footlight emissives, and beam opacity from **0–130%** without a reload. The value persists in `localStorage` key `av2.lights.v2` (default `78`) and stays independent of Glamour / Pixel / Auto. Instrument volumes remain in the same panel below the light fader.

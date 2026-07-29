@@ -6,7 +6,7 @@
 <title>ART VIBE STUDIO — інтерактивна 3D сцена</title>
 <meta name="description" content="Art Vibe Studio — вчись творити і твори навчаючись. Інтерактивна 3D сцена: вокал, гітара, піаніно, ударні.">
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="css/style.css?v=20260729-42">
+<link rel="stylesheet" href="css/style.css?v=20260729-44">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239E33CA'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23D1A13B' font-family='serif' font-weight='bold'>AV</text></svg>">
 <script type="importmap">
 {
@@ -68,10 +68,6 @@
       <button class="pill-btn nav-btn" data-open="rules">ПРАВИЛА</button>
       <button class="pill-btn nav-btn gold" data-open="pricing">ЦІНИ</button>
     </div>
-    <button class="quality-switch" type="button" data-open="quality" data-quality-tier="auto" aria-label="Стиль сцени: Auto. Змінити" title="Стиль сцени — змінити">
-      <span class="quality-switch-track" aria-hidden="true"><i></i><i></i><i></i><b></b></span>
-      <span class="quality-switch-copy" aria-hidden="true"><span class="mono">3D</span><strong id="quality-switch-value">AUTO</strong></span>
-    </button>
     <button class="icon-btn" id="menu-btn" type="button" title="Меню" aria-label="Меню" aria-expanded="false" aria-controls="hud-nav-links">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>
     </button>
@@ -91,6 +87,7 @@
           <span>Світло · <output id="stage-light-level-val">78%</output></span>
           <input type="range" id="stage-light-level" class="light-fader-range" min="0" max="130" step="1" value="78" aria-label="Яскравість сцени" aria-valuetext="78 відсотків">
         </label>
+        <span class="mixer-section-label mono">Гучність</span>
         <label class="sound-fader">
           <span>Ударні</span>
           <input type="range" min="0" max="100" value="100" data-bus="drums" aria-label="Гучність ударних">
@@ -107,6 +104,14 @@
           <span>Вокал</span>
           <input type="range" min="0" max="100" value="100" data-bus="mic" aria-label="Гучність вокалу">
         </label>
+        <div class="quality-control" role="radiogroup" aria-label="Графіка">
+          <span class="mono">ГРАФІКА</span>
+          <div class="quality-options">
+            <button class="quality-option" type="button" data-quality="high" role="radio" aria-checked="false">GLAMOUR</button>
+            <button class="quality-option" type="button" data-quality="low" role="radio" aria-checked="false">PIXEL</button>
+            <button class="quality-option" type="button" data-quality="auto" role="radio" aria-checked="false">AUTO</button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -114,6 +119,17 @@
 
 <div id="keys-hint" class="mono hidden">
   <b>WASD</b>/<b>↑↓←→</b> / клік — рух · <b>E</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q R T Y U I</b>+пробіл — гітара · <b>N M , . /</b> — вокал
+</div>
+
+<div id="quality-confirm" class="overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="quality-confirm-title" aria-describedby="quality-confirm-copy">
+  <div class="panel quality-confirm-panel">
+    <h2 id="quality-confirm-title">Змінити якість графіки?</h2>
+    <p id="quality-confirm-copy">Сторінка перезавантажиться, щоб застосувати зміни.</p>
+    <div class="quality-confirm-actions">
+      <button class="pill-btn outline small" id="quality-confirm-cancel" type="button">СКАСУВАТИ</button>
+      <button class="pill-btn gold small" id="quality-confirm-apply" type="button">ПЕРЕЗАВАНТАЖИТИ</button>
+    </div>
+  </div>
 </div>
 <div id="drag-hint" class="mono hidden">перетягуй — огляд сцени · коліщатко — зум</div>
 
@@ -202,32 +218,6 @@
     <div class="panel-actions">
       <a class="pill-btn gold big" id="direct-btn-1" href="https://www.instagram.com/artvibe.pl/" target="_blank" rel="noopener noreferrer">НАПИШИ НАМ ›</a>
     </div>
-  </div>
-</div>
-
-<!-- ======= MODAL: СТИЛЬ СЦЕНИ ======= -->
-<div id="modal-quality" class="overlay" hidden>
-  <div class="panel quality-panel">
-    <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>3D РЕЖИМ</span></div>
-    <h2 class="panel-title">Стиль сцени<span class="dot">.</span></h2>
-
-    <div class="quality-options" role="radiogroup" aria-label="Стиль сцени">
-      <button class="quality-option" type="button" data-quality="high" role="radio" aria-checked="false">
-        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✹</span><span class="quality-name">GLAMOUR</span></span>
-        <span class="quality-description">Максимум деталей</span>
-      </button>
-      <button class="quality-option" type="button" data-quality="low" role="radio" aria-checked="false">
-        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">◒</span><span class="quality-name">PIXEL</span></span>
-        <span class="quality-description">Енергозберігаючий</span>
-      </button>
-      <button class="quality-option" type="button" data-quality="auto" role="radio" aria-checked="false">
-        <span class="quality-option-top"><span class="quality-icon" aria-hidden="true">✦</span><span class="quality-name">AUTO</span></span>
-        <span class="quality-description">Автоматично</span>
-      </button>
-    </div>
-
-    <p class="quality-current mono" role="status" aria-live="polite"><span id="quality-status-prefix">ВИБРАНО: </span><strong id="quality-current">AUTO</strong></p>
   </div>
 </div>
 
@@ -524,6 +514,6 @@
     });
   })();
 </script>
-  <script type="module" src="js/main.js?v=20260729-91"></script>
+  <script type="module" src="js/main.js?v=20260729-93"></script>
 </body>
 </html>

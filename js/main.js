@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260729-19';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
-import { UI } from './ui.js?v=20260728-23';
+import { UI } from './ui.js?v=20260729-24';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -41,15 +41,15 @@ const ui = new UI();
 const audio = new AudioEngine();
 window.__audioDebug = () => audio.debugState();
 const qualityNames = { auto: 'AUTO', high: 'GLAMOUR', low: 'PIXEL' };
-const qualityCurrent = document.getElementById('quality-current');
-const qualityStatusPrefix = document.getElementById('quality-status-prefix');
-const qualitySwitch = document.querySelector('.quality-switch');
-const qualitySwitchValue = document.getElementById('quality-switch-value');
 const qualityOptions = document.querySelector('.quality-options');
 const qualityButtons = [...document.querySelectorAll('[data-quality]')];
+const qualityConfirm = document.getElementById('quality-confirm');
+const qualityConfirmCancel = document.getElementById('quality-confirm-cancel');
+const qualityConfirmApply = document.getElementById('quality-confirm-apply');
 const lightLevelInput = document.getElementById('stage-light-level');
 const lightLevelValue = document.getElementById('stage-light-level-val');
 let qualityChangePending = false;
+let pendingQuality = null;
 
 function syncLightLevelUi() {
   if (lightLevelInput) {
@@ -67,14 +67,6 @@ function syncQualityPreferenceUi() {
     button.classList.toggle('is-on', selected);
     button.setAttribute('aria-checked', selected ? 'true' : 'false');
   }
-  if (qualityCurrent) qualityCurrent.textContent = qualityNames[forcedQuality] || qualityNames.auto;
-  if (qualitySwitch) {
-    const qualityName = qualityNames[forcedQuality] || qualityNames.auto;
-    qualitySwitch.dataset.qualityTier = forcedQuality;
-    qualitySwitch.setAttribute('aria-label', `Стиль сцени: ${qualityName}. Змінити`);
-    qualitySwitch.title = `Стиль сцени: ${qualityName}`;
-    if (qualitySwitchValue) qualitySwitchValue.textContent = qualityName;
-  }
   syncLightLevelUi();
 }
 
@@ -86,8 +78,21 @@ function resetQualityPendingUi() {
     button.classList.remove('is-loading');
     button.removeAttribute('aria-busy');
   }
-  if (qualityStatusPrefix) qualityStatusPrefix.textContent = 'ВИБРАНО: ';
   syncQualityPreferenceUi();
+}
+
+function closeQualityConfirm() {
+  pendingQuality = null;
+  if (qualityConfirm) qualityConfirm.hidden = true;
+}
+
+function showQualityConfirm(nextQuality) {
+  if (qualityChangePending || !QUALITY_OPTIONS.has(nextQuality) || nextQuality === forcedQuality) return;
+  pendingQuality = nextQuality;
+  if (qualityConfirm) {
+    qualityConfirm.hidden = false;
+    qualityConfirmApply?.focus();
+  }
 }
 
 function setQualityPreference(nextQuality, button) {
@@ -98,8 +103,6 @@ function setQualityPreference(nextQuality, button) {
   for (const option of qualityButtons) option.disabled = true;
   button?.classList.add('is-loading');
   button?.setAttribute('aria-busy', 'true');
-  if (qualityStatusPrefix) qualityStatusPrefix.textContent = 'ЗАВАНТАЖЕННЯ: ';
-  if (qualityCurrent) qualityCurrent.textContent = qualityName;
   try { localStorage.setItem(QUALITY_PREFERENCE_KEY, nextQuality); } catch (_) { /* storage is optional */ }
   const nextUrl = new URL(location.href);
   nextUrl.searchParams.set('quality', nextQuality);
@@ -109,8 +112,19 @@ function setQualityPreference(nextQuality, button) {
 }
 
 for (const button of qualityButtons) {
-  button.addEventListener('click', () => setQualityPreference(button.dataset.quality, button));
+  button.addEventListener('click', () => showQualityConfirm(button.dataset.quality));
 }
+qualityConfirmCancel?.addEventListener('click', closeQualityConfirm);
+qualityConfirmApply?.addEventListener('click', () => {
+  const option = qualityButtons.find((button) => button.dataset.quality === pendingQuality);
+  if (pendingQuality) setQualityPreference(pendingQuality, option);
+});
+qualityConfirm?.addEventListener('click', (event) => {
+  if (event.target === qualityConfirm) closeQualityConfirm();
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !qualityConfirm?.hidden) closeQualityConfirm();
+});
 if (lightLevelInput) {
   lightLevelInput.min = String(LIGHT_LEVEL_MIN);
   lightLevelInput.max = String(LIGHT_LEVEL_MAX);
@@ -119,9 +133,6 @@ if (lightLevelInput) {
   lightLevelInput.addEventListener('input', onLightLevelInput);
   lightLevelInput.addEventListener('change', onLightLevelInput);
 }
-window.addEventListener('av2:modal', (event) => {
-  if (event.detail?.open && event.detail.name === 'quality') syncQualityPreferenceUi();
-});
 window.addEventListener('pageshow', (event) => {
   if (event.persisted && qualityChangePending) resetQualityPendingUi();
 });
