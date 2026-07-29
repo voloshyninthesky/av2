@@ -5252,7 +5252,7 @@ soundRecoverBtn?.addEventListener('click', async (event) => {
       new Promise((resolve) => setTimeout(() => resolve(false), 900)),
     ]);
     if (ready && audio.isRunning() && audio.testTone()) {
-      ui.toast('Має прозвучати тестова нота', 1800);
+      ui.toast('Не чуєш мелодію? Увімкни звук на пристрої й натисни «ТЕСТ ЗВУКУ» ще раз.', 3600);
     } else {
       audio.markForRecovery('manual-sound-test-timeout');
       ui.toast('Торкнися «ТЕСТ ЗВУКУ» ще раз', 2200);

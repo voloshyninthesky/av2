@@ -413,21 +413,27 @@ export class AudioEngine {
     return src;
   }
 
-  /** Short route check that bypasses per-instrument faders. */
+  /** Short route-check melody that bypasses per-instrument faders. */
   testTone() {
     if (this._silent() || !this.master) return false;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 · E5 · G5 · C6
+    const noteLength = 0.16;
+    const noteGap = 0.03;
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(523.25, t);
-    osc.frequency.setValueAtTime(659.25, t + 0.15);
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.24, t + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+    notes.forEach((frequency, index) => {
+      const start = t + index * (noteLength + noteGap);
+      const end = start + noteLength;
+      osc.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.24, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+    });
     osc.connect(gain).connect(this.master);
     osc.start(t);
-    osc.stop(t + 0.38);
+    osc.stop(t + notes.length * (noteLength + noteGap));
     return true;
   }
 
