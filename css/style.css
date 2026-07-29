@@ -236,6 +236,18 @@ html.stage-live .nav-btn {
 .sound-mixer-head .mono {
   font-size: 10px; letter-spacing: .18em; color: rgba(253, 251, 247, .72);
 }
+#sound-recover-btn {
+  min-height: 30px; padding: 6px 9px; border-radius: 999px;
+  border: 1px solid rgba(209, 161, 59, .68);
+  background: rgba(209, 161, 59, .12); color: var(--cream);
+  font: 700 9px/1 'JetBrains Mono', monospace; letter-spacing: .08em;
+  cursor: pointer; touch-action: manipulation;
+}
+#sound-recover-btn:hover,
+#sound-recover-btn:focus-visible {
+  border-color: var(--gold); background: var(--gold); color: var(--ink); outline: none;
+}
+#sound-recover-btn:disabled { opacity: .58; cursor: wait; }
 .sound-fader {
   display: grid; gap: 5px;
   font: 600 11px/1 'Manrope', sans-serif; color: var(--cream);

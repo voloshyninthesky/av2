@@ -24,6 +24,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test audio lifecycle
+        run: node --test tests/audio-lifecycle.test.mjs
+
       - name: Prepare static site
         run: |
           mkdir -p _site

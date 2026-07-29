@@ -2,8 +2,8 @@
 
 Interactive marketing experience for **Art Vibe Studio** (music lessons): a WebGL 3D stage where visitors walk a mascot, play instruments, and open booking info (steps, rules, prices).
 
-- **Live:** https://vibe2.ton.zone  
-- **Repo / release:** https://github.com/voloshyninthesky/av2 → versioned Nginx releases (`vibe2.ton.zone`)  
+- **Live:** https://vibe.ton.zone
+- **Repo / release:** https://github.com/voloshyninthesky/av2 → GitHub Pages (`vibe.ton.zone`) + versioned Nginx preview (`vibe2.ton.zone`)
 - **Locale:** Ukrainian (`lang="uk"`)  
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTA:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/)  
@@ -76,9 +76,11 @@ Mobile / in-app browsers often leave `AudioContext` **suspended** (silent until 
 - Unlock on Enter and every play path (`init` + `resume`).
 - Prime with a tiny silent buffer inside the user-gesture turn.
 - Retry `resume()` shortly after wake; recreate context if `closed` or still blocked on the next trusted gesture.
-- Re-wake on `pointerdown` / `touchstart` / `keydown`, `visibilitychange` → visible, and `pageshow`.
+- Re-wake on `pointerdown` / `touchstart` for low latency and again on activation-bearing `pointerup` / `touchend` / `click` / `keydown`; also retry on `visibilitychange` → visible and `pageshow`.
 - Mark the audio route for a guarded context rebuild after backgrounding, page restore, window blur, or an interrupted mobile Audio Session—even if the old context incorrectly still reports `running`.
-- Request the mobile Audio Session `playback` route where the browser exposes that API, and preserve loop phase / active vocal state across a context rebuild.
+- Treat Audio Session `inactive` as normal silence between notes; only `interrupted` independently marks a broken route.
+- Detect a `running` context whose `currentTime` clock has stopped, and rebuild it on the next trusted gesture.
+- Request the mobile Audio Session `playback` route where the browser exposes that API, preserve loop phase / active vocal state across a context rebuild, and expose a mixer **ТЕСТ ЗВУКУ** action that force-rebuilds when physical output cannot be inferred.
 
 Mute chosen before the context exists is honored when `init` runs.
 

@@ -24,6 +24,10 @@ export class AudioEngine {
     this._resumeFailures = 0;
     this._resumeWatchContext = null;
     this._lastRebuildAt = -Infinity;
+    this._clockSample = null;
+    this._clockStalled = false;
+    this._recoveryReason = null;
+    this._lastRebuildReason = null;
   }
 
   init() {
@@ -92,13 +96,14 @@ export class AudioEngine {
       if (context.state === 'running') {
         hasRun = true;
         this._resumeFailures = 0;
+        this._seedContextClock(context);
         this._clearResumeWatch();
       } else {
         this._primed = false;
         // Once output has worked, an unsolicited suspend/interruption/close can
         // leave iOS and in-app WebViews with a dead route that still looks valid.
         if (hasRun || context.state === 'interrupted' || context.state === 'closed') {
-          this.markForRecovery();
+          this.markForRecovery(`context-${context.state}`);
         }
       }
     });
@@ -114,10 +119,16 @@ export class AudioEngine {
       generation: this._contextGeneration,
       muted: this.muted,
       recoveryPending: this._needsRecovery,
+      recoveryReason: this._recoveryReason,
+      lastRebuildReason: this._lastRebuildReason,
       resumeFailures: this._resumeFailures,
+      currentTime: this.ctx?.currentTime ?? null,
+      clockStalled: this._clockStalled,
       activePianoVoices: this._activePianoVoices.size,
       audioSessionState: navigator.audioSession?.state ?? 'unsupported',
       audioSessionType: navigator.audioSession?.type ?? 'unsupported',
+      userActivationActive: navigator.userActivation?.isActive ?? 'unsupported',
+      userActivationSeen: navigator.userActivation?.hasBeenActive ?? 'unsupported',
     };
   }
 
@@ -126,13 +137,59 @@ export class AudioEngine {
       const session = navigator.audioSession;
       if (!session) return;
       if (session.type !== 'playback') session.type = 'playback';
+      const recoverInterruptedSession = () => {
+        // "inactive" is normal between notes. Only an actual interruption is
+        // evidence that the OS route must be rebuilt on the next gesture.
+        if (session.state === 'interrupted') {
+          this.markForRecovery('audio-session-interrupted');
+        }
+      };
       if (!this._audioSessionBound && session.addEventListener) {
-        session.addEventListener('statechange', () => {
-          if (session.state !== 'active') this.markForRecovery();
-        });
+        session.addEventListener('statechange', recoverInterruptedSession);
         this._audioSessionBound = true;
       }
+      // The state may already be interrupted before the listener is attached.
+      recoverInterruptedSession();
     } catch (_) { /* experimental API or WebView may reject assignment */ }
+  }
+
+  _seedContextClock(context = this.ctx, wallTime = performance.now()) {
+    if (!context || context.state !== 'running' || !Number.isFinite(context.currentTime)) {
+      this._clockSample = null;
+      this._clockStalled = false;
+      return;
+    }
+    this._clockSample = { context, wallTime, audioTime: context.currentTime };
+    this._clockStalled = false;
+  }
+
+  /**
+   * WebKit can leave state="running" while currentTime and the hardware route
+   * are frozen. Sample over a generous wall-clock interval so the next trusted
+   * gesture can rebuild instead of trusting the stale state string.
+   */
+  _checkContextClock(wallTime = performance.now()) {
+    const context = this.ctx;
+    if (!context || context.state !== 'running' || !Number.isFinite(context.currentTime)) {
+      this._clockSample = null;
+      this._clockStalled = false;
+      return false;
+    }
+
+    const previous = this._clockSample;
+    if (!previous || previous.context !== context) {
+      this._seedContextClock(context, wallTime);
+      return false;
+    }
+
+    const wallElapsed = wallTime - previous.wallTime;
+    if (wallElapsed < 300) return this._clockStalled;
+
+    const audioElapsed = context.currentTime - previous.audioTime;
+    this._clockSample = { context, wallTime, audioTime: context.currentTime };
+    this._clockStalled = audioElapsed < 0.02;
+    if (this._clockStalled) this.markForRecovery('context-clock-stalled');
+    return this._clockStalled;
   }
 
   /** Tiny silent buffer start — must run inside a user-gesture turn on iOS. */
@@ -166,6 +223,9 @@ export class AudioEngine {
     this._primed = false;
     this._resumeFailures = 0;
     this._needsRecovery = false;
+    this._recoveryReason = null;
+    this._clockSample = null;
+    this._clockStalled = false;
     if (close && previous?.state !== 'closed') {
       try {
         previous.close()?.catch?.(() => {});
@@ -178,24 +238,29 @@ export class AudioEngine {
    * after Control Center, a phone call, tab backgrounding, or WebView restore.
    * Rebuilding on the next trusted gesture is the only dependable recovery.
    */
-  markForRecovery() {
+  markForRecovery(reason = 'lifecycle') {
     if (!this.ctx) return;
     this._needsRecovery = true;
+    this._recoveryReason = reason;
     this._primed = false;
   }
 
   unlock() {
     this._configureAudioSession();
+    const clockStalled = this._checkContextClock();
 
     const stuck = this.ctx
       && this.ctx.state !== 'running'
       && this._resumeFailures > 0;
     const unusable = this.ctx?.state === 'closed';
-    const needsRebuild = this.ctx && (this._needsRecovery || stuck || unusable);
+    const needsRebuild = this.ctx && (this._needsRecovery || clockStalled || stuck || unusable);
     // A single touch can emit both pointerdown and touchstart. Deduplicate only
     // the destructive rebuild, never the recovery request itself.
     if (needsRebuild && performance.now() - this._lastRebuildAt >= 80) {
+      const rebuildReason = this._recoveryReason
+        || (clockStalled ? 'context-clock-stalled' : (stuck ? 'resume-blocked' : 'context-closed'));
       this._resetContext({ close: true });
+      this._lastRebuildReason = rebuildReason;
       this._lastRebuildAt = performance.now();
     }
     this.init();
@@ -225,30 +290,44 @@ export class AudioEngine {
     this._configureAudioSession();
     this._prime();
     if (this.ctx.state === 'running') {
+      const stalled = this._checkContextClock();
       this._resumeFailures = 0;
-      return Promise.resolve(true);
+      return Promise.resolve(!stalled && !this._needsRecovery);
     }
 
     const context = this.ctx;
     const recordFailure = () => {
       if (this.ctx !== context || context.state === 'running' || context.state === 'closed') return;
       this._resumeFailures = Math.max(1, this._resumeFailures + 1);
+      this.markForRecovery('resume-blocked');
       this._primed = false;
     };
     const wake = () => {
       if (this.ctx !== context || context.state === 'closed') return Promise.resolve(false);
-      if (context.state === 'running') return Promise.resolve(true);
+      if (context.state === 'running') {
+        const stalled = this._checkContextClock();
+        return Promise.resolve(!stalled && !this._needsRecovery);
+      }
       this._prime();
       return context.resume()
         .then(() => {
+          // A delayed resume from a discarded context must not mutate the
+          // replacement context's health counters or retry window.
+          if (this.ctx !== context) return false;
           const running = context.state === 'running';
-          if (running) {
-            this._resumeFailures = 0;
-            this._clearResumeWatch();
-          } else {
+          if (!running) {
             recordFailure();
+            return false;
           }
-          return running;
+
+          const stalled = this._checkContextClock();
+          const ready = !stalled && !this._needsRecovery;
+          if (ready) {
+            this._resumeFailures = 0;
+            this._seedContextClock(context);
+            this._clearResumeWatch();
+          }
+          return ready;
         })
         .catch(() => {
           recordFailure();
@@ -332,6 +411,24 @@ export class AudioEngine {
     src.start(t);
     src.stop(t + dur + 0.05);
     return src;
+  }
+
+  /** Short route check that bypasses per-instrument faders. */
+  testTone() {
+    if (this._silent() || !this.master) return false;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, t);
+    osc.frequency.setValueAtTime(659.25, t + 0.15);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.24, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+    osc.connect(gain).connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.38);
+    return true;
   }
 
   // ---------------- DRUMS ----------------

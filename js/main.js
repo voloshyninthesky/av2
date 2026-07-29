@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { AudioEngine } from './audio.js?v=20260728-18';
+import { AudioEngine } from './audio.js?v=20260729-19';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
 import { UI } from './ui.js?v=20260728-23';
 
@@ -5148,6 +5148,7 @@ window.addEventListener('keyup', (e) => {
 
 // ---- sound mixer (HUD) — per-instrument levels ----
 const soundMixer = document.getElementById('sound-mixer');
+const soundRecoverBtn = document.getElementById('sound-recover-btn');
 const soundFaders = [...(soundMixer?.querySelectorAll('input[data-bus]') || [])];
 
 function silenceHeldVocal() {
@@ -5227,6 +5228,42 @@ ui.el.soundBtn?.addEventListener('click', (event) => {
   event.stopPropagation();
   if (soundMixer?.hidden) openSoundMixer();
   else closeSoundMixer();
+});
+
+soundRecoverBtn?.addEventListener('click', async (event) => {
+  if (event.isTrusted === false) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const defaultLabel = 'ТЕСТ ЗВУКУ';
+  soundRecoverBtn.disabled = true;
+  soundRecoverBtn.textContent = 'ЗАПУСК…';
+
+  const generation = audio.contextGeneration;
+  const snapshot = captureAudioRecoverySnapshot();
+  audio.markForRecovery('manual-sound-test');
+
+  try {
+    const pending = audio.unlock();
+    if (audio.contextGeneration !== generation) {
+      restoreAfterAudioContextRebuild(snapshot);
+    }
+    const ready = await Promise.race([
+      pending,
+      new Promise((resolve) => setTimeout(() => resolve(false), 900)),
+    ]);
+    if (ready && audio.isRunning() && audio.testTone()) {
+      ui.toast('Має прозвучати тестова нота', 1800);
+    } else {
+      audio.markForRecovery('manual-sound-test-timeout');
+      ui.toast('Торкнися «ТЕСТ ЗВУКУ» ще раз', 2200);
+    }
+  } catch (_) {
+    audio.markForRecovery('manual-sound-test-error');
+    ui.toast('Торкнися «ТЕСТ ЗВУКУ» ще раз', 2200);
+  } finally {
+    soundRecoverBtn.disabled = false;
+    soundRecoverBtn.textContent = defaultLabel;
+  }
 });
 
 for (const fader of soundFaders) {
@@ -6070,7 +6107,10 @@ function restoreAfterAudioContextRebuild(snapshot) {
   resyncLoopPlayback();
 }
 
-function unlockAudioFromGesture() {
+function unlockAudioFromGesture(event) {
+  if (event?.isTrusted === false) return;
+  // This control intentionally force-rebuilds on its activation click.
+  if (event?.target?.closest?.('#sound-recover-btn')) return;
   if (!started && !audio.ctx) return;
   const generation = audio.contextGeneration;
   const snapshot = captureAudioRecoverySnapshot();
@@ -6079,8 +6119,27 @@ function unlockAudioFromGesture() {
     restoreAfterAudioContextRebuild(snapshot);
   }
 }
+
+function resumeAudioFromActivation(event) {
+  if (event?.isTrusted === false) return;
+  if (event?.target?.closest?.('#sound-recover-btn')) return;
+  if (!started && !audio.ctx) return;
+  const generation = audio.contextGeneration;
+  const snapshot = captureAudioRecoverySnapshot();
+  audio.resume();
+  if (audio.contextGeneration !== generation) {
+    restoreAfterAudioContextRebuild(snapshot);
+  }
+}
+
 window.addEventListener('pointerdown', unlockAudioFromGesture, { capture: true, passive: true });
 window.addEventListener('touchstart', unlockAudioFromGesture, { capture: true, passive: true });
+// Touch release/click are activation-triggering events on mobile. Retry resume
+// while transient activation is live, without force-rebuilding twice for the
+// same physical gesture.
+window.addEventListener('pointerup', resumeAudioFromActivation, { capture: true, passive: true });
+window.addEventListener('touchend', resumeAudioFromActivation, { capture: true, passive: true });
+window.addEventListener('click', resumeAudioFromActivation, { capture: true, passive: true });
 window.addEventListener('keydown', unlockAudioFromGesture, { capture: true });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && audio.ctx) {
@@ -6088,7 +6147,7 @@ document.addEventListener('visibilitychange', () => {
     resyncLoopPlayback();
   }
   if (document.visibilityState === 'hidden') {
-    audio.markForRecovery();
+    audio.markForRecovery('visibility-hidden');
     releaseAllHeldPianoNotes();
     releaseKeyboardVocal();
     clearGuitarInteractionState();
@@ -6096,15 +6155,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('blur', () => {
-  audio.markForRecovery();
+  audio.markForRecovery('window-blur');
   releaseAllHeldPianoNotes();
   releaseKeyboardVocal();
   clearGuitarInteractionState();
   audio.muteGuitar();
 });
-window.addEventListener('pagehide', () => audio.markForRecovery());
+window.addEventListener('pagehide', () => audio.markForRecovery('pagehide'));
 window.addEventListener('pageshow', () => {
   if (audio.ctx) {
+    // BFCache/WebView restores do not always deliver the expected pagehide or
+    // context state transition. Treat the route as stale even if it says running.
+    audio.markForRecovery('pageshow');
     audio.resume();
     resyncLoopPlayback();
   }

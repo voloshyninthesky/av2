@@ -2,9 +2,10 @@
 
 ## Cursor Cloud specific instructions
 
-This is a **static WebGL site** (Art Vibe Studio) — no build step, no package manager, no
-automated tests, and no lint config. Three.js is vendored under `vendor/three/`, loaded via an
-import map in `index.html`. See `SPEC.md` for the full product/architecture spec.
+This is a **static WebGL site** (Art Vibe Studio) — no build step, no package manager, and no lint
+config. Three.js is vendored under `vendor/three/`, loaded via an import map in `index.html`.
+The dependency-free audio lifecycle tests use Node's built-in test runner. See `SPEC.md` for the
+full product/architecture spec.
 
 ### Running (development)
 
@@ -24,5 +25,5 @@ startup update script is effectively a no-op.
 - Audio needs a user gesture to unlock; sound stays silent until you enter the scene / interact.
 - Desktop keyboard plays instruments without focusing them: `1–8` piano, `Z X C V B` drums,
   chord row + `Space` guitar, `N M , . /` vocal. Toasts like `Звучить: Гітара` confirm play.
-- Lint / test / build: none exist. Deployment (`.github/workflows/deploy-pages.yml`) just copies
+- Test: `node --test tests/audio-lifecycle.test.mjs`. Deployment runs this check, then copies the
   static files to GitHub Pages; there is no build to run locally.
