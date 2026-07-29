@@ -1854,8 +1854,46 @@ const walkColliders = [];
 const WALK_COLLISION_STEP = 0.08;
 const WALK_ROUTE_CLEARANCE = 0.1;
 
-function visibleWalkBounds(root) {
-  const bounds = new THREE.Box3().makeEmpty();
+function convexHullXZ(points) {
+  const sorted = points
+    .map((point) => ({ x: point.x, z: point.z }))
+    .sort((a, b) => a.x - b.x || a.z - b.z)
+    .filter((point, index, all) => (
+      index === 0
+      || Math.abs(point.x - all[index - 1].x) > 1e-6
+      || Math.abs(point.z - all[index - 1].z) > 1e-6
+    ));
+  if (sorted.length <= 2) return sorted;
+  const cross = (a, b, c) => (
+    (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)
+  );
+  const lower = [];
+  for (const point of sorted) {
+    while (
+      lower.length >= 2
+      && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 1e-8
+    ) lower.pop();
+    lower.push(point);
+  }
+  const upper = [];
+  for (let index = sorted.length - 1; index >= 0; index--) {
+    const point = sorted[index];
+    while (
+      upper.length >= 2
+      && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 1e-8
+    ) upper.pop();
+    upper.push(point);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+function visibleWalkFootprint(root) {
+  const points = [];
+  const corner = new THREE.Vector3();
+  const instanceMatrix = new THREE.Matrix4();
+  const worldMatrix = new THREE.Matrix4();
   root.updateWorldMatrix(true, true);
   root.traverse((object) => {
     if (!object.isMesh || !object.visible || object.userData.walkCollider === false) return;
@@ -1863,22 +1901,41 @@ function visibleWalkBounds(root) {
     if (!geometry) return;
     if (!geometry.boundingBox) geometry.computeBoundingBox();
     if (!geometry.boundingBox) return;
-    bounds.union(geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+    const appendBox = (matrix) => {
+      for (const x of [geometry.boundingBox.min.x, geometry.boundingBox.max.x]) {
+        for (const y of [geometry.boundingBox.min.y, geometry.boundingBox.max.y]) {
+          for (const z of [geometry.boundingBox.min.z, geometry.boundingBox.max.z]) {
+            corner.set(x, y, z).applyMatrix4(matrix);
+            points.push({ x: corner.x, z: corner.z });
+          }
+        }
+      }
+    };
+    if (object.isInstancedMesh) {
+      for (let index = 0; index < object.count; index++) {
+        object.getMatrixAt(index, instanceMatrix);
+        worldMatrix.multiplyMatrices(object.matrixWorld, instanceMatrix);
+        appendBox(worldMatrix);
+      }
+    } else {
+      appendBox(object.matrixWorld);
+    }
   });
-  return bounds;
+  return convexHullXZ(points);
 }
 
 function refreshWalkColliders() {
   walkColliders.length = 0;
   for (const { id, root } of walkColliderRoots) {
-    const bounds = visibleWalkBounds(root);
-    if (bounds.isEmpty()) continue;
+    const points = visibleWalkFootprint(root);
+    if (points.length < 3) continue;
     walkColliders.push({
       id,
-      minX: bounds.min.x,
-      maxX: bounds.max.x,
-      minZ: bounds.min.z,
-      maxZ: bounds.max.z,
+      points,
+      minX: Math.min(...points.map((point) => point.x)),
+      maxX: Math.max(...points.map((point) => point.x)),
+      minZ: Math.min(...points.map((point) => point.z)),
+      maxZ: Math.max(...points.map((point) => point.z)),
     });
   }
 }
@@ -1887,49 +1944,136 @@ function mascotWalkRadius() {
   return 0.29 * mascotBaseScale * (mascotCfg.width / 100) + 0.075;
 }
 
-function expandedWalkCollider(collider, padding = mascotWalkRadius()) {
+function closestPointOnWalkEdge(point, a, b) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const lengthSq = dx * dx + dz * dz;
+  const amount = lengthSq > 1e-10
+    ? THREE.MathUtils.clamp(((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSq, 0, 1)
+    : 0;
   return {
-    minX: collider.minX - padding,
-    maxX: collider.maxX + padding,
-    minZ: collider.minZ - padding,
-    maxZ: collider.maxZ + padding,
+    point: new THREE.Vector3(a.x + dx * amount, 0, a.z + dz * amount),
+    edge: new THREE.Vector3(dx, 0, dz),
   };
+}
+
+function pointInsideWalkPolygon(point, points) {
+  let inside = false;
+  for (let index = 0, previous = points.length - 1; index < points.length; previous = index++) {
+    const a = points[index];
+    const b = points[previous];
+    if (
+      ((a.z > point.z) !== (b.z > point.z))
+      && point.x < ((b.x - a.x) * (point.z - a.z)) / (b.z - a.z) + a.x
+    ) inside = !inside;
+  }
+  return inside;
+}
+
+function closestWalkColliderContact(point, collider) {
+  let closest = null;
+  for (let index = 0; index < collider.points.length; index++) {
+    const a = collider.points[index];
+    const b = collider.points[(index + 1) % collider.points.length];
+    const contact = closestPointOnWalkEdge(point, a, b);
+    const distanceSq = contact.point.distanceToSquared(point);
+    if (!closest || distanceSq < closest.distanceSq) {
+      contact.edge.normalize();
+      // Convex hull vertices are counter-clockwise: the right-hand edge normal
+      // points away from the visible object.
+      contact.normal = new THREE.Vector3(contact.edge.z, 0, -contact.edge.x);
+      closest = { ...contact, distanceSq };
+    }
+  }
+  const inside = pointInsideWalkPolygon(point, collider.points);
+  if (!inside && closest?.distanceSq > 1e-10) {
+    closest.normal.subVectors(point, closest.point).normalize();
+  }
+  return { ...closest, inside };
 }
 
 function pointHitsWalkCollider(point, padding = mascotWalkRadius()) {
   for (const collider of walkColliders) {
-    const bounds = expandedWalkCollider(collider, padding);
-    if (point.x >= bounds.minX && point.x <= bounds.maxX && point.z >= bounds.minZ && point.z <= bounds.maxZ) {
-      return { collider, bounds };
+    if (
+      point.x < collider.minX - padding || point.x > collider.maxX + padding
+      || point.z < collider.minZ - padding || point.z > collider.maxZ + padding
+    ) continue;
+    const contact = closestWalkColliderContact(point, collider);
+    if (contact.inside || contact.distanceSq <= padding * padding) {
+      return { collider, contact };
     }
   }
   return null;
 }
 
-function segmentHitsWalkBounds(a, b, bounds) {
-  const dx = b.x - a.x;
-  const dz = b.z - a.z;
-  let near = 0;
-  let far = 1;
-  for (const [origin, delta, min, max] of [
-    [a.x, dx, bounds.minX, bounds.maxX],
-    [a.z, dz, bounds.minZ, bounds.maxZ],
-  ]) {
-    if (Math.abs(delta) < 1e-8) {
-      if (origin < min || origin > max) return false;
-      continue;
-    }
-    const first = (min - origin) / delta;
-    const last = (max - origin) / delta;
-    near = Math.max(near, Math.min(first, last));
-    far = Math.min(far, Math.max(first, last));
-    if (near > far) return false;
+function walkSegmentsIntersect(a, b, c, d) {
+  const cross = (p, q, r) => (
+    (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x)
+  );
+  const onSegment = (p, q, r) => (
+    q.x >= Math.min(p.x, r.x) - 1e-8 && q.x <= Math.max(p.x, r.x) + 1e-8
+    && q.z >= Math.min(p.z, r.z) - 1e-8 && q.z <= Math.max(p.z, r.z) + 1e-8
+  );
+  const abC = cross(a, b, c);
+  const abD = cross(a, b, d);
+  const cdA = cross(c, d, a);
+  const cdB = cross(c, d, b);
+  if (
+    ((abC > 1e-8 && abD < -1e-8) || (abC < -1e-8 && abD > 1e-8))
+    && ((cdA > 1e-8 && cdB < -1e-8) || (cdA < -1e-8 && cdB > 1e-8))
+  ) return true;
+  return (
+    (Math.abs(abC) <= 1e-8 && onSegment(a, c, b))
+    || (Math.abs(abD) <= 1e-8 && onSegment(a, d, b))
+    || (Math.abs(cdA) <= 1e-8 && onSegment(c, a, d))
+    || (Math.abs(cdB) <= 1e-8 && onSegment(c, b, d))
+  );
+}
+
+function walkSegmentHitsCollider(a, b, collider, padding) {
+  if (
+    Math.max(a.x, b.x) < collider.minX - padding
+    || Math.min(a.x, b.x) > collider.maxX + padding
+    || Math.max(a.z, b.z) < collider.minZ - padding
+    || Math.min(a.z, b.z) > collider.maxZ + padding
+  ) return false;
+  const paddingSq = padding * padding;
+  if (
+    pointInsideWalkPolygon(a, collider.points)
+    || pointInsideWalkPolygon(b, collider.points)
+  ) return true;
+  for (let index = 0; index < collider.points.length; index++) {
+    const c = collider.points[index];
+    const d = collider.points[(index + 1) % collider.points.length];
+    if (walkSegmentsIntersect(a, b, c, d)) return true;
+    const distanceSq = Math.min(
+      closestPointOnWalkEdge(a, c, d).point.distanceToSquared(a),
+      closestPointOnWalkEdge(b, c, d).point.distanceToSquared(b),
+      closestPointOnWalkEdge(c, a, b).point.distanceToSquared(new THREE.Vector3(c.x, 0, c.z)),
+      closestPointOnWalkEdge(d, a, b).point.distanceToSquared(new THREE.Vector3(d.x, 0, d.z)),
+    );
+    if (distanceSq <= paddingSq) return true;
   }
-  return true;
+  return false;
 }
 
 function mascotWalkSegmentIsClear(a, b, padding = mascotWalkRadius()) {
-  return !walkColliders.some((collider) => segmentHitsWalkBounds(a, b, expandedWalkCollider(collider, padding)));
+  return !walkColliders.some((collider) => walkSegmentHitsCollider(a, b, collider, padding));
+}
+
+function expandedWalkColliderPoints(collider, padding) {
+  return collider.points.map((point, index, points) => {
+    const previous = points[(index - 1 + points.length) % points.length];
+    const next = points[(index + 1) % points.length];
+    const previousEdge = new THREE.Vector2(point.x - previous.x, point.z - previous.z).normalize();
+    const nextEdge = new THREE.Vector2(next.x - point.x, next.z - point.z).normalize();
+    const previousNormal = new THREE.Vector2(previousEdge.y, -previousEdge.x);
+    const nextNormal = new THREE.Vector2(nextEdge.y, -nextEdge.x);
+    const bisector = previousNormal.add(nextNormal);
+    const denominator = Math.max(0.2, bisector.dot(nextNormal));
+    bisector.multiplyScalar(padding / denominator);
+    return new THREE.Vector3(point.x + bisector.x, 0, point.z + bisector.y);
+  });
 }
 
 function projectMascotToWalkablePoint(point) {
@@ -1938,15 +2082,9 @@ function projectMascotToWalkablePoint(point) {
   for (let attempt = 0; attempt < walkColliders.length * 2; attempt++) {
     const hit = pointHitsWalkCollider(projected);
     if (!hit) break;
-    const { bounds } = hit;
-    const candidates = [
-      new THREE.Vector3(bounds.minX - edgeGap, 0, projected.z),
-      new THREE.Vector3(bounds.maxX + edgeGap, 0, projected.z),
-      new THREE.Vector3(projected.x, 0, bounds.minZ - edgeGap),
-      new THREE.Vector3(projected.x, 0, bounds.maxZ + edgeGap),
-    ];
-    candidates.sort((a, b) => a.distanceToSquared(projected) - b.distanceToSquared(projected));
-    projected.copy(clampMascotPoint(candidates[0]));
+    projected.copy(hit.contact.point)
+      .addScaledVector(hit.contact.normal, mascotWalkRadius() + edgeGap);
+    projected.copy(clampMascotPoint(projected));
   }
   return projected;
 }
@@ -1959,12 +2097,9 @@ function planMascotWalkRoute(start, destination) {
 
   const nodes = [from, to];
   for (const collider of walkColliders) {
-    const bounds = expandedWalkCollider(collider, radius + WALK_ROUTE_CLEARANCE);
-    for (const [x, z] of [
-      [bounds.minX, bounds.minZ], [bounds.minX, bounds.maxZ],
-      [bounds.maxX, bounds.minZ], [bounds.maxX, bounds.maxZ],
-    ]) {
-      const corner = clampMascotPoint(new THREE.Vector3(x, 0, z));
+    const corners = expandedWalkColliderPoints(collider, radius + WALK_ROUTE_CLEARANCE);
+    for (const point of corners) {
+      const corner = clampMascotPoint(point);
       if (!pointHitsWalkCollider(corner, radius)) nodes.push(corner);
     }
   }
@@ -2006,17 +2141,9 @@ function nearestInstrumentWalkPoint(kind, origin) {
   // the seated/performance pose inside its geometry. The focus transition can
   // then place the mascot precisely, without making their visible route take
   // an arbitrary long way around the same instrument.
-  const bounds = expandedWalkCollider(collider, mascotWalkRadius());
-  const edgeGap = 0.06;
-  const point = new THREE.Vector3(
-    THREE.MathUtils.clamp(origin.x, bounds.minX, bounds.maxX),
-    0,
-    THREE.MathUtils.clamp(origin.z, bounds.minZ, bounds.maxZ),
-  );
-  if (origin.x <= bounds.minX) point.x = bounds.minX - edgeGap;
-  else if (origin.x >= bounds.maxX) point.x = bounds.maxX + edgeGap;
-  if (origin.z <= bounds.minZ) point.z = bounds.minZ - edgeGap;
-  else if (origin.z >= bounds.maxZ) point.z = bounds.maxZ + edgeGap;
+  const contact = closestWalkColliderContact(origin, collider);
+  const point = contact.point.clone()
+    .addScaledVector(contact.normal, mascotWalkRadius() + 0.06);
   return clampMascotPoint(point);
 }
 
@@ -2031,12 +2158,12 @@ function moveMascotWithColliders(direction, distance) {
       position.copy(proposed);
       continue;
     }
-    const xSlide = position.clone();
-    xSlide.x = proposed.x;
-    if (!pointHitsWalkCollider(xSlide, radius)) position.x = xSlide.x;
-    const zSlide = position.clone();
-    zSlide.z = proposed.z;
-    if (!pointHitsWalkCollider(zSlide, radius)) position.z = zSlide.z;
+    const hit = pointHitsWalkCollider(proposed, radius);
+    const slide = step.clone();
+    const intoSurface = slide.dot(hit.contact.normal);
+    if (intoSurface < 0) slide.addScaledVector(hit.contact.normal, -intoSurface);
+    const slid = clampMascotPoint(position.clone().add(slide));
+    if (!pointHitsWalkCollider(slid, radius)) position.copy(slid);
   }
 }
 
