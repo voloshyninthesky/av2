@@ -1381,7 +1381,10 @@ function buildMascot() {
   const ink = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 });
   const rose = new THREE.MeshStandardMaterial({ color: 0xb86d72, roughness: 0.8 });
   const silver = new THREE.MeshStandardMaterial({ color: 0xd7d9dd, roughness: 0.22, metalness: 0.88 });
-  const accessoryPurple = new THREE.MeshStandardMaterial({ color: 0x9E33CA, roughness: 0.48, metalness: 0.18 });
+  const headphoneMats = {
+    shell: new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.42, metalness: 0.12 }),
+    detail: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.55, metalness: 0.08 }),
+  };
 
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.58, 14), mats.top);
   torso.position.y = 1.08;
@@ -1475,17 +1478,28 @@ function buildMascot() {
   glassesBridge.position.set(0, 0.018, 0.304);
   accessoryGroups.glasses.add(glassesBridge);
   const headphoneBand = new THREE.Mesh(
-    new THREE.TorusGeometry(0.292, 0.027, 7, 22, Math.PI),
-    accessoryPurple,
+    new THREE.TorusGeometry(0.305, 0.026, 7, 24, Math.PI),
+    headphoneMats.shell,
   );
-  headphoneBand.rotation.z = Math.PI;
-  headphoneBand.position.set(0, 0.02, 0.01);
+  headphoneBand.position.set(0, 0.015, 0);
   accessoryGroups.headphones.add(headphoneBand);
+  const headphoneBandDetail = new THREE.Mesh(
+    new THREE.TorusGeometry(0.305, 0.01, 5, 24, Math.PI),
+    headphoneMats.detail,
+  );
+  headphoneBandDetail.position.set(0, 0.015, 0.025);
+  accessoryGroups.headphones.add(headphoneBandDetail);
   for (const x of [-0.295, 0.295]) {
-    const cup = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.17, 0.09), accessoryPurple);
-    cup.position.set(x, -0.035, 0.045);
+    const cup = new THREE.Mesh(new THREE.CapsuleGeometry(0.057, 0.07, 5, 10), headphoneMats.shell);
+    cup.scale.set(0.78, 1, 0.9);
+    cup.position.set(x, -0.07, 0.04);
     cup.rotation.z = x < 0 ? -0.08 : 0.08;
     accessoryGroups.headphones.add(cup);
+    const cupDetail = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.052, 4, 9), headphoneMats.detail);
+    cupDetail.scale.set(0.7, 1, 0.55);
+    cupDetail.position.set(x, -0.07, 0.097);
+    cupDetail.rotation.z = cup.rotation.z;
+    accessoryGroups.headphones.add(cupDetail);
   }
   for (const accessory of Object.values(accessoryGroups)) {
     accessory.visible = accessory === accessoryGroups.hoops;
@@ -1542,7 +1556,7 @@ function buildMascot() {
     handL: armL.userData.hand,
     handR: armR.userData.hand,
     custom: {
-      mats, hairMat, skinMat: skin, hairBack, hairCap, hairTail, locks, accessoryGroups,
+      mats, hairMat, skinMat: skin, hairBack, hairCap, hairTail, locks, accessoryGroups, headphoneMats,
       mouths: { soft: softSmile, wide: wideSmile, neutral: neutralMouth },
     },
   };
@@ -1766,6 +1780,8 @@ function applyMascotConfig() {
   if (accent !== null && accent !== undefined) {
     for (const slot of ['stripes', 'shoulder', 'collar']) cu.mats[slot].color.setHex(accent);
   }
+  cu.headphoneMats.shell.color.setHex(primary ?? outfit.panel);
+  cu.headphoneMats.detail.color.setHex(accent ?? outfit.stripes);
   for (const [name, accessory] of Object.entries(cu.accessoryGroups)) {
     accessory.visible = name === mascotCfg.accessory;
   }
