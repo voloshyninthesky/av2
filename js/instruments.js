@@ -186,9 +186,9 @@ export function buildDrumKit() {
       new THREE.Vector3(0, -0.55, 0),
       new THREE.Vector3(Math.cos(a) * 0.3, -0.78, Math.sin(a) * 0.3), 0.014, darkMetal));
   }
-  // Tuck the snare into the playable pocket between the kick, throne and
-  // hi-hat instead of leaving it out on the audience-facing front line.
-  snare.position.set(0.7, 0.88, -0.05);
+  // Pull the playing surface back toward the drummer while preserving enough
+  // side-to-side clearance from the kick and hi-hat.
+  snare.position.set(0.65, 0.88, -0.48);
   markInteract(snare, { instrument: 'drums', part: 'snare' });
   parts.snare = snare;
   kit.add(snare);
@@ -222,7 +222,7 @@ export function buildDrumKit() {
       new THREE.Vector3(Math.cos(a) * 0.3, -0.2, Math.sin(a) * 0.3),
       new THREE.Vector3(Math.cos(a) * 0.38, -0.72, Math.sin(a) * 0.38), 0.014, chrome));
   }
-  floorTom.position.set(-0.95, 0.74, 0.42);
+  floorTom.position.set(-0.88, 0.74, -0.22);
   markInteract(floorTom, { instrument: 'drums', part: 'floor' });
   parts.floor = floorTom;
   kit.add(floorTom);
@@ -242,7 +242,7 @@ export function buildDrumKit() {
   const hatBot = mkCymbal(0.28); hatBot.position.y = 0;
   const hatTop = mkCymbal(0.28); hatTop.position.y = 0.045; hatTop.rotation.z = -0.03;
   hihat.add(hatBot, hatTop);
-  hihat.position.set(1.08, 1.02, 0.3);
+  hihat.position.set(1.04, 1.02, -0.38);
   markInteract(hihat, { instrument: 'drums', part: 'hihat' });
   parts.hihatTop = hatTop;
   kit.add(hihat);
@@ -252,7 +252,7 @@ export function buildDrumKit() {
   const crashCym = mkCymbal(0.36);
   crashCym.rotation.z = -0.12;
   crash.add(crashCym);
-  crash.position.set(-1.42, 1.5, 0.1);
+  crash.position.set(-0.74, 1.62, 0.14);
   markInteract(crash, { instrument: 'drums', part: 'crash' });
   parts.crash = crashCym;
   kit.add(crash);

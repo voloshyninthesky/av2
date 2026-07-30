@@ -2307,8 +2307,9 @@ const INSTRUMENT_VIEW_PRESETS = {
     seated: true,
     approach: [],
     camera: new THREE.Vector3(1.2, 2.18, -2.2),
-    cameraMobile: new THREE.Vector3(1.42, 2.52, -2.75),
+    cameraMobile: new THREE.Vector3(0.92, 2.58, -3.55),
     target: new THREE.Vector3(0, 0.94, 0.05),
+    targetMobile: new THREE.Vector3(0, 0.8, -0.05),
     arms: [-0.88, -1.05],
   },
   piano: {
@@ -2699,9 +2700,10 @@ function fitPianoFocusFrame(preset) {
 
 function instrumentViewFrame(kind, preset) {
   if (kind === 'piano') return fitPianoFocusFrame(preset);
+  const target = isMobileGameMode() && preset.targetMobile ? preset.targetMobile : preset.target;
   return {
     position: instrumentLocalToWorld(kind, instrumentViewCameraPoint(kind, preset)),
-    target: instrumentLocalToWorld(kind, preset.target),
+    target: instrumentLocalToWorld(kind, target),
   };
 }
 
