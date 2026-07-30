@@ -183,6 +183,8 @@ const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
+let creditSignature = null;
+let creditLinkHit = null;
 const adaptiveQualityScene = {
   bulbLights: [],
   lowPrioritySpots: [],
@@ -525,49 +527,54 @@ function plateTexture() {
   return t;
 }
 
-// Quiet maker's mark inset into the front-right stage fascia.
+// Ornate maker's mark mounted on the beam beneath the front of the stage.
 function signatureTexture() {
   const c = document.createElement('canvas');
-  c.width = 1536; c.height = 256;
+  c.width = 1536; c.height = 512;
   const x = c.getContext('2d');
   x.clearRect(0, 0, c.width, c.height);
+  x.textAlign = 'center';
   x.textBaseline = 'middle';
 
-  const left = 'made by';
-  const name = '@vadymbek';
-  x.font = '500 42px "JetBrains Mono", monospace';
-  const leftWidth = x.measureText(left).width;
-  x.font = 'italic 700 76px "Playfair Display", Georgia, serif';
-  const nameWidth = x.measureText(name).width;
-  const gap = 34;
-  const startX = (c.width - leftWidth - gap - nameWidth) / 2;
+  x.shadowColor = 'rgba(158, 51, 202, 0.9)';
+  x.shadowBlur = 46;
+  x.fillStyle = 'rgba(158, 51, 202, 0.25)';
+  x.font = 'italic 900 132px "Playfair Display", Georgia, serif';
+  x.fillText('@vadymbek', 768, 316);
 
-  // A dark offset and restrained highlights make this read as an engraving,
-  // not a glowing callout.
-  x.textAlign = 'left';
-  x.font = '500 42px "JetBrains Mono", monospace';
-  x.fillStyle = 'rgba(5, 2, 8, 0.58)';
-  x.fillText(left, startX + 2, 133);
-  x.fillStyle = 'rgba(253, 251, 247, 0.25)';
-  x.fillText(left, startX, 129);
+  x.shadowBlur = 15;
+  x.fillStyle = 'rgba(253, 251, 247, 0.66)';
+  x.font = '500 54px "JetBrains Mono", monospace';
+  x.fillText('made by', 768, 144);
 
-  x.font = 'italic 700 76px "Playfair Display", Georgia, serif';
-  x.fillStyle = 'rgba(5, 2, 8, 0.62)';
-  x.fillText(name, startX + leftWidth + gap + 2, 135);
-  x.fillStyle = 'rgba(209, 161, 59, 0.42)';
-  x.fillText(name, startX + leftWidth + gap, 129);
+  x.shadowBlur = 22;
+  x.fillStyle = 'rgba(209, 161, 59, 0.94)';
+  x.font = 'italic 900 132px "Playfair Display", Georgia, serif';
+  x.fillText('@vadymbek', 768, 306);
+  x.shadowBlur = 0;
 
-  x.strokeStyle = 'rgba(209, 161, 59, 0.16)';
-  x.lineWidth = 2;
+  x.strokeStyle = 'rgba(201, 136, 240, 0.55)';
+  x.lineWidth = 4;
+  x.shadowColor = 'rgba(158, 51, 202, 0.7)';
+  x.shadowBlur = 14;
   x.beginPath();
-  x.moveTo(startX + leftWidth + gap, 179);
-  x.lineTo(startX + leftWidth + gap + nameWidth, 179);
+  x.moveTo(468, 390);
+  x.quadraticCurveTo(768, 412, 1068, 386);
   x.stroke();
+  x.shadowBlur = 0;
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
+}
+
+// The credit is still a fixed part of the stage. It appears immediately with
+// the fall and never tracks the camera.
+function setFallCreditReveal(visible = false) {
+  if (!creditSignature) return;
+  creditSignature.material.opacity = visible ? 0.94 : 0;
+  if (creditLinkHit) creditLinkHit.userData.linkActive = visible;
 }
 
 function buildStage() {
@@ -598,31 +605,43 @@ function buildStage() {
   platform.receiveShadow = true;
   g.add(platform);
 
+  // A fixed lower-front beam keeps the mark part of the stage, rather than a
+  // camera-facing title, while making it visible from the first fall frame.
+  const signatureBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(5.05, 1.55, 0.16),
+    new THREE.MeshStandardMaterial({ color: 0x110719, roughness: 0.75, metalness: 0.12 })
+  );
+  signatureBeam.position.set(0, -0.36, 3.94);
+  signatureBeam.receiveShadow = true;
+  g.add(signatureBeam);
+
   const sigMap = signatureTexture();
-  const signature = new THREE.Mesh(
+  creditSignature = new THREE.Mesh(
     new THREE.PlaneGeometry(3.05, 0.5),
     new THREE.MeshBasicMaterial({
       map: sigMap,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0,
       depthWrite: false,
-      fog: false,
+      fog: true,
       side: THREE.FrontSide,
     })
   );
-  signature.position.set(7.4, -0.3, 4.066);
-  signature.name = 'credit-signature';
-  const nameHit = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.25, 0.58),
+  creditSignature.scale.set(1.1, 1.9, 1);
+  creditSignature.position.set(0, -0.33, 4.066);
+  creditSignature.name = 'credit-signature';
+  creditLinkHit = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.1, 0.58),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
   );
-  nameHit.position.z = 0.01;
-  nameHit.visible = false;
-  nameHit.userData.link = 'https://vadymbek.top';
-  nameHit.name = 'credit-link';
-  signature.add(nameHit);
-  creditLinks.push(nameHit);
-  g.add(signature);
+  creditLinkHit.position.z = 0.01;
+  creditLinkHit.visible = false;
+  creditLinkHit.userData.link = 'https://vadymbek.top';
+  creditLinkHit.userData.linkActive = false;
+  creditLinkHit.name = 'credit-link';
+  creditSignature.add(creditLinkHit);
+  creditLinks.push(creditLinkHit);
+  g.add(creditSignature);
 
   // gold trim on front edge
   const trim = new THREE.Mesh(
@@ -3360,6 +3379,7 @@ function beginMascotFall(direction) {
     controlsEnabled: controls.enabled,
     autoRotate: controls.autoRotate,
   };
+  setFallCreditReveal(true);
   controls.enabled = false;
   controls.autoRotate = false;
   clearTimeout(idleTimer);
@@ -3378,6 +3398,7 @@ function beginMascotFall(direction) {
 function respawnMascot() {
   const completedFall = mascotMove.fall;
   mascotMove.fall = null;
+  setFallCreditReveal(false);
   mascot.group.position.copy(mascotMove.spawn);
   applyMascotScale();
   mascot.group.rotation.x = 0;
@@ -5267,7 +5288,7 @@ function creditLinkAtPointer(rayReady = false) {
   if (!creditLinks.length) return null;
   if (!rayReady) raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(creditLinks, false);
-  return hits[0] || null;
+  return hits.find((hit) => hit.object.userData.linkActive) || null;
 }
 
 function handleClick(e) {
