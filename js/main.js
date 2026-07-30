@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260729-19';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
 import { UI } from './ui.js?v=20260729-24';
+import { shouldPreserveNativeTouchActivation } from './touch-guards.mjs?v=20260730-01';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -4125,7 +4126,9 @@ document.addEventListener('dragstart', (e) => {
 {
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (e) => {
-    if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
+    // HUD controls activate through their native click. Cancelling touchend
+    // suppresses that click on iOS and leaves only the sticky hover/focus state.
+    if (shouldPreserveNativeTouchActivation(e.target)) return;
     const now = performance.now();
     if (now - lastTouchEnd < 320 && e.cancelable) e.preventDefault();
     lastTouchEnd = now;
