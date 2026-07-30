@@ -185,6 +185,8 @@ const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
 let creditSignature = null;
 let creditLinkHit = null;
+const creditFallCameraEnd = new THREE.Vector3();
+const creditFallViewDirection = new THREE.Vector3();
 const adaptiveQualityScene = {
   bulbLights: [],
   lowPrioritySpots: [],
@@ -527,7 +529,7 @@ function plateTexture() {
   return t;
 }
 
-// Ornate maker's mark mounted on the beam beneath the front of the stage.
+// Secret under-stage credit, revealed only while the mascot falls.
 function signatureTexture() {
   const c = document.createElement('canvas');
   c.width = 1536; c.height = 512;
@@ -540,7 +542,7 @@ function signatureTexture() {
   x.shadowBlur = 46;
   x.fillStyle = 'rgba(158, 51, 202, 0.25)';
   x.font = 'italic 900 132px "Playfair Display", Georgia, serif';
-  x.fillText('@vadymbek', 768, 316);
+  x.fillText('prostir.love', 768, 316);
 
   x.shadowBlur = 15;
   x.fillStyle = 'rgba(253, 251, 247, 0.66)';
@@ -550,7 +552,7 @@ function signatureTexture() {
   x.shadowBlur = 22;
   x.fillStyle = 'rgba(209, 161, 59, 0.94)';
   x.font = 'italic 900 132px "Playfair Display", Georgia, serif';
-  x.fillText('@vadymbek', 768, 306);
+  x.fillText('prostir.love', 768, 306);
   x.shadowBlur = 0;
 
   x.strokeStyle = 'rgba(201, 136, 240, 0.55)';
@@ -569,12 +571,39 @@ function signatureTexture() {
   return t;
 }
 
-// The credit is still a fixed part of the stage. It appears immediately with
-// the fall and never tracks the camera.
-function setFallCreditReveal(visible = false) {
-  if (!creditSignature) return;
-  creditSignature.material.opacity = visible ? 0.94 : 0;
-  if (creditLinkHit) creditLinkHit.userData.linkActive = visible;
+function showFallCredit(fall) {
+  if (!creditSignature || !fall) return;
+  creditFallCameraEnd.copy(fall.cameraPosition);
+  creditFallCameraEnd.y -= 3.35;
+  creditFallViewDirection
+    .subVectors(fall.cameraTarget, fall.cameraPosition)
+    .normalize();
+  creditSignature.position
+    .copy(creditFallCameraEnd)
+    .addScaledVector(creditFallViewDirection, 4.2);
+  // Keep the entire plaque physically below the platform underside.
+  creditSignature.position.y = Math.min(creditSignature.position.y, -1.25);
+  creditSignature.lookAt(creditFallCameraEnd);
+  creditSignature.scale.setScalar(
+    THREE.MathUtils.clamp(camera.aspect / 1.25, 0.42, 1),
+  );
+  creditSignature.material.opacity = 0;
+  creditSignature.visible = true;
+  if (creditLinkHit) creditLinkHit.userData.linkActive = false;
+}
+
+function updateFallCredit(progress) {
+  if (!creditSignature?.visible) return;
+  creditSignature.material.opacity = THREE.MathUtils.smoothstep(progress, 0.16, 0.48);
+  if (creditLinkHit) creditLinkHit.userData.linkActive = progress >= 0.32;
+}
+
+function hideFallCredit() {
+  if (creditSignature) {
+    creditSignature.visible = false;
+    creditSignature.material.opacity = 0;
+  }
+  if (creditLinkHit) creditLinkHit.userData.linkActive = false;
 }
 
 function buildStage() {
@@ -605,38 +634,27 @@ function buildStage() {
   platform.receiveShadow = true;
   g.add(platform);
 
-  // A fixed lower-front beam keeps the mark part of the stage, rather than a
-  // camera-facing title, while making it visible from the first fall frame.
-  const signatureBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(5.05, 1.55, 0.16),
-    new THREE.MeshStandardMaterial({ color: 0x110719, roughness: 0.75, metalness: 0.12 })
-  );
-  signatureBeam.position.set(0, -0.36, 3.94);
-  signatureBeam.receiveShadow = true;
-  g.add(signatureBeam);
-
   const sigMap = signatureTexture();
   creditSignature = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.05, 0.5),
+    new THREE.PlaneGeometry(3.36, 1.12),
     new THREE.MeshBasicMaterial({
       map: sigMap,
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      fog: true,
+      fog: false,
       side: THREE.FrontSide,
     })
   );
-  creditSignature.scale.set(1.1, 1.9, 1);
-  creditSignature.position.set(0, -0.33, 4.066);
+  creditSignature.visible = false;
   creditSignature.name = 'credit-signature';
   creditLinkHit = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.1, 0.58),
+    new THREE.PlaneGeometry(3.36, 1.12),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
   );
   creditLinkHit.position.z = 0.01;
   creditLinkHit.visible = false;
-  creditLinkHit.userData.link = 'https://vadymbek.top';
+  creditLinkHit.userData.link = 'https://prostir.love';
   creditLinkHit.userData.linkActive = false;
   creditLinkHit.name = 'credit-link';
   creditSignature.add(creditLinkHit);
@@ -1884,9 +1902,9 @@ const danceBtn = document.getElementById('logo-btn'); // HUD logo doubles as the
 const joystickInput = new THREE.Vector2();
 const cameraForwardXZ = new THREE.Vector3();
 const cameraRightXZ = new THREE.Vector3();
-// Mobile Legends-style pursuit camera: the rig keeps the mascot composed near
-// the lower centre of the frame, looks slightly in the travel direction, and
-// catches up without a frame-rate-dependent snap.
+// Game-style pursuit camera: the rig keeps the mascot composed near the lower
+// centre of the frame, looks slightly in the travel direction, and catches up
+// without a frame-rate-dependent snap on both mobile and desktop.
 const mobileFollow = {
   desiredTarget: new THREE.Vector3(),
   delta: new THREE.Vector3(),
@@ -1923,11 +1941,11 @@ function resetMobileFollowCamera({ snap = false } = {}) {
   mobileFollow.desiredLookAhead.set(0, 0, 0);
   mobileFollow.initialized = true;
   mobileFollow.scouting = false;
-  if (snap && isMobileGameMode()) updateMobileFollowCamera(0, true);
+  if (snap) updateMobileFollowCamera(0, true);
 }
 
 function updateMobileFollowCamera(dt, immediate = false) {
-  if (!isMobileGameMode() || flyT >= 0) {
+  if (flyT >= 0) {
     mobileFollow.initialized = false;
     return;
   }
@@ -3379,7 +3397,7 @@ function beginMascotFall(direction) {
     controlsEnabled: controls.enabled,
     autoRotate: controls.autoRotate,
   };
-  setFallCreditReveal(true);
+  showFallCredit(mascotMove.fall);
   controls.enabled = false;
   controls.autoRotate = false;
   clearTimeout(idleTimer);
@@ -3398,7 +3416,7 @@ function beginMascotFall(direction) {
 function respawnMascot() {
   const completedFall = mascotMove.fall;
   mascotMove.fall = null;
-  setFallCreditReveal(false);
+  hideFallCredit();
   mascot.group.position.copy(mascotMove.spawn);
   applyMascotScale();
   mascot.group.rotation.x = 0;
@@ -3429,9 +3447,7 @@ function respawnMascot() {
     mascotLabel.visible = true;
     mascotLabel.position.set(mascotMove.spawn.x, mascotLabelY(), mascotMove.spawn.z);
   }
-  if (isMobileGameMode()) {
-    resetMobileFollowCamera({ snap: true });
-  }
+  resetMobileFollowCamera({ snap: true });
   // Fall leaves focus (muteGuitar) and can suspend WebAudio — wake + re-queue loop.
   audio.init();
   audio.resume();
@@ -3571,6 +3587,7 @@ function updateMascot(dt) {
     const fall = mascotMove.fall;
     fall.t += dt;
     const fallProgress = Math.min(1, fall.t / fall.duration);
+    updateFallCredit(fallProgress);
     mascot.group.position.addScaledVector(fall.velocity, dt);
     mascot.group.position.y = -0.05 - 0.48 * fall.t - 0.38 * fall.t * fall.t;
     applyMascotScale(1 - fallProgress * 0.24);
@@ -3608,13 +3625,7 @@ function updateMascot(dt) {
     }
     return;
   }
-  const direction = new THREE.Vector3(
-    ((mascotMove.keys.has('ArrowRight') || mascotMove.keys.has('KeyD')) ? 1 : 0)
-      - ((mascotMove.keys.has('ArrowLeft') || mascotMove.keys.has('KeyA')) ? 1 : 0),
-    0,
-    ((mascotMove.keys.has('ArrowDown') || mascotMove.keys.has('KeyS')) ? 1 : 0)
-      - ((mascotMove.keys.has('ArrowUp') || mascotMove.keys.has('KeyW')) ? 1 : 0),
-  );
+  const direction = new THREE.Vector3();
 
   if (joystickInput.lengthSq() > 0) {
     camera.getWorldDirection(cameraForwardXZ);
@@ -3811,7 +3822,7 @@ const GUITAR_CHORDS = {
   F: [1, 3, 3, 2, 1, 1],
 };
 const GUITAR_OPEN_SHAPE = [0, 0, 0, 0, 0, 0];
-// Disjoint from WASD walk, approach (E), loop (L), drums, piano, vocal.
+// Disjoint from approach (E), loop (L), drums, piano, and vocal controls.
 const GUITAR_KEY_CHORDS = {
   KeyQ: 'Em',
   KeyR: 'Am',
@@ -5312,8 +5323,9 @@ function isEditableHotkeyTarget(target) {
   return Boolean(target?.closest?.('button, a, input, textarea, select, [contenteditable="true"], [role="button"]'));
 }
 
-const WALK_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
-// Disjoint from WASD walk / E approach / L loop / guitar / vocal / piano.
+// Keyboard movement is intentionally absent; click-to-move and the joystick
+// are the only mascot movement inputs.
+// Disjoint from E approach / L loop / guitar / vocal / piano.
 const DRUM_KEYS = { KeyZ: 'kick', KeyX: 'snare', KeyC: 'hihat', KeyV: 'tom2', KeyB: 'crash' };
 const VOCAL_KEYS = {
   KeyN: { freq: 261.63, vowel: 0 },
@@ -5329,13 +5341,6 @@ window.addEventListener('keydown', (e) => {
   }
   if (!started || ui.modalOpen) return;
   if (isEditableHotkeyTarget(e.target)) return;
-
-  if (WALK_KEYS.has(e.code)) {
-    e.preventDefault();
-    if (instrumentView.phase !== 'idle') return;
-    mascotMove.keys.add(e.code);
-    return;
-  }
 
   if (e.code === 'KeyE' && !e.repeat && instrumentView.phase === 'idle') {
     playNearestInstrument();
@@ -5408,7 +5413,6 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-  if (WALK_KEYS.has(e.code)) mascotMove.keys.delete(e.code);
   if (keyboardPianoNotes.has(e.code)) {
     const heldPiano = keyboardPianoNotes.get(e.code);
     releaseHeldPianoNote(heldPiano);
@@ -6453,10 +6457,7 @@ let idleTimer = null;
 controls.addEventListener('start', () => {
   controls.autoRotate = false;
   clearTimeout(idleTimer);
-  if (
-    isMobileGameMode()
-    && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')
-  ) {
+  if (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching') {
     mobileFollow.scouting = true;
     document.documentElement.dataset.cameraMode = 'scout';
   }
@@ -6466,11 +6467,6 @@ controls.addEventListener('end', () => {
   if (mobileFollow.scouting) {
     mobileFollow.scouting = false;
     document.documentElement.dataset.cameraMode = 'follow';
-  }
-  if (!isMobileGameMode() && instrumentView.phase === 'idle') {
-    idleTimer = setTimeout(() => {
-      if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
-    }, 9000);
   }
 });
 
@@ -6521,11 +6517,6 @@ function animate(frameTime = performance.now()) {
       controls.enabled = true;
       ui.showHUD();
       startOnboard();
-      if (!isMobileGameMode()) {
-        idleTimer = setTimeout(() => {
-          if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
-        }, 6000);
-      }
     }
   } else if (mascotCam.active) {
     // ОБРАЗ modal camera framing (tween toward / away from the mascot).
