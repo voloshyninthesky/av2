@@ -525,7 +525,7 @@ function plateTexture() {
   return t;
 }
 
-// A quiet maker's mark, treated like an artist's signature on the stage frame.
+// soft neon credit on the slideshow's back face
 function signatureTexture() {
   const c = document.createElement('canvas');
   c.width = 1024; c.height = 256;
@@ -534,23 +534,49 @@ function signatureTexture() {
   x.textAlign = 'center';
   x.textBaseline = 'middle';
 
-  // Dark offset plus restrained brass catches make the lettering feel etched
-  // into the stage fascia instead of printed on top of it.
-  x.font = 'italic 700 104px "Playfair Display", Georgia, serif';
-  x.fillStyle = 'rgba(5, 2, 8, 0.72)';
-  x.fillText('vadymbek', 516, 137);
-  x.fillStyle = 'rgba(209, 161, 59, 0.48)';
-  x.fillText('vadymbek', 512, 130);
-  x.strokeStyle = 'rgba(253, 251, 247, 0.13)';
+  const left = 'created by ';
+  const name = 'vadymbek';
+  const font = '500 40px "Unbounded", sans-serif';
+  x.font = font;
+  const leftW = x.measureText(left).width;
+  const nameW = x.measureText(name).width;
+  const totalW = leftW + nameW;
+  const startX = 512 - totalW / 2;
+  const leftCenter = startX + leftW / 2;
+  const nameCenter = startX + leftW + nameW / 2;
+  const nameUvMin = (startX + leftW) / 1024;
+
+  const drawLine = (text, cx, fill, blur) => {
+    x.shadowColor = 'rgba(158, 51, 202, 0.85)';
+    x.shadowBlur = blur;
+    x.fillStyle = fill;
+    x.fillText(text, cx, 128);
+  };
+
+  // Soft violet bloom, kept quiet so it doesn't compete with the stage.
+  x.font = '500 42px "Unbounded", sans-serif';
+  drawLine(left + name, 512, 'rgba(158, 51, 202, 0.22)', 36);
+  x.font = font;
+  drawLine(left, leftCenter, 'rgba(201, 136, 240, 0.45)', 14);
+  drawLine(name, nameCenter, 'rgba(232, 210, 255, 0.9)', 16);
+  x.shadowBlur = 0;
+
+  // Subtle neon underline under the linked name.
+  const underlineY = 148;
+  x.strokeStyle = 'rgba(209, 161, 59, 0.55)';
   x.lineWidth = 2;
+  x.shadowColor = 'rgba(158, 51, 202, 0.7)';
+  x.shadowBlur = 10;
   x.beginPath();
-  x.moveTo(282, 183);
-  x.quadraticCurveTo(520, 197, 752, 177);
+  x.moveTo(startX + leftW, underlineY);
+  x.lineTo(startX + leftW + nameW, underlineY);
   x.stroke();
+  x.shadowBlur = 0;
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  t.userData = { nameUvMin };
   return t;
 }
 
@@ -589,34 +615,6 @@ function buildStage() {
   );
   trim.position.set(0, -0.02, 4.02);
   g.add(trim);
-
-  // Artist's maker mark: burned into the front-right floorboards like a
-  // signature in the corner of a canvas, quiet enough to reward discovery.
-  const sigMap = signatureTexture();
-  const signature = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.65, 0.32),
-    new THREE.MeshBasicMaterial({
-      map: sigMap,
-      transparent: true,
-      depthWrite: false,
-      fog: false,
-      side: THREE.FrontSide,
-    })
-  );
-  signature.position.set(5.15, 0.012, 2.75);
-  signature.rotation.x = -Math.PI / 2;
-  signature.name = 'credit-signature';
-  const nameHit = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.95, 0.55),
-    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-  );
-  nameHit.position.z = 0.01;
-  nameHit.visible = false;
-  nameHit.userData.link = 'https://vadymbek.top';
-  nameHit.name = 'credit-link';
-  signature.add(nameHit);
-  creditLinks.push(nameHit);
-  g.add(signature);
 
   const lowEndLighting = isLowEndMobileGameMode();
   const bulbMat = new THREE.MeshStandardMaterial({
@@ -789,6 +787,35 @@ function buildScreen() {
   );
   plate.position.set(0, 2.62, -5.45);
   g.add(plate);
+
+  // Quiet neon credit on the reverse side of the screen.
+  const sigMap = signatureTexture();
+  const signature = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.6, 0.65),
+    new THREE.MeshBasicMaterial({
+      map: sigMap,
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+      side: THREE.FrontSide,
+    })
+  );
+  signature.position.set(0, 5.35, -5.52);
+  signature.rotation.y = Math.PI;
+  signature.name = 'credit-signature';
+  // Invisible hit target over the linked name only (local +X = "vadymbek").
+  const nameHit = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.2, 0.45),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  nameHit.position.set(0.52, 0, 0.01);
+  // Raycaster still tests invisible meshes, while the renderer skips this collider.
+  nameHit.visible = false;
+  nameHit.userData.link = 'https://vadymbek.top';
+  nameHit.name = 'credit-link';
+  signature.add(nameHit);
+  creditLinks.push(nameHit);
+  g.add(signature);
 
   return g;
 }
