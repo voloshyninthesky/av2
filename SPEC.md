@@ -7,7 +7,7 @@ Interactive marketing experience for **Art Vibe Studio** (music lessons): a WebG
 - **Locale:** Ukrainian (`lang="uk"`)  
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTA:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/)  
-- **Credit:** subtle «made by @vadymbek» engraving on the front-right stage fascia → https://vadymbek.top
+- **Credit:** secret «made by prostir.love» beneath the stage, revealed only during a mascot fall → https://prostir.love
 
 Slogan: *Вчись творити і твори навчаючись.*
 
@@ -94,9 +94,9 @@ Mute chosen before the context exists is honored when `init` runs.
 - Back wall, curtains, valance, speaker stacks.
 - Mascot walking uses convex X/Z footprints derived from the visible meshes of instruments and speaker stacks, expanded by the mascot's rounded clearance. Rotated and irregular objects keep silhouette-following borders instead of oversized axis-aligned boxes. Keyboard / stick movement slides along angled edges; click routes use expanded footprint corners; instrument approaches stop at the nearest clear silhouette edge before focus, and exiting a seated focus pose returns the mascot to clear floor.
 - Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate.
-- Low-contrast **made by @vadymbek** engraving on the front-right stage fascia beneath the gold trim (clickable link hit target); no neon bloom or explicit credit treatment.
+- Smaller under-stage **made by prostir.love** signature, hidden during normal play and revealed only as the fall camera descends (clickable link hit target while visible).
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).
-- Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). Soft orbit (lower rotate/zoom speed, higher damping). Extra zoom-in headroom vs older builds.
+- Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). The game-style mascot-follow camera and temporary scout-on-drag behavior run on both mobile and desktop; focused instrument views retain their own cameras. Extra zoom-in headroom vs older builds.
 - After Enter: `html.stage-live` — fixed layout, `touch-action` guards, `visualViewport` scale reset to fight Chrome iOS letterboxing from stuck page zoom.
 
 ### Instruments (procedural meshes)
@@ -189,7 +189,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 - **Touch:** hold a chord with one pointer and strum with another. Release, cancel, exit, background, or lost capture returns to open strings.
 - **Fine pointer / pen:** clicking a chord latches it so the same pointer can strum repeatedly; clicking it again clears it.
-- **Desktop keyboard (jam map):** hold `Q` / `R` / `T` / `Y` / `U` / `I` for Em / Am / C / D / G / F. Key release returns to open strings. Space is a downstroke; Shift+Space is an upstroke. These keys are **disjoint** from walk (`WASD` + arrows), drums (`Z X C V B`), piano (`1–8`), and vocal (`N M , . /`) so several instruments can sound together while moving. Do **not** bind play keys to `W` / `A` / `S` / `D` / `E` / `L`.
+- **Desktop keyboard (jam map):** hold `Q` / `R` / `T` / `Y` / `U` / `I` for Em / Am / C / D / G / F. Key release returns to open strings. Space is a downstroke; Shift+Space is an upstroke. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
 - Chord buttons expose visible focus, `aria-pressed`, and `aria-keyshortcuts` (matching the jam map); color is not the only signal.
 - Use one fretboard plane and derive the nearest string from its local hit point; while a chord is selected, its shape owns the fretting so every fretboard hit uses that string’s chord pitch and mute state. With no chord selected, a fretboard hit uses its local fret.
 
@@ -212,7 +212,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 ### Mascot
 
-Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / `WASD` / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
+Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with click-to-move on the floor or the mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
 **Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), seven skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height / build sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look; horizontal drag remains the sole orientation control.
 
@@ -228,7 +228,7 @@ Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГО�
 
 On desktop (fine pointer / hover-capable, not the mobile game shell), the computer keyboard is a **multi-instrument jam surface**. After Enter, with no modal open and the event not from an editable / button target, instrument maps stay live **regardless of which instrument is focused** (including idle / walking). Pointer and on-screen pads remain focus-gated as today.
 
-**Why this layout:** walk uses **WASD + arrows**. Old drums on `A S D F G` and guitar chords on letter names collided with movement and approach (`E`). Simultaneous move + jam needs a disjoint map.
+**Why this layout:** mascot movement stays pointer/touch based, leaving the desktop keyboard free for instruments and approach (`E`).
 
 | Layer | Keys | Behavior |
 |-------|------|----------|
@@ -248,14 +248,14 @@ Rules:
 3. **One owner per physical key.** Never bind the same `KeyboardEvent.code` to two instruments or to both walk and play.
 4. **Release hygiene:** `keyup`, window blur, visibility hidden, and focus exit clear held piano notes, keyboard guitar chord, and held keyboard vocal for that session path. Walk key sets clear on `keyup` / blur as today.
 5. **Price chips:** first audible play of an instrument (keyboard or pointer) still queues the once-per-instrument chip. If that play happened without focus, show the chip after the visitor next leaves any instrument focus, or after ~2 s of silence from that instrument if they never focused it.
-6. **`#keys-hint` (desktop-only):** reflect the jam map, e.g. `WASD` / стрілки / клік · `E` · `L` · `Z X C V B` ударні · `1–8` піаніно · `Q R T Y U I`+пробіл гітара · `N M , . /` вокал.
+6. **`#keys-hint` (desktop-only):** reflect the jam map, e.g. клік · `E` · `L` · `Z X C V B` ударні · `1–8` піаніно · `Q R T Y U I`+пробіл гітара · `N M , . /` вокал.
 7. **Mobile unchanged:** no jam keyboard; pads + focused multitouch only. Hide `#keys-hint` as today.
 
 ### Desktop
 
 | Input | Action |
 |-------|--------|
-| Arrows / `WASD` / click floor | Move mascot (idle) |
+| Click floor / mobile joystick | Move mascot (idle) |
 | Click instrument | Approach if not focused; mesh / pad play only when focused |
 | `E` while idle | Approach nearest instrument in reach (no auto melody) |
 | Drag / wheel / `+` `−` | Orbit / zoom (buttons stay visible while focused) |
@@ -513,10 +513,10 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
 - After Enter on a desktop viewport, with no modal open, holding `1` + tapping `Z` + holding `Q` and pressing Space produces piano + drum + guitar audio in one gesture sequence without focusing any instrument.
 - Holding `N` (vocal) together with `3` (piano) and tapping `X` (snare) keeps all three buses audible; focusing piano must not silence drums / vocal / guitar keyboard routes.
-- `WASD` and arrows move the mascot while idle; `W` / `A` / `S` / `D` never trigger drums, guitar, or vocal. No `KeyboardEvent.code` is shared across walk/approach, loop, piano, drums, guitar, or vocal maps (`E` stays approach-only while idle; guitar Em is `Q`).
+- Mascot movement has no keyboard bindings: use click-to-move or the mobile joystick. No `KeyboardEvent.code` is shared across approach, loop, piano, drums, guitar, or vocal maps (`E` stays approach-only while idle; guitar Em is `Q`).
 - A visitor can hold `W` to walk and tap `Z` / `1` / Space in the same session without the walk key stealing instrument input (play keys fire; walk continues on remaining held walk keys).
 - `keyup`, blur, `visibilitychange` → hidden, and ✕ exit clear held piano keys, keyboard guitar chord, and held keyboard vocal without stuck sustains.
-- Mobile / coarse-pointer shells ignore the jam keyboard and keep focus-gated pads; `#keys-hint` stays desktop-only and lists the jam map including `WASD`.
+- Mobile / coarse-pointer shells ignore the jam keyboard and keep focus-gated pads; `#keys-hint` stays desktop-only and lists the jam map.
 
 ---
 
