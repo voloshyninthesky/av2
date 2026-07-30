@@ -325,8 +325,8 @@ const CAM_START = new THREE.Vector3(0, 9.5, 18.5);
 const CAM_END = new THREE.Vector3(0, 3.05, 10.45);
 const TARGET = new THREE.Vector3(0, 1.45, -0.3);
 const ZOOM_IN_STEP = 0.82;
-// Match three "+" presses for a closer stage start.
-const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 3;
+// Start two "+" presses closer than the original stage framing.
+const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 5;
 // Guitar performance starts two "+" presses closer than its framing preset.
 const GUITAR_FOCUS_ZOOM_FACTOR = ZOOM_IN_STEP ** 2;
 // Allow two extra "+" presses past the previous closest zoom.
@@ -379,17 +379,28 @@ controls.maxPolarAngle = 1.47;
 controls.autoRotateSpeed = 0.55;
 controls.enabled = false;
 
-// Classic orbit on all devices; keep it soft so kids don't overshoot.
+// Mobile uses a MOBA-style tactical camera: one-finger drag scouts across the
+// stage, then the follow spring recentres on the mascot. Instrument close-ups
+// temporarily restore orbiting so every play surface can still be inspected.
 function applyMobileOrbitPolicy() {
-  controls.touches.ONE = THREE.TOUCH.ROTATE;
   controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
   if (isMobileGameMode()) {
-    controls.rotateSpeed = 0.3;
+    controls.touches.ONE = THREE.TOUCH.PAN;
+    controls.enableRotate = false;
+    controls.enablePan = true;
+    controls.screenSpacePanning = false;
+    controls.maxTargetRadius = 2.65;
+    controls.panSpeed = 0.72;
     controls.zoomSpeed = 0.42;
     controls.dampingFactor = 0.16;
     controls.minPolarAngle = 0.55;
     controls.maxPolarAngle = 1.52;
   } else {
+    controls.touches.ONE = THREE.TOUCH.ROTATE;
+    controls.enableRotate = true;
+    controls.enablePan = false;
+    controls.screenSpacePanning = true;
+    controls.maxTargetRadius = Infinity;
     controls.rotateSpeed = 0.48;
     controls.zoomSpeed = 0.58;
     controls.dampingFactor = 0.12;
@@ -1850,8 +1861,24 @@ const danceBtn = document.getElementById('logo-btn'); // HUD logo doubles as the
 const joystickInput = new THREE.Vector2();
 const cameraForwardXZ = new THREE.Vector3();
 const cameraRightXZ = new THREE.Vector3();
-const mobileFollowTarget = new THREE.Vector3();
-const mobileFollowDelta = new THREE.Vector3();
+// Mobile Legends-style pursuit camera: the rig keeps the mascot composed near
+// the lower centre of the frame, looks slightly in the travel direction, and
+// catches up without a frame-rate-dependent snap.
+const mobileFollow = {
+  desiredTarget: new THREE.Vector3(),
+  delta: new THREE.Vector3(),
+  previousMascotPosition: new THREE.Vector3(),
+  velocity: new THREE.Vector3(),
+  lookAhead: new THREE.Vector3(),
+  desiredLookAhead: new THREE.Vector3(),
+  initialized: false,
+  scouting: false,
+};
+const MOBILE_FOLLOW_HEIGHT = 1.35;
+const MOBILE_FOLLOW_DEPTH_OFFSET = -0.25;
+const MOBILE_FOLLOW_MAX_LOOK_AHEAD = 0.82;
+const MOBILE_FOLLOW_RESPONSE = 5.2;
+const MOBILE_FOLLOW_IDLE_RESPONSE = 3.6;
 let joystickPointer = null;
 const stageWalkPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const instrumentGroups = { drums: drums.group, piano: piano.group, guitar: guitar.group, mic: mic.group };
@@ -1865,6 +1892,81 @@ const walkColliderRoots = [
 const walkColliders = [];
 const WALK_COLLISION_STEP = 0.08;
 const WALK_ROUTE_CLEARANCE = 0.1;
+
+function resetMobileFollowCamera({ snap = false } = {}) {
+  mobileFollow.previousMascotPosition.copy(mascot.group.position);
+  mobileFollow.velocity.set(0, 0, 0);
+  mobileFollow.lookAhead.set(0, 0, 0);
+  mobileFollow.desiredLookAhead.set(0, 0, 0);
+  mobileFollow.initialized = true;
+  mobileFollow.scouting = false;
+  if (snap && isMobileGameMode()) updateMobileFollowCamera(0, true);
+}
+
+function updateMobileFollowCamera(dt, immediate = false) {
+  if (!isMobileGameMode() || flyT >= 0) {
+    mobileFollow.initialized = false;
+    return;
+  }
+  if (instrumentView.phase !== 'idle' && instrumentView.phase !== 'approaching') {
+    // Focus cameras own the rig until the mascot returns to free movement.
+    mobileFollow.initialized = false;
+    return;
+  }
+
+  if (!mobileFollow.initialized) resetMobileFollowCamera();
+
+  if (dt > 0) {
+    mobileFollow.velocity
+      .subVectors(mascot.group.position, mobileFollow.previousMascotPosition)
+      .divideScalar(dt);
+    // A short low-pass removes walk-bob/collision jitter from the look-ahead.
+    const speed = Math.hypot(mobileFollow.velocity.x, mobileFollow.velocity.z);
+    if (speed > 0.001) {
+      const lookAhead = Math.min(
+        MOBILE_FOLLOW_MAX_LOOK_AHEAD,
+        (speed / mascotMove.speed) * MOBILE_FOLLOW_MAX_LOOK_AHEAD,
+      );
+      mobileFollow.desiredLookAhead
+        .copy(mobileFollow.velocity)
+        .setY(0)
+        .setLength(lookAhead);
+    } else {
+      mobileFollow.desiredLookAhead.set(0, 0, 0);
+    }
+    mobileFollow.lookAhead.lerp(
+      mobileFollow.desiredLookAhead,
+      1 - Math.exp(-dt * 9),
+    );
+  }
+  mobileFollow.previousMascotPosition.copy(mascot.group.position);
+
+  mobileFollow.desiredTarget.set(
+    mascot.group.position.x + mobileFollow.lookAhead.x,
+    MOBILE_FOLLOW_HEIGHT,
+    mascot.group.position.z + MOBILE_FOLLOW_DEPTH_OFFSET + mobileFollow.lookAhead.z,
+  );
+  // OrbitControls uses cursor as the centre of its target-radius clamp. Updating
+  // it with the moving hero makes the scout range travel with the action.
+  controls.cursor.copy(mobileFollow.desiredTarget);
+
+  if (mobileFollow.scouting) {
+    mobileFollow.previousMascotPosition.copy(mascot.group.position);
+    return;
+  }
+  mobileFollow.delta.subVectors(mobileFollow.desiredTarget, controls.target);
+
+  const distance = mobileFollow.delta.length();
+  const moving = distance > 0.12 || joystickInput.lengthSq() > 0 || mascotMove.destination;
+  const response = moving ? MOBILE_FOLLOW_RESPONSE : MOBILE_FOLLOW_IDLE_RESPONSE;
+  // Large teleports/respawns catch up more firmly, while normal walking remains
+  // soft. Exponential damping gives the same feel at 30 and 60 fps.
+  const catchUp = 1 + Math.max(0, distance - 1.15) * 1.8;
+  const alpha = immediate ? 1 : 1 - Math.exp(-Math.max(0, dt) * response * catchUp);
+  mobileFollow.delta.multiplyScalar(alpha);
+  controls.target.add(mobileFollow.delta);
+  camera.position.add(mobileFollow.delta);
+}
 
 function convexHullXZ(points) {
   const sorted = points
@@ -2826,6 +2928,10 @@ function restoreInstrumentControlLimits(home = instrumentView.home) {
 }
 
 function applyFocusedControlLimits() {
+  controls.enableRotate = true;
+  controls.enablePan = false;
+  controls.touches.ONE = THREE.TOUCH.ROTATE;
+  controls.maxTargetRadius = Infinity;
   controls.minDistance = FOCUSED_MIN_DISTANCE;
   controls.maxDistance = isMobileGameMode() ? 5.5 : 4.4;
   controls.minPolarAngle = 0.42;
@@ -2946,6 +3052,8 @@ function finishInstrumentReturn() {
     controls.target.copy(home.target);
     restoreInstrumentControlLimits(home);
   }
+  applyMobileOrbitPolicy();
+  resetMobileFollowCamera();
   controls.enabled = started && flyT < 0;
   controls.autoRotate = false;
   controls.update();
@@ -3291,10 +3399,7 @@ function respawnMascot() {
     mascotLabel.position.set(mascotMove.spawn.x, mascotLabelY(), mascotMove.spawn.z);
   }
   if (isMobileGameMode()) {
-    mobileFollowTarget.set(mascotMove.spawn.x, 1.35, mascotMove.spawn.z - 0.25);
-    mobileFollowDelta.subVectors(mobileFollowTarget, controls.target);
-    controls.target.add(mobileFollowDelta);
-    camera.position.add(mobileFollowDelta);
+    resetMobileFollowCamera({ snap: true });
   }
   // Fall leaves focus (muteGuitar) and can suspend WebAudio — wake + re-queue loop.
   audio.init();
@@ -3573,13 +3678,7 @@ function updateMascot(dt) {
     mascotLabel.scale.setScalar(0.55 * pulse);
   }
 
-  if (isMobileGameMode() && flyT < 0 && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')) {
-    mobileFollowTarget.set(mascot.group.position.x, 1.35, mascot.group.position.z - 0.25);
-    mobileFollowDelta.subVectors(mobileFollowTarget, controls.target)
-      .multiplyScalar(Math.min(1, dt * 2.2));
-    controls.target.add(mobileFollowDelta);
-    camera.position.add(mobileFollowDelta);
-  }
+  updateMobileFollowCamera(dt);
 }
 
 const INSTRUMENT_STYLE = {
@@ -6327,9 +6426,20 @@ let idleTimer = null;
 controls.addEventListener('start', () => {
   controls.autoRotate = false;
   clearTimeout(idleTimer);
+  if (
+    isMobileGameMode()
+    && (instrumentView.phase === 'idle' || instrumentView.phase === 'approaching')
+  ) {
+    mobileFollow.scouting = true;
+    document.documentElement.dataset.cameraMode = 'scout';
+  }
 });
 controls.addEventListener('end', () => {
   clearTimeout(idleTimer);
+  if (mobileFollow.scouting) {
+    mobileFollow.scouting = false;
+    document.documentElement.dataset.cameraMode = 'follow';
+  }
   if (!isMobileGameMode() && instrumentView.phase === 'idle') {
     idleTimer = setTimeout(() => {
       if (!ui.modalOpen && instrumentView.phase === 'idle') controls.autoRotate = true;
