@@ -1603,6 +1603,7 @@ const MASCOT_SKIN_TONES = {
   'tone-4': 0xd99b72,
   'tone-5': 0xf6d7c5,
   'tone-6': 0xc98765,
+  'tone-7': 0x1b1513,
 };
 const MASCOT_ACCESSORIES = new Set(['none', 'hoops', 'glasses', 'headphones']);
 const MASCOT_OUTFIT_COLORS = {
@@ -5612,7 +5613,7 @@ const MASCOT_UI_NAMES = {
   outfit: { stage: 'СЦЕНА', vibe: 'ФІРМОВИЙ', denim: 'ДЖИНС', night: 'НІЧ' },
   skinTone: {
     'tone-1': 'ГЛИБОКИЙ', 'tone-2': 'НАСИЧЕНИЙ', 'tone-3': 'ТЕПЛИЙ',
-    'tone-4': 'ЗОЛОТИЙ', 'tone-5': 'СВІТЛИЙ', 'tone-6': 'НЕЙТРАЛЬНИЙ',
+    'tone-4': 'ЗОЛОТИЙ', 'tone-5': 'СВІТЛИЙ', 'tone-6': 'НЕЙТРАЛЬНИЙ', 'tone-7': 'ЧОРНИЙ',
   },
   accessory: { none: 'НЕМАЄ', hoops: 'СЕРЕЖКИ', glasses: 'ОКУЛЯРИ', headphones: 'НАВУШНИКИ' },
   outfitColor: {
@@ -5666,10 +5667,6 @@ function syncMascotModal() {
   syncGroup('[data-mascot-accent]', 'mascotAccent', mascotCfg.outfitAccent);
   if (mascotHeightInput) mascotHeightInput.value = String(mascotCfg.height);
   if (mascotWidthInput) mascotWidthInput.value = String(mascotCfg.width);
-  const hv = document.getElementById('mascot-height-val');
-  const wv = document.getElementById('mascot-width-val');
-  if (hv) hv.textContent = `${mascotCfg.height}%`;
-  if (wv) wv.textContent = `${mascotCfg.width}%`;
   const setName = (id, group, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = MASCOT_UI_NAMES[group][value] || String(value).toUpperCase();

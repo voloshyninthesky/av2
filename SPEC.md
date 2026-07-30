@@ -214,7 +214,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with arrows / `WASD` / click floor / mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), six skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height (70–145%) / build (65–150%) sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look; horizontal drag remains the sole orientation control.
+**Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), seven skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height / build sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look; horizontal drag remains the sole orientation control.
 
 Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v3`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
 
@@ -404,7 +404,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
   outfit: "stage",          // "stage" | "vibe" | "denim" | "night"
   outfitPrimary: "default", // "default" | "purple" | "gold" | "denim" | "ink"
   outfitAccent: "default",  // "default" | "purple" | "gold" | "cream" | "green"
-  skinTone: "tone-3",       // "tone-1" … "tone-6"
+  skinTone: "tone-3",       // "tone-1" … "tone-7"
   accessory: "hoops",      // "none" | "hoops" | "glasses" | "headphones"
   height: 100,              // percent, 70–145
   width: 100                // percent, 65–150
@@ -566,7 +566,7 @@ The editor should feel like a small dressing room inside the stage, not a settin
 - Each group label also exposes its selected value, for example `КОЛІР ВОЛОССЯ · КАШТАНОВЕ`.
 - Hair-color and future skin-tone swatches show a selected checkmark and a visible or screen-reader label; color is never the only signal.
 - Outfit choices show the name plus a small 2–3-color palette preview so visitors can predict the result without cycling through every option.
-- Height and build keep their exact percentage output, but also show semantic endpoints. Example: `НИЖЧИЙ — БАЗОВИЙ — ВИЩИЙ` and `ВУЖЧА — БАЗОВА — ШИРША`.
+- Height and build are labeled sliders without numeric or endpoint descriptions.
 - Arrow keys move within radio groups; Home / End select the first / last option. Sliders retain native keyboard behavior. Focus returns to the HUD mascot button after close.
 - The modal uses `role="dialog"`, `aria-modal="true"`, an accessible title, a focus trap, and an inert background. Live slider updates do not flood an `aria-live` region.
 
@@ -575,7 +575,7 @@ The editor should feel like a small dressing room inside the stage, not a settin
 | Layer | Scope |
 |-------|-------|
 | **Editor foundation** | Measured preview safe rectangle; category rail; sticky actions; draft / commit / cancel model; reset undo; accessible dialog and radio behavior; compact landscape layout |
-| **Identity and delight** | Six curated skin tones applied to face and both hands; drag-to-rotate preview; compatible random look |
+| **Identity and delight** | Seven curated skin tones applied to face and both hands; drag-to-rotate preview; compatible random look |
 | **Wardrobe** | Accessories `немає / сережки / окуляри / навушники`; tied hairstyle; curated outfit primary / accent variants |
 
 All options reuse or toggle cached geometry and shared materials. Changing a choice must not allocate new meshes, materials, textures, or synthesis work inside the input handler. Arbitrary uploads, AI avatars, an unrestricted color picker, accounts, and a downloadable wardrobe remain out of scope.
