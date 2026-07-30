@@ -183,10 +183,6 @@ const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const stageAmbience = { curtains: [], valance: null };
 const creditLinks = [];
-let creditSignature = null;
-let creditLinkHit = null;
-const creditFallCameraEnd = new THREE.Vector3();
-const creditFallViewDirection = new THREE.Vector3();
 const adaptiveQualityScene = {
   bulbLights: [],
   lowPrioritySpots: [],
@@ -529,81 +525,49 @@ function plateTexture() {
   return t;
 }
 
-// Secret under-stage credit, revealed only while the mascot falls.
+// Quiet maker's mark inset into the front-right stage fascia.
 function signatureTexture() {
   const c = document.createElement('canvas');
-  c.width = 1536; c.height = 512;
+  c.width = 1536; c.height = 256;
   const x = c.getContext('2d');
   x.clearRect(0, 0, c.width, c.height);
-  x.textAlign = 'center';
   x.textBaseline = 'middle';
 
-  x.shadowColor = 'rgba(158, 51, 202, 0.9)';
-  x.shadowBlur = 46;
-  x.fillStyle = 'rgba(158, 51, 202, 0.25)';
-  x.font = 'italic 900 132px "Playfair Display", Georgia, serif';
-  x.fillText('prostir.love', 768, 316);
+  const left = 'made by';
+  const name = '@vadymbek';
+  x.font = '500 42px "JetBrains Mono", monospace';
+  const leftWidth = x.measureText(left).width;
+  x.font = 'italic 700 76px "Playfair Display", Georgia, serif';
+  const nameWidth = x.measureText(name).width;
+  const gap = 34;
+  const startX = (c.width - leftWidth - gap - nameWidth) / 2;
 
-  x.shadowBlur = 15;
-  x.fillStyle = 'rgba(253, 251, 247, 0.66)';
-  x.font = '500 54px "JetBrains Mono", monospace';
-  x.fillText('made by', 768, 144);
+  // A dark offset and restrained highlights make this read as an engraving,
+  // not a glowing callout.
+  x.textAlign = 'left';
+  x.font = '500 42px "JetBrains Mono", monospace';
+  x.fillStyle = 'rgba(5, 2, 8, 0.58)';
+  x.fillText(left, startX + 2, 133);
+  x.fillStyle = 'rgba(253, 251, 247, 0.25)';
+  x.fillText(left, startX, 129);
 
-  x.shadowBlur = 22;
-  x.fillStyle = 'rgba(209, 161, 59, 0.94)';
-  x.font = 'italic 900 132px "Playfair Display", Georgia, serif';
-  x.fillText('prostir.love', 768, 306);
-  x.shadowBlur = 0;
+  x.font = 'italic 700 76px "Playfair Display", Georgia, serif';
+  x.fillStyle = 'rgba(5, 2, 8, 0.62)';
+  x.fillText(name, startX + leftWidth + gap + 2, 135);
+  x.fillStyle = 'rgba(209, 161, 59, 0.42)';
+  x.fillText(name, startX + leftWidth + gap, 129);
 
-  x.strokeStyle = 'rgba(201, 136, 240, 0.55)';
-  x.lineWidth = 4;
-  x.shadowColor = 'rgba(158, 51, 202, 0.7)';
-  x.shadowBlur = 14;
+  x.strokeStyle = 'rgba(209, 161, 59, 0.16)';
+  x.lineWidth = 2;
   x.beginPath();
-  x.moveTo(468, 390);
-  x.quadraticCurveTo(768, 412, 1068, 386);
+  x.moveTo(startX + leftWidth + gap, 179);
+  x.lineTo(startX + leftWidth + gap + nameWidth, 179);
   x.stroke();
-  x.shadowBlur = 0;
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
-}
-
-function showFallCredit(fall) {
-  if (!creditSignature || !fall) return;
-  creditFallCameraEnd.copy(fall.cameraPosition);
-  creditFallCameraEnd.y -= 3.35;
-  creditFallViewDirection
-    .subVectors(fall.cameraTarget, fall.cameraPosition)
-    .normalize();
-  creditSignature.position
-    .copy(creditFallCameraEnd)
-    .addScaledVector(creditFallViewDirection, 4.2);
-  // Keep the entire plaque physically below the platform underside.
-  creditSignature.position.y = Math.min(creditSignature.position.y, -1.25);
-  creditSignature.lookAt(creditFallCameraEnd);
-  creditSignature.scale.setScalar(
-    THREE.MathUtils.clamp(camera.aspect / 1.25, 0.42, 1),
-  );
-  creditSignature.material.opacity = 0;
-  creditSignature.visible = true;
-  if (creditLinkHit) creditLinkHit.userData.linkActive = false;
-}
-
-function updateFallCredit(progress) {
-  if (!creditSignature?.visible) return;
-  creditSignature.material.opacity = THREE.MathUtils.smoothstep(progress, 0.16, 0.48);
-  if (creditLinkHit) creditLinkHit.userData.linkActive = progress >= 0.32;
-}
-
-function hideFallCredit() {
-  if (creditSignature) {
-    creditSignature.visible = false;
-    creditSignature.material.opacity = 0;
-  }
-  if (creditLinkHit) creditLinkHit.userData.linkActive = false;
 }
 
 function buildStage() {
@@ -635,31 +599,30 @@ function buildStage() {
   g.add(platform);
 
   const sigMap = signatureTexture();
-  creditSignature = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.2, 1.4),
+  const signature = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.05, 0.5),
     new THREE.MeshBasicMaterial({
       map: sigMap,
       transparent: true,
-      opacity: 0,
+      opacity: 0.72,
       depthWrite: false,
       fog: false,
       side: THREE.FrontSide,
     })
   );
-  creditSignature.visible = false;
-  creditSignature.name = 'credit-signature';
-  creditLinkHit = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.2, 1.4),
+  signature.position.set(7.4, -0.3, 4.066);
+  signature.name = 'credit-signature';
+  const nameHit = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.25, 0.58),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
   );
-  creditLinkHit.position.z = 0.01;
-  creditLinkHit.visible = false;
-  creditLinkHit.userData.link = 'https://prostir.love';
-  creditLinkHit.userData.linkActive = false;
-  creditLinkHit.name = 'credit-link';
-  creditSignature.add(creditLinkHit);
-  creditLinks.push(creditLinkHit);
-  g.add(creditSignature);
+  nameHit.position.z = 0.01;
+  nameHit.visible = false;
+  nameHit.userData.link = 'https://vadymbek.top';
+  nameHit.name = 'credit-link';
+  signature.add(nameHit);
+  creditLinks.push(nameHit);
+  g.add(signature);
 
   // gold trim on front edge
   const trim = new THREE.Mesh(
@@ -3397,7 +3360,6 @@ function beginMascotFall(direction) {
     controlsEnabled: controls.enabled,
     autoRotate: controls.autoRotate,
   };
-  showFallCredit(mascotMove.fall);
   controls.enabled = false;
   controls.autoRotate = false;
   clearTimeout(idleTimer);
@@ -3416,7 +3378,6 @@ function beginMascotFall(direction) {
 function respawnMascot() {
   const completedFall = mascotMove.fall;
   mascotMove.fall = null;
-  hideFallCredit();
   mascot.group.position.copy(mascotMove.spawn);
   applyMascotScale();
   mascot.group.rotation.x = 0;
@@ -3589,7 +3550,6 @@ function updateMascot(dt) {
     const fall = mascotMove.fall;
     fall.t += dt;
     const fallProgress = Math.min(1, fall.t / fall.duration);
-    updateFallCredit(fallProgress);
     mascot.group.position.addScaledVector(fall.velocity, dt);
     mascot.group.position.y = -0.05 - 0.48 * fall.t - 0.38 * fall.t * fall.t;
     applyMascotScale(1 - fallProgress * 0.24);
@@ -5307,7 +5267,7 @@ function creditLinkAtPointer(rayReady = false) {
   if (!creditLinks.length) return null;
   if (!rayReady) raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(creditLinks, false);
-  return hits.find((hit) => hit.object.userData.linkActive) || null;
+  return hits[0] || null;
 }
 
 function handleClick(e) {
