@@ -7,7 +7,7 @@ Interactive marketing experience for **Art Vibe Studio** (music lessons): a WebG
 - **Locale:** Ukrainian (`lang="uk"`)  
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTA:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/)  
-- **Credit:** secret «made by prostir.love» beneath the stage, revealed only during a mascot fall → https://prostir.love
+- **Credit:** subtle «made by @vadymbek» engraving on the front-right stage fascia → https://vadymbek.top
 
 Slogan: *Вчись творити і твори навчаючись.*
 
@@ -94,7 +94,7 @@ Mute chosen before the context exists is honored when `init` runs.
 - Back wall, curtains, valance, speaker stacks.
 - Mascot walking uses convex X/Z footprints derived from the visible meshes of instruments and speaker stacks, expanded by the mascot's rounded clearance. Rotated and irregular objects keep silhouette-following borders instead of oversized axis-aligned boxes. Keyboard / stick movement slides along angled edges; click routes use expanded footprint corners; instrument approaches stop at the nearest clear silhouette edge before focus, and exiting a seated focus pose returns the mascot to clear floor.
 - Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate.
-- Large under-stage **made by prostir.love** signature, hidden during normal play and revealed only as the fall camera descends (clickable link hit target while visible).
+- Low-contrast **made by @vadymbek** engraving on the front-right stage fascia beneath the gold trim (clickable link hit target); no neon bloom or explicit credit treatment.
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).
 - Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). Soft orbit (lower rotate/zoom speed, higher damping). Extra zoom-in headroom vs older builds.
 - After Enter: `html.stage-live` — fixed layout, `touch-action` guards, `visualViewport` scale reset to fight Chrome iOS letterboxing from stuck page zoom.
