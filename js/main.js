@@ -2352,6 +2352,7 @@ const instrumentView = {
   transition: null,
   refit: null,
   home: null,
+  homeMascotPosition: null,
   offerPriceChipOnIdle: null,
 };
 
@@ -3021,6 +3022,7 @@ function activateInstrumentView(kind) {
   const preset = INSTRUMENT_VIEW_PRESETS[kind];
   if (!preset || instrumentView.phase !== 'approaching' || instrumentView.kind !== kind) return;
   instrumentView.home = captureInstrumentViewHome();
+  instrumentView.homeMascotPosition = mascot.group.position.clone();
   mascotMove.destination = null;
   mascotMove.destinationKind = null;
   mascotMove.waypoints.length = 0;
@@ -3062,9 +3064,10 @@ function finishInstrumentReturn() {
     mascot.group.position.y = 0;
   }
   // Focus poses deliberately place the mascot at an instrument (on a piano
-  // bench or drum throne, for example). Once control returns, move them to
-  // clear floor so collision handling cannot leave them trapped in it.
-  mascot.group.position.copy(projectMascotToWalkablePoint(mascot.group.position));
+  // bench or drum throne, for example). Restore its pre-focus walk position so
+  // it returns to the visible spot the visitor was using before the focus view.
+  const returnPosition = instrumentView.homeMascotPosition || mascot.group.position;
+  mascot.group.position.copy(projectMascotToWalkablePoint(returnPosition));
   mascot.group.position.y = 0;
   if (home) {
     camera.position.copy(home.position);
@@ -3079,6 +3082,7 @@ function finishInstrumentReturn() {
   instrumentView.transition = null;
   instrumentView.refit = null;
   instrumentView.home = null;
+  instrumentView.homeMascotPosition = null;
   instrumentView.offerPriceChipOnIdle = null;
   setInstrumentViewPhase('idle');
   if (offerPriceChipKind) flushPendingPriceChip(offerPriceChipKind);

@@ -686,10 +686,10 @@ html.guitar-fretting #scene {
   touch-action: none;
 }
 #mobile-exit {
-  width: 68px; height: 68px; border-color: rgba(253, 251, 247, .5);
+  width: 82px; height: 82px; border-color: rgba(253, 251, 247, .5);
   background: rgba(23, 18, 28, .88);
   box-shadow: 0 4px 16px rgba(0, 0, 0, .4), 0 0 14px rgba(209, 161, 59, .3);
-  font-size: 28px; line-height: 1; color: var(--gold); letter-spacing: 0;
+  font-size: 34px; line-height: 1; color: var(--gold); letter-spacing: 0;
 }
 #mobile-exit:active, #mobile-exit.pressed,
 #mobile-play:active, #mobile-play.pressed { transform: scale(.94); }
@@ -1395,7 +1395,7 @@ html.mascot-editor-open #toast {
   #move-stick { width: 114px; height: 114px; }
   #move-thumb { width: 46px; height: 46px; }
   #mobile-play { width: 70px; height: 70px; font-size: 9px; }
-  #mobile-exit { width: 62px; height: 62px; font-size: 26px; }
+  #mobile-exit { width: 74px; height: 74px; font-size: 31px; }
   #mobile-play-hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); width: min(180px, 62vw); font-size: 7px; }
   #zoom-controls { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 96px); }
   #loop-pedal { right: calc(max(14px, env(safe-area-inset-right)) + 78px); }
