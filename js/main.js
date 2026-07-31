@@ -160,10 +160,8 @@ const hasForcedQuality = forcedQuality === 'low' || forcedQuality === 'high';
 // AUTO begins without expensive effects on every device, then earns full quality
 // by sustaining a representative two-stage render probe. Never treat coarse
 // CPU/RAM browser hints as a proxy for GPU power.
-const autoQualityProbe = !hasForcedQuality
-  && navigator.connection?.saveData !== true;
-let lowMobileQuality = forcedQuality === 'low'
-  || (!hasForcedQuality && (navigator.connection?.saveData === true || autoQualityProbe));
+const autoQualityProbe = !hasForcedQuality;
+let lowMobileQuality = forcedQuality === 'low' || autoQualityProbe;
 const mobileQualityProbe = {
   active: autoQualityProbe,
   phase: autoQualityProbe ? 'medium' : 'complete',
