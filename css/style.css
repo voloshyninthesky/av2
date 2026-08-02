@@ -912,6 +912,14 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   height: 17px;
   flex: 0 0 auto;
 }
+.contact-channel span { font-size: 0; }
+.contact-channel span::after {
+  color: inherit;
+  content: 'Instagram';
+  font: 800 11px/1.2 'Unbounded', sans-serif;
+  letter-spacing: .04em;
+}
+.contact-channel[href^="https://m.me/"] span::after { content: 'Messenger'; }
 .panel-secondary-link {
   display: inline-flex;
   margin-top: 20px;
