@@ -1,10 +1,11 @@
 # Art Vibe Studio — Specification
 
-Interactive marketing experience for **Art Vibe Studio** (music lessons): a WebGL 3D stage where visitors walk a mascot, play instruments, and open booking info (steps, rules, prices).
+Interactive marketing experience for **Art Vibe Studio**, a cultural and educational space in Łódź offering vocal, guitar, piano, and drum lessons: a WebGL 3D stage where visitors walk a mascot, play instruments, and open booking info (steps, rules, prices).
 
-- **Live:** https://vibe.ton.zone
-- **Repo / release:** https://github.com/voloshyninthesky/av2 → GitHub Pages (`vibe.ton.zone`) + versioned Nginx preview (`vibe2.ton.zone`)
+- **Live:** https://artvibe.com.pl
+- **Repo / release:** https://github.com/voloshyninthesky/av2 → GitHub Pages (`artvibe.com.pl`) + versioned Nginx preview (`vibe2.ton.zone`)
 - **Locale:** Ukrainian (`lang="uk"`)  
+- **Location:** Łódź, Poland
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTA:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/)  
 
@@ -58,7 +59,7 @@ js/
 prices.json         # lesson prices + promos
 piano-notes.json    # optional piano phrase data (kept; not auto-played on focus)
 vendor/three/       # vendored Three.js
-CNAME               # vibe.ton.zone for GitHub Pages
+CNAME               # artvibe.com.pl for GitHub Pages
 .nojekyll
 .github/workflows/  # Deploy to GitHub Pages
 deploy/nginx/       # live VPS nginx release target
@@ -458,8 +459,8 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 **Primary:** GitHub Pages (Actions).
 
 - Workflow: `.github/workflows/deploy-pages.yml` on push to `main`.
-- Artifact: `css fonts img js vendor index.html prices.json piano-notes.json .nojekyll CNAME`.
-- Custom domain: `vibe.ton.zone` → CNAME `voloshyninthesky.github.io` (Porkbun DNS).
+- Artifact: `css fonts img js vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`.
+- Custom domain: `artvibe.com.pl` → GitHub Pages (`voloshyninthesky.github.io`).
 - Enforce HTTPS in Pages settings after DNS verifies.
 - **Cache bust:** bump `?v=` on `css/style.css`, `js/main.js`, and module imports as needed (including `audio.js` when unlock behavior changes).
 
