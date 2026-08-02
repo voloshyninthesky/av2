@@ -734,6 +734,9 @@ function buildScreen() {
 }
 
 // ---- slideshow state ----
+// Temporary launch setting: keep the branded Art Vibe title on the stage screen
+// and do not load or rotate through promotional photos.
+const PHOTO_SLIDES_ENABLED = false;
 const ss = { texs: [], i: -1, t: 0, SLIDE: 5.5, FADE: 1.5, started: false };
 const slideshowNav = document.getElementById('slideshow-nav');
 const screenCorners = [
@@ -6452,9 +6455,13 @@ Promise.all([
   initPostprocessing(),
 ]).then(() => {
   drums.refreshLogo?.();
-  loadSlideTextures().then((loaded) => {
-    if (!loaded) window.__dbg = 'no photos loaded';
-  }).catch((e) => { window.__dbg = `load err: ${e}`; });
+  if (PHOTO_SLIDES_ENABLED) {
+    loadSlideTextures().then((loaded) => {
+      if (!loaded) window.__dbg = 'no photos loaded';
+    }).catch((e) => { window.__dbg = `load err: ${e}`; });
+  } else {
+    window.__dbg = 'photo slideshow disabled: Art Vibe title slide only';
+  }
   addLabels();
   renderer.compile(scene, camera);
   animate();
