@@ -6469,14 +6469,7 @@ Promise.all([
   if (shouldSkipIntro()) {
     startWithoutIntro();
   } else {
-    enterBtn.disabled = false;
-    enterBtn.classList.add('ready');
-    enterBtn.setAttribute('aria-busy', 'false');
-    enterLabel.textContent = 'ВИЙТИ НА СЦЕНУ';
-  }
-
-  if (params.has('autoenter')) {
-    setTimeout(startExperience, 300);
+    startExperience();
   }
 
   const shot = params.get('shot');
