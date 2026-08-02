@@ -376,6 +376,28 @@ h2 {
   text-transform: uppercase;
 }
 
+.poster-icon {
+  position: absolute;
+  top: 50%;
+  left: 24px;
+  display: grid;
+  width: clamp(72px, 7vw, 92px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--lesson-accent) 62%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--lesson-accent) 13%, rgba(10, 6, 18, .86));
+  color: var(--lesson-accent);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .28), inset 0 0 30px color-mix(in srgb, var(--lesson-accent) 10%, transparent);
+  transform: translateY(-50%) rotate(-5deg);
+}
+
+.poster-icon svg {
+  display: block;
+  width: 56%;
+  height: 56%;
+}
+
 .poster-word {
   position: absolute;
   top: 50%;
@@ -438,13 +460,23 @@ h2 {
     border-radius: 20px 20px 64px 20px;
   }
   .poster-word {
-    top: auto;
-    right: 22px;
-    bottom: 25px;
-    font-size: clamp(38px, 13vw, 64px);
+    top: 78px;
+    right: auto;
+    bottom: auto;
+    left: 22px;
+    font-size: clamp(36px, 12vw, 58px);
     text-orientation: initial;
     transform: none;
     writing-mode: initial;
+  }
+  .poster-icon {
+    top: auto;
+    right: 24px;
+    bottom: 22px;
+    left: auto;
+    width: clamp(58px, 18vw, 72px);
+    border-radius: 18px;
+    transform: rotate(4deg);
   }
   .lesson-page .lesson-grid { grid-template-columns: 1fr; }
   .lesson-page .lesson-card { min-height: 120px; }
