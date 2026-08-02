@@ -4,6 +4,7 @@
 
 export class AudioEngine {
   static BUS_KEYS = ['drums', 'piano', 'guitar', 'mic'];
+  static BUS_LEVEL_MAX = 2;
 
   constructor() {
     this.ctx = null;
@@ -372,7 +373,7 @@ export class AudioEngine {
 
   setLevel(kind, value) {
     if (!AudioEngine.BUS_KEYS.includes(kind)) return;
-    const level = Math.max(0, Math.min(1, Number(value)));
+    const level = Math.max(0, Math.min(AudioEngine.BUS_LEVEL_MAX, Number(value)));
     this.levels[kind] = Number.isFinite(level) ? level : 1;
     if (this.buses[kind] && this.ctx) {
       const t = this.ctx.currentTime;

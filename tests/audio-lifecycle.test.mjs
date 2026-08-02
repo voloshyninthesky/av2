@@ -98,6 +98,16 @@ test('a running context with a frozen clock is treated as stalled', () => {
   assert.equal(engine._recoveryReason, 'context-clock-stalled');
 });
 
+test('instrument bus levels support the boosted mixer ceiling', () => {
+  const engine = new AudioEngine();
+
+  engine.setLevel('piano', 2);
+  assert.equal(engine.getLevel('piano'), 2);
+
+  engine.setLevel('piano', 3);
+  assert.equal(engine.getLevel('piano'), 2);
+});
+
 test('an advancing context clock remains healthy', () => {
   const engine = new AudioEngine();
   engine.ctx = { state: 'running', currentTime: 5 };

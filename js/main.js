@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { AudioEngine } from './audio.js?v=20260802-20';
+import { AudioEngine } from './audio.js?v=20260802-21';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
 import { UI } from './ui.js?v=20260802-25';
 
@@ -5360,7 +5360,9 @@ function openSoundMixer() {
   if (!soundMixer) return;
   ui.closeNav();
   for (const fader of soundFaders) {
-    fader.value = String(Math.round((audio.getLevel(fader.dataset.bus) ?? 1) * 100));
+    fader.value = String(Math.round(
+      ((audio.getLevel(fader.dataset.bus) ?? 1) / AudioEngine.BUS_LEVEL_MAX) * 100,
+    ));
   }
   soundMixer.hidden = false;
   ui.el.soundBtn?.setAttribute('aria-expanded', 'true');
@@ -5411,7 +5413,7 @@ soundRecoverBtn?.addEventListener('click', async (event) => {
 for (const fader of soundFaders) {
   fader.addEventListener('pointerdown', (event) => event.stopPropagation());
   fader.addEventListener('input', () => {
-    audio.setLevel(fader.dataset.bus, Number(fader.value) / 100);
+    audio.setLevel(fader.dataset.bus, (Number(fader.value) / 100) * AudioEngine.BUS_LEVEL_MAX);
     if (fader.dataset.bus === 'mic' && Number(fader.value) <= 0) silenceHeldVocal();
   });
 }
