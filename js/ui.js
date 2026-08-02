@@ -233,6 +233,7 @@ export class UI {
   }
 
   showHUD() {
+    this.el.hud.inert = false;
     this.el.hud.classList.remove('hidden');
     // Phones / tablets use on-screen controls — keyboard & drag legends stay off.
     const touchUi = window.innerWidth <= 720

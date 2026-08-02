@@ -168,13 +168,75 @@ html.stage-live .nav-btn {
 }
 .tri.flip { transform: scaleX(-1); }
 
-#enter-btn { margin-top: 26px; }
-#enter-btn:disabled { opacity: .45; cursor: wait; }
-#enter-btn.ready { animation: pulse 2.2s ease-in-out infinite; }
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(209, 161, 59, .45); }
-  50% { box-shadow: 0 0 0 14px rgba(209, 161, 59, 0); }
+#enter-btn {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: inline-grid; grid-template-columns: minmax(0, 1fr) 46px;
+  align-items: center; gap: 14px;
+  width: min(430px, calc(100vw - 40px)); min-height: 76px;
+  margin-top: clamp(26px, 4vh, 42px); padding: 10px 14px 10px 64px;
+  border: 1px solid rgba(255, 231, 166, .92);
+  background: linear-gradient(135deg, #f0d17d 0%, var(--gold) 52%, #b77a20 100%);
+  color: var(--ink);
+  box-shadow:
+    0 18px 50px rgba(209, 161, 59, .2),
+    0 4px 0 rgba(92, 24, 118, .7),
+    inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: transform .2s ease, box-shadow .3s ease, border-color .3s ease,
+    background .3s ease, color .3s ease;
 }
+#enter-label { position: relative; z-index: 1; white-space: nowrap; }
+#enter-btn::before {
+  content: ''; position: absolute; z-index: -1; inset: 0;
+  background: linear-gradient(105deg, transparent 25%, rgba(255, 255, 255, .42) 48%, transparent 70%);
+  transform: translateX(-120%); transition: transform .7s ease;
+}
+#enter-btn::after {
+  content: '→'; position: relative; z-index: 1;
+  display: grid; place-items: center;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--ink); color: var(--gold-light);
+  font: 500 24px/1 'Manrope', system-ui, sans-serif;
+  transition: transform .25s ease, background .25s ease, color .25s ease;
+}
+#enter-btn:hover {
+  background: linear-gradient(135deg, #f4db95 0%, #d9aa46 52%, #c48829 100%);
+  border-color: var(--cream); color: var(--ink);
+  transform: translateY(-4px) scale(1.012);
+  box-shadow:
+    0 25px 65px rgba(209, 161, 59, .28),
+    0 5px 0 rgba(92, 24, 118, .8),
+    inset 0 1px 0 rgba(255, 255, 255, .55);
+}
+#enter-btn:hover::before { transform: translateX(120%); }
+#enter-btn:hover::after { transform: translateX(3px); background: var(--purple-deep); color: var(--cream); }
+#enter-btn:active { transform: translateY(-1px) scale(.995); }
+#enter-btn:focus-visible {
+  outline: 3px solid var(--cream); outline-offset: 6px;
+  box-shadow: 0 0 0 10px rgba(158, 51, 202, .36), 0 20px 55px rgba(209, 161, 59, .26);
+}
+#enter-btn:disabled {
+  cursor: wait; color: rgba(253, 251, 247, .58);
+  border-color: rgba(209, 161, 59, .32);
+  background: rgba(23, 18, 28, .5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+#enter-btn:disabled::after {
+  content: ''; width: 20px; height: 20px; justify-self: center;
+  border: 2px solid rgba(209, 161, 59, .25); border-top-color: var(--gold-light);
+  background: transparent; animation: enterSpin .8s linear infinite;
+}
+#enter-btn:disabled:hover { transform: none; border-color: rgba(209, 161, 59, .32); }
+#enter-btn:disabled:hover::before { transform: translateX(-120%); }
+#enter-btn.ready { animation: enterAura 2.8s ease-in-out infinite; }
+@keyframes enterAura {
+  0%, 100% {
+    box-shadow: 0 18px 50px rgba(209, 161, 59, .18), 0 4px 0 rgba(92, 24, 118, .7), inset 0 1px 0 rgba(255, 255, 255, .45);
+  }
+  50% {
+    box-shadow: 0 22px 65px rgba(209, 161, 59, .32), 0 4px 0 rgba(92, 24, 118, .7), 0 0 0 9px rgba(209, 161, 59, .08), inset 0 1px 0 rgba(255, 255, 255, .45);
+  }
+}
+@keyframes enterSpin { to { transform: rotate(360deg); } }
 .intro-hint { font-size: 11px; letter-spacing: .12em; color: rgba(253, 251, 247, .4); }
 
 .ticker {
@@ -1388,6 +1450,12 @@ html.mascot-editor-open #toast {
   .intro-hint { font-size: 9px; padding: 0 34px; }
   .ticker-track { font-size: 10px; }
   .pill-btn.big { font-size: 12px; padding: 14px 24px; }
+  #enter-btn {
+    grid-template-columns: minmax(0, 1fr) 42px; gap: 10px;
+    width: min(350px, calc(100vw - 32px)); min-height: 68px;
+    padding: 8px 10px 8px 52px;
+  }
+  #enter-btn::after { width: 42px; height: 42px; font-size: 21px; }
 }
 
 @media (max-width: 390px) {
@@ -1435,6 +1503,21 @@ html.mascot-editor-open #toast {
 }
 
 @media (max-width: 900px) and (orientation: landscape), (max-height: 560px) and (min-aspect-ratio: 1/1) {
+  .intro-top { padding: 10px 16px; }
+  .tag { font-size: 8px; padding: 4px 8px; }
+  .intro-center { gap: 6px; }
+  .intro-kicker { font-size: 8px; letter-spacing: .34em; }
+  .intro-logo { font-size: clamp(58px, 11vw, 94px); line-height: .9; }
+  .intro-studio { font-size: 12px; letter-spacing: .8em; text-indent: .8em; }
+  .intro-slogan { margin-top: 4px; font-size: 9px; }
+  #enter-btn {
+    grid-template-columns: minmax(0, 1fr) 38px; gap: 10px;
+    width: min(360px, calc(100vw - 32px)); min-height: 58px;
+    margin-top: 10px; padding: 7px 9px 7px 48px; font-size: 11px;
+  }
+  #enter-btn::after { width: 38px; height: 38px; font-size: 19px; }
+  .ticker { padding: 6px 0; margin-bottom: 6px; }
+
   #modal-mascot {
     align-items: center; justify-content: flex-end;
     padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) 8px;
@@ -1461,7 +1544,7 @@ html.mascot-editor-open #toast {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track, .intro-bg, #enter-btn.ready, .loop-led, #loop-pedal.unlocking,
+  .ticker-track, .intro-bg, #enter-btn.ready, #enter-btn:disabled::after, .loop-led, #loop-pedal.unlocking,
   .price-board.flash, .price-board.is-tick .board-amount,
   .logo-chip.dancing .logo-av, .quality-confirm-loader span { animation: none; }
   .inst-btn, .choice-chip, .swatch { transition: none; }

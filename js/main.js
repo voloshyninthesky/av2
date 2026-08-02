@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260729-19';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
-import { UI } from './ui.js?v=20260729-24';
+import { UI } from './ui.js?v=20260802-25';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -6493,7 +6493,8 @@ Promise.all([
   } else {
     enterBtn.disabled = false;
     enterBtn.classList.add('ready');
-    enterLabel.textContent = 'ВИЙТИ НА СЦЕНУ ›';
+    enterBtn.setAttribute('aria-busy', 'false');
+    enterLabel.textContent = 'ВИЙТИ НА СЦЕНУ';
   }
 
   if (params.has('autoenter')) {
