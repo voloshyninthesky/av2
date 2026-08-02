@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
 import { UI } from './ui.js?v=20260802-26';
+import { isQuickGuitarTap } from './guitar-gestures.js?v=20260802-1';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -3782,6 +3783,7 @@ function fireGuitarStrum(
     offsetByString?.get(stringIndex) ?? orderIndex * spread,
   )).filter(Boolean);
   if (!strings.length) return false;
+  markHeldTouchGuitarChordUsed();
   playMusicalEvent({
     type: 'guitar-strum',
     direction,
@@ -3798,6 +3800,7 @@ function pluckGuitarString(stringIndex, fret, vel = 0.7, feedback = true) {
   if (!isGuitarPlayFocus()) return false;
   const stringEvent = createGuitarStringEvent(stringIndex, fret, 0);
   if (!stringEvent) return false;
+  markHeldTouchGuitarChordUsed();
   playMusicalEvent({
     type: 'guitar-pluck',
     ...stringEvent,
@@ -3936,6 +3939,7 @@ canvas.addEventListener('pointerdown', (e) => {
         y: e.clientY,
         lastX: e.clientX,
         lastY: e.clientY,
+        t: performance.now(),
         lastAt: performance.now(),
         lastLocalX: local.x,
         stringXs: [...mesh.userData.stringXs],
@@ -4110,7 +4114,11 @@ function endActivePointer(e) {
   }
 
   if (info.mode === 'guitar-strum') {
-    if (info.strummed || info.pointerType === 'touch' || !isGuitarPlayFocus()) return;
+    if (info.strummed || !isGuitarPlayFocus()) return;
+    if (!isQuickGuitarTap({
+      elapsedMs: performance.now() - info.t,
+      distancePx: Math.hypot(e.clientX - info.x, e.clientY - info.y),
+    })) return;
     const hit = hitInteractableDetailsAt(e.clientX, e.clientY, 'strum');
     if (!hit) return;
     const localX = guitarLocalPoint(hit).x;
@@ -4970,6 +4978,14 @@ function clearGuitarInteractionState() {
       if (canvas.hasPointerCapture?.(pointerId)) canvas.releasePointerCapture(pointerId);
     } catch (_) { /* ignore */ }
   }
+  for (const [pointerId, interaction] of activeTouchChordPointers) {
+    try {
+      if (interaction.button?.hasPointerCapture?.(pointerId)) {
+        interaction.button.releasePointerCapture(pointerId);
+      }
+    } catch (_) { /* ignore */ }
+  }
+  activeTouchChordPointers.clear();
   heldGuitarChord = null;
   heldGuitarChordPointer = null;
   latchedGuitarChord = null;
@@ -4979,6 +4995,31 @@ function clearGuitarInteractionState() {
 }
 
 const recentTouchChordAt = new WeakMap();
+const activeTouchChordPointers = new Map();
+
+function markHeldTouchGuitarChordUsed() {
+  if (heldGuitarChordPointer === null) return;
+  const interaction = activeTouchChordPointers.get(heldGuitarChordPointer);
+  if (interaction) interaction.usedForPlay = true;
+}
+
+function finishTouchGuitarChord(event, { cancelled = false } = {}) {
+  const interaction = activeTouchChordPointers.get(event.pointerId);
+  if (!interaction) {
+    releaseHeldGuitarChord(event);
+    return;
+  }
+  activeTouchChordPointers.delete(event.pointerId);
+  releaseHeldGuitarChord(event);
+  if (!isQuickGuitarTap({
+    elapsedMs: performance.now() - interaction.startedAt,
+    distancePx: interaction.distancePx,
+    cancelled,
+    usedForPlay: interaction.usedForPlay,
+  })) return;
+  toggleLatchedGuitarChord(interaction.name);
+}
+
 for (const button of chordButtons) {
   button.addEventListener('pointerdown', (event) => {
     event.stopPropagation();
@@ -4986,17 +5027,34 @@ for (const button of chordButtons) {
     if (event.pointerType === 'touch') {
       event.preventDefault();
       recentTouchChordAt.set(button, performance.now());
+      activeTouchChordPointers.set(event.pointerId, {
+        name: button.dataset.chord,
+        button,
+        startedAt: performance.now(),
+        startX: event.clientX,
+        startY: event.clientY,
+        distancePx: 0,
+        usedForPlay: false,
+      });
       holdGuitarChord(button.dataset.chord, event.pointerId);
       button.setPointerCapture?.(event.pointerId);
     }
+  });
+  button.addEventListener('pointermove', (event) => {
+    const interaction = activeTouchChordPointers.get(event.pointerId);
+    if (!interaction) return;
+    interaction.distancePx = Math.max(
+      interaction.distancePx,
+      Math.hypot(event.clientX - interaction.startX, event.clientY - interaction.startY),
+    );
   });
   button.addEventListener('click', (event) => {
     if (event.detail !== 0 && performance.now() - (recentTouchChordAt.get(button) || 0) < 700) return;
     toggleLatchedGuitarChord(button.dataset.chord);
   });
-  for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-    button.addEventListener(eventName, releaseHeldGuitarChord);
-  }
+  button.addEventListener('pointerup', (event) => finishTouchGuitarChord(event));
+  button.addEventListener('pointercancel', (event) => finishTouchGuitarChord(event, { cancelled: true }));
+  button.addEventListener('lostpointercapture', (event) => finishTouchGuitarChord(event, { cancelled: true }));
 }
 
 // Hold chord + second-finger strum: stop Safari/Chrome page pinch-zoom (not orbit dolly).

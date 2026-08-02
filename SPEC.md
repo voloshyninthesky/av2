@@ -193,7 +193,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 | G | 3 | 2 | 0 | 0 | 0 | 3 |
 | F | 1 | 3 | 3 | 2 | 1 | 1 |
 
-- **Touch:** hold a chord with one pointer and strum with another. Release, cancel, exit, background, or lost capture returns to open strings.
+- **Touch:** tap a chord to latch it for one-finger playing, or hold it with one pointer and strum with another. A quick tap on the string fan plucks the nearest string. Releasing a genuinely held chord returns to the previously latched chord (or open strings); cancel, exit, background, or lost capture clears transient holds.
 - **Fine pointer / pen:** clicking a chord latches it so the same pointer can strum repeatedly; clicking it again clears it.
 - **Desktop keyboard (jam map):** hold `Q` / `R` / `T` / `Y` / `U` / `I` for Em / Am / C / D / G / F. Key release returns to open strings. Space is a downstroke; Shift+Space is an upstroke. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
 - Chord buttons expose visible focus, `aria-pressed`, and `aria-keyshortcuts` (matching the jam map); color is not the only signal.
