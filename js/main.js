@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
-import { UI } from './ui.js?v=20260802-25';
+import { UI } from './ui.js?v=20260802-26';
 
 // ---- error collector (debug / headless testing) ----
 const errlog = document.getElementById('errlog');
@@ -2710,7 +2710,11 @@ function createPianoMascotPose() {
     mascot.group.scale,
   );
   const inverseTargetMatrix = targetMatrix.clone().invert();
-  const normalizedHeight = THREE.MathUtils.clamp((mascotCfg.height - 70) / 75, 0, 1);
+  const normalizedHeight = THREE.MathUtils.clamp(
+    (mascotCfg.height - MASCOT_HEIGHT_RANGE.min) / (MASCOT_HEIGHT_RANGE.max - MASCOT_HEIGHT_RANGE.min),
+    0,
+    1,
+  );
   const legAngle = THREE.MathUtils.lerp(-0.38, -0.92, normalizedHeight);
   const armLPosition = new THREE.Vector3(-0.4, 1.26, 0.08);
   const armRPosition = new THREE.Vector3(0.4, 1.26, 0.08);

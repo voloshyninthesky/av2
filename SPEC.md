@@ -7,7 +7,7 @@ Interactive marketing experience for **Art Vibe Studio**, a cultural and educati
 - **Locale:** Ukrainian (`lang="uk"`)  
 - **Location:** Łódź, Poland
 - **Currency:** PLN (displayed as «зл»)  
-- **Contact CTA:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/)  
+- **Contact CTAs:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/) and [Messenger](https://m.me/61564874125852?text=%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82%2C%20%D1%85%D0%BE%D1%87%D1%83%20%D0%BD%D0%B0%20%D1%83%D1%80%D0%BE%D0%BA%21)
 
 Slogan: *Вчись творити і твори навчаючись.*
 
@@ -19,7 +19,7 @@ Slogan: *Вчись творити і твори навчаючись.*
 2. Teach play in two complementary ways:
    - **Pointer / touch:** approach an instrument, then play while focused.
    - **Desktop keyboard:** jam **several instruments at once** from disjoint hotkeys — focus is optional for keyboard sound.
-3. Convert interest into a booking path: **як записатися → правила → ціни → Instagram**.
+3. Convert interest into a booking path: **ціни / як записатися → Instagram або Messenger**.
 
 Non-goals: accounts, payments, CMS, sample libraries, native apps.
 
@@ -306,11 +306,11 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts the visual fly-in while audio stays dormant. A reload / same-tab return bypasses the splash and also leaves audio dormant until a real sound action. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
-| HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
+| HUD | Logo (click = mascot dance), VIBE, nav (кроки / ціни), **mascot button**, **settings mixer** (gear) |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **PIXEL** defaults to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
-| Chip | Once-per-instrument price teaser carousel → opens pricing; queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
+| Chip | Once-per-instrument price teaser carousel. Its full non-control surface opens its CTA; arrow controls retain carousel navigation and swipe still changes slides. The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
@@ -328,7 +328,8 @@ Driven by `prices.json`:
 1. Pick instrument (**text-only** buttons — no SVG icons). Selecting an instrument (or opening the mixer on one) defaults to the cheapest option: разовий · shortest / lowest-priced duration (and the cheapest pack size for later абонемент).
 2. Format: разовий / абонемент.
 3. Duration; package size if абонемент. If the current duration is unavailable for the active format, fall back to the first (cheapest) duration.
-4. Live ticket board (total + ≈ per lesson). Theme: purple vs gold by category.
+4. Live ticket board (total + ≈ per lesson). Theme: purple vs gold by category. Every ticket includes a prominent comic-style **ЗАПИСАТИСЬ →** CTA that opens **Як записатися?**.
+5. Both **Як записатися?** and **Ціни** show a clear **Напиши нам** block with separate Instagram and Messenger buttons. The steps panel also keeps **Правила студії →** as a secondary link.
 
 ### Rules
 

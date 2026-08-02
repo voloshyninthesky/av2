@@ -31,6 +31,7 @@ export class UI {
     this.current = null;
     this._toastTimer = null;
     this._chipTimer = null;
+    this._chipAction = null;
     this.pricing = null;
     this._pricingPromise = null;
     this._modalTrigger = null;
@@ -91,12 +92,21 @@ export class UI {
     });
     this.el.chip.addEventListener('pointerup', (e) => {
       if (!swipeStart) return;
+      if (e.target.closest('button')) {
+        swipeStart = null;
+        return;
+      }
       const dx = e.clientX - swipeStart.x;
       const dy = e.clientY - swipeStart.y;
       swipeStart = null;
+      if (Math.hypot(dx, dy) < 18) {
+        this._activateChip();
+        return;
+      }
       if (Math.abs(dx) < 44 || Math.abs(dx) < Math.abs(dy)) return;
       (dx < 0 ? this.el.chipNext : this.el.chipPrev).click();
     });
+    this.el.chip.addEventListener('pointercancel', () => { swipeStart = null; });
 
     // Status toasts are display-only chrome. Claim their gestures so a rapid
     // pad tap followed by a toast tap cannot become browser double-tap zoom.
@@ -264,7 +274,9 @@ export class UI {
     this.el.chipDesc.textContent = desc;
     this.el.chipDesc.hidden = !desc;
     this.el.chipCta.textContent = ctaText;
-    this.el.chipCta.onclick = () => { this.hideChip(); onCta && onCta(); };
+    this._chipAction = onCta || null;
+    this.el.chip.dataset.actionable = this._chipAction ? 'true' : 'false';
+    this.el.chipCta.onclick = () => this._activateChip();
     this.el.chipPrev.hidden = !navigation;
     this.el.chipNext.hidden = !navigation;
     this.el.chipPrev.onclick = () => navigation?.onPrev?.();
@@ -272,6 +284,12 @@ export class UI {
     this.el.chip.hidden = false;
     clearTimeout(this._chipTimer);
     this._chipTimer = setTimeout(() => this.hideChip(), 8000);
+  }
+  _activateChip() {
+    const action = this._chipAction;
+    if (!action) return;
+    this.hideChip();
+    action();
   }
   hideChip() { this.el.chip.hidden = true; clearTimeout(this._chipTimer); }
 
