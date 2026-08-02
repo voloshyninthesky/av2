@@ -48,8 +48,10 @@ Static site, no build step. ES modules + import map for Three.js.
 ```
 index.html          # shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
 css/style.css       # design system + overlays
+css/lessons.css     # lightweight static lesson pages
 fonts/              # self-hosted faces
 img/                # slideshow photos
+uk/                 # Ukrainian lesson hub + instrument-specific SEO pages
 js/
   main.js           # scene, interaction, loop, onboard, pads, audio unlock
   instruments.js    # procedural drums / piano / guitar / mic
@@ -459,7 +461,7 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 **Primary:** GitHub Pages (Actions).
 
 - Workflow: `.github/workflows/deploy-pages.yml` on push to `main`.
-- Artifact: `css fonts img js vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`.
+- Artifact: `css fonts img js uk vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`.
 - Custom domain: `artvibe.com.pl` → GitHub Pages (`voloshyninthesky.github.io`).
 - Enforce HTTPS in Pages settings after DNS verifies.
 - **Cache bust:** bump `?v=` on `css/style.css`, `js/main.js`, and module imports as needed (including `audio.js` when unlock behavior changes).

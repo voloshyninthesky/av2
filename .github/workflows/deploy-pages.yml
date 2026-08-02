@@ -35,7 +35,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp -R css fonts img js vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME _site/
+          cp -R css fonts img js uk vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME _site/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
