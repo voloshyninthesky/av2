@@ -344,11 +344,10 @@ h2 {
 .lesson-poster {
   position: relative;
   isolation: isolate;
-  display: flex;
+  display: grid;
   min-height: 430px;
   overflow: hidden;
-  flex-direction: column;
-  justify-content: space-between;
+  grid-template-rows: auto 1fr auto;
   padding: 24px;
   border: 1px solid color-mix(in srgb, var(--lesson-accent) 65%, transparent);
   border-radius: 22px 22px 92px 22px;
@@ -361,7 +360,7 @@ h2 {
 .lesson-poster::before {
   position: absolute;
   z-index: -1;
-  inset: 42% -30% auto;
+  inset: 45% -30% auto;
   height: 2px;
   background: var(--lesson-accent);
   box-shadow: 0 0 32px 9px color-mix(in srgb, var(--lesson-accent) 34%, transparent);
@@ -372,19 +371,23 @@ h2 {
 .poster-number {
   color: var(--lesson-accent);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: .18em;
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
 }
 
 .poster-word {
-  align-self: flex-end;
-  color: var(--cream);
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  color: rgba(253, 251, 247, .84);
   font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: clamp(35px, 4.8vw, 62px);
+  font-size: clamp(34px, 4.4vw, 58px);
   font-weight: 800;
   letter-spacing: -.07em;
   line-height: .9;
   text-orientation: mixed;
+  transform: translateY(-50%);
   writing-mode: vertical-rl;
 }
 
@@ -431,13 +434,16 @@ h2 {
 @media (max-width: 820px) {
   .lesson-hero { grid-template-columns: 1fr; }
   .lesson-poster {
-    min-height: 190px;
+    min-height: 210px;
     border-radius: 20px 20px 64px 20px;
   }
   .poster-word {
-    align-self: flex-start;
+    top: auto;
+    right: 22px;
+    bottom: 25px;
     font-size: clamp(38px, 13vw, 64px);
     text-orientation: initial;
+    transform: none;
     writing-mode: initial;
   }
   .lesson-page .lesson-grid { grid-template-columns: 1fr; }
