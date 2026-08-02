@@ -71,18 +71,23 @@ deploy/nginx/       # live VPS nginx release target
 
 **Audio buses:** `drums` | `piano` | `guitar` | `mic` → master. Default guitar level **0.6** (40% quieter than the others).
 
-### Audio unlock
+### Audio activation and external media
 
-Mobile / in-app browsers often leave `AudioContext` **suspended** (silent until refresh). Engine must:
+The default experience is **play along with the visitor's music**. Entering and exploring the stage must not pause Spotify, Apple Music, or another external source. Mobile / in-app browsers can also leave an activated `AudioContext` **suspended** (silent until refresh), so the engine must:
 
-- Unlock on Enter and every play path (`init` + `resume`).
+- Keep audio completely dormant on **ВИЙТИ НА СЦЕНУ**, reload / same-tab entry, walking, camera gestures, instrument focus, chord selection, settings open, and fader changes. These visual / configuration actions must not create or resume an `AudioContext`.
+- Immediately before the first real site sound, request the mobile Audio Session `ambient` route where the browser exposes that API, then create / resume the context inside the same trusted gesture. `ambient` is the play-along mode: supporting platforms mix the instruments with external media instead of claiming exclusive playback.
+- Activate on every real sound path: drum hit, piano note, guitar pluck / strum, vocal, loop playback, and **ТЕСТ ЗВУКУ**. A loop-record action may reuse an already-activated context because loop unlock requires earlier instrument play.
 - Prime with a tiny silent buffer inside the user-gesture turn.
 - Retry `resume()` shortly after wake; recreate context if `closed` or still blocked on the next trusted gesture.
-- Re-wake on `pointerdown` / `touchstart` for low latency and again on activation-bearing `pointerup` / `touchend` / `click` / `keydown`; also retry on `visibilitychange` → visible and `pageshow`.
+- Do not use page-wide pointer / touch / click / key listeners to claim audio. The instrument handler that will actually synthesize sound owns activation and recovery.
 - Mark the audio route for a guarded context rebuild after backgrounding, page restore, window blur, or an interrupted mobile Audio Session—even if the old context incorrectly still reports `running`.
 - Treat Audio Session `inactive` as normal silence between notes; only `interrupted` independently marks a broken route.
 - Detect a `running` context whose `currentTime` clock has stopped, and rebuild it on the next trusted gesture.
-- Request the mobile Audio Session `playback` route where the browser exposes that API, preserve loop phase / active vocal state across a context rebuild, and expose a mixer **ТЕСТ ЗВУКУ** action that force-rebuilds when physical output cannot be inferred. It plays a short C5–E5–G5–C6 melody directly through the master bus (bypassing instrument faders) and tells visitors to enable device sound and try again if they cannot hear it.
+- Preserve loop phase / active vocal state across a context rebuild, and expose a mixer **ТЕСТ ЗВУКУ** action that force-rebuilds when physical output cannot be inferred. It plays a short C5–E5–G5–C6 melody directly through the master bus (bypassing instrument faders) and tells visitors to disable device silent mode and try again if they cannot hear it.
+- If `navigator.audioSession` or `ambient` is unsupported, fall back to normal Web Audio behavior without error. The browser / OS may pause or duck external media when the first site sound plays, but the site must never interrupt it before that sound intent.
+
+Do not autoplay a built-in soundtrack. A future game-like background track must be an explicit, persisted, default-off setting on its own mixer bus and must use the same `ambient` session.
 
 Mute chosen before the context exists is honored when `init` runs.
 
@@ -299,7 +304,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 
 | Overlay | Purpose |
 |---------|---------|
-| Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts audio + fly-in. A reload / same-tab return bypasses the splash and lands on the stage without unlocking audio until a gesture. |
+| Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts the visual fly-in while audio stays dormant. A reload / same-tab return bypasses the splash and also leaves audio dormant until a real sound action. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, nav (кроки / правила / ціни), **mascot button**, **settings mixer** (gear) |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **PIXEL** defaults to `100` when unset), **Гучність** with per-instrument faders, then the minimal **Графіка** selector |
@@ -480,6 +485,8 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - WebGL fail → `#webgl-fail` panel.
 - Lock page-level pinch and double-tap zoom for the whole live stage, including simultaneous joystick + `+` / `−` touches. Keep initial UI control pointer dispatch intact (claim multi-touch on move / Safari `gesture*`, not a chrome `touchstart`) so two-control and pad↔canvas interaction still works. Informational overlays retain normal zoom / scroll.
 - In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
+- With Spotify / Apple Music already playing, Enter, walking, camera controls, instrument focus, chord selection, and settings changes leave external audio uninterrupted and do not create an `AudioContext`.
+- On platforms supporting Audio Session `ambient`, the external source continues while Art Vibe instruments play over it. On unsupported platforms, external audio remains uninterrupted at least until the first real Art Vibe sound action.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
 - No secrets in repo; prices are public marketing data.
 

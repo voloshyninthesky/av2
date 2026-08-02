@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const audioSource = await readFile(new URL('../js/audio.js', import.meta.url), 'utf8');
+const mainSource = await readFile(new URL('../js/main.js', import.meta.url), 'utf8');
 const audioModuleUrl = `data:text/javascript;base64,${Buffer.from(audioSource).toString('base64')}`;
 const { AudioEngine } = await import(audioModuleUrl);
 
@@ -46,8 +47,33 @@ test('normal AudioSession inactivity does not request a context rebuild', () => 
     navigator.audioSession.setState('inactive');
 
     assert.equal(engine._needsRecovery, false);
-    assert.equal(navigator.audioSession.type, 'playback');
+    assert.equal(navigator.audioSession.type, 'ambient');
   });
+});
+
+function functionSource(name) {
+  const start = mainSource.indexOf(`function ${name}`);
+  assert.notEqual(start, -1, `missing function ${name}`);
+  const end = mainSource.indexOf('\n}', start + 1);
+  assert.notEqual(end, -1, `unterminated function ${name}`);
+  return mainSource.slice(start, end + 2);
+}
+
+test('enter and non-playing UI paths leave Web Audio dormant', () => {
+  for (const name of [
+    'startExperience',
+    'activateInstrumentView',
+    'playNearestInstrument',
+    'openSoundMixer',
+  ]) {
+    assert.doesNotMatch(functionSource(name), /audio\.(?:init|resume|unlock)\(/, name);
+  }
+});
+
+test('generic stage gestures do not own audio activation', () => {
+  assert.doesNotMatch(mainSource, /unlockAudioFromGesture|resumeAudioFromActivation/);
+  assert.match(functionSource('playMusicalEvent'), /activateAudioForSound\(\{ allowRecovery: record \}\)/);
+  assert.match(functionSource('activateAudioForSound'), /audio\.unlock\(\)/);
 });
 
 test('an AudioSession interruption requests recovery even if already interrupted', () => {

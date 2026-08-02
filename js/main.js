@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { AudioEngine } from './audio.js?v=20260729-19';
+import { AudioEngine } from './audio.js?v=20260802-20';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
 import { UI } from './ui.js?v=20260802-25';
 
@@ -2950,11 +2950,6 @@ function activateInstrumentView(kind) {
   } else {
     poseMascotAtInstrument(kind);
   }
-  if (kind === 'guitar') {
-    audio.init();
-    audio.resume();
-    audio.prewarmGuitar(allGuitarPitches());
-  }
   const frame = instrumentViewFrame(kind, preset);
   startInstrumentCameraTransition(
     'entering',
@@ -3335,9 +3330,8 @@ function respawnMascot() {
     mascotLabel.position.set(mascotMove.spawn.x, mascotLabelY(), mascotMove.spawn.z);
   }
   resetMobileFollowCamera({ snap: true });
-  // Fall leaves focus (muteGuitar) and can suspend WebAudio — wake + re-queue loop.
-  audio.init();
-  audio.resume();
+  // A playing loop may need re-queuing after the fall. Do not claim an audio
+  // session when the visitor has not produced site audio.
   resyncLoopPlayback();
   ui.toast('Не втечеш ;)', 2200);
 }
@@ -3368,8 +3362,6 @@ function playNearestInstrument() {
   }
   const look = new THREE.Vector3().subVectors(nearest.position, mascot.group.position);
   mascot.group.rotation.y = Math.atan2(look.x, look.z);
-  audio.init();
-  audio.resume();
   const alreadyInPosition = instrumentView.kind === nearest.kind
     && ['approaching', 'entering', 'focused'].includes(instrumentView.phase);
   if (alreadyInPosition) return true;
@@ -4528,8 +4520,9 @@ function runMusicalVisual(event, feedback) {
 }
 
 function playMusicalEvent(event, { record = true, at = null, feedback = true } = {}) {
-  audio.init();
-  audio.resume();
+  // Live input may repair a stale mobile route. Look-ahead loop events only
+  // resume the existing context; rebuilding must wait for a trusted gesture.
+  activateAudioForSound({ allowRecovery: record });
   if (record) {
     captureLoopEvent(event);
     finishOnboard();
@@ -4552,8 +4545,10 @@ function playMusicalEvent(event, { record = true, at = null, feedback = true } =
       // Loop playback must survive muteGuitar() when leaving focus / falling.
       track: record,
     });
+    audio.prewarmGuitar(allGuitarPitches());
   } else if (event.type === 'guitar-strum') {
     audio.strum(event.strings ?? event.freqs, velocity, startAt, { track: record });
+    audio.prewarmGuitar(allGuitarPitches());
   } else if (event.type === 'vocal') {
     voice = audio.vocalTone(event.freq, event.vowel, velocity, startAt, event.duration ?? 0.68);
     if (!record && voice) {
@@ -4673,8 +4668,7 @@ function updateLoopProgress() {
 
 function startBaseLoopRecording() {
   if (!loopUnlocked) return;
-  audio.init();
-  audio.resume();
+  activateAudioForSound();
   stopLoopScheduler();
   clearTimeout(loop.autoCloseTimer);
   loop.state = 'recording';
@@ -4763,7 +4757,7 @@ function pauseLoop() {
 
 function resumeLoop() {
   if (loop.state !== 'paused') return;
-  audio.resume();
+  activateAudioForSound();
   loop.epoch = audio.ctx.currentTime - loop.pausedOffset;
   for (const event of loop.events) event.playFromCycle = 0;
   loop.state = 'playing';
@@ -4982,8 +4976,6 @@ for (const button of chordButtons) {
   button.addEventListener('pointerdown', (event) => {
     event.stopPropagation();
     event.stopImmediatePropagation();
-    audio.init();
-    audio.resume();
     if (event.pointerType === 'touch') {
       event.preventDefault();
       recentTouchChordAt.set(button, performance.now());
@@ -5047,8 +5039,7 @@ for (const button of vocalButtons) {
     releaseKeyboardVocal();
     const freq = Number(button.dataset.vocalFreq);
     const vowel = Number(button.dataset.vocalVowel);
-    audio.init();
-    audio.resume();
+    activateAudioForSound();
     mic.sing();
     heldVocal = audio.startVocal(freq, vowel);
     heldLoopCapture = beginHeldLoopCapture(freq, vowel);
@@ -5100,8 +5091,7 @@ function trigger(mesh) {
 
 function beginHeldPianoNote(key) {
   if (!key?.userData || !Number.isFinite(key.userData.freq)) return null;
-  audio.init();
-  audio.resume();
+  activateAudioForSound();
   const event = { type: 'piano', freq: key.userData.freq, vel: 1, vibe: 3.5 };
   const startedAt = audio.ctx?.currentTime ?? 0;
   const captured = captureLoopEvent({ ...event, duration: 0.12 }, startedAt);
@@ -5344,8 +5334,7 @@ function beginKeyboardVocal(code) {
     heldVocalPointer = null;
   }
   releaseKeyboardVocal();
-  audio.init();
-  audio.resume();
+  activateAudioForSound();
   mic.sing();
   const voice = audio.startVocal(note.freq, note.vowel);
   heldLoopCapture = beginHeldLoopCapture(note.freq, note.vowel);
@@ -5370,8 +5359,6 @@ function closeSoundMixer() {
 function openSoundMixer() {
   if (!soundMixer) return;
   ui.closeNav();
-  audio.init();
-  audio.resume();
   for (const fader of soundFaders) {
     fader.value = String(Math.round((audio.getLevel(fader.dataset.bus) ?? 1) * 100));
   }
@@ -5407,7 +5394,7 @@ soundRecoverBtn?.addEventListener('click', async (event) => {
       new Promise((resolve) => setTimeout(() => resolve(false), 900)),
     ]);
     if (ready && audio.isRunning() && audio.testTone()) {
-      ui.toast('Не чуєш мелодію? Увімкни звук на пристрої й натисни «ТЕСТ ЗВУКУ» ще раз.', 3600);
+      ui.toast('Не чуєш мелодію? Вимкни беззвучний режим і натисни «ТЕСТ ЗВУКУ» ще раз.', 3600);
     } else {
       audio.markForRecovery('manual-sound-test-timeout');
       ui.toast('Торкнися «ТЕСТ ЗВУКУ» ще раз', 2200);
@@ -5424,7 +5411,6 @@ soundRecoverBtn?.addEventListener('click', async (event) => {
 for (const fader of soundFaders) {
   fader.addEventListener('pointerdown', (event) => event.stopPropagation());
   fader.addEventListener('input', () => {
-    audio.init();
     audio.setLevel(fader.dataset.bus, Number(fader.value) / 100);
     if (fader.dataset.bus === 'mic' && Number(fader.value) <= 0) silenceHeldVocal();
   });
@@ -6174,13 +6160,12 @@ onboardEl?.addEventListener('click', (e) => {
   finishOnboard();
 });
 
-function startExperience(withAudio = true) {
+function startExperience() {
   if (started) return;
   started = true;
   markIntroSeen();
   document.documentElement.classList.add('stage-live');
   syncViewportMeta();
-  if (withAudio) audio.unlock();
   intro.classList.add('gone');
   mobileControls.classList.add('active');
   zoomControls.hidden = false;
@@ -6207,7 +6192,7 @@ function startWithoutIntro() {
   syncRendererToWindow();
 }
 
-enterBtn.addEventListener('click', () => startExperience(true));
+enterBtn.addEventListener('click', startExperience);
 window.addEventListener('av2:modal', () => syncViewportMeta());
 
 // Keep WebAudio alive across backgrounding / flaky in-app browsers (Telegram).
@@ -6258,43 +6243,25 @@ function restoreAfterAudioContextRebuild(snapshot) {
   resyncLoopPlayback();
 }
 
-function unlockAudioFromGesture(event) {
-  if (event?.isTrusted === false) return;
-  // This control intentionally force-rebuilds on its activation click.
-  if (event?.target?.closest?.('#sound-recover-btn')) return;
-  if (!started && !audio.ctx) return;
+function activateAudioForSound({ allowRecovery = true } = {}) {
   const generation = audio.contextGeneration;
   const snapshot = captureAudioRecoverySnapshot();
-  audio.unlock();
+  let pending;
+  if (allowRecovery) {
+    pending = audio.unlock();
+  } else {
+    audio.init();
+    pending = audio.resume();
+  }
   if (audio.contextGeneration !== generation) {
     restoreAfterAudioContextRebuild(snapshot);
   }
+  return pending;
 }
 
-function resumeAudioFromActivation(event) {
-  if (event?.isTrusted === false) return;
-  if (event?.target?.closest?.('#sound-recover-btn')) return;
-  if (!started && !audio.ctx) return;
-  const generation = audio.contextGeneration;
-  const snapshot = captureAudioRecoverySnapshot();
-  audio.resume();
-  if (audio.contextGeneration !== generation) {
-    restoreAfterAudioContextRebuild(snapshot);
-  }
-}
-
-window.addEventListener('pointerdown', unlockAudioFromGesture, { capture: true, passive: true });
-window.addEventListener('touchstart', unlockAudioFromGesture, { capture: true, passive: true });
-// Touch release/click are activation-triggering events on mobile. Retry resume
-// while transient activation is live, without force-rebuilding twice for the
-// same physical gesture.
-window.addEventListener('pointerup', resumeAudioFromActivation, { capture: true, passive: true });
-window.addEventListener('touchend', resumeAudioFromActivation, { capture: true, passive: true });
-window.addEventListener('click', resumeAudioFromActivation, { capture: true, passive: true });
-window.addEventListener('keydown', unlockAudioFromGesture, { capture: true });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && audio.ctx) {
-    audio.resume();
+  if (document.visibilityState === 'visible'
+    && (loop.state === 'playing' || loop.state === 'overdubbing')) {
     resyncLoopPlayback();
   }
   if (document.visibilityState === 'hidden') {
@@ -6318,8 +6285,10 @@ window.addEventListener('pageshow', () => {
     // BFCache/WebView restores do not always deliver the expected pagehide or
     // context state transition. Treat the route as stale even if it says running.
     audio.markForRecovery('pageshow');
-    audio.resume();
-    resyncLoopPlayback();
+    if (loop.state === 'playing' || loop.state === 'overdubbing') {
+      audio.resume();
+      resyncLoopPlayback();
+    }
   }
 });
 
@@ -6498,7 +6467,7 @@ Promise.all([
   }
 
   if (params.has('autoenter')) {
-    setTimeout(() => startExperience(false), 300);
+    setTimeout(startExperience, 300);
   }
 
   const shot = params.get('shot');

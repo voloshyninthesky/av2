@@ -136,7 +136,10 @@ export class AudioEngine {
     try {
       const session = navigator.audioSession;
       if (!session) return;
-      if (session.type !== 'playback') session.type = 'playback';
+      // Art Vibe is a play-along instrument, not exclusive media playback.
+      // `ambient` lets supporting mobile platforms mix our instruments with
+      // Spotify, Apple Music, and other audio already playing on the device.
+      if (session.type !== 'ambient') session.type = 'ambient';
       const recoverInterruptedSession = () => {
         // "inactive" is normal between notes. Only an actual interruption is
         // evidence that the OS route must be rebuilt on the next gesture.
