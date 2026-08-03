@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260803-01';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260803-02';
 import { UI } from './ui.js?v=20260802-26';
 import { isQuickGuitarTap } from './guitar-gestures.js?v=20260802-1';
 
@@ -837,8 +837,9 @@ function buildStageDressing(g, { curtainMaterial, curtainLegGeometry } = {}) {
   const grilleMat = new THREE.MeshStandardMaterial({ map: grilleTex, roughness: 0.85, metalness: 0.05 });
   for (const s of [-1, 1]) {
     const wedge = new THREE.Group();
+    // No cast shadow: a 0.4-tall wedge at the stage lip throws its shadow off
+    // the front edge, so it would only cost a shadow-pass draw call.
     const shell = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.4, 0.58), darkMat);
-    shell.castShadow = true;
     wedge.add(shell);
     const grille = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 0.32), grilleMat);
     grille.position.set(0, 0.03, -0.295);
@@ -1016,7 +1017,7 @@ function buildStage() {
     roughness: 0.5,
   });
   registerDimmableEmissive(bulbMat);
-  stageAmbience.footPulse = { mat: bulbMat, matBase: 1.3, lights: [], lightBase: 10 };
+  stageAmbience.footPulse = { mat: bulbMat, matBase: 1.3, lights: [], lightBase: 6 };
   const bulbGeom = new THREE.SphereGeometry(0.05, 10, 8);
   const bulbs = new THREE.InstancedMesh(bulbGeom, bulbMat, 9);
   const bulbMatrix = new THREE.Matrix4();
@@ -1026,7 +1027,7 @@ function buildStage() {
     // Bulbs retain their emissive look. The five tiny point lights, however,
     // are evaluated by every PBR fragment and are not perceptible on a phone.
     if (i % 2 === 0 && (!lowEndLighting || canUpgradeMobileQuality)) {
-      const pl = new THREE.PointLight(0xffc878, 10, 4.2, 2);
+      const pl = new THREE.PointLight(0xffc878, 6, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
       adaptiveQualityScene.bulbLights.push(pl);
@@ -1604,13 +1605,17 @@ function buildLights() {
   const spots = [
     { x: -4.6, color: 0x9E33CA, intensity: 540, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025, sweep: 0.05 },
     { x: -1.55, color: 0xD1A13B, intensity: 450, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025, lowPriority: true },
-    { x: 1.55, color: 0xfff0d8, intensity: 430, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, coneFloorY: 0.025, shadow: true },
+    // Key light: the only shadow caster, aimed at the downstage performer spot
+    // so the mascot starts lit and grounded. Its pool also washes the mic.
+    { x: 1.05, color: 0xfff0d8, intensity: 300, target: new THREE.Vector3(0.25, 1.15, 2.3), coneR: 1.55, coneFloorY: 0.025, shadow: true },
     { x: 4.6, color: 0xD1A13B, intensity: 500, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025, sweep: -0.05 },
     { x: 0, color: 0x7a1fa2, intensity: 250, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5, lowPriority: true },
   ];
 
   // broad warm front fill (no visible cone) so instruments read well
-  const fill = new THREE.SpotLight(0xffe8c8, 82, 45, 0.62, 0.9, 1.8);
+  // Front-of-house fill: the key light comes from the truss above, so this is
+  // what actually keeps faces readable under a hairline. Broad and soft.
+  const fill = new THREE.SpotLight(0xffe8c8, 125, 45, 0.62, 0.9, 1.8);
   fill.position.set(0, 7.5, 14);
   fill.target.position.set(0, 0.8, 0);
   g.add(fill, fill.target);
@@ -1650,7 +1655,9 @@ function buildLights() {
     // real light sources on the low tier. This reduces per-fragment PBR work
     // without making the truss look incomplete.
     if (!isLowEndMobileGameMode() || !s.lowPriority || canUpgradeMobileQuality) {
-      const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.47, 0.78, 1.6);
+      // Shadow-casting fixtures get a tighter cone: it reads more like a real
+      // followspot and shrinks the shadow frustum to the performers in it.
+      const spot = new THREE.SpotLight(s.color, s.intensity, 30, s.shadow ? 0.4 : 0.47, 0.78, 1.6);
       spot.position.set(0, 0, 0);
       spot.target.position.set(s.target.x - s.x, s.target.y - y, s.target.z - z);
       if (s.shadow) {
@@ -1661,7 +1668,9 @@ function buildLights() {
         spot.shadow.normalBias = 0.035;
         spot.shadow.focus = 1;
         spot.shadow.camera.near = 1.5;
-        spot.shadow.camera.far = 16;
+        // Tight far plane: the pool is ~7 units below the truss, so anything
+        // past this cannot cast into it and would only cost shadow draw calls.
+        spot.shadow.camera.far = 9.5;
         spot.shadow.camera.updateProjectionMatrix();
         adaptiveQualityScene.shadowSpots.push(spot);
       }
@@ -1838,21 +1847,28 @@ function buildMascot() {
     detail: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.55, metalness: 0.08 }),
   };
 
+  // Varsity-jacket read: center placket, chest stripe, hem band, symmetric
+  // shoulder yokes. Same recolorable slots, calmer composition.
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.58, 14), mats.top);
   torso.position.y = 1.08;
   group.add(torso);
-  const rightJerseyPanel = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.49, 0.035), mats.panel);
-  rightJerseyPanel.position.set(0.135, 1.08, 0.285);
-  group.add(rightJerseyPanel);
-  for (const y of [0.98, 1.08, 1.18]) {
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.038, 0.04), mats.stripes);
-    stripe.position.set(-0.13, y, 0.29);
-    group.add(stripe);
-  }
-  const shoulderAccent = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.04), mats.shoulder);
-  shoulderAccent.position.set(-0.23, 1.28, 0.27);
-  group.add(shoulderAccent);
+  const placket = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.5, 0.03), mats.panel);
+  placket.position.set(0, 1.06, 0.298);
+  group.add(placket);
+  const chestStripe = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.03), mats.stripes);
+  chestStripe.position.set(0, 1.2, 0.29);
+  group.add(chestStripe);
+  const hemBand = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.317, 0.327, 0.06, 14, 1, true),
+    mats.stripes,
+  );
+  hemBand.position.y = 0.82;
+  group.add(hemBand);
   for (const side of [-1, 1]) {
+    const yoke = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.05), mats.shoulder);
+    yoke.position.set(side * 0.21, 1.3, 0.26);
+    yoke.rotation.z = -side * 0.28;
+    group.add(yoke);
     const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), mats.collar);
     collar.position.set(side * 0.07, 1.31, 0.3);
     collar.rotation.z = side * 0.58;
@@ -1885,22 +1901,32 @@ function buildMascot() {
   const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.287, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
   hairCap.position.set(0, 0.04, 0.05);
   head.add(hairCap);
+  // Side locks. Each style places them itself (x/y/z) — long hair must fall
+  // beside and behind the jaw, never across the chin, or it reads as a beard.
   const locks = [];
-  for (const x of [-0.255, 0.255]) {
+  for (const side of [-1, 1]) {
     const lock = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), hairMat);
+    lock.userData.side = side;
     lock.scale.set(0.72, 3.3, 0.7);
-    lock.position.set(x, -0.28, 0.08);
+    lock.position.set(side * 0.255, -0.28, 0.08);
     head.add(lock);
     locks.push(lock);
   }
-  const hairTail = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), hairMat);
-  hairTail.scale.set(0.78, 2.6, 0.78);
-  hairTail.position.set(0, -0.24, -0.27);
-  hairTail.visible = false;
-  head.add(hairTail);
+  // Fringe/bangs: a curved shell patch hugging the front of the skull, so the
+  // hairline arcs over the brow instead of the hair cap's flat cut edge.
+  // Styles restyle it by scale/rotation, never by new geometry.
+  const fringe = new THREE.Mesh(
+    new THREE.SphereGeometry(0.305, 22, 14, Math.PI / 2 - 1.05, 2.1, 0.3, 0.98),
+    hairMat,
+  );
+  fringe.position.set(0, 0.04, 0.045);
+  head.add(fringe);
+  // Dedicated iris material so eye color can be customized without touching
+  // the shared ink material (glasses, badge) — recolored in place.
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.45 });
   const eyeShine = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const x of [-0.09, 0.09]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), ink);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), eyeMat);
     eye.scale.set(1.4, 0.72, 0.7);
     eye.position.set(x, 0.025, 0.286);
     head.add(eye);
@@ -1916,16 +1942,36 @@ function buildMascot() {
   nose.scale.set(0.85, 0.7, 0.55);
   nose.position.set(0, -0.028, 0.298);
   head.add(nose);
-  const neutralMouth = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.016, 0.014), rose);
-  neutralMouth.position.set(0, -0.085, 0.29);
+  // Three curated mouths. Neutral is a calm closed lip with a hint of curve —
+  // a wide, shallow arc rather than a flat bar, so it still reads as a face.
+  const neutralMouth = new THREE.Mesh(
+    new THREE.TorusGeometry(0.115, 0.0068, 6, 14, Math.PI * 0.36),
+    rose,
+  );
+  neutralMouth.position.set(0, 0.023, 0.288);
+  neutralMouth.rotation.z = Math.PI * 1.32;
   head.add(neutralMouth);
-  const softSmile = new THREE.Mesh(new THREE.TorusGeometry(0.047, 0.006, 5, 10, Math.PI), rose);
-  softSmile.position.set(0, -0.065, 0.292);
+  const softSmile = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.0075, 6, 12, Math.PI), rose);
+  softSmile.position.set(0, -0.062, 0.292);
   softSmile.rotation.z = Math.PI;
   head.add(softSmile);
-  const wideSmile = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.007, 5, 12, Math.PI), rose);
-  wideSmile.position.set(0, -0.045, 0.292);
-  wideSmile.rotation.z = Math.PI;
+  const wideSmile = new THREE.Group();
+  const mouthOpen = new THREE.Mesh(
+    new THREE.CircleGeometry(0.052, 14, Math.PI, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0x5e2430, roughness: 0.7 }),
+  );
+  mouthOpen.position.set(0, -0.058, 0.291);
+  wideSmile.add(mouthOpen);
+  const teeth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.078, 0.015, 0.008),
+    new THREE.MeshStandardMaterial({ color: 0xe9e2d4, roughness: 0.5 }),
+  );
+  teeth.position.set(0, -0.063, 0.293);
+  wideSmile.add(teeth);
+  const wideLip = new THREE.Mesh(new THREE.TorusGeometry(0.054, 0.007, 6, 12, Math.PI), rose);
+  wideLip.position.set(0, -0.058, 0.292);
+  wideLip.rotation.z = Math.PI;
+  wideSmile.add(wideLip);
   head.add(wideSmile);
   const accessoryGroups = {
     none: new THREE.Group(),
@@ -1947,6 +1993,12 @@ function buildMascot() {
   const glassesBridge = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.012, 0.012), ink);
   glassesBridge.position.set(0, 0.018, 0.304);
   accessoryGroups.glasses.add(glassesBridge);
+  for (const x of [-1, 1]) {
+    const temple = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.19), ink);
+    temple.position.set(x * 0.163, 0.02, 0.21);
+    temple.rotation.y = -x * 0.08;
+    accessoryGroups.glasses.add(temple);
+  }
   const headphoneBand = new THREE.Mesh(
     new THREE.TorusGeometry(0.305, 0.026, 7, 24, Math.PI),
     headphoneMats.shell,
@@ -1982,6 +2034,7 @@ function buildMascot() {
     pivot.position.set(x, y, 0);
     const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.92, length, 9), material);
     limb.position.y = -length / 2;
+    limb.userData.majorMass = true;
     pivot.add(limb);
     if (hand) {
       const palm = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.05, 10, 8), skin);
@@ -1998,14 +2051,21 @@ function buildMascot() {
   const armR = makeLimb(0.34, 1.28, mats.sleeveR, 0.09, 0.5, { hand: true });
   armL.rotation.z = -0.12;
   armR.rotation.z = 0.12;
+  // ribbed varsity cuffs at the wrists (accent slot, rides limb poses)
+  for (const [pivot, radius] of [[armL, 0.085], [armR, 0.09]]) {
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.18, radius * 1.14, 0.06, 10), mats.stripes);
+    cuff.position.y = -0.44;
+    pivot.add(cuff);
+  }
   const legL = makeLimb(-0.15, 0.76, mats.pants, 0.145, 0.64);
   const legR = makeLimb(0.15, 0.76, mats.pants, 0.145, 0.64);
 
   const soleMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.6 });
+  const sneakerStripeGeometry = new THREE.BoxGeometry(0.025, 0.06, 0.012);
   for (const leg of [legL, legR]) {
     const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 0.38), mats.shoes);
     sneaker.position.set(0, -0.64, 0.08);
-    sneaker.castShadow = true;
+    sneaker.userData.majorMass = true;
     leg.add(sneaker);
     const sole = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.045, 0.4), soleMat);
     sole.position.set(0, -0.7, 0.08);
@@ -2014,19 +2074,29 @@ function buildMascot() {
     toe.scale.set(1.05, 0.62, 0.62);
     toe.position.set(0, -0.655, 0.24);
     leg.add(toe);
-    for (const x of [-0.07, 0, 0.07]) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.06, 0.012), mats.top);
-      stripe.position.set(x, -0.64, 0.276);
-      leg.add(stripe);
-    }
+    // three identical toe stripes per shoe — one instanced draw instead of three
+    const stripes = new THREE.InstancedMesh(sneakerStripeGeometry, mats.top, 3);
+    const stripeMatrix = new THREE.Matrix4();
+    [-0.07, 0, 0.07].forEach((x, i) => {
+      stripes.setMatrixAt(i, stripeMatrix.makeTranslation(x, -0.64, 0.276));
+    });
+    stripes.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    stripes.computeBoundingSphere();
+    leg.add(stripes);
   }
 
-  const badge = new THREE.Mesh(new THREE.CircleGeometry(0.055, 14), ink);
-  badge.position.set(-0.14, 1.22, 0.312);
+  // small accent pin on the chest stripe (reads as a band badge, not a blob)
+  const badge = new THREE.Mesh(new THREE.CircleGeometry(0.028, 14), mats.collar);
+  badge.position.set(-0.135, 1.2, 0.303);
   group.add(badge);
 
+  // Only the major masses cast shadows. Trim, stripes, eyes, collar and pins
+  // are too small to read in the shadow map and would roughly double the
+  // shadow-pass draw calls now that the mascot stands in the key light.
+  const shadowCasters = new Set([torso, neck, face, hairBack, hairCap, fringe, ...locks]);
   group.traverse((object) => {
-    if (object.isMesh) object.castShadow = true;
+    if (!object.isMesh) return;
+    object.castShadow = shadowCasters.has(object) || object.userData.majorMass === true;
   });
 
   return {
@@ -2034,7 +2104,8 @@ function buildMascot() {
     handL: armL.userData.hand,
     handR: armR.userData.hand,
     custom: {
-      mats, hairMat, skinMat: skin, hairBack, hairCap, hairTail, locks, accessoryGroups, headphoneMats,
+      mats, hairMat, skinMat: skin, hairBack, hairCap, fringe, locks, accessoryGroups, headphoneMats,
+      eyeMat,
       mouths: { soft: softSmile, wide: wideSmile, neutral: neutralMouth },
     },
   };
@@ -2047,10 +2118,12 @@ const MASCOT_KEY = 'av2.mascot.v3';
 const MASCOT_DEFAULTS = {
   hair: 'long',
   hairColor: '5a2f22',
-  smile: 'neutral',
+  smile: 'soft',
+  eyeColor: 'dark',
   outfit: 'stage',
   outfitPrimary: 'default',
   outfitAccent: 'default',
+  shoeColor: 'default',
   skinTone: 'tone-3',
   accessory: 'hoops',
   height: 100,
@@ -2059,29 +2132,63 @@ const MASCOT_DEFAULTS = {
 const MASCOT_HEIGHT_RANGE = { min: 70, max: 145 };
 const MASCOT_WIDTH_RANGE = { min: 65, max: 150 };
 
+// Three curated hairstyles, each with an authored fringe treatment:
+// long — side-swept bangs, full back, long face-framing locks;
+// bob — blunt straight fringe, rounded jaw-length shell, tucked locks;
+// short — clean crop, no fringe, tiny sideburn wisps.
 const MASCOT_HAIR_STYLES = {
-  long: { back: { s: [1.24, 1.6, 1.0], p: [0, -0.13, -0.045] }, cap: { s: [1.02, 1, 1.02], p: [0, 0.04, 0.05] }, locks: { s: [0.95, 3.35, 0.95], y: -0.28 }, tail: false },
-  bob: { back: { s: [1.1, 1.02, 0.88], p: [0, -0.02, -0.04] }, cap: { s: [1, 1, 1], p: [0, 0.04, 0.05] }, locks: { s: [0.78, 1.6, 0.75], y: -0.16 }, tail: false },
-  short: { back: { s: [1.05, 0.6, 0.85], p: [0, 0.07, -0.03] }, cap: { s: [1.03, 0.95, 1.03], p: [0, 0.04, 0.05] }, locks: null, tail: false },
-  buzz: { back: null, cap: { s: [1.01, 0.52, 1.01], p: [0, 0.06, 0.05] }, locks: null, tail: false },
-  tied: { back: { s: [1.02, 0.7, 0.82], p: [0, 0.04, -0.04] }, cap: { s: [1.02, 0.92, 1.02], p: [0, 0.04, 0.05] }, locks: null, tail: true },
+  long: {
+    back: { s: [1.2, 1.52, 0.94], p: [0, -0.11, -0.085] },
+    cap: { s: [1.02, 1, 1.02], p: [0, 0.04, 0.05] },
+    // wide, set back, and stopping at the jaw so the face stays open
+    locks: { s: [0.88, 2.75, 0.82], x: 0.288, y: -0.2, z: -0.035 },
+    fringe: { s: [1.0, 1.02, 1.0], p: [0, 0.04, 0.045], rz: -0.22 },
+  },
+  bob: {
+    back: { s: [1.16, 1.05, 0.95], p: [0, -0.03, -0.055] },
+    cap: { s: [1.03, 1, 1.03], p: [0, 0.04, 0.05] },
+    locks: { s: [0.82, 1.62, 0.8], x: 0.272, y: -0.14, z: -0.01 },
+    fringe: { s: [1.02, 1.08, 1.02], p: [0, 0.04, 0.045], rz: 0 },
+  },
+  short: {
+    back: { s: [1.06, 0.62, 0.88], p: [0, 0.06, -0.03] },
+    cap: { s: [1.04, 0.96, 1.04], p: [0, 0.04, 0.05] },
+    locks: { s: [0.4, 0.75, 0.45], x: 0.255, y: 0.02, z: 0.045 },
+    fringe: { s: [1.0, 0.82, 1.0], p: [0, 0.045, 0.045], rz: 0.14 },
+  },
 };
 
+// Four coherent stagewear palettes on the varsity garment. Each keeps sleeves
+// matched and limits itself to base + one primary + one accent.
 const MASCOT_OUTFITS = {
-  stage: { top: 0xFDFBF7, panel: 0x233f9d, stripes: 0x008542, sleeveL: 0x008542, sleeveR: 0x7fa1bd, shoulder: 0xb93a3a, collar: 0xFFD100, pants: 0x5B82A6, shoes: 0x17121c },
-  vibe: { top: 0xFDFBF7, panel: 0x9E33CA, stripes: 0xD1A13B, sleeveL: 0x9E33CA, sleeveR: 0xD1A13B, shoulder: 0xD1A13B, collar: 0x9E33CA, pants: 0x2a0f3a, shoes: 0x17121c },
-  denim: { top: 0xFDFBF7, panel: 0x5B82A6, stripes: 0xFDFBF7, sleeveL: 0x5B82A6, sleeveR: 0x5B82A6, shoulder: 0xD1A13B, collar: 0xFDFBF7, pants: 0x3a5a8c, shoes: 0xFDFBF7 },
+  stage: { top: 0xFDFBF7, panel: 0x17121c, stripes: 0xD1A13B, sleeveL: 0x233f9d, sleeveR: 0x233f9d, shoulder: 0x233f9d, collar: 0xD1A13B, pants: 0x2e3a52, shoes: 0x17121c },
+  vibe: { top: 0xFDFBF7, panel: 0x9E33CA, stripes: 0xD1A13B, sleeveL: 0x9E33CA, sleeveR: 0x9E33CA, shoulder: 0x9E33CA, collar: 0xD1A13B, pants: 0x2a0f3a, shoes: 0x17121c },
+  denim: { top: 0xFDFBF7, panel: 0x3a5a8c, stripes: 0xf2e6cc, sleeveL: 0x5B82A6, sleeveR: 0x5B82A6, shoulder: 0x5B82A6, collar: 0xf2e6cc, pants: 0x3a5a8c, shoes: 0xFDFBF7 },
   night: { top: 0x241a2e, panel: 0x9E33CA, stripes: 0xD1A13B, sleeveL: 0x241a2e, sleeveR: 0x241a2e, shoulder: 0x9E33CA, collar: 0xD1A13B, pants: 0x17121c, shoes: 0x9E33CA },
 };
 const MASCOT_SMILES = new Set(['soft', 'wide', 'neutral']);
+// Curated hair palette — retired swatch values fall back to the default so no
+// look ever shows a color the editor can no longer name.
+const MASCOT_HAIR_COLOR_VALUES = new Set(['5a2f22', '241a14', 'c9a35f', 'a14d2d', 'b04a68']);
+const MASCOT_EYE_COLORS = {
+  dark: 0x17121c,
+  green: 0x2e6b4f,
+  blue: 0x3c5f9e,
+};
+const MASCOT_SHOE_COLORS = {
+  default: null,
+  ink: 0x17121c,
+  cream: 0xFDFBF7,
+  red: 0xb93a3a,
+};
+// Four tones: warm (default), light, golden, deep. Retired IDs (tone-1/2/6)
+// fall back to the default. tone-7 is lifted off pure black so it reads as
+// skin under the stage key light instead of a silhouette.
 const MASCOT_SKIN_TONES = {
-  'tone-1': 0x6f3f2d,
-  'tone-2': 0x9a6247,
   'tone-3': 0xf2c4a6,
-  'tone-4': 0xd99b72,
   'tone-5': 0xf6d7c5,
-  'tone-6': 0xc98765,
-  'tone-7': 0x1b1513,
+  'tone-4': 0xd99b72,
+  'tone-7': 0x4a3128,
 };
 const MASCOT_ACCESSORIES = new Set(['none', 'hoops', 'glasses', 'headphones']);
 const MASCOT_OUTFIT_COLORS = {
@@ -2093,18 +2200,20 @@ const MASCOT_OUTFIT_COLORS = {
   ink: 0x17121c,
   green: 0x008542,
 };
-const MASCOT_PRIMARY_COLORS = new Set(['default', 'purple', 'gold', 'denim', 'ink']);
-const MASCOT_ACCENT_COLORS = new Set(['default', 'purple', 'gold', 'cream', 'green']);
+const MASCOT_PRIMARY_COLORS = new Set(['default', 'purple', 'gold', 'denim']);
+const MASCOT_ACCENT_COLORS = new Set(['default', 'purple', 'gold', 'cream']);
 
 function validateMascotAppearance(saved) {
   const cfg = { ...MASCOT_DEFAULTS };
   if (!saved || typeof saved !== 'object') return cfg;
   if (saved.hair in MASCOT_HAIR_STYLES) cfg.hair = saved.hair;
-  if (typeof saved.hairColor === 'string' && /^[0-9a-fA-F]{6}$/.test(saved.hairColor)) cfg.hairColor = saved.hairColor.toLowerCase();
+  if (typeof saved.hairColor === 'string' && MASCOT_HAIR_COLOR_VALUES.has(saved.hairColor.toLowerCase())) cfg.hairColor = saved.hairColor.toLowerCase();
   if (MASCOT_SMILES.has(saved.smile)) cfg.smile = saved.smile;
+  if (saved.eyeColor in MASCOT_EYE_COLORS) cfg.eyeColor = saved.eyeColor;
   if (saved.outfit in MASCOT_OUTFITS) cfg.outfit = saved.outfit;
   if (MASCOT_PRIMARY_COLORS.has(saved.outfitPrimary)) cfg.outfitPrimary = saved.outfitPrimary;
   if (MASCOT_ACCENT_COLORS.has(saved.outfitAccent)) cfg.outfitAccent = saved.outfitAccent;
+  if (saved.shoeColor in MASCOT_SHOE_COLORS) cfg.shoeColor = saved.shoeColor;
   if (saved.skinTone in MASCOT_SKIN_TONES) cfg.skinTone = saved.skinTone;
   if (MASCOT_ACCESSORIES.has(saved.accessory)) cfg.accessory = saved.accessory;
   if (Number.isFinite(saved.height)) cfg.height = THREE.MathUtils.clamp(Math.round(saved.height), MASCOT_HEIGHT_RANGE.min, MASCOT_HEIGHT_RANGE.max);
@@ -2367,13 +2476,19 @@ function applyMascotConfig() {
     lock.visible = Boolean(style.locks);
     if (style.locks) {
       lock.scale.set(...style.locks.s);
-      lock.position.y = style.locks.y;
+      lock.position.set(lock.userData.side * style.locks.x, style.locks.y, style.locks.z);
     }
   }
-  cu.hairTail.visible = Boolean(style.tail);
+  cu.fringe.visible = Boolean(style.fringe);
+  if (style.fringe) {
+    cu.fringe.scale.set(...style.fringe.s);
+    cu.fringe.position.set(...style.fringe.p);
+    cu.fringe.rotation.z = style.fringe.rz;
+  }
   cu.hairMat.color.setHex(parseInt(mascotCfg.hairColor, 16));
   cu.skinMat.color.setHex(MASCOT_SKIN_TONES[mascotCfg.skinTone] ?? MASCOT_SKIN_TONES[MASCOT_DEFAULTS.skinTone]);
   for (const [smile, mouth] of Object.entries(cu.mouths)) mouth.visible = smile === mascotCfg.smile;
+  cu.eyeMat.color.setHex(MASCOT_EYE_COLORS[mascotCfg.eyeColor] ?? MASCOT_EYE_COLORS.dark);
   const outfit = MASCOT_OUTFITS[mascotCfg.outfit] || MASCOT_OUTFITS.stage;
   for (const slot in outfit) cu.mats[slot].color.setHex(outfit[slot]);
   const primary = MASCOT_OUTFIT_COLORS[mascotCfg.outfitPrimary];
@@ -2384,6 +2499,8 @@ function applyMascotConfig() {
   if (accent !== null && accent !== undefined) {
     for (const slot of ['stripes', 'shoulder', 'collar']) cu.mats[slot].color.setHex(accent);
   }
+  const shoeOverride = MASCOT_SHOE_COLORS[mascotCfg.shoeColor];
+  if (shoeOverride !== null && shoeOverride !== undefined) cu.mats.shoes.color.setHex(shoeOverride);
   cu.headphoneMats.shell.color.setHex(primary ?? outfit.panel);
   cu.headphoneMats.detail.color.setHex(accent ?? outfit.stripes);
   for (const [name, accessory] of Object.entries(cu.accessoryGroups)) {
@@ -2392,8 +2509,13 @@ function applyMascotConfig() {
   applyMascotScale();
 }
 
-// Start close to the visual center and just upstage: drums are first on mobile.
-mascot.group.position.set(-0.75, 0, -0.6);
+// Downstage, standing in the key spotlight pool and nudged toward the guitar
+// (stage left) — the visitor arrives as the performer, guitar in easy reach,
+// every other instrument behind them. Held back off the footlight row — those
+// are point lights with inverse-square falloff and would blow the costume out
+// up close.
+const MASCOT_START = new THREE.Vector3(-0.5, 0, 2.15);
+mascot.group.position.copy(MASCOT_START);
 scene.add(mascot.group);
 applyMascotConfig();
 const mascotFallMeshes = [];
@@ -2450,7 +2572,7 @@ const mascotMove = {
   keys: new Set(), destination: null, destinationKind: null, waypoints: [], speed: 2.45, phase: 0,
   travelBounds: { minX: -8.35, maxX: 8.35, minZ: -4.65, maxZ: 4.35 },
   stageEdge: { minX: -7.72, maxX: 7.72, frontZ: 3.78 },
-  spawn: new THREE.Vector3(-0.75, 0, -0.6),
+  spawn: MASCOT_START.clone(),
   fall: null,
 };
 // HUD logo click: tektonik routine state (only toggled via the logo).
@@ -6235,21 +6357,26 @@ const mascotCommitButton = document.getElementById('mascot-commit');
 const mascotUndoButton = document.getElementById('mascot-undo');
 
 const MASCOT_UI_NAMES = {
-  hair: { long: 'ДОВГЕ', bob: 'БОБ', short: 'КОРОТКЕ', buzz: 'МІНІМУМ', tied: 'ЗІБРАНЕ' },
+  hair: { long: 'ДОВГЕ', bob: 'БОБ', short: 'КОРОТКЕ' },
   smile: { soft: 'ЛЕГКА', wide: 'ШИРОКА', neutral: 'РІВНА' },
   hairColor: {
     '5a2f22': 'КАШТАНОВЕ', '241a14': 'ЧОРНЕ', c9a35f: 'БЛОНД',
-    a14d2d: 'РУДЕ', '9e33ca': 'ФІОЛЕТОВЕ',
+    a14d2d: 'РУДЕ', b04a68: 'РОЖЕВЕ',
   },
+  eyeColor: { dark: 'ТЕМНІ', green: 'ЗЕЛЕНІ', blue: 'БЛАКИТНІ' },
   outfit: { stage: 'СЦЕНА', vibe: 'ФІРМОВИЙ', denim: 'ДЖИНС', night: 'НІЧ' },
   skinTone: {
-    'tone-1': 'ГЛИБОКИЙ', 'tone-2': 'НАСИЧЕНИЙ', 'tone-3': 'ТЕПЛИЙ',
-    'tone-4': 'ЗОЛОТИЙ', 'tone-5': 'СВІТЛИЙ', 'tone-6': 'НЕЙТРАЛЬНИЙ', 'tone-7': 'ЧОРНИЙ',
+    'tone-3': 'ТЕПЛИЙ', 'tone-5': 'СВІТЛИЙ', 'tone-4': 'ЗОЛОТИЙ', 'tone-7': 'ЧОРНИЙ',
   },
-  accessory: { none: 'НЕМАЄ', hoops: 'СЕРЕЖКИ', glasses: 'ОКУЛЯРИ', headphones: 'НАВУШНИКИ' },
+  accessory: {
+    none: 'НЕМАЄ', hoops: 'СЕРЕЖКИ', glasses: 'ОКУЛЯРИ', headphones: 'НАВУШНИКИ',
+  },
   outfitColor: {
     default: 'З ПАЛІТРИ', purple: 'ФІОЛЕТОВИЙ', gold: 'ЗОЛОТИЙ',
-    cream: 'КРЕМОВИЙ', denim: 'ДЖИНСОВИЙ', ink: 'ТЕМНИЙ', green: 'ЗЕЛЕНИЙ',
+    cream: 'КРЕМОВИЙ', denim: 'ДЖИНСОВИЙ',
+  },
+  shoeColor: {
+    default: 'З ПАЛІТРИ', ink: 'ЧОРНІ', cream: 'БІЛІ', red: 'ЧЕРВОНІ',
   },
 };
 
@@ -6291,11 +6418,13 @@ function syncMascotModal() {
   syncGroup('[data-mascot-hair]', 'mascotHair', mascotCfg.hair);
   syncGroup('[data-mascot-color]', 'mascotColor', mascotCfg.hairColor);
   syncGroup('[data-mascot-smile]', 'mascotSmile', mascotCfg.smile);
+  syncGroup('[data-mascot-eyes]', 'mascotEyes', mascotCfg.eyeColor);
   syncGroup('[data-mascot-outfit]', 'mascotOutfit', mascotCfg.outfit);
   syncGroup('[data-mascot-skin]', 'mascotSkin', mascotCfg.skinTone);
   syncGroup('[data-mascot-accessory]', 'mascotAccessory', mascotCfg.accessory);
   syncGroup('[data-mascot-primary]', 'mascotPrimary', mascotCfg.outfitPrimary);
   syncGroup('[data-mascot-accent]', 'mascotAccent', mascotCfg.outfitAccent);
+  syncGroup('[data-mascot-shoes]', 'mascotShoes', mascotCfg.shoeColor);
   if (mascotHeightInput) mascotHeightInput.value = String(mascotCfg.height);
   if (mascotWidthInput) mascotWidthInput.value = String(mascotCfg.width);
   const setName = (id, group, value) => {
@@ -6305,11 +6434,13 @@ function syncMascotModal() {
   setName('mascot-hair-name', 'hair', mascotCfg.hair);
   setName('mascot-smile-name', 'smile', mascotCfg.smile);
   setName('mascot-color-name', 'hairColor', mascotCfg.hairColor.toLowerCase());
+  setName('mascot-eyes-name', 'eyeColor', mascotCfg.eyeColor);
   setName('mascot-outfit-name', 'outfit', mascotCfg.outfit);
   setName('mascot-skin-name', 'skinTone', mascotCfg.skinTone);
   setName('mascot-accessory-name', 'accessory', mascotCfg.accessory);
   setName('mascot-primary-name', 'outfitColor', mascotCfg.outfitPrimary);
   setName('mascot-accent-name', 'outfitColor', mascotCfg.outfitAccent);
+  setName('mascot-shoes-name', 'shoeColor', mascotCfg.shoeColor);
   if (mascotUndoButton) mascotUndoButton.hidden = !mascotEditor.undoConfig;
 }
 
@@ -6354,16 +6485,18 @@ function pickMascotValue(values) {
 }
 
 function randomizeMascot() {
-  const hairColors = ['5a2f22', '241a14', 'c9a35f', 'a14d2d', '9e33ca'];
+  const hairColors = [...MASCOT_HAIR_COLOR_VALUES];
   const heights = [82, 90, 100, 110, 122, 132];
   const widths = [78, 88, 100, 112, 125, 138];
   setMascotConfig({
     hair: pickMascotValue(Object.keys(MASCOT_HAIR_STYLES)),
     hairColor: pickMascotValue(hairColors),
     smile: pickMascotValue([...MASCOT_SMILES]),
+    eyeColor: pickMascotValue(Object.keys(MASCOT_EYE_COLORS)),
     outfit: pickMascotValue(Object.keys(MASCOT_OUTFITS)),
     outfitPrimary: pickMascotValue([...MASCOT_PRIMARY_COLORS]),
     outfitAccent: pickMascotValue([...MASCOT_ACCENT_COLORS]),
+    shoeColor: pickMascotValue(Object.keys(MASCOT_SHOE_COLORS)),
     skinTone: pickMascotValue(Object.keys(MASCOT_SKIN_TONES)),
     accessory: pickMascotValue([...MASCOT_ACCESSORIES]),
     height: pickMascotValue(heights),
@@ -6396,6 +6529,10 @@ if (mascotModal) {
     btn.addEventListener('click', () => setMascotConfig({ hairColor: btn.dataset.mascotColor })));
   mascotModal.querySelectorAll('[data-mascot-smile]').forEach((btn) =>
     btn.addEventListener('click', () => setMascotConfig({ smile: btn.dataset.mascotSmile })));
+  mascotModal.querySelectorAll('[data-mascot-eyes]').forEach((btn) =>
+    btn.addEventListener('click', () => setMascotConfig({ eyeColor: btn.dataset.mascotEyes })));
+  mascotModal.querySelectorAll('[data-mascot-shoes]').forEach((btn) =>
+    btn.addEventListener('click', () => setMascotConfig({ shoeColor: btn.dataset.mascotShoes })));
   mascotModal.querySelectorAll('[data-mascot-outfit]').forEach((btn) =>
     btn.addEventListener('click', () => setMascotConfig({ outfit: btn.dataset.mascotOutfit })));
   mascotModal.querySelectorAll('[data-mascot-skin]').forEach((btn) =>

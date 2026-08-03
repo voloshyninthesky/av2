@@ -992,9 +992,13 @@ export function buildGuitar() {
   }
   guitar.add(stand);
 
+  // Only the silhouette-defining masses cast. Strings, frets, pegs, markers and
+  // pins add nothing to a shadow but each one costs a shadow-pass draw call —
+  // and this instrument sits inside the key light's pool.
+  const guitarShadowCasters = new Set([bodyMesh, neck, head]);
   guitar.traverse((o) => {
     if (!o.isMesh) return;
-    o.castShadow = o.material !== hitMat;
+    o.castShadow = guitarShadowCasters.has(o);
   });
 
   let wobble = 0, recoil = 0, recoilDirection = 1, time = 0;
@@ -1182,7 +1186,10 @@ export function buildMic() {
   markInteract(highHit, { instrument: 'mic', vocalFreq: 392.0, vocalVowel: 2 });
   markInteract(midHit, { instrument: 'mic', vocalFreq: 329.63, vocalVowel: 1 });
   markInteract(lowHit, { instrument: 'mic', vocalFreq: 261.63, vocalVowel: 0 });
-  mic.traverse((o) => { if (o.isMesh && o !== pulse && o.material !== micHitMat) o.castShadow = true; });
+  // Same rule as the guitar: base, pole and head capsule define the shadow;
+  // grille rings, ribs, bands and the XLR do not.
+  const micShadowCasters = new Set([base, pole, capsule]);
+  mic.traverse((o) => { if (o.isMesh) o.castShadow = micShadowCasters.has(o); });
 
   let bob = 0, pulseT = 0, time = 0;
 
