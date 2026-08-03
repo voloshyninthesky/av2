@@ -218,9 +218,11 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 ### Mascot
 
-Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Walk with click-to-move on the floor or the mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
+Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Starts **downstage, nudged stage-left toward the guitar, inside the key spotlight pool** (`MASCOT_START`, also the fall respawn point), held back off the footlight row so those point lights cannot blow the costume out; the guitar sits in easy reach with every other instrument behind the visitor. Walk with click-to-move on the floor or the mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** cover five hairstyles (**Довге / Боб / Коротке / Мінімум / Зібране**), three smiles, five hair colors (also recolor brows), seven skin tones (face + both hands), four outfit palettes, curated primary / accent overrides, four accessories, and height / build sliders. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look; horizontal drag remains the sole orientation control.
+**Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** with deliberately small, curated groups: three authored hairstyles (**Довге / Боб / Коротке** — side-swept fringe, blunt-fringe bob, clean crop; a shared fringe shell is restyled per hairstyle, and each style also places its side locks, which must fall beside and behind the jaw so long hair never reads as a beard), three smiles (**Легка / Широка / Рівна** — Широка is an open singing mouth with teeth, Рівна a calm closed lip with a hint of curve; default is Легка), five hair colors (also recolor brows), three eye colors (dedicated iris material; glasses/badge ink stays shared), four skin tones (**Теплий / Світлий / Золотий / Чорний**, applied to face and both hands), four coherent varsity palettes (**Сцена / Фірмовий / Джинс / Ніч** — matched sleeves, base + one primary + one accent on a placket / chest-stripe / hem-band / cuffs garment), four-option primary and accent overrides, a shoe-color override (**З ПАЛІТРИ / Чорні / Білі / Червоні**), four accessories (**немає / сережки / окуляри з дужками / навушники**), and height / build sliders. Removed legacy values (`buzz`, `tied`, `sunset` palette, `chain`, `cap`, the `blush` field, skin tones 1/2/6, dropped colors) fall back per-field to defaults when loading an older save. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look; horizontal drag remains the sole orientation control.
+
+Only the mascot's major masses cast shadows (torso, neck, face, hair, limbs, shoes). Trim, stripes, collar, eyes and pins are excluded: they add nothing to the shadow map and would roughly double the shadow-pass draw calls now that the mascot stands in the key light. The guitar and mic follow the same rule inside that pool.
 
 Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v3`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
 
@@ -437,6 +439,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
+| `testhooks` | Headless QA only: exposes `__THREE_GAME_TEST_HOOKS__` (setState: stage/piano/guitar/drums/mic/vibe/dance) + `__THREE_GAME_DIAGNOSTICS__` (renderer counts) for the canvas inspector; never active for visitors |
 
 ---
 
@@ -571,7 +574,7 @@ The editor should feel like a small dressing room inside the stage, not a settin
 ### Control design
 
 - Use a minimum target of **48 × 48 CSS px** with `8 px` separation for category, choice, swatch, close, and action controls.
-- Replace ambiguous visible hair labels with **Довге / Боб / Коротке / Мінімум** while retaining the existing runtime IDs.
+- Replace ambiguous visible hair labels with **Довге / Боб / Коротке** while retaining the existing runtime IDs.
 - Each group label also exposes its selected value, for example `КОЛІР ВОЛОССЯ · КАШТАНОВЕ`.
 - Hair-color and future skin-tone swatches show a selected checkmark and a visible or screen-reader label; color is never the only signal.
 - Outfit choices show the name plus a small 2–3-color palette preview so visitors can predict the result without cycling through every option.
@@ -584,8 +587,8 @@ The editor should feel like a small dressing room inside the stage, not a settin
 | Layer | Scope |
 |-------|-------|
 | **Editor foundation** | Measured preview safe rectangle; category rail; sticky actions; draft / commit / cancel model; reset undo; accessible dialog and radio behavior; compact landscape layout |
-| **Identity and delight** | Seven curated skin tones applied to face and both hands; drag-to-rotate preview; compatible random look |
-| **Wardrobe** | Accessories `немає / сережки / окуляри / навушники`; tied hairstyle; curated outfit primary / accent variants |
+| **Identity and delight** | Four curated skin tones applied to face and both hands; five hair colors; three eye colors on a dedicated iris material; three authored smiles (soft default, open singing wide, calm neutral); drag-to-rotate preview; compatible random look |
+| **Wardrobe** | Accessories `немає / сережки / окуляри / навушники` (glasses have temple arms); three authored hairstyles with a restyled shared fringe and per-style lock placement; four varsity palettes (**Сцена / Фірмовий / Джинс / Ніч**) on the placket / chest-stripe / hem-band / cuffs garment; four-option primary / accent overrides; shoe-color override with a palette-default option |
 
 All options reuse or toggle cached geometry and shared materials. Changing a choice must not allocate new meshes, materials, textures, or synthesis work inside the input handler. Arbitrary uploads, AI avatars, an unrestricted color picker, accounts, and a downloadable wardrobe remain out of scope.
 
