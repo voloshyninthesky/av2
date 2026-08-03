@@ -26,34 +26,134 @@ function lacquer(color, opts = {}) {
   });
 }
 function guitarWoodTexture() {
+  // spruce grain under a honey-to-tobacco sunburst vignette
   const c = document.createElement('canvas');
   c.width = 512; c.height = 512;
   const x = c.getContext('2d');
-  x.fillStyle = '#c98d3d';
+  x.fillStyle = '#d29a48';
   x.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 48; i++) {
-    const y = (i / 48) * 512;
+  for (let i = 0; i < 64; i++) {
+    const y = (i / 64) * 512;
     const shade = 0.82 + Math.sin(i * 0.7) * 0.1 + Math.random() * 0.08;
-    x.strokeStyle = `rgba(${90 * shade | 0},${48 * shade | 0},${18 * shade | 0},${0.18 + Math.random() * 0.2})`;
-    x.lineWidth = 1 + Math.random() * 2;
+    x.strokeStyle = `rgba(${96 * shade | 0},${52 * shade | 0},${20 * shade | 0},${0.14 + Math.random() * 0.16})`;
+    x.lineWidth = 1 + Math.random() * 1.6;
     x.beginPath();
     x.moveTo(0, y);
-    x.bezierCurveTo(160, y + Math.random() * 10 - 5, 340, y + Math.random() * 10 - 5, 512, y);
+    x.bezierCurveTo(160, y + Math.random() * 8 - 4, 340, y + Math.random() * 8 - 4, 512, y);
     x.stroke();
   }
   for (let i = 0; i < 7; i++) {
     const cx = 80 + i * 60;
-    x.strokeStyle = 'rgba(70,35,12,.22)';
+    x.strokeStyle = 'rgba(70,35,12,.18)';
     x.lineWidth = 2;
     x.beginPath();
     x.ellipse(cx, 260 + (i % 3) * 40, 18, 70, 0.1, 0, Math.PI * 2);
     x.stroke();
   }
+  // sunburst: warm center, tobacco rim
+  const burst = x.createRadialGradient(256, 256, 90, 256, 256, 330);
+  burst.addColorStop(0, 'rgba(255,196,110,.14)');
+  burst.addColorStop(0.55, 'rgba(120,58,18,.12)');
+  burst.addColorStop(0.85, 'rgba(64,28,8,.5)');
+  burst.addColorStop(1, 'rgba(38,16,5,.72)');
+  x.fillStyle = burst;
+  x.fillRect(0, 0, 512, 512);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
   return t;
 }
+// glam sparkle wrap for drum shells: deep purple base + metal-flake speckle
+// with a vertical stage-light sheen band
+function sparkleWrapTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const x = c.getContext('2d');
+  const base = x.createLinearGradient(0, 0, 512, 0);
+  base.addColorStop(0, '#43125e');
+  base.addColorStop(0.35, '#6b1f96');
+  base.addColorStop(0.5, '#7d2ba8');
+  base.addColorStop(0.65, '#6b1f96');
+  base.addColorStop(1, '#43125e');
+  x.fillStyle = base;
+  x.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 1100; i++) {
+    const px = Math.random() * 512;
+    const py = Math.random() * 512;
+    const bright = Math.random();
+    const size = 0.6 + Math.random() * 1.7;
+    x.fillStyle = bright > 0.82
+      ? `rgba(255,240,255,${0.5 + Math.random() * 0.5})`
+      : (bright > 0.5
+        ? `rgba(216,150,255,${0.3 + Math.random() * 0.4})`
+        : `rgba(255,214,140,${0.25 + Math.random() * 0.35})`);
+    x.fillRect(px, py, size, size);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+// lathed bronze cymbal top: concentric turning rings + darker bell
+function cymbalTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const x = c.getContext('2d');
+  const base = x.createRadialGradient(256, 256, 20, 256, 256, 256);
+  base.addColorStop(0, '#8a6420');
+  base.addColorStop(0.22, '#c89a3e');
+  base.addColorStop(0.6, '#e0b45a');
+  base.addColorStop(0.85, '#c2933c');
+  base.addColorStop(1, '#a87e30');
+  x.fillStyle = base;
+  x.fillRect(0, 0, 512, 512);
+  for (let r = 26; r < 255; r += 2.5) {
+    x.strokeStyle = `rgba(${r % 5 < 2.5 ? '255,228,160' : '120,86,28'},${0.05 + Math.random() * 0.1})`;
+    x.lineWidth = 1 + Math.random();
+    x.beginPath();
+    x.arc(256, 256, r, 0, Math.PI * 2);
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+// coated drum head: warm cream mylar with a faint ring and center wear
+function drumHeadTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const base = x.createRadialGradient(128, 128, 16, 128, 128, 128);
+  base.addColorStop(0, '#f3ead9');
+  base.addColorStop(0.55, '#ece0cc');
+  base.addColorStop(0.9, '#dfd0b8');
+  base.addColorStop(1, '#d2c2a8');
+  x.fillStyle = base;
+  x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) {
+    x.fillStyle = `rgba(${Math.random() < 0.5 ? '255,252,244' : '196,180,152'},${0.06 + Math.random() * 0.08})`;
+    x.fillRect(Math.random() * 256, Math.random() * 256, 1.4, 1.4);
+  }
+  x.strokeStyle = 'rgba(140,120,92,.3)';
+  x.lineWidth = 3;
+  x.beginPath();
+  x.arc(128, 128, 96, 0, Math.PI * 2);
+  x.stroke();
+  const wear = x.createRadialGradient(128, 140, 4, 128, 140, 44);
+  wear.addColorStop(0, 'rgba(150,128,98,.28)');
+  wear.addColorStop(1, 'rgba(150,128,98,0)');
+  x.fillStyle = wear;
+  x.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function cylinderBetween(a, b, r, mat, segments = 8) {
   const dir = new THREE.Vector3().subVectors(b, a);
   const len = dir.length();
@@ -71,13 +171,47 @@ function markInteract(root, data) {
 // ============================================================
 export function buildDrumKit() {
   const kit = new THREE.Group();
-  const shellMat = lacquer(PURPLE, { roughness: 0.32, metalness: 0.28, clearcoat: 0.55 });
-  const headMat = std(CREAM, { roughness: 0.78, metalness: 0.04 });
+  const shellMat = lacquer(0xffffff, { roughness: 0.3, metalness: 0.18, clearcoat: 0.75, clearcoatRoughness: 0.14 });
+  shellMat.map = sparkleWrapTexture();
+  const headMat = std(CREAM, { roughness: 0.72, metalness: 0.02 });
+  headMat.map = drumHeadTexture();
   const goldMetal = metal(GOLD, 0.26);
   goldMetal.emissive = new THREE.Color(GOLD);
   goldMetal.emissiveIntensity = 0.07;
+  const cymbalMat = metal(0xe0b45a, 0.34);
+  cymbalMat.map = cymbalTexture();
   const chrome = metal(0xd9d9e2, 0.18);
   const darkMetal = metal(0x2c2c34, 0.4);
+  const rubberMat = std(0x14101a, { roughness: 0.9, metalness: 0.02 });
+
+  // chrome tension lugs around each shell — the hardware detail that makes
+  // procedural drums read as real drums
+  const lugGeometry = new THREE.CapsuleGeometry(0.016, 0.05, 4, 8);
+  function addLugs(group, radius, count, axis = 'y', offset = 0) {
+    const lugs = new THREE.InstancedMesh(lugGeometry, chrome, count);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const v = new THREE.Vector3();
+    const s = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + 0.2;
+      if (axis === 'y') {
+        v.set(Math.cos(a) * radius, offset, Math.sin(a) * radius);
+        e.set(0, -a, 0);
+      } else {
+        // kick drum: axis along z, lugs lie along that axis around the hoop
+        v.set(Math.cos(a) * radius, Math.sin(a) * radius, offset);
+        e.set(Math.PI / 2, 0, 0);
+      }
+      q.setFromEuler(e);
+      m.compose(v, q, s);
+      lugs.setMatrixAt(i, m);
+    }
+    lugs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    lugs.computeBoundingSphere();
+    group.add(lugs);
+  }
 
   const parts = { cymbals: [] };
   const anim = { snare: 0, tom1: 0, tom2: 0, floor: 0, kick: 0, hihat: 0, crash: 0 };
@@ -169,6 +303,27 @@ export function buildDrumKit() {
   const logoHead = new THREE.Mesh(new THREE.CircleGeometry(0.5, 64), logoMat);
   logoHead.position.z = 0.252;
   kick.add(logoHead);
+  addLugs(kick, 0.585, 8, 'z', 0.19);
+  // spurs keep the kick from "floating": angled legs + rubber feet
+  for (const sd of [-1, 1]) {
+    kick.add(cylinderBetween(
+      new THREE.Vector3(sd * 0.42, -0.28, 0.18),
+      new THREE.Vector3(sd * 0.58, -0.56, 0.3), 0.014, chrome));
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), rubberMat);
+    foot.position.set(sd * 0.58, -0.56, 0.3);
+    kick.add(foot);
+  }
+  // kick pedal: footboard + beater against the batter head
+  const pedalBoard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.3), darkMetal);
+  pedalBoard.position.set(0, -0.55, -0.46);
+  pedalBoard.rotation.x = -0.3;
+  kick.add(pedalBoard);
+  kick.add(cylinderBetween(
+    new THREE.Vector3(0, -0.52, -0.34),
+    new THREE.Vector3(0, -0.12, -0.3), 0.01, chrome));
+  const beater = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), std(0xe8dcc8, { roughness: 0.8 }));
+  beater.position.set(0, -0.1, -0.29);
+  kick.add(beater);
   kick.position.set(0, 0.58, 0);
   markInteract(kick, { instrument: 'drums', part: 'kick' });
   parts.kick = kick;
@@ -178,6 +333,11 @@ export function buildDrumKit() {
   const snare = new THREE.Group();
   const snareShell = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 28), [goldMetal, headMat, headMat]);
   snare.add(snareShell);
+  addLugs(snare, 0.315, 8, 'y', 0);
+  // strainer box on the shell side
+  const strainer = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.05), chrome);
+  strainer.position.set(-0.3, -0.01, 0.1);
+  snare.add(strainer);
   const snareStand = cylinderBetween(new THREE.Vector3(0, -0.75, 0), new THREE.Vector3(0, -0.1, 0), 0.02, darkMetal);
   snare.add(snareStand);
   for (let i = 0; i < 3; i++) {
@@ -201,6 +361,7 @@ export function buildDrumKit() {
     const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.02, 8, 30), chrome);
     rim.rotation.x = Math.PI / 2; rim.position.y = h / 2;
     t.add(rim);
+    addLugs(t, r + 0.008, 6, 'y', 0);
     t.position.set(x, y, z);
     t.rotation.x = tilt;
     return t;
@@ -216,6 +377,7 @@ export function buildDrumKit() {
   const floorTom = new THREE.Group();
   const ftShell = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.44, 28), [shellMat, headMat, headMat]);
   floorTom.add(ftShell);
+  addLugs(floorTom, 0.345, 8, 'y', 0.05);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2 + 0.5;
     floorTom.add(cylinderBetween(
@@ -230,10 +392,15 @@ export function buildDrumKit() {
   // ---- cymbals: hi-hat + crash ----
   const mkCymbal = (r) => {
     const g = new THREE.Group();
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.86, r, 0.018, 36), goldMetal);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.86, r, 0.018, 36), cymbalMat);
     const bell = new THREE.Mesh(new THREE.SphereGeometry(r * 0.22, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), goldMetal);
     bell.position.y = 0.012;
-    g.add(disc, bell);
+    // felt washer + wing nut holding the cymbal on its stand
+    const felt = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.14, r * 0.14, 0.016, 10), rubberMat);
+    felt.position.y = r * 0.2;
+    const wingNut = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.03, 6), chrome);
+    wingNut.position.y = r * 0.2 + 0.02;
+    g.add(disc, bell, felt, wingNut);
     return g;
   };
 
@@ -242,6 +409,20 @@ export function buildDrumKit() {
   const hatBot = mkCymbal(0.28); hatBot.position.y = 0;
   const hatTop = mkCymbal(0.28); hatTop.position.y = 0.045; hatTop.rotation.z = -0.03;
   hihat.add(hatBot, hatTop);
+  // clutch above the top hat + tripod feet + pedal board at the floor
+  const clutch = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.07, 8), chrome);
+  clutch.position.y = 0.1;
+  hihat.add(clutch);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.4;
+    hihat.add(cylinderBetween(
+      new THREE.Vector3(0, -0.72, 0),
+      new THREE.Vector3(Math.cos(a) * 0.24, -1.0, Math.sin(a) * 0.24), 0.012, darkMetal));
+  }
+  const hatPedal = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.016, 0.26), darkMetal);
+  hatPedal.position.set(0, -0.99, 0.16);
+  hatPedal.rotation.x = -0.22;
+  hihat.add(hatPedal);
   hihat.position.set(1.04, 1.02, -0.38);
   markInteract(hihat, { instrument: 'drums', part: 'hihat' });
   parts.hihatTop = hatTop;
@@ -259,9 +440,19 @@ export function buildDrumKit() {
 
   // ---- throne ----
   const throne = new THREE.Group();
-  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.09, 20), std(INK, { roughness: 0.4 }));
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.09, 20), std(0x3d1257, { roughness: 0.62 }));
   throne.add(seat);
+  const seatPiping = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.014, 6, 24), goldMetal);
+  seatPiping.rotation.x = Math.PI / 2;
+  seatPiping.position.y = -0.045;
+  throne.add(seatPiping);
   throne.add(cylinderBetween(new THREE.Vector3(0, -0.6, 0), new THREE.Vector3(0, -0.05, 0), 0.025, darkMetal));
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.9;
+    throne.add(cylinderBetween(
+      new THREE.Vector3(0, -0.38, 0),
+      new THREE.Vector3(Math.cos(a) * 0.26, -0.62, Math.sin(a) * 0.26), 0.014, darkMetal));
+  }
   throne.position.set(0, 0.62, -1.05);
   kit.add(throne);
 
@@ -323,6 +514,56 @@ export function buildPiano() {
   const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.055, 0.36), bodyMat);
   shelf.position.set(0, 0.6, 0.42);
   piano.add(shelf);
+  // lid border inset so the top reads as framed lacquer, not a void
+  const lidInset = new THREE.Mesh(
+    new THREE.BoxGeometry(1.9, 0.012, 0.5),
+    lacquer(0x2e2138, { roughness: 0.22, metalness: 0.3, clearcoat: 0.9 }),
+  );
+  lidInset.position.set(0, 1.936, 0.01);
+  piano.add(lidInset);
+  // structural back posts + rail (visible from the focus camera's far side)
+  const backWood = std(0x30202c, { roughness: 0.62, metalness: 0.06 });
+  for (const px of [-0.62, 0, 0.62]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 0.05), backWood);
+    post.position.set(px, 1.23, -0.31);
+    piano.add(post);
+  }
+  const backRail = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.14, 0.05), backWood);
+  backRail.position.set(0, 1.78, -0.31);
+  piano.add(backRail);
+  // recessed front panels with gold beading — classic upright cabinetry
+  const panelMat = lacquer(0x1b1324, { roughness: 0.3, metalness: 0.2, clearcoat: 0.7 });
+  for (const px of [-0.52, 0.52]) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.92, 0.02), panelMat);
+    panel.position.set(px, 1.245, 0.3);
+    piano.add(panel);
+    const panelFrame = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.98, 0.008), trimMat);
+    panelFrame.position.set(px, 1.245, 0.288);
+    piano.add(panelFrame);
+  }
+  // top molding + fallboard above the keys
+  const molding = new THREE.Mesh(new THREE.BoxGeometry(2.06, 0.05, 0.66), bodyMat);
+  molding.position.set(0, 1.82, 0.02);
+  piano.add(molding);
+  // open fallboard resting back against the cabinet, well clear of the keys
+  const fallboard = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.16, 0.05), panelMat);
+  fallboard.position.set(0, 0.8, 0.33);
+  fallboard.rotation.x = -1.1;
+  piano.add(fallboard);
+  // red key felt line
+  const felt = new THREE.Mesh(
+    new THREE.BoxGeometry(1.9, 0.02, 0.035),
+    std(0x8e1f3f, { roughness: 0.85, metalness: 0 }),
+  );
+  felt.position.set(0, 0.667, 0.335);
+  piano.add(felt);
+  // brass casters
+  const casterMat = metal(0x9a7428, 0.4);
+  for (const [cx, cz] of [[-0.95, 0.24], [0.95, 0.24], [-0.95, -0.24], [0.95, -0.24]]) {
+    const caster = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.05, 10), casterMat);
+    caster.position.set(cx, 0.46, cz);
+    piano.add(caster);
+  }
   // cheek blocks
   const cheeks = new THREE.InstancedMesh(
     new THREE.BoxGeometry(0.07, 0.1, 0.36),
@@ -372,10 +613,12 @@ export function buildPiano() {
   const C4 = 261.63;
   const freqOf = (semisFromC4) => C4 * Math.pow(2, semisFromC4 / 12);
 
+  const whiteKeyOpts = { roughness: 0.3, metalness: 0.04 };
+  const blackKeyOpts = { roughness: 0.22, metalness: 0.1 };
   let whiteIdx = 0;
   for (let oct = 0; oct < 2; oct++) {
     for (let w = 0; w < whitesPerOctave; w++) {
-      const key = new THREE.Mesh(whiteGeom, std(CREAM, { roughness: 0.5 }));
+      const key = new THREE.Mesh(whiteGeom, std(0xfdf8ec, whiteKeyOpts));
       key.position.set(startX + whiteIdx * (WHITE_W + GAP), 0.645, 0.44);
       const semi = oct * 12 + semis[w];
       key.userData = { instrument: 'piano', freq: freqOf(semi), press: 0, baseY: 0.645, whiteIdx };
@@ -383,7 +626,7 @@ export function buildPiano() {
       keys.push(key);
 
       if (blackAfter[w] && !(oct === 1 && w === 6)) {
-        const bk = new THREE.Mesh(blackGeom, std(0x0d0a12, { roughness: 0.35 }));
+        const bk = new THREE.Mesh(blackGeom, std(0x0d0a12, blackKeyOpts));
         bk.position.set(startX + whiteIdx * (WHITE_W + GAP) + (WHITE_W + GAP) / 2, 0.672, 0.385);
         const bSemi = oct * 12 + semis[w] + 1;
         bk.userData = { instrument: 'piano', freq: freqOf(bSemi), press: 0, baseY: 0.672, black: true };
@@ -394,16 +637,25 @@ export function buildPiano() {
     }
   }
   // final C6
-  const lastKey = new THREE.Mesh(whiteGeom, std(CREAM, { roughness: 0.5 }));
+  const lastKey = new THREE.Mesh(whiteGeom, std(0xfdf8ec, whiteKeyOpts));
   lastKey.position.set(startX + whiteIdx * (WHITE_W + GAP), 0.645, 0.44);
   lastKey.userData = { instrument: 'piano', freq: freqOf(24), press: 0, baseY: 0.645, whiteIdx };
   piano.add(lastKey);
   keys.push(lastKey);
 
-  // bench
+  // bench with a velvet cushion + gold piping
   const bench = new THREE.Group();
   const bSeat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.09, 0.34), bodyMat);
   bench.add(bSeat);
+  const cushion = new THREE.Mesh(
+    new THREE.BoxGeometry(0.96, 0.05, 0.3),
+    std(0x5c1d40, { roughness: 0.82, metalness: 0 }),
+  );
+  cushion.position.y = 0.065;
+  bench.add(cushion);
+  const pipingFront = new THREE.Mesh(new THREE.BoxGeometry(0.97, 0.012, 0.012), trimMat);
+  pipingFront.position.set(0, 0.045, 0.152);
+  bench.add(pipingFront);
   const benchLegs = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.025, 0.02, 0.5, 8),
     bodyMat,
@@ -460,9 +712,11 @@ export function buildGuitar() {
   guitar.add(body);
 
   const woodMap = guitarWoodTexture();
-  const woodMat = std(0xc98d3d, { map: woodMap, roughness: 0.42, metalness: 0.08 });
-  const woodDark = std(0x5a3a1c, { roughness: 0.48, metalness: 0.1 });
+  const woodMat = lacquer(0xffffff, { roughness: 0.3, metalness: 0.05, clearcoat: 0.85, clearcoatRoughness: 0.18 });
+  woodMat.map = woodMap;
+  const woodDark = std(0x4a2e14, { roughness: 0.44, metalness: 0.1 });
   const purpleMat = lacquer(PURPLE_DARK, { roughness: 0.36, clearcoat: 0.4 });
+  const creamMat = std(0xf2e6cc, { roughness: 0.4, metalness: 0.04 });
 
   // ---- body: figure-8 silhouette, extruded ----
   const s = new THREE.Shape();
@@ -477,7 +731,11 @@ export function buildGuitar() {
     depth: 0.13, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 3, curveSegments: 24,
   });
   bodyGeom.translate(0, 0, -0.065);
-  const bodyMesh = new THREE.Mesh(bodyGeom, woodMat);
+  // Extrude UVs are raw shape coords: remap so the sunburst centers on the top.
+  woodMap.repeat.set(1 / 0.76, 1);
+  woodMap.offset.set(0.5, 0.52);
+  // Darker tobacco sides read as the traditional bent-rim body edge.
+  const bodyMesh = new THREE.Mesh(bodyGeom, [woodMat, woodDark]);
   body.add(bodyMesh);
 
   // binding
@@ -493,11 +751,32 @@ export function buildGuitar() {
   const rosette = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.012, 8, 36), purpleMat);
   rosette.position.set(0, 0.1, holeZ - 0.002);
   body.add(rosette);
+  const rosetteGold = new THREE.Mesh(new THREE.TorusGeometry(0.143, 0.005, 6, 36), metal(GOLD, 0.35));
+  rosetteGold.position.set(0, 0.1, holeZ - 0.003);
+  body.add(rosetteGold);
 
-  // bridge
+  // bridge with saddle + pins
   const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.025), woodDark);
   bridge.position.set(0, -0.27, holeZ);
   body.add(bridge);
+  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.012, 0.015), creamMat);
+  saddle.position.set(0, -0.258, holeZ + 0.012);
+  body.add(saddle);
+  const pinInstance = new THREE.Object3D();
+  const bridgePins = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.006, 0.005, 0.014, 6),
+    creamMat,
+    6,
+  );
+  for (let i = 0; i < 6; i++) {
+    pinInstance.position.set(-0.042 + i * 0.0168, -0.288, holeZ + 0.012);
+    pinInstance.rotation.set(Math.PI / 2, 0, 0);
+    pinInstance.updateMatrix();
+    bridgePins.setMatrixAt(i, pinInstance.matrix);
+  }
+  bridgePins.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  bridgePins.computeBoundingSphere();
+  body.add(bridgePins);
 
   // neck + fretboard (nut → body); frets use real 12-TET spacing
   const NUT_Y = 1.175;
@@ -590,10 +869,37 @@ export function buildGuitar() {
   pegs.instanceMatrix.setUsage(THREE.StaticDrawUsage);
   pegs.computeBoundingSphere();
   body.add(pegs);
+  // tuner buttons on the peg ends
+  const tunerButtons = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.016, 8, 6),
+    creamMat,
+    6,
+  );
+  let tunerIndex = 0;
+  for (let i = 0; i < 3; i++) {
+    for (const sd of [-1, 1]) {
+      guitarInstance.position.set(sd * 0.108, 1.24 + i * 0.06, 0.045);
+      guitarInstance.rotation.set(0, 0, 0);
+      guitarInstance.scale.set(0.7, 1, 1.5);
+      guitarInstance.updateMatrix();
+      tunerButtons.setMatrixAt(tunerIndex++, guitarInstance.matrix);
+    }
+  }
+  guitarInstance.scale.setScalar(1);
+  tunerButtons.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  tunerButtons.computeBoundingSphere();
+  body.add(tunerButtons);
+  // gold truss-rod cover
+  const trussCover = new THREE.Mesh(new THREE.CircleGeometry(0.022, 3), metal(GOLD, 0.4));
+  trussCover.position.set(0, 1.215, 0.069);
+  trussCover.rotation.z = Math.PI;
+  body.add(trussCover);
 
   // Strings + dedicated play zones. A single fretboard plane replaces the
   // overlapping per-string/per-fret hit boxes; the soundhole plane owns strums.
   const stringMat = metal(0xe8e8f0, 0.2);
+  const woundStringMat = metal(0xc9a86a, 0.32);
+  const stringGauges = [0.0044, 0.0039, 0.0035, 0.0029, 0.0026, 0.0024];
   const strings = [];
   const stringWobble = Array(6).fill(0);
   const pendingExcitations = [];
@@ -615,7 +921,7 @@ export function buildGuitar() {
     const str = cylinderBetween(
       new THREE.Vector3(xb, BRIDGE_Y, 0.1),
       new THREE.Vector3(xt, 1.33, 0.075),
-      0.0032, stringMat, 5);
+      stringGauges[i], i < 3 ? woundStringMat : stringMat, 5);
     str.userData.baseX = str.position.x;
     str.userData.phase = i * 1.3;
     str.userData.stringIndex = i;
@@ -675,9 +981,15 @@ export function buildGuitar() {
   stand.add(cylinderBetween(new THREE.Vector3(-0.3, 0, 0.22), new THREE.Vector3(-0.08, 0.6, -0.08), 0.02, standMat));
   stand.add(cylinderBetween(new THREE.Vector3(0.3, 0, 0.22), new THREE.Vector3(0.08, 0.6, -0.08), 0.02, standMat));
   stand.add(cylinderBetween(new THREE.Vector3(-0.3, 0.02, 0.22), new THREE.Vector3(0.3, 0.02, 0.22), 0.018, standMat));
-  // cradle arms
+  // cradle arms with rubber tips + floor feet
+  const tipMat = std(0x17121c, { roughness: 0.9, metalness: 0 });
   stand.add(cylinderBetween(new THREE.Vector3(-0.16, 0.3, 0.1), new THREE.Vector3(-0.16, 0.34, 0.26), 0.016, standMat));
   stand.add(cylinderBetween(new THREE.Vector3(0.16, 0.3, 0.1), new THREE.Vector3(0.16, 0.34, 0.26), 0.016, standMat));
+  for (const [tx, ty, tz] of [[-0.16, 0.345, 0.265], [0.16, 0.345, 0.265], [-0.3, 0.012, 0.22], [0.3, 0.012, 0.22]]) {
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), tipMat);
+    tip.position.set(tx, ty, tz);
+    stand.add(tip);
+  }
   guitar.add(stand);
 
   guitar.traverse((o) => {
@@ -751,10 +1063,30 @@ export function buildMic() {
   chrome.emissiveIntensity = 0.045;
   const darkMetal = metal(0x2c2c34, 0.4);
 
-  // round base
+  // round base with a rubber edge ring + stage cable running off to the wing
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.05, 28), darkMetal);
   base.position.y = 0.025;
   mic.add(base);
+  const baseRing = new THREE.Mesh(new THREE.TorusGeometry(0.295, 0.014, 6, 28), std(0x17121c, { roughness: 0.92 }));
+  baseRing.rotation.x = Math.PI / 2;
+  baseRing.position.y = 0.012;
+  mic.add(baseRing);
+  const cableCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.24, 0.03, -0.08),
+    new THREE.Vector3(0.5, 0.015, -0.28),
+    new THREE.Vector3(0.9, 0.012, -0.3),
+    new THREE.Vector3(1.3, 0.012, -0.12),
+  ]);
+  const cable = new THREE.Mesh(
+    new THREE.TubeGeometry(cableCurve, 16, 0.016, 6),
+    std(0x131019, { roughness: 0.9, metalness: 0.05 }),
+  );
+  mic.add(cable);
+  const xlr = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.09, 8), chrome);
+  xlr.rotation.z = Math.PI / 2;
+  xlr.rotation.y = 0.4;
+  xlr.position.set(0.3, 0.032, -0.13);
+  mic.add(xlr);
 
   // pole + clutch
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.32, 10), chrome);
@@ -766,13 +1098,17 @@ export function buildMic() {
 
   // head (tilts slightly back)
   const headGroup = new THREE.Group();
-  const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.14, 8, 18), chrome);
+  // dark windscreen core caged by the chrome rings/ribs — vintage grille read
+  const capsule = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.093, 0.14, 8, 18),
+    std(0x241d2e, { roughness: 0.92, metalness: 0.04 }),
+  );
   headGroup.add(capsule);
   // grille rings
   const micInstance = new THREE.Object3D();
   const grilleRings = new THREE.InstancedMesh(
     new THREE.TorusGeometry(0.097, 0.009, 8, 26),
-    darkMetal,
+    chrome,
     5,
   );
   for (let i = 0; i < 5; i++) {
@@ -787,7 +1123,7 @@ export function buildMic() {
   // vertical ribs
   const grilleRibs = new THREE.InstancedMesh(
     new THREE.BoxGeometry(0.008, 0.2, 0.008),
-    darkMetal,
+    chrome,
     6,
   );
   for (let i = 0; i < 6; i++) {

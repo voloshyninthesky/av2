@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260728-12';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260803-01';
 import { UI } from './ui.js?v=20260802-26';
 import { isQuickGuitarTap } from './guitar-gestures.js?v=20260802-1';
 
@@ -188,6 +188,10 @@ const adaptiveQualityScene = {
   dimmableLights: [],
   dimmableEmissives: [],
   dimmableBeams: [],
+  // Decorative dressing hidden on the low mobile tier (cables, upstage truss
+  // heads, star-drop overdraw) — visible fidelity trimmed before frame rate.
+  lowTierDressing: [],
+  starDrop: null,
   dust: null,
 };
 function registerDimmableLight(light) {
@@ -243,6 +247,7 @@ function loadPostprocessingModules() {
     import('three/addons/postprocessing/RenderPass.js'),
     import('three/addons/postprocessing/UnrealBloomPass.js'),
     import('three/addons/postprocessing/OutputPass.js'),
+    import('three/addons/postprocessing/ShaderPass.js'),
     ]);
   }
   return postprocessingModules;
@@ -311,7 +316,9 @@ renderer.shadowMap.enabled = !isLowEndMobileGameMode();
 document.documentElement.dataset.shadows = renderer.shadowMap.enabled ? 'on' : 'off';
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+// Exposure discipline: whites (piano keys, jersey, drum heads) must hold texture
+// under the key light instead of clipping into bloom.
+renderer.toneMappingExposure = 1.02;
 
 const BG = 0x0a0612;
 const scene = new THREE.Scene();
@@ -345,13 +352,13 @@ function fitCameraToViewport() {
     CAM_END.set(0, 2.9, 14.6);
     camera.fov = 62;
     controls.maxDistance = 22;
-    renderer.toneMappingExposure = 0.98;
+    renderer.toneMappingExposure = 0.92;
   } else {
     CAM_START.set(0, 9.5, 18.5);
     CAM_END.set(0, 3.05, 10.45);
     camera.fov = 55;
     controls.maxDistance = 16;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMappingExposure = 1.02;
   }
   // A coarse-pointer phone stays capped in landscape as well as portrait.
   renderer.setPixelRatio(renderPixelRatio());
@@ -412,57 +419,149 @@ applyMobileOrbitPolicy();
 // STAGE ENVIRONMENT
 // ============================================================
 function woodTexture() {
+  // Staggered varnished planks + matching roughness map so the key light
+  // produces streaky lacquer highlights instead of one flat pink wash.
+  const SIZE = 1024;
   const c = document.createElement('canvas');
-  c.width = c.height = 512;
+  c.width = c.height = SIZE;
   const x = c.getContext('2d');
-  x.fillStyle = '#6e4a2d';
-  x.fillRect(0, 0, 512, 512);
-  for (let row = 0; row < 8; row++) {
-    const y0 = row * 64;
-    const shade = 0.82 + Math.random() * 0.28;
-    x.fillStyle = `rgb(${110 * shade | 0},${74 * shade | 0},${42 * shade | 0})`;
-    x.fillRect(0, y0, 512, 64);
-    x.strokeStyle = 'rgba(32,16,8,.72)';
-    x.lineWidth = 3;
-    x.strokeRect(-2, y0, 516, 64);
-    x.strokeStyle = 'rgba(55,30,12,.3)';
-    x.lineWidth = 1;
-    for (let i = 0; i < 7; i++) {
+  const rough = document.createElement('canvas');
+  rough.width = rough.height = SIZE;
+  const rx = rough.getContext('2d');
+  rx.fillStyle = '#8c8c8c';
+  rx.fillRect(0, 0, SIZE, SIZE);
+
+  const ROWS = 12;
+  const H = SIZE / ROWS;
+  for (let row = 0; row < ROWS; row++) {
+    const y0 = row * H;
+    const stagger = ((row % 3) / 3) * SIZE * 0.5;
+    for (let seg = -1; seg < 3; seg++) {
+      const x0 = seg * (SIZE / 2) + stagger;
+      const w = SIZE / 2;
+      const shade = 0.78 + Math.random() * 0.34;
+      const warm = 0.92 + Math.random() * 0.16;
+      const grad = x.createLinearGradient(x0, y0, x0, y0 + H);
+      grad.addColorStop(0, `rgb(${118 * shade * warm | 0},${76 * shade | 0},${44 * shade | 0})`);
+      grad.addColorStop(0.5, `rgb(${128 * shade * warm | 0},${84 * shade | 0},${50 * shade | 0})`);
+      grad.addColorStop(1, `rgb(${106 * shade * warm | 0},${68 * shade | 0},${40 * shade | 0})`);
+      x.fillStyle = grad;
+      x.fillRect(x0, y0, w, H);
+      // grain
+      x.strokeStyle = `rgba(58,32,14,${0.16 + Math.random() * 0.18})`;
+      x.lineWidth = 1;
+      for (let i = 0; i < 9; i++) {
+        const gy = y0 + 4 + Math.random() * (H - 8);
+        x.beginPath();
+        x.moveTo(x0, gy);
+        x.bezierCurveTo(
+          x0 + w * 0.3, gy + Math.random() * 8 - 4,
+          x0 + w * 0.7, gy + Math.random() * 8 - 4,
+          x0 + w, gy,
+        );
+        x.stroke();
+      }
+      // occasional knot
+      if (Math.random() < 0.16) {
+        const kx = x0 + 40 + Math.random() * (w - 80);
+        const ky = y0 + H * (0.3 + Math.random() * 0.4);
+        x.strokeStyle = 'rgba(52,28,12,.26)';
+        x.lineWidth = 1.2;
+        for (let r = 3; r < 9; r += 3.2) {
+          x.beginPath();
+          x.ellipse(kx, ky, r * 1.5, r, 0.15, 0, Math.PI * 2);
+          x.stroke();
+        }
+      }
+      // butt seam + nails
+      x.fillStyle = 'rgba(28,14,7,.85)';
+      x.fillRect(x0 + w - 2, y0, 3, H);
+      x.fillStyle = 'rgba(30,20,14,.9)';
       x.beginPath();
-      const gy = y0 + 6 + Math.random() * 50;
-      x.moveTo(0, gy);
-      x.bezierCurveTo(140, gy + Math.random() * 10 - 5, 360, gy + Math.random() * 10 - 5, 512, gy);
-      x.stroke();
+      x.arc(x0 + w - 12, y0 + H * 0.28, 2.2, 0, Math.PI * 2);
+      x.arc(x0 + w - 12, y0 + H * 0.72, 2.2, 0, Math.PI * 2);
+      x.fill();
+      // roughness: varnish streaks along the plank (dark = glossy)
+      const glossy = 96 + ((Math.random() * 70) | 0);
+      rx.fillStyle = `rgb(${glossy},${glossy},${glossy})`;
+      rx.fillRect(x0, y0 + 2, w, H - 4);
+      rx.fillStyle = 'rgba(215,215,215,.9)';
+      rx.fillRect(x0, y0, w, 2.5);
     }
+    // long row gap
+    x.fillStyle = 'rgba(30,16,8,.7)';
+    x.fillRect(0, y0 - 1, SIZE, 1.8);
+    rx.fillStyle = 'rgb(225,225,225)';
+    rx.fillRect(0, y0 - 1, SIZE, 1.8);
   }
+
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(3, 2);
+  t.repeat.set(2.6, 2.1);
+  t.anisotropy = 8;
+  const r = new THREE.CanvasTexture(rough);
+  r.wrapS = r.wrapT = THREE.RepeatWrapping;
+  r.repeat.set(2.6, 2.1);
+  r.anisotropy = 4;
+  return { map: t, roughnessMap: r };
+}
+
+function curtainTexture() {
+  // Velvet with asymmetric fold lighting: broad lit face, tight shadow core,
+  // subtle nap sparkle, and slight fold drift so pleats do not tile visibly.
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 1024;
+  const x = c.getContext('2d');
+  x.fillStyle = '#1c0a28';
+  x.fillRect(0, 0, 512, 1024);
+  const FOLDS = 12;
+  const fw = 512 / FOLDS;
+  for (let i = 0; i < FOLDS; i++) {
+    const x0 = i * fw;
+    const drift = Math.sin(i * 2.7) * fw * 0.1;
+    const g = x.createLinearGradient(x0 + drift, 0, x0 + fw + drift, 0);
+    g.addColorStop(0, '#160722');
+    g.addColorStop(0.22, '#3b1554');
+    g.addColorStop(0.48, '#5c2478');
+    g.addColorStop(0.58, '#6b2f88');
+    g.addColorStop(0.72, '#43185e');
+    g.addColorStop(1, '#160722');
+    x.fillStyle = g;
+    x.fillRect(x0 - 2, 0, fw + 4, 1024);
+  }
+  // velvet nap: faint vertical noise streaks
+  for (let i = 0; i < 340; i++) {
+    const sx = Math.random() * 512;
+    const sy = Math.random() * 1024;
+    const len = 20 + Math.random() * 90;
+    x.strokeStyle = `rgba(${Math.random() < 0.5 ? '201,136,240' : '90,40,120'},${0.03 + Math.random() * 0.05})`;
+    x.lineWidth = 1;
+    x.beginPath();
+    x.moveTo(sx, sy);
+    x.lineTo(sx + Math.random() * 4 - 2, sy + len);
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
   t.anisotropy = 4;
   return t;
 }
 
-function curtainTexture() {
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 512;
-  const x = c.getContext('2d');
-  for (let i = 0; i < 16; i++) {
-    const x0 = i * 16;
-    const g = x.createLinearGradient(x0, 0, x0 + 16, 0);
-    g.addColorStop(0, '#1c0a28');
-    g.addColorStop(0.45, '#4b1c66');
-    g.addColorStop(0.6, '#5c2478');
-    g.addColorStop(1, '#1c0a28');
-    x.fillStyle = g;
-    x.fillRect(x0, 0, 16, 512);
+// Plane with sinusoidal pleat depth so curtain silhouettes read as cloth from
+// oblique camera angles, not as flat posters.
+function makeCurtainGeometry(width, height, folds, depth) {
+  const geo = new THREE.PlaneGeometry(width, height, folds * 6, 1);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i);
+    const u = (px / width + 0.5) * folds * Math.PI * 2;
+    const taper = 0.75 + 0.25 * Math.sin((px / width) * Math.PI);
+    pos.setZ(i, (Math.sin(u) * 0.5 + Math.sin(u * 0.5 + 1.3) * 0.5) * depth * taper);
   }
-  // gold top band
-  x.fillStyle = '#D1A13B';
-  x.fillRect(0, 0, 256, 14);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  geo.computeVertexNormals();
+  return geo;
 }
 
 // title slide (first frame of the backdrop slideshow + fallback)
@@ -523,6 +622,351 @@ function plateTexture() {
   return t;
 }
 
+// speaker/monitor cloth: perforated grille with a soft top sheen
+function perforatedTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const base = x.createLinearGradient(0, 0, 0, 256);
+  base.addColorStop(0, '#242030');
+  base.addColorStop(1, '#141018');
+  x.fillStyle = base;
+  x.fillRect(0, 0, 256, 256);
+  for (let gy = 6; gy < 256; gy += 12) {
+    for (let gx = 6 + ((gy / 12) % 2) * 6; gx < 256; gx += 12) {
+      x.fillStyle = 'rgba(5,3,8,.9)';
+      x.beginPath();
+      x.arc(gx, gy, 3.1, 0, Math.PI * 2);
+      x.fill();
+      x.fillStyle = 'rgba(120,105,140,.24)';
+      x.beginPath();
+      x.arc(gx - 0.8, gy - 0.8, 1.1, 0, Math.PI * 2);
+      x.fill();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+// soft round sprite shared by dust motes and star-drop pins so additive
+// particles read as light points, not hard screen-space squares
+let softDiscTextureCache = null;
+function softDiscTexture() {
+  if (softDiscTextureCache) return softDiscTextureCache;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const grad = x.createRadialGradient(32, 32, 2, 32, 32, 30);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.45, 'rgba(255,255,255,.55)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = grad;
+  x.fillRect(0, 0, 64, 64);
+  softDiscTextureCache = new THREE.CanvasTexture(c);
+  return softDiscTextureCache;
+}
+
+// soft radial blob for fake contact shadows under props and instruments
+function contactShadowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const grad = x.createRadialGradient(128, 128, 12, 128, 128, 126);
+  grad.addColorStop(0, 'rgba(4,2,8,.62)');
+  grad.addColorStop(0.55, 'rgba(4,2,8,.4)');
+  grad.addColorStop(1, 'rgba(4,2,8,0)');
+  x.fillStyle = grad;
+  x.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+
+// ---- stage dressing: skirt, footlight hoods, proscenium, star drop,
+// upstage truss, monitor wedges, cable runs, contact shadows ----
+function buildStageDressing(g, { curtainMaterial, curtainLegGeometry } = {}) {
+  const dressing = new THREE.Group();
+  const aubergine = new THREE.MeshStandardMaterial({ color: 0x241433, roughness: 0.52, metalness: 0.12 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.88, roughness: 0.3 });
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0x9a7428, metalness: 0.92, roughness: 0.38 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x0c0913, roughness: 0.7 });
+  const matrix = new THREE.Matrix4();
+  const quat = new THREE.Quaternion();
+  const eul = new THREE.Euler();
+  const vec = new THREE.Vector3();
+  const one = new THREE.Vector3(1, 1, 1);
+
+  // -- stage skirt: paneled front + gold beading
+  const skirtPanels = new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 0.5, 0.05), aubergine, 8);
+  for (let i = 0; i < 8; i++) {
+    matrix.makeTranslation(-7 + i * 2, -0.33, 4.03);
+    skirtPanels.setMatrixAt(i, matrix);
+  }
+  skirtPanels.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  skirtPanels.computeBoundingSphere();
+  dressing.add(skirtPanels);
+  const beading = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.022, 0.022, 0.52, 6), goldMat, 9);
+  for (let i = 0; i < 9; i++) {
+    matrix.makeTranslation(-8 + i * 2, -0.33, 4.05);
+    beading.setMatrixAt(i, matrix);
+  }
+  beading.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  beading.computeBoundingSphere();
+  dressing.add(beading);
+
+  // -- brass footlight hoods behind each bulb
+  const hoods = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI),
+    brassMat,
+    9,
+  );
+  eul.set(-1.25, 0, 0);
+  quat.setFromEuler(eul);
+  for (let i = 0; i < 9; i++) {
+    vec.set(-6 + i * 1.5, 0.055, 3.96);
+    matrix.compose(vec, quat, one);
+    hoods.setMatrixAt(i, matrix);
+  }
+  hoods.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  hoods.computeBoundingSphere();
+  dressing.add(hoods);
+
+  // -- proscenium: fluted columns + gold-trimmed header framing the stage
+  const columnShaftGeometry = new THREE.CylinderGeometry(0.3, 0.36, 7.7, 14);
+  const columnPlinthGeometry = new THREE.BoxGeometry(0.92, 0.52, 0.92);
+  const columnCapitalGeometry = new THREE.BoxGeometry(0.95, 0.35, 0.95);
+  const collarGeometry = new THREE.TorusGeometry(0.34, 0.035, 8, 18);
+  for (const s of [-1, 1]) {
+    const col = new THREE.Group();
+    const plinth = new THREE.Mesh(columnPlinthGeometry, aubergine);
+    plinth.position.y = -0.34;
+    col.add(plinth);
+    const shaft = new THREE.Mesh(columnShaftGeometry, aubergine);
+    shaft.position.y = 3.77;
+    col.add(shaft);
+    for (const cy of [0.05, 7.45]) {
+      const collar = new THREE.Mesh(collarGeometry, goldMat);
+      collar.rotation.x = Math.PI / 2;
+      collar.position.y = cy;
+      col.add(collar);
+    }
+    const capital = new THREE.Mesh(columnCapitalGeometry, aubergine);
+    capital.position.y = 7.72;
+    col.add(capital);
+    col.position.set(s * 8.55, 0, 2.5);
+    dressing.add(col);
+  }
+  const header = new THREE.Mesh(new THREE.BoxGeometry(18.6, 0.85, 0.7), aubergine);
+  header.position.set(0, 8.32, 2.5);
+  dressing.add(header);
+  const headerTrim = new THREE.Mesh(new THREE.BoxGeometry(18.6, 0.1, 0.74), goldMat);
+  headerTrim.position.set(0, 7.87, 2.5);
+  dressing.add(headerTrim);
+  const crest = new THREE.Mesh(new THREE.CircleGeometry(0.34, 20), goldMat);
+  crest.position.set(0, 8.32, 2.87);
+  dressing.add(crest);
+
+  // -- star drop: pin lights across the back wall, instanced as one draw
+  const starCount = 140;
+  const starMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    map: softDiscTexture(),
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const stars = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.07, 0.07), starMat, starCount);
+  const starColor = new THREE.Color();
+  for (let i = 0; i < starCount; i++) {
+    vec.set(
+      (Math.random() - 0.5) * 27,
+      0.5 + Math.random() * 9.6,
+      -5.8,
+    );
+    matrix.makeTranslation(vec.x, vec.y, vec.z);
+    stars.setMatrixAt(i, matrix);
+    const warm = Math.random();
+    starColor.setRGB(
+      0.55 + warm * 0.45,
+      0.45 + warm * 0.4,
+      0.65 + Math.random() * 0.35,
+    ).multiplyScalar(0.3 + Math.random() * 0.7);
+    stars.setColorAt(i, starColor);
+  }
+  stars.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  if (stars.instanceColor) stars.instanceColor.setUsage(THREE.StaticDrawUsage);
+  stars.computeBoundingSphere();
+  dressing.add(stars);
+  adaptiveQualityScene.starDrop = stars;
+  stageAmbience.starMat = starMat;
+
+  // -- upstage truss + clamps so the hanging screen spot reads as rigged
+  const trussMat2 = new THREE.MeshStandardMaterial({ color: 0x1a1420, metalness: 0.7, roughness: 0.4 });
+  const upstageBar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 13, 10), trussMat2);
+  upstageBar.rotation.z = Math.PI / 2;
+  upstageBar.position.set(0, 7.9, -2.5);
+  dressing.add(upstageBar);
+  const drops = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.045, 0.045, 1.6, 8), trussMat2, 4);
+  let dropIndex = 0;
+  for (const dx of [-6.2, 6.2]) {
+    for (const dz of [1.6, -2.5]) {
+      const dy = dz > 0 ? 7.5 : 8.7;
+      matrix.makeTranslation(dx, dy, dz);
+      drops.setMatrixAt(dropIndex++, matrix);
+    }
+  }
+  drops.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  drops.computeBoundingSphere();
+  dressing.add(drops);
+  const clamps = new THREE.InstancedMesh(new THREE.BoxGeometry(0.13, 0.09, 0.13), darkMat, 5);
+  const clampXs = [-4.6, -1.55, 1.55, 4.6, 0];
+  for (let i = 0; i < clampXs.length; i++) {
+    const cz = i === 4 ? -2.5 : 1.6;
+    const cy = i === 4 ? 7.86 : 6.66;
+    matrix.makeTranslation(clampXs[i], cy, cz);
+    clamps.setMatrixAt(i, matrix);
+  }
+  clamps.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  clamps.computeBoundingSphere();
+  dressing.add(clamps);
+
+  // -- monitor wedges at the stage lip, angled back toward the performers
+  const grilleTex = perforatedTexture();
+  const grilleMat = new THREE.MeshStandardMaterial({ map: grilleTex, roughness: 0.85, metalness: 0.05 });
+  for (const s of [-1, 1]) {
+    const wedge = new THREE.Group();
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.4, 0.58), darkMat);
+    shell.castShadow = true;
+    wedge.add(shell);
+    const grille = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 0.32), grilleMat);
+    grille.position.set(0, 0.03, -0.295);
+    grille.rotation.y = Math.PI;
+    wedge.add(grille);
+    const jack = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.09, 0.03), trussMat2);
+    jack.position.set(0.3, -0.08, 0.295);
+    wedge.add(jack);
+    wedge.position.set(s * 2.35, 0.23, 3.42);
+    wedge.rotation.x = 0.6;
+    wedge.rotation.y = s * 0.14;
+    dressing.add(wedge);
+    g.userData.walkColliderRoots.push({ id: `monitor-${s < 0 ? 'left' : 'right'}`, root: wedge });
+  }
+
+  // -- cable runs + gaffer tape (hidden on the low tier)
+  const cableGroup = new THREE.Group();
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x131019, roughness: 0.9, metalness: 0.05 });
+  const cablePaths = [
+    [[-6.1, 3.15], [-6.9, 2.2], [-7.4, 0.2], [-7.7, -2.2], [-7.8, -3.6]],
+    [[6.1, 3.15], [7.0, 2.4], [7.5, 0.4], [7.7, -2.0], [7.8, -3.6]],
+    [[1.15, 2.32], [2.4, 2.15], [4.2, 1.4], [6.2, 0.4], [7.5, -0.6]],
+  ];
+  for (const path of cablePaths) {
+    const curve = new THREE.CatmullRomCurve3(path.map(([px, pz]) => new THREE.Vector3(px, 0.016, pz)));
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 22, 0.021, 6), cableMat);
+    cableGroup.add(tube);
+  }
+  const tapeMat = new THREE.MeshStandardMaterial({ color: 0x2e2937, roughness: 0.6 });
+  const tape = new THREE.InstancedMesh(new THREE.BoxGeometry(0.17, 0.006, 0.11), tapeMat, 6);
+  const tapeSpots = [[-6.9, 2.2, 0.5], [-7.5, -1.0, 0.15], [6.95, 2.35, -0.4], [7.6, -0.8, 0.1], [3.2, 1.85, -0.9], [5.9, 0.55, -0.75]];
+  for (let i = 0; i < tapeSpots.length; i++) {
+    eul.set(0, tapeSpots[i][2], 0);
+    quat.setFromEuler(eul);
+    vec.set(tapeSpots[i][0], 0.03, tapeSpots[i][1]);
+    matrix.compose(vec, quat, one);
+    tape.setMatrixAt(i, matrix);
+  }
+  tape.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  tape.computeBoundingSphere();
+  cableGroup.add(tape);
+  dressing.add(cableGroup);
+  adaptiveQualityScene.lowTierDressing.push(cableGroup, drops, clamps);
+
+  // -- off-stage wing fill so wide framings never read as empty void:
+  // extra drape stacks, stacked road cases, and a lighting boom
+  if (curtainMaterial && curtainLegGeometry) {
+    for (const [wx, wz, wr] of [[-9.9, -2.3, 0.4], [9.9, -2.3, -0.4], [-11.2, -0.4, 0.55], [11.2, -0.4, -0.55]]) {
+      const wingDrape = new THREE.Mesh(curtainLegGeometry, curtainMaterial);
+      wingDrape.position.set(wx, 3.75, wz);
+      wingDrape.rotation.y = wr;
+      dressing.add(wingDrape);
+    }
+  }
+  const caseMat = new THREE.MeshStandardMaterial({ color: 0x191423, roughness: 0.62, metalness: 0.22 });
+  const caseTrimMat = new THREE.MeshStandardMaterial({ color: 0x8f93a5, roughness: 0.35, metalness: 0.85 });
+  const roadCases = new THREE.InstancedMesh(new THREE.BoxGeometry(1.15, 0.78, 0.62), caseMat, 5);
+  const caseLids = new THREE.InstancedMesh(new THREE.BoxGeometry(1.19, 0.05, 0.66), caseTrimMat, 5);
+  const caseSpots = [
+    [-9.55, 0.32, 0.7, 0.28], [-9.55, 1.12, 0.7, 0.28], [-9.35, 0.32, 1.9, -0.15],
+    [9.65, 0.32, 1.1, -0.3], [9.5, 1.12, 1.1, -0.3],
+  ];
+  for (let i = 0; i < caseSpots.length; i++) {
+    const [cx, cy, cz, cr] = caseSpots[i];
+    eul.set(0, cr, 0);
+    quat.setFromEuler(eul);
+    vec.set(cx, cy - 0.6, cz);
+    matrix.compose(vec, quat, one);
+    roadCases.setMatrixAt(i, matrix);
+    vec.y += 0.41;
+    matrix.compose(vec, quat, one);
+    caseLids.setMatrixAt(i, matrix);
+  }
+  for (const inst of [roadCases, caseLids]) {
+    inst.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    inst.computeBoundingSphere();
+    dressing.add(inst);
+  }
+  const boomMat = new THREE.MeshStandardMaterial({ color: 0x1a1420, metalness: 0.7, roughness: 0.4 });
+  const boomPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 6.2, 8), boomMat);
+  boomPole.position.set(-9.15, 2.5, 1.9);
+  dressing.add(boomPole);
+  const boomArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.6, 8), boomMat);
+  boomArm.rotation.z = Math.PI / 2.3;
+  boomArm.position.set(-8.75, 5.35, 1.9);
+  dressing.add(boomArm);
+  const boomHead = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.3, 10), boomMat);
+  boomHead.position.set(-8.25, 5.05, 1.9);
+  boomHead.rotation.z = 0.7;
+  dressing.add(boomHead);
+
+  // -- fake contact shadows grounding instruments and props
+  const shadowTex = contactShadowTexture();
+  const shadowMat = new THREE.MeshBasicMaterial({
+    map: shadowTex,
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  const contacts = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), shadowMat, 8);
+  const contactSpots = [
+    [-2.8, -1.7, 3.1, 2.6],   // drums
+    [-1.35, 1.75, 1.5, 1.3],  // guitar
+    [1.0, 2.4, 1.05, 1.05],   // mic
+    [3.5, -1.3, 3.2, 2.2],    // piano
+    [-6.4, 3.2, 1.9, 1.7],    // speaker L
+    [6.4, 3.2, 1.9, 1.7],     // speaker R
+    [-2.35, 3.42, 1.15, 0.85],// monitor L
+    [2.35, 3.42, 1.15, 0.85], // monitor R
+  ];
+  eul.set(-Math.PI / 2, 0, 0);
+  quat.setFromEuler(eul);
+  for (let i = 0; i < contactSpots.length; i++) {
+    const [cx, cz, sx, sz] = contactSpots[i];
+    vec.set(cx, 0.014, cz);
+    matrix.compose(vec, quat, new THREE.Vector3(sx, sz, 1));
+    contacts.setMatrixAt(i, matrix);
+  }
+  contacts.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  contacts.computeBoundingSphere();
+  contacts.renderOrder = 1;
+  dressing.add(contacts);
+
+  g.add(dressing);
+}
+
 function buildStage() {
   const g = new THREE.Group();
   g.userData.walkColliderRoots = [];
@@ -542,7 +986,12 @@ function buildStage() {
   // stage platform
   const wood = woodTexture();
   const sideMat = new THREE.MeshStandardMaterial({ color: 0x2a1038, roughness: 0.6 });
-  const topMat = new THREE.MeshStandardMaterial({ map: wood, roughness: 0.65, metalness: 0.08 });
+  const topMat = new THREE.MeshStandardMaterial({
+    map: wood.map,
+    roughnessMap: wood.roughnessMap,
+    roughness: 1.0,
+    metalness: 0.06,
+  });
   const platform = new THREE.Mesh(
     new THREE.BoxGeometry(16, 0.6, 9),
     [sideMat, sideMat, topMat, sideMat, sideMat, sideMat]
@@ -563,10 +1012,11 @@ function buildStage() {
   const bulbMat = new THREE.MeshStandardMaterial({
     color: 0x332211,
     emissive: 0xD1A13B,
-    emissiveIntensity: 1.6,
+    emissiveIntensity: 1.3,
     roughness: 0.5,
   });
   registerDimmableEmissive(bulbMat);
+  stageAmbience.footPulse = { mat: bulbMat, matBase: 1.3, lights: [], lightBase: 10 };
   const bulbGeom = new THREE.SphereGeometry(0.05, 10, 8);
   const bulbs = new THREE.InstancedMesh(bulbGeom, bulbMat, 9);
   const bulbMatrix = new THREE.Matrix4();
@@ -576,10 +1026,11 @@ function buildStage() {
     // Bulbs retain their emissive look. The five tiny point lights, however,
     // are evaluated by every PBR fragment and are not perceptible on a phone.
     if (i % 2 === 0 && (!lowEndLighting || canUpgradeMobileQuality)) {
-      const pl = new THREE.PointLight(0xffc878, 16, 4.2, 2);
+      const pl = new THREE.PointLight(0xffc878, 10, 4.2, 2);
       pl.position.set(x, 0.22, 3.65);
       g.add(pl);
       adaptiveQualityScene.bulbLights.push(pl);
+      stageAmbience.footPulse.lights.push(pl);
       registerDimmableLight(pl);
     }
   }
@@ -595,10 +1046,15 @@ function buildStage() {
   wall.position.set(0, 5, -5.85);
   g.add(wall);
 
-  // curtains
+  // curtains — pleated velvet with a warm sheen response
   const curt = curtainTexture();
-  const curtMat = new THREE.MeshStandardMaterial({ map: curt, roughness: 0.88 });
-  const sideCurtainGeometry = new THREE.PlaneGeometry(3.4, 9.4);
+  const curtMat = new THREE.MeshStandardMaterial({
+    map: curt,
+    roughness: 0.86,
+    metalness: 0.04,
+    side: THREE.DoubleSide,
+  });
+  const sideCurtainGeometry = makeCurtainGeometry(3.4, 9.4, 6, 0.22);
   stageAmbience.curtains.length = 0;
   for (const s of [-1, 1]) {
     const c = new THREE.Mesh(sideCurtainGeometry, curtMat);
@@ -606,20 +1062,41 @@ function buildStage() {
     c.rotation.y = -s * 0.3;
     c.userData.baseRotY = c.rotation.y;
     c.userData.side = s;
+    c.castShadow = false;
     g.add(c);
     stageAmbience.curtains.push(c);
   }
-  const valance = new THREE.Mesh(new THREE.PlaneGeometry(19.5, 1.7), curtMat.clone());
+  // upstage curtain legs: a second wing layer that gives the stage depth
+  const legGeometry = makeCurtainGeometry(2.6, 9.2, 5, 0.18);
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(legGeometry, curtMat);
+    leg.position.set(s * 5.7, 4.05, -5.1);
+    leg.rotation.y = -s * 0.12;
+    g.add(leg);
+  }
+  const valance = new THREE.Mesh(makeCurtainGeometry(19.5, 1.7, 14, 0.14), curtMat.clone());
   valance.position.set(0, 8.15, -4.1);
   valance.userData.baseY = valance.position.y;
   g.add(valance);
   stageAmbience.valance = valance;
-  const valanceTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(19.5, 0.09, 0.05),
-    new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.8, roughness: 0.35 })
-  );
+  const goldTrimMat = new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.85, roughness: 0.32 });
+  const valanceTrim = new THREE.Mesh(new THREE.BoxGeometry(19.5, 0.09, 0.05), goldTrimMat);
   valanceTrim.position.set(0, 7.32, -4.06);
   g.add(valanceTrim);
+  // gold fringe under the valance: instanced tassel drops
+  const fringe = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.014, 0.008, 0.22, 5),
+    goldTrimMat,
+    64,
+  );
+  const fringeMatrix = new THREE.Matrix4();
+  for (let i = 0; i < 64; i++) {
+    fringeMatrix.makeTranslation(-9.45 + i * 0.3, 7.22, -4.08);
+    fringe.setMatrixAt(i, fringeMatrix);
+  }
+  fringe.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  fringe.computeBoundingSphere();
+  g.add(fringe);
 
   // backdrop slideshow screen (replaces the old static banner)
   g.add(buildScreen());
@@ -634,17 +1111,47 @@ function buildStage() {
     metalness: 0.8,
     roughness: 0.3,
   });
+  const speakerGrilleMaterial = new THREE.MeshStandardMaterial({
+    map: perforatedTexture(),
+    roughness: 0.85,
+    metalness: 0.05,
+  });
+  const speakerPipingGeometry = new THREE.BoxGeometry(0.04, 2.0, 0.04);
+  const casterGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.04, 10);
+  const casterMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1722, metalness: 0.6, roughness: 0.5 });
   for (const s of [-1, 1]) {
     const spk = new THREE.Group();
     const box = new THREE.Mesh(speakerBoxGeometry, spkMat);
     box.position.y = 1.0;
     box.castShadow = true;
     spk.add(box);
+    // recessed cloth grille behind the cones
+    const grille = new THREE.Mesh(new THREE.PlaneGeometry(0.98, 1.8), speakerGrilleMaterial);
+    grille.position.set(0, 1.0, 0.477);
+    spk.add(grille);
     for (const [ry, rr] of [[1.45, 0.34], [0.75, 0.24]]) {
       const woofer = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr * 0.7, 0.08, 24), coneMat);
       woofer.rotation.x = Math.PI / 2;
       woofer.position.set(0, ry, 0.5);
       spk.add(woofer);
+      const dustCap = new THREE.Mesh(new THREE.SphereGeometry(rr * 0.28, 10, 8), spkMat);
+      dustCap.position.set(0, ry, 0.53);
+      spk.add(dustCap);
+    }
+    // gold piping down the front corners + casters grounding the cab
+    const piping = new THREE.InstancedMesh(speakerPipingGeometry, speakerPlateMaterial, 2);
+    const casters = new THREE.InstancedMesh(casterGeometry, casterMaterial, 4);
+    const hardwareMatrix = new THREE.Matrix4();
+    [[-0.55], [0.55]].forEach(([px], i) => {
+      piping.setMatrixAt(i, hardwareMatrix.makeTranslation(px, 1.0, 0.46));
+    });
+    [[-0.45, 0.35], [0.45, 0.35], [-0.45, -0.35], [0.45, -0.35]].forEach(([cx, cz], i) => {
+      casters.setMatrixAt(i, hardwareMatrix.makeTranslation(cx, 0.02, cz));
+    });
+    for (const inst of [piping, casters]) {
+      inst.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      inst.computeBoundingSphere();
+      spk.add(inst);
     }
     const plate = new THREE.Mesh(
       speakerPlateGeometry,
@@ -657,6 +1164,8 @@ function buildStage() {
     g.add(spk);
     g.userData.walkColliderRoots.push({ id: `speaker-${s < 0 ? 'left' : 'right'}`, root: spk });
   }
+
+  buildStageDressing(g, { curtainMaterial: curtMat, curtainLegGeometry: legGeometry });
 
   return g;
 }
@@ -1067,12 +1576,23 @@ function installStageEnvironment() {
 function buildLights() {
   const g = new THREE.Group();
   // Soft sky/ground gradient instead of flat wash — spots keep their punch.
-  const hemi = new THREE.HemisphereLight(0x6a4a88, 0x1a0e22, 0.55);
-  const ambient = new THREE.AmbientLight(0x584a74, 0.22);
+  const hemi = new THREE.HemisphereLight(0x6a4a88, 0x1a0e22, 0.48);
+  const ambient = new THREE.AmbientLight(0x584a74, 0.16);
   g.add(hemi);
   g.add(ambient);
   registerDimmableLight(hemi);
   registerDimmableLight(ambient);
+
+  // Cool rim from upstage separates performers/instruments from the backdrop
+  // without lifting the overall exposure. Culled on the low mobile tier.
+  if (!isLowEndMobileGameMode() || canUpgradeMobileQuality) {
+    const rim = new THREE.SpotLight(0x7a5cff, 185, 26, 0.72, 0.9, 1.5);
+    rim.position.set(0, 7.4, -5.2);
+    rim.target.position.set(0, 1.1, 2.4);
+    g.add(rim, rim.target);
+    adaptiveQualityScene.lowPrioritySpots.push(rim);
+    registerDimmableLight(rim);
+  }
 
   // truss bar
   const trussMat = new THREE.MeshStandardMaterial({ color: 0x1a1420, metalness: 0.7, roughness: 0.4 });
@@ -1082,15 +1602,15 @@ function buildLights() {
   g.add(bar);
 
   const spots = [
-    { x: -4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025 },
-    { x: -1.55, color: 0xD1A13B, intensity: 800, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025, lowPriority: true },
-    { x: 1.55, color: 0xfff0d8, intensity: 700, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, coneFloorY: 0.025, shadow: true },
-    { x: 4.6, color: 0x9E33CA, intensity: 950, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025 },
-    { x: 0, color: 0x7a1fa2, intensity: 420, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5, lowPriority: true },
+    { x: -4.6, color: 0x9E33CA, intensity: 540, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025, sweep: 0.05 },
+    { x: -1.55, color: 0xD1A13B, intensity: 450, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025, lowPriority: true },
+    { x: 1.55, color: 0xfff0d8, intensity: 430, target: new THREE.Vector3(1.0, 1.2, 2.4), coneR: 1.4, coneFloorY: 0.025, shadow: true },
+    { x: 4.6, color: 0xD1A13B, intensity: 500, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025, sweep: -0.05 },
+    { x: 0, color: 0x7a1fa2, intensity: 250, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5, lowPriority: true },
   ];
 
   // broad warm front fill (no visible cone) so instruments read well
-  const fill = new THREE.SpotLight(0xffe8c8, 130, 45, 0.62, 0.9, 1.8);
+  const fill = new THREE.SpotLight(0xffe8c8, 82, 45, 0.62, 0.9, 1.8);
   fill.position.set(0, 7.5, 14);
   fill.target.position.set(0, 0.8, 0);
   g.add(fill, fill.target);
@@ -1098,11 +1618,22 @@ function buildLights() {
 
   const spotlightHousingGeometry = new THREE.CylinderGeometry(0.09, 0.13, 0.3, 12);
   const spotlightLensGeometry = new THREE.CircleGeometry(0.1, 16);
+  const spotlightYokeGeometry = new THREE.TorusGeometry(0.11, 0.016, 6, 14, Math.PI);
   for (const s of spots) {
-    const head = new THREE.Group();
     const y = s.y ?? 6.62, z = s.z ?? 1.6;
+    // Fixture mount: head, light, target, and beam share one pivot so the two
+    // outer spots can sweep as a unit like concert moving heads.
+    const mount = new THREE.Group();
+    mount.position.set(s.x, y, z);
+    g.add(mount);
+    mount.updateMatrixWorld(true);
+
+    const head = new THREE.Group();
     const housing = new THREE.Mesh(spotlightHousingGeometry, trussMat);
     head.add(housing);
+    const yokeArm = new THREE.Mesh(spotlightYokeGeometry, trussMat);
+    yokeArm.position.y = 0.2;
+    head.add(yokeArm);
     const lens = new THREE.Mesh(
       spotlightLensGeometry,
       new THREE.MeshBasicMaterial({ color: s.color, fog: false })
@@ -1110,19 +1641,18 @@ function buildLights() {
     lens.position.y = -0.16;
     lens.rotation.x = Math.PI / 2;
     head.add(lens);
-    head.position.set(s.x, y, z);
+    mount.add(head);
     head.lookAt(s.target);
     head.rotateX(Math.PI / 2);
-    g.add(head);
-    spotHeads.push({ head, lensMat: lens.material, base: s.color });
+    spotHeads.push({ head, lensMat: lens.material, base: s.color, mount, sweep: s.sweep || 0 });
 
     // Keep every visible fixture and beam but omit the two least noticeable
     // real light sources on the low tier. This reduces per-fragment PBR work
     // without making the truss look incomplete.
     if (!isLowEndMobileGameMode() || !s.lowPriority || canUpgradeMobileQuality) {
-      const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.5, 0.65, 1.6);
-      spot.position.set(s.x, y, z);
-      spot.target.position.copy(s.target);
+      const spot = new THREE.SpotLight(s.color, s.intensity, 30, 0.47, 0.78, 1.6);
+      spot.position.set(0, 0, 0);
+      spot.target.position.set(s.target.x - s.x, s.target.y - y, s.target.z - z);
       if (s.shadow) {
         spot.castShadow = !isLowEndMobileGameMode();
         const shadowSize = isMobileGameMode() ? 512 : 2048;
@@ -1136,7 +1666,7 @@ function buildLights() {
         adaptiveQualityScene.shadowSpots.push(spot);
       }
       if (s.lowPriority) adaptiveQualityScene.lowPrioritySpots.push(spot);
-      g.add(spot, spot.target);
+      mount.add(spot, spot.target);
       registerDimmableLight(spot);
     }
 
@@ -1161,10 +1691,10 @@ function buildLights() {
       new THREE.CylinderGeometry(0.09, coneEndRadius, len, usesLowMobileSceneBudget() ? 12 : 24, 1, true),
       beamMat,
     );
-    cone.position.copy(from).add(coneEnd).multiplyScalar(0.5);
+    cone.position.copy(from).add(coneEnd).multiplyScalar(0.5).sub(from);
     const dir = new THREE.Vector3().subVectors(coneEnd, from).normalize();
     cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
-    g.add(cone);
+    mount.add(cone);
   }
   return g;
 }
@@ -1187,7 +1717,7 @@ function buildDust() {
   geo.setAttribute('aDustMotion', new THREE.BufferAttribute(motion, 3));
   const dustTime = { value: 0 };
   const mat = new THREE.PointsMaterial({
-    color: 0xe8c169, size: 0.035, transparent: true, opacity: 0.55,
+    color: 0xe8c169, size: 0.04, map: softDiscTexture(), transparent: true, opacity: 0.4,
     blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
   });
   mat.onBeforeCompile = (shader) => {
@@ -1222,6 +1752,9 @@ function applyLowMobileSceneBudget() {
   for (const light of adaptiveQualityScene.bulbLights) light.visible = !reduced;
   for (const light of adaptiveQualityScene.lowPrioritySpots) light.visible = !reduced;
   for (const light of adaptiveQualityScene.shadowSpots) light.castShadow = !isLowEndMobileGameMode();
+  for (const dressing of adaptiveQualityScene.lowTierDressing) dressing.visible = !reduced;
+  const stars = adaptiveQualityScene.starDrop;
+  if (stars) stars.count = reduced ? 70 : 140;
   const dust = adaptiveQualityScene.dust;
   if (dust) dust.geometry.setDrawRange(0, reduced ? 120 : dust.geometry.attributes.position.count);
 }
@@ -1283,7 +1816,7 @@ function buildMascot() {
 
   // Recolorable outfit slots (mascot customization recolors these in place).
   const mats = {
-    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75 }),
+    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75, envMapIntensity: 0.65 }),
     panel: new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72 }),
     stripes: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 }),
     sleeveL: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 }),
@@ -1293,8 +1826,10 @@ function buildMascot() {
     pants: new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82 }),
     shoes: new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 }),
   };
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.88 });
-  const skin = new THREE.MeshStandardMaterial({ color: 0xf2c4a6, roughness: 0.82 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.72 });
+  // Skin tones come from the customization config; keep env response low so
+  // close-up palms/faces do not clip to white under stacked warm spots.
+  const skin = new THREE.MeshStandardMaterial({ color: 0xf2c4a6, roughness: 0.88, envMapIntensity: 0.5 });
   const ink = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 });
   const rose = new THREE.MeshStandardMaterial({ color: 0xb86d72, roughness: 0.8 });
   const silver = new THREE.MeshStandardMaterial({ color: 0xd7d9dd, roughness: 0.22, metalness: 0.88 });
@@ -1327,6 +1862,16 @@ function buildMascot() {
   waistband.rotation.x = Math.PI / 2;
   waistband.position.y = 0.78;
   group.add(waistband);
+  const buckle = new THREE.Mesh(
+    new THREE.CircleGeometry(0.035, 12),
+    new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.85, roughness: 0.35 }),
+  );
+  buckle.position.set(0, 0.78, 0.315);
+  group.add(buckle);
+  // neck fills the head/torso gap during walk and seated poses
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.1, 0.12, 10), skin);
+  neck.position.y = 1.4;
+  group.add(neck);
 
   const head = new THREE.Group();
   head.position.y = 1.56;
@@ -1353,16 +1898,24 @@ function buildMascot() {
   hairTail.position.set(0, -0.24, -0.27);
   hairTail.visible = false;
   head.add(hairTail);
+  const eyeShine = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const x of [-0.09, 0.09]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), ink);
     eye.scale.set(1.4, 0.72, 0.7);
     eye.position.set(x, 0.025, 0.286);
     head.add(eye);
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 5), eyeShine);
+    shine.position.set(x + 0.011, 0.034, 0.304);
+    head.add(shine);
     const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.012), hairMat);
     brow.position.set(x, 0.085, 0.284);
     brow.rotation.z = -Math.sign(x) * 0.1;
     head.add(brow);
   }
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), skin);
+  nose.scale.set(0.85, 0.7, 0.55);
+  nose.position.set(0, -0.028, 0.298);
+  head.add(nose);
   const neutralMouth = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.016, 0.014), rose);
   neutralMouth.position.set(0, -0.085, 0.29);
   head.add(neutralMouth);
@@ -1448,11 +2001,19 @@ function buildMascot() {
   const legL = makeLimb(-0.15, 0.76, mats.pants, 0.145, 0.64);
   const legR = makeLimb(0.15, 0.76, mats.pants, 0.145, 0.64);
 
+  const soleMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.6 });
   for (const leg of [legL, legR]) {
     const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 0.38), mats.shoes);
     sneaker.position.set(0, -0.64, 0.08);
     sneaker.castShadow = true;
     leg.add(sneaker);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.045, 0.4), soleMat);
+    sole.position.set(0, -0.7, 0.08);
+    leg.add(sole);
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.115, 10, 8), mats.shoes);
+    toe.scale.set(1.05, 0.62, 0.62);
+    toe.position.set(0, -0.655, 0.24);
+    leg.add(toe);
     for (const x of [-0.07, 0, 0.07]) {
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.06, 0.012), mats.top);
       stripe.position.set(x, -0.64, 0.276);
@@ -1499,7 +2060,7 @@ const MASCOT_HEIGHT_RANGE = { min: 70, max: 145 };
 const MASCOT_WIDTH_RANGE = { min: 65, max: 150 };
 
 const MASCOT_HAIR_STYLES = {
-  long: { back: { s: [1.08, 1.55, 0.82], p: [0, -0.13, -0.05] }, cap: { s: [1, 1, 1], p: [0, 0.04, 0.05] }, locks: { s: [0.72, 3.3, 0.7], y: -0.28 }, tail: false },
+  long: { back: { s: [1.24, 1.6, 1.0], p: [0, -0.13, -0.045] }, cap: { s: [1.02, 1, 1.02], p: [0, 0.04, 0.05] }, locks: { s: [0.95, 3.35, 0.95], y: -0.28 }, tail: false },
   bob: { back: { s: [1.1, 1.02, 0.88], p: [0, -0.02, -0.04] }, cap: { s: [1, 1, 1], p: [0, 0.04, 0.05] }, locks: { s: [0.78, 1.6, 0.75], y: -0.16 }, tail: false },
   short: { back: { s: [1.05, 0.6, 0.85], p: [0, 0.07, -0.03] }, cap: { s: [1.03, 0.95, 1.03], p: [0, 0.04, 0.05] }, locks: null, tail: false },
   buzz: { back: null, cap: { s: [1.01, 0.52, 1.01], p: [0, 0.06, 0.05] }, locks: null, tail: false },
@@ -1625,6 +2186,111 @@ class Fireworks {
 }
 
 // ============================================================
+// NOTE BURSTS (per-play feedback) + FOOTLIGHT HIT PULSE
+// ============================================================
+function noteGlyphTexture(glyph) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.shadowColor = 'rgba(255,255,255,.9)';
+  x.shadowBlur = 14;
+  x.fillStyle = '#ffffff';
+  x.font = '700 84px "Georgia", serif';
+  x.fillText(glyph, 64, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+const NOTE_COLORS = {
+  drums: 0xc988f0,
+  piano: 0xD1A13B,
+  guitar: 0xf0b264,
+  mic: 0xc988f0,
+  loop: 0xFDFBF7,
+};
+const NOTE_ANCHORS = {
+  drums: new THREE.Vector3(-2.8, 2.3, -1.7),
+  piano: new THREE.Vector3(3.5, 2.2, -1.3),
+  guitar: new THREE.Vector3(-1.35, 1.95, 1.75),
+  mic: new THREE.Vector3(1.0, 2.05, 2.4),
+};
+
+class NoteBursts {
+  constructor(sceneRef) {
+    this.pool = [];
+    this.textures = [noteGlyphTexture('♪'), noteGlyphTexture('♫')];
+    for (let i = 0; i < 18; i++) {
+      const material = new THREE.SpriteMaterial({
+        map: this.textures[i % 2],
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        fog: false,
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(0.34, 0.34, 1);
+      sprite.visible = false;
+      sceneRef.add(sprite);
+      this.pool.push({ sprite, life: 0, max: 1.05, sway: 0, drift: 0 });
+    }
+    this.cursor = 0;
+  }
+
+  spawn(kind) {
+    const anchor = NOTE_ANCHORS[kind];
+    if (!anchor) return;
+    const item = this.pool[this.cursor];
+    this.cursor = (this.cursor + 1) % this.pool.length;
+    item.life = item.max;
+    item.sway = Math.random() * Math.PI * 2;
+    item.drift = 0.25 + Math.random() * 0.3;
+    item.sprite.visible = true;
+    item.sprite.material.color.setHex(NOTE_COLORS[kind] ?? 0xFDFBF7);
+    item.sprite.material.opacity = 0.95;
+    item.sprite.position.set(
+      anchor.x + (Math.random() - 0.5) * 0.9,
+      anchor.y + Math.random() * 0.25,
+      anchor.z + (Math.random() - 0.5) * 0.5,
+    );
+    item.base = 0.28 + Math.random() * 0.16;
+    item.pop = 1;
+    item.sprite.scale.set(item.base * 1.35, item.base * 1.35, 1);
+  }
+
+  update(dt, reducedMotion) {
+    for (const item of this.pool) {
+      if (item.life <= 0) continue;
+      item.life -= dt;
+      if (item.life <= 0) {
+        item.sprite.visible = false;
+        item.sprite.material.opacity = 0;
+        continue;
+      }
+      const k = item.life / item.max;
+      item.sprite.position.y += item.drift * dt * (reducedMotion ? 0.4 : 1);
+      if (!reducedMotion) {
+        item.sprite.position.x += Math.sin(item.sway + (1 - k) * 5.2) * 0.13 * dt;
+      }
+      // spawn pop that eases back to base scale
+      item.pop *= Math.pow(0.001, dt);
+      const scale = item.base * (1 + 0.35 * item.pop);
+      item.sprite.scale.set(scale, scale, 1);
+      item.sprite.material.opacity = k < 0.75 ? k / 0.75 * 0.95 : 0.95;
+    }
+  }
+}
+
+// Footlight response to play events: quick bump that decays. Play feedback is
+// kept under prefers-reduced-motion (only ambient shimmer is culled there).
+const hitPulse = { value: 0 };
+function bumpHitPulse(strength = 1) {
+  hitPulse.value = Math.min(1.35, hitPulse.value + 0.55 * strength);
+}
+
+// ============================================================
 // BOOT
 // ============================================================
 const stage = buildStage();
@@ -1657,6 +2323,26 @@ scene.add(guitar.group);
 const mic = buildMic();
 mic.group.position.set(1.0, 0, 2.4);
 scene.add(mic.group);
+
+// Per-play feedback: every audible route already calls these instrument
+// methods, so wrapping them once covers pointer, pads, keyboard jam, and loop
+// playback without touching any call site.
+const noteBursts = new NoteBursts(scene);
+{
+  const wrapPlayFeedback = (owner, method, kind, chance = 1, pulse = 1) => {
+    const original = owner[method].bind(owner);
+    owner[method] = (...args) => {
+      original(...args);
+      bumpHitPulse(pulse);
+      if (chance >= 1 || Math.random() < chance) noteBursts.spawn(kind);
+    };
+  };
+  wrapPlayFeedback(drums, 'hit', 'drums', 1, 1);
+  wrapPlayFeedback(piano, 'press', 'piano', 1, 0.7);
+  wrapPlayFeedback(guitar, 'strum', 'guitar', 1, 1);
+  wrapPlayFeedback(guitar, 'pluck', 'guitar', 0.34, 0.5);
+  wrapPlayFeedback(mic, 'sing', 'mic', 1, 0.8);
+}
 
 const mascot = buildMascot();
 const mascotBaseScale = 0.68;
@@ -4347,6 +5033,7 @@ function addVibe(n) {
     vibeCooldown = performance.now() + 4000;
     const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
     spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
+    bumpHitPulse(1.35);
     if (justUnlocked) {
       ui.toast(
         'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
@@ -4354,8 +5041,10 @@ function addVibe(n) {
         'vibe-max',
       );
     }
+    // Meter celebrates at 100% while the fireworks/toast run, then settles.
     vibe = 55;
-    setTimeout(() => ui.setVibe(vibe), 600);
+    lastVibeAdd = performance.now() + 3600;
+    setTimeout(() => ui.setVibe(vibe), 3600);
   }
 }
 
@@ -6000,14 +6689,17 @@ async function initPostprocessing() {
       { RenderPass },
       { UnrealBloomPass },
       { OutputPass },
+      { ShaderPass },
     ] = modules;
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
+    // Bloom sells the authored emissives (footlights, star drop, lenses) only.
+    // Threshold keeps lit cream/white surfaces out of the glow.
     bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      isMobileGameMode() ? 0.28 : 0.45,
-      0.5,
-      0.85,
+      isMobileGameMode() ? 0.2 : 0.32,
+      0.35,
+      0.88,
     );
     // Bloom only processes fullscreen color. Depth/stencil attachments on its
     // eleven internal targets consume memory without affecting the result.
@@ -6021,6 +6713,31 @@ async function initPostprocessing() {
       target.stencilBuffer = false;
     }
     composer.addPass(bloomPass);
+    // Subtle theatre vignette (desktop only — mobile composers stay bloom-only
+    // because every full-screen pass scales with DPR²).
+    if (!isMobileGameMode()) {
+      const vignettePass = new ShaderPass({
+        uniforms: {
+          tDiffuse: { value: null },
+          uStrength: { value: 0.5 },
+          uSize: { value: 0.78 },
+        },
+        vertexShader: /* glsl */`
+          varying vec2 vUv;
+          void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: /* glsl */`
+          uniform sampler2D tDiffuse;
+          uniform float uStrength, uSize;
+          varying vec2 vUv;
+          void main() {
+            vec4 c = texture2D(tDiffuse, vUv);
+            float d = distance(vUv, vec2(0.5));
+            c.rgb *= mix(1.0, smoothstep(uSize, uSize - 0.45, d), uStrength);
+            gl_FragColor = c;
+          }`,
+      });
+      composer.addPass(vignettePass);
+    }
     composer.addPass(new OutputPass());
     document.documentElement.dataset.postprocessing = 'on';
   } catch (_) {
@@ -6412,6 +7129,10 @@ function animate(frameTime = performance.now()) {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
 
+  // renderer.info accumulates across every composer pass in this frame;
+  // autoReset would keep only the final output quad's numbers.
+  renderer.info.reset();
+
   // camera fly-in
   if (flyT >= 0) {
     flyT += dt;
@@ -6455,17 +7176,39 @@ function animate(frameTime = performance.now()) {
     if (stageAmbience.valance) {
       stageAmbience.valance.position.y = stageAmbience.valance.userData.baseY + Math.sin(t * 0.7) * 0.025;
     }
+    if (stageAmbience.starMat) {
+      stageAmbience.starMat.opacity = 0.78 + Math.sin(t * 0.9) * 0.14;
+    }
     for (let i = 0; i < spotHeads.length; i++) {
-      const lens = spotHeads[i].lensMat;
+      const sh = spotHeads[i];
+      const lens = sh.lensMat;
       const pulse = 0.72 + Math.sin(t * 1.4 + i * 1.1) * 0.28;
       const lightScale = Math.max(0.18, stageLightLevel / 100);
-      lens.color.setHex(spotHeads[i].base);
+      lens.color.setHex(sh.base);
       lens.color.multiplyScalar((0.75 + pulse * 0.35) * lightScale);
+      // Concert moving-head sweep: light, target, and clipped beam ride the mount.
+      if (sh.sweep) sh.mount.rotation.z = Math.sin(t * 0.42 + i * 2.1) * sh.sweep * 2.8;
     }
   }
 
   // Dust motion is evaluated in the vertex shader; only one scalar changes.
   dust.userData.time.value = t;
+
+  // play-feedback: floating notes + footlight bump (kept under reduced motion —
+  // it is action feedback, not ambient shimmer)
+  noteBursts.update(dt, prefersReducedMotion.matches);
+  if (hitPulse.value > 0.001) {
+    hitPulse.value *= Math.pow(0.008, dt);
+    const fp = stageAmbience.footPulse;
+    if (fp) {
+      const dimScale = stageLightLevel / 100;
+      const boost = 1 + hitPulse.value * 0.85;
+      fp.mat.emissiveIntensity = fp.matBase * dimScale * boost;
+      for (const bulbLight of fp.lights) {
+        if (bulbLight.visible) bulbLight.intensity = fp.lightBase * dimScale * boost;
+      }
+    }
+  }
 
   // vibe decay
   if (vibe > 0 && performance.now() - lastVibeAdd > 1500) {
@@ -6504,6 +7247,38 @@ function animate(frameTime = performance.now()) {
     window.__sceneReady = true;
     document.documentElement.dataset.sceneReady = 'true';
   }
+}
+
+// ============================================================
+// HEADLESS QA HOOKS (?testhooks=1)
+// Deterministic state driving + renderer diagnostics for the
+// packaged canvas inspector. Never active for real visitors.
+// ============================================================
+if (params.has('testhooks')) {
+  renderer.info.autoReset = false;
+  window.__THREE_GAME_DIAGNOSTICS__ = {
+    get renderer() {
+      return {
+        calls: renderer.info.render.calls,
+        triangles: renderer.info.render.triangles,
+        geometries: renderer.info.memory.geometries,
+        textures: renderer.info.memory.textures,
+        programs: renderer.info.programs?.length ?? 0,
+        pixelRatio: renderer.getPixelRatio(),
+        shadows: renderer.shadowMap.enabled,
+        postprocessing: !!composer,
+      };
+    },
+  };
+  window.__THREE_GAME_TEST_HOOKS__ = {
+    seed() { /* stage has no gameplay RNG to pin */ },
+    setState(name) {
+      if (name === 'stage') { leaveInstrumentView({ immediate: true, offerPriceChip: false }); return; }
+      if (name === 'dance') { setDancing(true); return; }
+      if (name === 'vibe') { addVibe(100); return; }
+      if (INSTRUMENT_VIEW_PRESETS[name]) requestInstrumentView(name);
+    },
+  };
 }
 
 // ============================================================
