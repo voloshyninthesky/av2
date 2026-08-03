@@ -2156,6 +2156,14 @@ const MASCOT_HAIR_STYLES = {
     locks: { s: [0.4, 0.75, 0.45], x: 0.255, y: 0.02, z: 0.045 },
     fringe: { s: [1.0, 0.82, 1.0], p: [0, 0.045, 0.045], rz: 0.14 },
   },
+  // No hair pieces at all: the skin-toned face sphere shows through on top,
+  // reading as a bald scalp. Brows stay on (they're not part of this set).
+  bald: {
+    back: null,
+    cap: null,
+    locks: null,
+    fringe: null,
+  },
 };
 
 // Four coherent stagewear palettes on the varsity garment. Each keeps sleeves
@@ -2470,8 +2478,11 @@ function applyMascotConfig() {
     cu.hairBack.scale.set(...style.back.s);
     cu.hairBack.position.set(...style.back.p);
   }
-  cu.hairCap.scale.set(...style.cap.s);
-  cu.hairCap.position.set(...style.cap.p);
+  cu.hairCap.visible = Boolean(style.cap);
+  if (style.cap) {
+    cu.hairCap.scale.set(...style.cap.s);
+    cu.hairCap.position.set(...style.cap.p);
+  }
   for (const lock of cu.locks) {
     lock.visible = Boolean(style.locks);
     if (style.locks) {
@@ -6357,7 +6368,7 @@ const mascotCommitButton = document.getElementById('mascot-commit');
 const mascotUndoButton = document.getElementById('mascot-undo');
 
 const MASCOT_UI_NAMES = {
-  hair: { long: 'ДОВГЕ', bob: 'БОБ', short: 'КОРОТКЕ' },
+  hair: { long: 'ДОВГЕ', bob: 'БОБ', short: 'КОРОТКЕ', bald: 'ЛИСИЙ' },
   smile: { soft: 'ЛЕГКА', wide: 'ШИРОКА', neutral: 'РІВНА' },
   hairColor: {
     '5a2f22': 'КАШТАНОВЕ', '241a14': 'ЧОРНЕ', c9a35f: 'БЛОНД',
