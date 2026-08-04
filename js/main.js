@@ -259,21 +259,39 @@ function loadPostprocessingModules() {
 function isTelegramEnvironment() {
   const tg = window.Telegram?.WebApp;
   if (tg && (typeof tg.initData === 'string' || tg.platform)) return true;
+  // Mini App launch params ride in the hash; iOS Telegram's UA is anonymous.
+  if (/[#&]tgWebApp(Data|Version|Platform)=/.test(location.hash || '')) return true;
+  try { if (sessionStorage.getItem('__inTelegramWebApp') === '1') return true; } catch (_) {}
   return /Telegram/i.test(navigator.userAgent || '');
 }
 
+function applyTelegramCloseGuards(tg) {
+  try {
+    tg.ready?.();
+    if (!tg.isExpanded) tg.expand?.();
+    if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
+    // Clients too old for disableVerticalSwipes() (Bot API 7.7) still honor the
+    // older closing-confirmation prompt, which also guards the swipe-to-close
+    // gesture — a fallback so the stage swipe can't instantly dismiss the app.
+    if (typeof tg.enableClosingConfirmation === 'function') tg.enableClosingConfirmation();
+  } catch (_) { /* older Telegram clients */ }
+}
+
+let telegramGuardEventsBound = false;
 function initTelegramEnvironment() {
   const tg = window.Telegram?.WebApp;
   if (tg) {
-    try {
-      tg.ready?.();
-      tg.expand?.();
-      if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
-      // Clients too old for disableVerticalSwipes() (Bot API 7.7) still honor the
-      // older closing-confirmation prompt, which also guards the swipe-to-close
-      // gesture — a fallback so the stage swipe can't instantly dismiss the app.
-      if (typeof tg.enableClosingConfirmation === 'function') tg.enableClosingConfirmation();
-    } catch (_) { /* older Telegram clients */ }
+    applyTelegramCloseGuards(tg);
+    // Telegram can collapse the viewport / shed the swipe lock after keyboard
+    // opens, backgrounding, or shell re-activation — re-assert every time.
+    if (!telegramGuardEventsBound && typeof tg.onEvent === 'function') {
+      telegramGuardEventsBound = true;
+      const reassert = () => applyTelegramCloseGuards(tg);
+      try {
+        tg.onEvent('viewportChanged', reassert);
+        tg.onEvent('activated', reassert);
+      } catch (_) { /* older Telegram clients */ }
+    }
   }
   if (isTelegramEnvironment()) {
     document.documentElement.classList.add('telegram-webview');

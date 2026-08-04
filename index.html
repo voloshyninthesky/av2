@@ -581,10 +581,18 @@
 <script>
   window.__telegramReady = (() => {
     const search = new URLSearchParams(location.search);
-    const needsTelegramSdk = /Telegram/i.test(navigator.userAgent || '')
+    // Mini App launch params arrive in the URL *hash* (#tgWebAppData=...), and
+    // iOS Telegram's webview UA does not mention Telegram — check all of them.
+    // Persist the verdict: in-app reloads can strip the hash.
+    let flagged = false;
+    try { flagged = sessionStorage.getItem('__inTelegramWebApp') === '1'; } catch (_) {}
+    const needsTelegramSdk = flagged
+      || /Telegram/i.test(navigator.userAgent || '')
       || search.has('tgWebAppData')
-      || search.has('tgWebAppVersion');
+      || search.has('tgWebAppVersion')
+      || /[#&]tgWebApp(Data|Version|Platform)=/.test(location.hash || '');
     if (!needsTelegramSdk) return Promise.resolve(null);
+    try { sessionStorage.setItem('__inTelegramWebApp', '1'); } catch (_) {}
     return new Promise((resolve) => {
       const script = document.createElement('script');
       script.src = 'https://telegram.org/js/telegram-web-app.js';
@@ -595,6 +603,6 @@
     });
   })();
 </script>
-  <script type="module" src="js/main.js?v=20260804-04"></script>
+  <script type="module" src="js/main.js?v=20260804-05"></script>
 </body>
 </html>
