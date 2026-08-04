@@ -20,7 +20,6 @@ export class UI {
       vibe: document.getElementById('vibe'),
       vibeFill: document.getElementById('vibe-fill'),
       soundBtn: document.getElementById('sound-btn'),
-      menuBtn: document.getElementById('menu-btn'),
     };
     this.modals = {
       steps: document.getElementById('modal-steps'),
@@ -74,15 +73,6 @@ export class UI {
         if (e.target === this.modals[key]) this.closeAll();
       });
     }
-    this.el.menuBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleNav();
-    });
-    document.addEventListener('pointerdown', (e) => {
-      if (!this.el.hud.classList.contains('nav-open')) return;
-      if (e.target.closest('#hud')) return;
-      this.closeNav();
-    });
 
     this.el.chipClose.addEventListener('click', () => this.hideChip());
     let swipeStart = null;
@@ -123,7 +113,7 @@ export class UI {
     this.el.toast.addEventListener('gesturechange', dismissToastGesture, { passive: false });
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Tab' && this.current) this._trapModalFocus(e);
-      if (e.key === 'Escape') { this.closeAll(); this.closeNav(); }
+      if (e.key === 'Escape') this.closeAll();
     });
   }
 
@@ -182,7 +172,6 @@ export class UI {
 
   open(name, anchor, trigger = null) {
     if (this.current) this.closeAll({ restoreFocus: false });
-    this.closeNav();
     const m = this.modals[name];
     if (!m) return;
     this._modalTrigger = trigger
@@ -231,17 +220,6 @@ export class UI {
 
   get modalOpen() { return this.current !== null; }
 
-  toggleNav() {
-    const open = !this.el.hud.classList.contains('nav-open');
-    this.el.hud.classList.toggle('nav-open', open);
-    if (this.el.menuBtn) this.el.menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  }
-
-  closeNav() {
-    this.el.hud.classList.remove('nav-open');
-    if (this.el.menuBtn) this.el.menuBtn.setAttribute('aria-expanded', 'false');
-  }
-
   showHUD() {
     this.el.hud.inert = false;
     this.el.hud.classList.remove('hidden');
@@ -289,8 +267,25 @@ export class UI {
     const action = this._chipAction;
     if (!action) return;
     this.hideChip();
+    this._swallowGhostClick();
     action();
   }
+
+  // Touch browsers fire a synthesized click ~300ms after pointerup, and the chip
+  // activates on pointerup. Without this the stray click lands on whatever the
+  // freshly opened modal put under the finger — the price board's «Записатись»
+  // sits right where the chip CTA was, so the chip opened «як записатися».
+  _swallowGhostClick() {
+    if (!this._ghostGuard) {
+      this._ghostGuard = (e) => { e.stopPropagation(); e.preventDefault(); };
+    }
+    clearTimeout(this._ghostTimer);
+    document.addEventListener('click', this._ghostGuard, true);
+    this._ghostTimer = setTimeout(() => {
+      document.removeEventListener('click', this._ghostGuard, true);
+    }, 400);
+  }
+
   hideChip() { this.el.chip.hidden = true; clearTimeout(this._chipTimer); }
 
   // ---- toast ----

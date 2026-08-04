@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260803-02';
-import { UI } from './ui.js?v=20260802-26';
+import { UI } from './ui.js?v=20260804-01';
 import { isQuickGuitarTap } from './guitar-gestures.js?v=20260802-1';
 
 // ---- error collector (debug / headless testing) ----
@@ -3584,7 +3584,6 @@ function setDancing(next) {
     dance.t = 0;
     dance.loop = 0;
     dance.yaw = mascot.group.rotation.y;
-    ui.closeNav();
   }
   danceBtn?.classList.toggle('dancing', on);
   danceBtn?.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -6252,7 +6251,6 @@ function closeSoundMixer() {
 
 function openSoundMixer() {
   if (!soundMixer) return;
-  ui.closeNav();
   for (const fader of soundFaders) {
     fader.value = String(Math.round(
       ((audio.getLevel(fader.dataset.bus) ?? 1) / AudioEngine.BUS_LEVEL_MAX) * 100,
@@ -6810,11 +6808,6 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeSoundMixer();
 });
 
-const _uiToggleNav = ui.toggleNav.bind(ui);
-ui.toggleNav = (...args) => {
-  closeSoundMixer();
-  return _uiToggleNav(...args);
-};
 const _uiOpen = ui.open.bind(ui);
 ui.open = (...args) => {
   closeSoundMixer();
