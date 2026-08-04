@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
 import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260804-01';
-import { UI } from './ui.js?v=20260804-01';
+import { UI } from './ui.js?v=20260804-02';
 import { isQuickGuitarTap } from './guitar-gestures.js?v=20260802-1';
 
 // ---- error collector (debug / headless testing) ----
@@ -3062,9 +3062,16 @@ function moveMascotWithColliders(direction, distance) {
 
 refreshWalkColliders();
 
+// Hip height in the mascot's own local space. Seated poses subtract it, scaled,
+// from the seat top so any body size lands on the seat instead of floating over
+// it or sinking through it.
+const MASCOT_HIP_LOCAL_Y = 0.76;
+
 const INSTRUMENT_VIEW_PRESETS = {
   drums: {
+    // y is derived from seatTop at pose time; only x/z are read from here.
     mascot: new THREE.Vector3(0, 0.15, -1.05),
+    seatTop: 0.665,
     yaw: 0,
     seated: true,
     approach: [],
@@ -3642,9 +3649,8 @@ function createPianoMascotPose() {
   const preset = INSTRUMENT_VIEW_PRESETS.piano;
   const scaleY = mascot.group.scale.y;
   const benchTop = 0.585;
-  const hipLocalY = 0.76;
   const mascotLocalPosition = preset.mascot.clone();
-  mascotLocalPosition.y = benchTop - hipLocalY * scaleY;
+  mascotLocalPosition.y = benchTop - MASCOT_HIP_LOCAL_Y * scaleY;
   // A bigger body sits farther from the keybed (like a real pianist pushing
   // the bench back), so a tall mascot's head cannot hang over the keys in the
   // behind-the-player focus view. Clamped to the bench depth.
@@ -3806,7 +3812,11 @@ function poseMascotAtInstrument(kind) {
     }
     return;
   }
-  mascot.group.position.copy(instrumentLocalToWorld(kind, preset.mascot));
+  const localMascot = preset.mascot.clone();
+  if (preset.seatTop !== undefined) {
+    localMascot.y = preset.seatTop - MASCOT_HIP_LOCAL_Y * mascot.group.scale.y;
+  }
+  mascot.group.position.copy(instrumentLocalToWorld(kind, localMascot));
   mascot.group.rotation.y = group.rotation.y + preset.yaw;
   mascot.armL.rotation.x = preset.arms[0];
   mascot.armR.rotation.x = preset.arms[1];

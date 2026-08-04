@@ -114,6 +114,8 @@ Mute chosen before the context exists is honored when `init` runs.
 | `piano` | Mesh keys + `#piano-pad` **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. | `1–8` whites — with or without piano focus |
 | `drums` | Kit parts **only while drums-focused** (multitouch) | `Z X C V B` kit — with or without drums focus |
 
+Seated focus poses (drums throne, piano bench) place the pelvis by subtracting the scaled hip height from the seat top, so the mascot rests on the seat at every saved height / build value instead of floating above it or sinking through it.
+
 Hover (fine pointer): emissive glow.  
 Distant tap / swipe on an instrument: **walk + camera approach only** — no preview sound. Pointer sound still starts after focus.  
 Desktop keyboard sound does **not** require instrument focus (see §5).
