@@ -647,7 +647,7 @@ html.pads-open #toast,
 
 /* ============ GUITAR CHORD PAD ============ */
 #chord-pad {
-  position: fixed; left: 50%; bottom: 122px; z-index: 46;
+  position: fixed; left: 50%; bottom: 104px; z-index: 46;
   transform: translateX(-50%);
   display: flex; align-items: center;
   padding: 9px; border: 1px solid rgba(209, 161, 59, .72); border-radius: 20px;
@@ -678,6 +678,30 @@ html.pads-open #toast,
   transform: translateY(-4px) scale(1.06);
   background: var(--cream); color: var(--purple-deep);
   box-shadow: 0 0 0 3px var(--gold), 0 0 22px rgba(209, 161, 59, .85);
+}
+/* Landscape / desktop: chords rail on the left = fretting hand, strum zone on
+   the right = picking hand — the same split as a real guitar. */
+@media (orientation: landscape) {
+  html.guitar-focused #chord-pad {
+    left: 14px; top: 50%; bottom: auto;
+    transform: translateY(-50%);
+    flex-direction: column;
+    border-radius: 26px;
+  }
+  html.guitar-focused #chord-pad .guitar-chord-buttons {
+    flex-direction: column;
+  }
+  html.guitar-focused #chord-pad [data-chord].held {
+    transform: translateX(4px) scale(1.06);
+  }
+}
+/* Short landscape phones: keep the six chords inside the viewport. */
+@media (orientation: landscape) and (max-height: 460px) {
+  html.guitar-focused #chord-pad { padding: 6px; }
+  html.guitar-focused #chord-pad .guitar-chord-buttons { gap: 5px; }
+  html.guitar-focused #chord-pad [data-chord] {
+    min-width: 44px; height: 44px; font-size: 10px;
+  }
 }
 /* Guitar play claims the canvas, while panels and controls keep normal zoom. */
 html.guitar-focused #scene,
@@ -1497,6 +1521,14 @@ html.mascot-editor-open #toast {
   #vocal-pad, #chord-pad {
     bottom: calc(168px + env(safe-area-inset-bottom));
     max-width: calc(100vw - 22px); padding: 7px;
+  }
+  /* Chords sit lower than the vocal pad: it frees the guitar's lower bout.
+     At that height the zoom column is alongside, so centre the pad in the
+     space left of it instead of overlapping the "+" button. */
+  #chord-pad {
+    bottom: calc(120px + env(safe-area-inset-bottom));
+    left: calc(50% - 26px);
+    max-width: calc(100vw - 74px);
   }
   #vocal-pad button { width: clamp(42px, 12vw, 50px); height: clamp(42px, 12vw, 50px); font-size: 8px; }
   .guitar-chord-buttons { gap: 5px; }

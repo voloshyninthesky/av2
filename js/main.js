@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AudioEngine } from './audio.js?v=20260802-21';
-import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260803-02';
+import { buildDrumKit, buildPiano, buildGuitar, buildMic } from './instruments.js?v=20260804-01';
 import { UI } from './ui.js?v=20260804-01';
 import { isQuickGuitarTap } from './guitar-gestures.js?v=20260802-1';
 
@@ -336,8 +336,9 @@ const TARGET = new THREE.Vector3(0, 1.45, -0.3);
 const ZOOM_IN_STEP = 0.82;
 // Start two "+" presses closer than the original stage framing.
 const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 5;
-// Guitar performance starts two "+" presses closer than its framing preset.
-const GUITAR_FOCUS_ZOOM_FACTOR = ZOOM_IN_STEP ** 2;
+// Focused piano / guitar open two "+" presses inside their measured fit, so
+// the play surface fills the screen instead of sitting in a safe-rect box.
+const FOCUS_ZOOM_FACTOR = ZOOM_IN_STEP ** 2;
 // Allow two extra "+" presses past the previous closest zoom.
 const EXTRA_ZOOM_IN_LEVELS = 2;
 const STAGE_MIN_DISTANCE = 5 * (ZOOM_IN_STEP ** EXTRA_ZOOM_IN_LEVELS);
@@ -3065,21 +3066,29 @@ const INSTRUMENT_VIEW_PRESETS = {
     seated: true,
     approach: [],
     // Base direction only: the measured piano fitter owns distance and offset.
-    camera: new THREE.Vector3(-2.1, 3.85, 1.45),
-    cameraMobile: new THREE.Vector3(-1.75, 3.95, 1.55),
-    target: new THREE.Vector3(0, 0.78, 0.55),
-    arms: [-0.94, -0.98],
+    // Steep behind-the-player view (~72°) so the keybed reads as a horizontal
+    // GarageBand-like strip above the pianist's own head at every mascot size.
+    camera: new THREE.Vector3(0.15, 3.9, 1.55),
+    target: new THREE.Vector3(0, 0.66, 0.5),
   },
   guitar: {
-    mascot: new THREE.Vector3(0.62, 0, 0.78),
-    yaw: -2.32,
+    mascot: new THREE.Vector3(-0.06, 0, -0.18),
+    yaw: 0,
     seated: false,
     approach: [],
-    // Near-front performance view: keep soundhole, strings, and first frets legible.
-    camera: new THREE.Vector3(0.08, 1.72, 2.02),
-    cameraMobile: new THREE.Vector3(0.08, 1.72, 2.34),
-    target: new THREE.Vector3(0, 0.91, 0.07),
-    arms: [-1.05, -0.66],
+    // Over-the-shoulder player view: the guitar is held across the mascot (see
+    // the performance pose in instruments.js) and the camera looks down from
+    // behind the playing shoulder, so the head reads at the screen edge and
+    // the strings stay clear of it. Only the eye direction lives here; the
+    // guitar fitter owns distance and offset.
+    //
+    // Azimuth follows the viewport because a guitar is long and thin, and a
+    // diagonal one wastes the frame: each orientation lays the instrument
+    // along the screen's long axis. Landscape keeps the neck to the left;
+    // portrait stands it up, body low-right and head at the left edge.
+    camera: new THREE.Vector3(-0.45, 3.7, -0.9),
+    cameraPortrait: new THREE.Vector3(-1.23, 3.7, 0.37),
+    target: new THREE.Vector3(0.05, 1.06, 0.28),
   },
   mic: {
     mascot: new THREE.Vector3(0.42, 0, 0.58),
@@ -3104,13 +3113,27 @@ const instrumentView = {
 };
 
 function instrumentViewCameraPoint(kind, preset) {
-  const point = isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
-  if (kind !== 'guitar') return point;
-  return point.clone().sub(preset.target).multiplyScalar(GUITAR_FOCUS_ZOOM_FACTOR).add(preset.target);
+  return isMobileGameMode() && preset.cameraMobile ? preset.cameraMobile : preset.camera;
 }
 
 function setSceneLabelsVisible(visible) {
   if (mascotLabel && !mascotMove.fall) mascotLabel.visible = visible;
+}
+
+// Piano keys and guitar strings lie along the screen width, so landscape is
+// the roomier way to play on a phone. One gentle nudge, then never again.
+const ROTATE_HINT_KEY = 'av2.rotate-hint.v1';
+
+function maybeShowRotateHint() {
+  if (!isMobileGameMode()) return;
+  if (window.innerWidth >= window.innerHeight) return;
+  try {
+    if (localStorage.getItem(ROTATE_HINT_KEY)) return;
+    localStorage.setItem(ROTATE_HINT_KEY, '1');
+  } catch (_) {
+    return;
+  }
+  ui.toast('Поверни телефон горизонтально — інструмент стане більшим', 4200);
 }
 
 function syncMobileInstrumentChrome() {
@@ -3145,6 +3168,7 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   syncMobileInstrumentChrome();
   syncInstrumentExposure();
   if (phase === 'focused' && kind) clearKeyboardJamChipTimer(kind);
+  if (phase === 'focused' && (kind === 'piano' || kind === 'guitar')) maybeShowRotateHint();
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);
@@ -3186,7 +3210,7 @@ const PIANO_HAND_ANCHORS = {
   armL: new THREE.Vector3(0.38, 0.72, 0.67),
   armR: new THREE.Vector3(-0.38, 0.72, 0.67),
 };
-const pianoFitCamera = camera.clone();
+const focusFitCamera = camera.clone();
 let pianoFrameDebug = null;
 
 function objectBoundsInAncestor(objects, ancestor) {
@@ -3258,7 +3282,7 @@ function pianoSafeRectScore(rect, viewport) {
   return width * height * widthBias - Math.abs(centerX - viewportCenterX) * 18;
 }
 
-function pianoFocusSafeRect() {
+function focusSafeRect(reservedRects = []) {
   const vv = window.visualViewport;
   const viewport = {
     left: (vv?.offsetLeft || 0) + PIANO_FRAME_MARGIN,
@@ -3278,7 +3302,7 @@ function pianoFocusSafeRect() {
     top: rect.top - 8,
     right: rect.right + 8,
     bottom: rect.bottom + 8,
-  }));
+  })).concat(reservedRects);
 
   let candidates = [viewport];
   for (const blocker of blockers) {
@@ -3301,6 +3325,28 @@ function pianoFocusSafeRect() {
       .slice(0, 48);
   }
   return candidates[0] || viewport;
+}
+
+function pianoFocusSafeRect() {
+  return focusSafeRect();
+}
+
+function guitarFocusSafeRect() {
+  const vv = window.visualViewport;
+  const left = vv?.offsetLeft || 0;
+  const top = vv?.offsetTop || 0;
+  const width = vv?.width || window.innerWidth;
+  const height = vv?.height || window.innerHeight;
+  const portrait = height > width;
+  // The chord pad appears only after the entry fit has already run, so its
+  // gutter is reserved from the layout constants (left rail on landscape,
+  // bottom row on portrait — see #chord-pad in style.css) instead of a DOM
+  // measurement. Entry fit and later refits then agree on the same play area.
+  const padBottomOffset = isMobileGameMode() ? 120 : 104;
+  const reserved = portrait
+    ? [{ left, top: top + height - (padBottomOffset + 76), right: left + width, bottom: top + height }]
+    : [{ left, top, right: left + 118, bottom: top + height }];
+  return focusSafeRect(reserved);
 }
 
 function projectedBounds(points, projectionCamera) {
@@ -3330,26 +3376,88 @@ function pianoWorldPoints(localPoints) {
   return localPoints.map((point) => instrumentLocalToWorld('piano', point));
 }
 
-function pianoMascotHeadWorldPoints() {
-  const pose = createPianoMascotPose();
-  const mascotMatrix = new THREE.Matrix4().compose(
-    pose.position,
-    pose.group,
-    mascot.group.scale,
-  );
-  const headMatrix = new THREE.Matrix4().compose(
-    pose.headPosition,
-    pose.head,
-    new THREE.Vector3(1, 1, 1),
-  ).premultiply(mascotMatrix);
-  // Cover the face, cap, back hair, and the visible root of the long locks.
-  // The framing fitter can then protect the head across appearance presets
-  // without depending on whichever pose happens to be applied this frame.
-  const headBounds = new THREE.Box3(
-    new THREE.Vector3(-0.34, -0.6, -0.32),
-    new THREE.Vector3(0.34, 0.35, 0.34),
-  );
-  return boxCorners(headBounds).map((point) => point.applyMatrix4(headMatrix));
+/**
+ * Shared measured-framing core: place the camera along eyeDirection so
+ * widthPoints project to desiredWidthRatio of the safe rect while
+ * subjectPoints stay contained, then shift the target so the subject centers
+ * on the safe rect. All points are world-space.
+ */
+function fitProjectedFocusFrame({
+  safeRect,
+  widthPoints,
+  subjectPoints,
+  subjectCenter,
+  eyeDirection,
+  desiredWidthRatio,
+  initialDistance,
+  minDistance,
+  maxDistance,
+  // 0.5 centers the subject in the safe rect; larger values sit it lower.
+  // Portrait screens read better with the play surface near the thumbs and
+  // the instrument body filling the headroom instead of bare stage floor.
+  centerBiasY = 0.5,
+  // Applied after fitting, so the subject stays centered on the safe rect
+  // while filling more of it. Below 1 the outer edges crop — the same trade
+  // as pressing "+", and "−" / pinch still reach the full fitted frame.
+  zoomFactor = 1,
+}) {
+  const right = new THREE.Vector3().crossVectors(camera.up, eyeDirection).normalize();
+  const viewUp = new THREE.Vector3().crossVectors(eyeDirection, right).normalize();
+  const safeWidth = safeRect.right - safeRect.left;
+  const safeHeight = safeRect.bottom - safeRect.top;
+  const safeCenterX = (safeRect.left + safeRect.right) * 0.5;
+  const safeCenterY = THREE.MathUtils.lerp(safeRect.top, safeRect.bottom, centerBiasY);
+  const desiredWidth = safeWidth * desiredWidthRatio;
+  const tanHalfV = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+  const desiredNdcX = (safeCenterX / window.innerWidth) * 2 - 1;
+  const desiredNdcY = 1 - (safeCenterY / window.innerHeight) * 2;
+  const position = new THREE.Vector3();
+  const target = new THREE.Vector3();
+
+  const placeCamera = (distance) => {
+    const halfHeight = distance * tanHalfV;
+    const halfWidth = halfHeight * camera.aspect;
+    position.copy(subjectCenter).addScaledVector(eyeDirection, distance);
+    target.copy(subjectCenter)
+      .addScaledVector(right, -desiredNdcX * halfWidth)
+      .addScaledVector(viewUp, -desiredNdcY * halfHeight);
+    focusFitCamera.copy(camera);
+    focusFitCamera.position.copy(position);
+    focusFitCamera.up.copy(camera.up);
+    focusFitCamera.lookAt(target);
+    focusFitCamera.updateMatrixWorld(true);
+  };
+
+  let distance = THREE.MathUtils.clamp(initialDistance, minDistance, maxDistance);
+  for (let iteration = 0; iteration < 8; iteration++) {
+    placeCamera(distance);
+    const widthBounds = projectedBounds(widthPoints, focusFitCamera);
+    const subjectBounds = projectedBounds(subjectPoints, focusFitCamera);
+    const widthScale = widthBounds.width / desiredWidth;
+    const fitScale = Math.max(subjectBounds.width / safeWidth, subjectBounds.height / safeHeight);
+    const scale = Math.max(widthScale, fitScale);
+    if (Math.abs(scale - 1) < 0.004) break;
+    distance = THREE.MathUtils.clamp(distance * scale, minDistance, maxDistance);
+  }
+
+  distance = Math.max(minDistance, distance * zoomFactor);
+  placeCamera(distance);
+  for (let iteration = 0; iteration < 2; iteration++) {
+    const bounds = projectedBounds(subjectPoints, focusFitCamera);
+    const dx = safeCenterX - bounds.centerX;
+    const dy = safeCenterY - bounds.centerY;
+    const worldPerPixelY = (2 * distance * tanHalfV) / window.innerHeight;
+    const worldPerPixelX = worldPerPixelY * camera.aspect;
+    const shift = right.clone().multiplyScalar(-dx * worldPerPixelX)
+      .addScaledVector(viewUp, dy * worldPerPixelY);
+    position.add(shift);
+    target.add(shift);
+    focusFitCamera.position.copy(position);
+    focusFitCamera.lookAt(target);
+    focusFitCamera.updateMatrixWorld(true);
+  }
+
+  return { position: position.clone(), target: target.clone(), distance };
 }
 
 function fitPianoFocusFrame(preset) {
@@ -3361,10 +3469,9 @@ function fitPianoFocusFrame(preset) {
     PIANO_HAND_ANCHORS.armR,
   ];
   const keyPoints = pianoWorldPoints(keyLocalPoints);
-  const subjectPoints = [
-    ...pianoWorldPoints(subjectLocalPoints),
-    ...pianoMascotHeadWorldPoints(),
-  ];
+  // The behind-the-player view crops the mascot at the frame bottom on
+  // purpose (same as drums), so only keys + hands drive the framing.
+  const subjectPoints = pianoWorldPoints(subjectLocalPoints);
   const subjectLocalBounds = new THREE.Box3().setFromPoints(subjectLocalPoints);
   const subjectCenterLocal = subjectLocalBounds.getCenter(new THREE.Vector3());
   subjectCenterLocal.y += 0.035;
@@ -3373,81 +3480,94 @@ function fitPianoFocusFrame(preset) {
   const pianoWorldQuaternion = piano.group.getWorldQuaternion(new THREE.Quaternion());
   const eyeDirection = preset.camera.clone().sub(preset.target).normalize()
     .applyQuaternion(pianoWorldQuaternion).normalize();
-  const right = new THREE.Vector3().crossVectors(camera.up, eyeDirection).normalize();
-  const viewUp = new THREE.Vector3().crossVectors(eyeDirection, right).normalize();
-  const safeWidth = safeRect.right - safeRect.left;
-  const safeHeight = safeRect.bottom - safeRect.top;
-  const safeCenterX = (safeRect.left + safeRect.right) * 0.5;
-  const safeCenterY = (safeRect.top + safeRect.bottom) * 0.5;
   const portrait = window.innerHeight > window.innerWidth;
-  const desiredKeyWidth = safeWidth * (portrait ? 0.88 : 0.81);
-  const tanHalfV = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-  const desiredNdcX = (safeCenterX / window.innerWidth) * 2 - 1;
-  const desiredNdcY = 1 - (safeCenterY / window.innerHeight) * 2;
-  let position = new THREE.Vector3();
-  let target = new THREE.Vector3();
-
-  const placeCamera = (distance) => {
-    const halfHeight = distance * tanHalfV;
-    const halfWidth = halfHeight * camera.aspect;
-    position.copy(subjectCenter).addScaledVector(eyeDirection, distance);
-    target.copy(subjectCenter)
-      .addScaledVector(right, -desiredNdcX * halfWidth)
-      .addScaledVector(viewUp, -desiredNdcY * halfHeight);
-    pianoFitCamera.copy(camera);
-    pianoFitCamera.position.copy(position);
-    pianoFitCamera.up.copy(camera.up);
-    pianoFitCamera.lookAt(target);
-    pianoFitCamera.updateMatrixWorld(true);
-  };
-
-  let distance = THREE.MathUtils.clamp(preset.camera.distanceTo(preset.target), 1.6, 5.4);
-  for (let iteration = 0; iteration < 8; iteration++) {
-    placeCamera(distance);
-    const keyBounds = projectedBounds(keyPoints, pianoFitCamera);
-    const subjectBounds = projectedBounds(subjectPoints, pianoFitCamera);
-    const widthScale = keyBounds.width / desiredKeyWidth;
-    const fitScale = Math.max(subjectBounds.width / safeWidth, subjectBounds.height / safeHeight);
-    const scale = Math.max(widthScale, fitScale);
-    if (Math.abs(scale - 1) < 0.004) break;
-    distance = THREE.MathUtils.clamp(distance * scale, 1.35, 6.2);
-  }
-
-  placeCamera(distance);
-  for (let iteration = 0; iteration < 2; iteration++) {
-    const bounds = projectedBounds(subjectPoints, pianoFitCamera);
-    const dx = safeCenterX - bounds.centerX;
-    const dy = safeCenterY - bounds.centerY;
-    const worldPerPixelY = (2 * distance * tanHalfV) / window.innerHeight;
-    const worldPerPixelX = worldPerPixelY * camera.aspect;
-    const shift = right.clone().multiplyScalar(-dx * worldPerPixelX)
-      .addScaledVector(viewUp, dy * worldPerPixelY);
-    position.add(shift);
-    target.add(shift);
-    pianoFitCamera.position.copy(position);
-    pianoFitCamera.lookAt(target);
-    pianoFitCamera.updateMatrixWorld(true);
-  }
+  const fit = fitProjectedFocusFrame({
+    safeRect,
+    widthPoints: keyPoints,
+    subjectPoints,
+    subjectCenter,
+    eyeDirection,
+    desiredWidthRatio: portrait ? 0.88 : 0.81,
+    initialDistance: preset.camera.distanceTo(preset.target),
+    minDistance: 0.95,
+    maxDistance: 6.2,
+    centerBiasY: portrait ? 0.62 : 0.52,
+    zoomFactor: FOCUS_ZOOM_FACTOR,
+  });
 
   pianoFrameDebug = {
     safeRect: { ...safeRect },
-    keybedBounds: projectedBounds(keyPoints, pianoFitCamera),
-    subjectBounds: projectedBounds(subjectPoints, pianoFitCamera),
-    targetWidthRatio: desiredKeyWidth / safeWidth,
+    keybedBounds: projectedBounds(keyPoints, focusFitCamera),
+    subjectBounds: projectedBounds(subjectPoints, focusFitCamera),
+    targetWidthRatio: portrait ? 0.88 : 0.81,
     keybedLocalBounds: {
       min: pianoKeybedLocalBounds.min.toArray(),
       max: pianoKeybedLocalBounds.max.toArray(),
     },
-    distance,
-    position: position.toArray(),
-    target: target.toArray(),
+    distance: fit.distance,
+    position: fit.position.toArray(),
+    target: fit.target.toArray(),
   };
   document.documentElement.dataset.pianoFrameDebug = JSON.stringify(pianoFrameDebug);
-  return { position: position.clone(), target: target.clone() };
+  return { position: fit.position, target: fit.target };
+}
+
+// Playable band of the held guitar in body-local space: all six strings from
+// just past the nut to below the bridge, with the soundhole strum area.
+const GUITAR_SUBJECT_LOCAL_BOUNDS = new THREE.Box3(
+  new THREE.Vector3(-0.1, -0.36, 0.02),
+  new THREE.Vector3(0.1, 1.26, 0.18),
+);
+
+function guitarPerformanceMatrix() {
+  const pose = guitar.getPerformancePose(mascot.group.scale.y);
+  const local = new THREE.Matrix4().compose(
+    pose.position,
+    new THREE.Quaternion().setFromEuler(pose.euler),
+    new THREE.Vector3(1, 1, 1),
+  );
+  guitar.group.updateWorldMatrix(true, false);
+  return local.premultiply(guitar.group.matrixWorld);
+}
+
+function fitGuitarFocusFrame(preset) {
+  const safeRect = guitarFocusSafeRect();
+  // Project the strings band under the FINAL performance pose, not whatever
+  // blend the entry transition happens to be at.
+  const matrix = guitarPerformanceMatrix();
+  const subjectPoints = boxCorners(GUITAR_SUBJECT_LOCAL_BOUNDS)
+    .map((point) => point.applyMatrix4(matrix));
+  const subjectCenter = GUITAR_SUBJECT_LOCAL_BOUNDS.getCenter(new THREE.Vector3())
+    .applyMatrix4(matrix);
+  const guitarWorldQuaternion = guitar.group.getWorldQuaternion(new THREE.Quaternion());
+  const portrait = window.innerHeight > window.innerWidth;
+  const eyePreset = portrait && preset.cameraPortrait ? preset.cameraPortrait : preset.camera;
+  const eyeDirection = eyePreset.clone().sub(preset.target).normalize()
+    .applyQuaternion(guitarWorldQuaternion).normalize();
+  const fit = fitProjectedFocusFrame({
+    safeRect,
+    widthPoints: subjectPoints,
+    subjectPoints,
+    subjectCenter,
+    eyeDirection,
+    desiredWidthRatio: portrait ? 0.94 : 0.86,
+    initialDistance: eyePreset.distanceTo(preset.target),
+    minDistance: 0.75,
+    maxDistance: 5.6,
+    centerBiasY: portrait ? 0.6 : 0.5,
+    zoomFactor: FOCUS_ZOOM_FACTOR,
+  });
+  document.documentElement.dataset.guitarFrameDebug = JSON.stringify({
+    safeRect: { ...safeRect },
+    subjectBounds: projectedBounds(subjectPoints, focusFitCamera),
+    distance: fit.distance,
+  });
+  return { position: fit.position, target: fit.target };
 }
 
 function instrumentViewFrame(kind, preset) {
   if (kind === 'piano') return fitPianoFocusFrame(preset);
+  if (kind === 'guitar') return fitGuitarFocusFrame(preset);
   const target = isMobileGameMode() && preset.targetMobile ? preset.targetMobile : preset.target;
   return {
     position: instrumentLocalToWorld(kind, instrumentViewCameraPoint(kind, preset)),
@@ -3530,6 +3650,10 @@ function createPianoMascotPose() {
   const hipLocalY = 0.76;
   const mascotLocalPosition = preset.mascot.clone();
   mascotLocalPosition.y = benchTop - hipLocalY * scaleY;
+  // A bigger body sits farther from the keybed (like a real pianist pushing
+  // the bench back), so a tall mascot's head cannot hang over the keys in the
+  // behind-the-player focus view. Clamped to the bench depth.
+  mascotLocalPosition.z = THREE.MathUtils.clamp(0.44 + 0.85 * scaleY, 0.98, 1.3);
   const position = instrumentLocalToWorld('piano', mascotLocalPosition);
   const pianoQuaternion = piano.group.getWorldQuaternion(new THREE.Quaternion());
   const groupQuaternion = pianoQuaternion.multiply(
@@ -3573,6 +3697,44 @@ function createPianoMascotPose() {
     ),
     legL: new THREE.Quaternion().setFromEuler(new THREE.Euler(legAngle, 0, -0.08)),
     legR: new THREE.Quaternion().setFromEuler(new THREE.Euler(legAngle - 0.04, 0, 0.08)),
+  };
+}
+
+// Strum-arm rest pose while holding the guitar; updateMascot layers the
+// stroke motion on top of these exact baselines, so keep them in one place.
+// Nearly horizontal forward reach so the hand hovers OVER the reclined
+// guitar face at the soundhole instead of hiding behind the lower bout.
+const GUITAR_STRUM_ARM_BASE = { x: -1.45, z: -0.2 };
+
+function createGuitarMascotPose() {
+  const preset = INSTRUMENT_VIEW_PRESETS.guitar;
+  const localPosition = preset.mascot.clone();
+  // Step a bigger body farther back from the held guitar so the head stays
+  // behind the strings instead of eclipsing the soundhole.
+  localPosition.z = THREE.MathUtils.clamp(-0.18 - 0.55 * (mascot.group.scale.y - 0.68), -0.44, -0.08);
+  const position = instrumentLocalToWorld('guitar', localPosition);
+  position.y = 0;
+  const guitarQuaternion = guitar.group.getWorldQuaternion(new THREE.Quaternion());
+  const groupQuaternion = guitarQuaternion.multiply(
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), preset.yaw),
+  );
+  return {
+    position,
+    group: groupQuaternion,
+    torso: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.05, 0, 0.03)),
+    headPosition: new THREE.Vector3(0, 1.54, 0.05),
+    // Eyes down toward the strings — the camera behind reads it as watching
+    // the fretting hand.
+    head: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.3, 0.1, 0)),
+    armLPosition: new THREE.Vector3(-0.34, 1.28, 0.06),
+    armRPosition: new THREE.Vector3(0.34, 1.28, 0.06),
+    // armL strums over the soundhole; armR reaches out along the neck.
+    armL: new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(GUITAR_STRUM_ARM_BASE.x, 0, GUITAR_STRUM_ARM_BASE.z),
+    ),
+    armR: new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.15, 0, 0.55)),
+    legL: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -0.06)),
+    legR: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0.06)),
   };
 }
 
@@ -3637,8 +3799,8 @@ function poseMascotAtInstrument(kind) {
   const group = instrumentGroups[kind];
   if (!preset || !group) return;
   resetMascotPose();
-  if (kind === 'piano') {
-    applyMascotInstrumentPose(createPianoMascotPose());
+  if (kind === 'piano' || kind === 'guitar') {
+    applyMascotInstrumentPose(kind === 'piano' ? createPianoMascotPose() : createGuitarMascotPose());
     if (mascotLabel) {
       mascotLabel.visible = false;
       mascotLabel.position.set(
@@ -3711,19 +3873,30 @@ function applyFocusedControlLimits() {
     const distance = Math.max(0.001, offset.length());
     const azimuth = Math.atan2(offset.x, offset.z);
     const polar = Math.acos(THREE.MathUtils.clamp(offset.y / distance, -1, 1));
-    controls.minDistance = Math.max(FOCUSED_MIN_DISTANCE, distance * 0.7);
-    controls.maxDistance = Math.max(controls.minDistance + 0.2, distance * 1.38);
+    // The opening frame is already zoomed in, so keep real "+" headroom below
+    // it and enough "−" range to recover the full uncropped keybed.
+    controls.minDistance = Math.max(FOCUSED_MIN_DISTANCE, distance * 0.56);
+    controls.maxDistance = Math.max(controls.minDistance + 0.2, distance * 1.72);
     // Keep the measured distance envelope, but leave horizontal orbit free so
     // the focused frame remains a starting composition rather than a lock.
+    // The polar floor must sit below the fitted ~72° pitch or re-enabling
+    // OrbitControls would snap the first frame.
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
-    controls.minPolarAngle = Math.max(0.34, polar - 0.12);
+    controls.minPolarAngle = Math.max(0.14, polar - 0.12);
     controls.maxPolarAngle = Math.min(1.42, polar + 0.12);
   } else if (instrumentView.kind === 'guitar') {
-    // Guitar focus also starts from a composed frame, but horizontal orbit is
-    // intentionally unrestricted once the transition has settled.
+    // Same policy as piano: keep the fitted distance/pitch envelope so the
+    // strings stay readable, leave horizontal orbit free.
+    const offset = camera.position.clone().sub(controls.target);
+    const distance = Math.max(0.001, offset.length());
+    const polar = Math.acos(THREE.MathUtils.clamp(offset.y / distance, -1, 1));
+    controls.minDistance = Math.max(FOCUSED_MIN_DISTANCE, distance * 0.56);
+    controls.maxDistance = Math.max(controls.minDistance + 0.2, distance * 1.75);
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
+    controls.minPolarAngle = Math.max(0.3, polar - 0.12);
+    controls.maxPolarAngle = Math.min(1.45, polar + 0.12);
   } else {
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
@@ -3750,7 +3923,7 @@ function startInstrumentCameraTransition(
   position,
   target,
   duration,
-  { mascotPose = null } = {},
+  { mascotPose = null, guitarBlend = null } = {},
 ) {
   clearTimeout(idleTimer);
   controls.autoRotate = false;
@@ -3764,6 +3937,7 @@ function startInstrumentCameraTransition(
     toPosition: position.clone(),
     toTarget: target.clone(),
     mascotPose,
+    guitarBlend,
   };
   setInstrumentViewPhase(phase, kind);
 }
@@ -3779,11 +3953,20 @@ function activateInstrumentView(kind) {
   mascotMove.keys.clear();
   releaseMoveJoystick();
   let mascotPose = null;
+  let guitarBlend = null;
   if (kind === 'piano') {
     mascotPose = {
       from: captureMascotInstrumentPose(),
       to: createPianoMascotPose(),
     };
+  } else if (kind === 'guitar') {
+    // The guitar swings up from its stand into the mascot's hands while the
+    // camera flies behind the shoulder — both lerp with the same easing.
+    mascotPose = {
+      from: captureMascotInstrumentPose(),
+      to: createGuitarMascotPose(),
+    };
+    guitarBlend = { from: 0, to: 1 };
   } else {
     poseMascotAtInstrument(kind);
   }
@@ -3794,7 +3977,7 @@ function activateInstrumentView(kind) {
     frame.position,
     frame.target,
     prefersReducedMotion.matches ? 0.18 : 0.78,
-    { mascotPose },
+    { mascotPose, guitarBlend },
   );
 }
 
@@ -3802,6 +3985,9 @@ function finishInstrumentReturn() {
   // The walk control is hidden while seated. Safari can lose its pointer-up
   // when that happens, so restoring free movement must also restore its home UI.
   releaseMoveJoystick();
+  // Covers immediate exits (falls, instrument switches) where no returning
+  // transition lerped the guitar back onto its stand.
+  guitar.setPerformBlend(0);
   const home = instrumentView.home;
   const offerPriceChipKind = instrumentView.offerPriceChipOnIdle;
   if (instrumentView.phase === 'returning') {
@@ -3890,6 +4076,7 @@ function leaveInstrumentView({ immediate = false, offerPriceChip = true } = {}) 
     home.position,
     home.target,
     prefersReducedMotion.matches ? 0.12 : 0.52,
+    { guitarBlend: leavingKind === 'guitar' ? { from: 1, to: 0 } : null },
   );
 }
 
@@ -3908,9 +4095,17 @@ function updateInstrumentViewCamera(dt) {
         eased,
       );
     }
+    if (transition.guitarBlend) {
+      guitar.setPerformBlend(THREE.MathUtils.lerp(
+        transition.guitarBlend.from,
+        transition.guitarBlend.to,
+        eased,
+      ), mascot.group.scale.y);
+    }
     camera.lookAt(controls.target);
     if (k >= 1) {
       if (transition.mascotPose) applyMascotInstrumentPose(transition.mascotPose.to);
+      if (transition.guitarBlend) guitar.setPerformBlend(transition.guitarBlend.to, mascot.group.scale.y);
       instrumentView.transition = null;
       if (instrumentView.phase === 'entering') {
         applyFocusedControlLimits();
@@ -4325,12 +4520,13 @@ function updateMascot(dt) {
     return;
   }
   if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused' || instrumentView.phase === 'returning') {
-    if (instrumentView.kind === 'guitar' && instrumentView.phase !== 'returning') {
+    // Focused only: during 'entering' the transition lerp owns the arm pose.
+    if (instrumentView.kind === 'guitar' && instrumentView.phase === 'focused') {
       guitarStrokeMotion *= Math.pow(0.012, dt);
       if (guitarStrokeMotion < 0.002) guitarStrokeMotion = 0;
       const motion = prefersReducedMotion.matches ? 0 : guitarStrokeMotion;
-      mascot.armR.rotation.x = -0.66 + motion * 0.12;
-      mascot.armR.rotation.z = 0.24 + guitarStrokeDirection * motion * 0.34;
+      mascot.armL.rotation.x = GUITAR_STRUM_ARM_BASE.x + motion * 0.14;
+      mascot.armL.rotation.z = GUITAR_STRUM_ARM_BASE.z + guitarStrokeDirection * motion * 0.3;
     }
     if (mascotLabel) {
       mascotLabel.visible = instrumentView.phase === 'returning';
@@ -5040,7 +5236,7 @@ function refitActiveInstrumentView() {
     instrumentView.transition.toTarget.copy(nextTarget);
     return;
   }
-  if (kind === 'piano' && !prefersReducedMotion.matches) {
+  if ((kind === 'piano' || kind === 'guitar') && !prefersReducedMotion.matches) {
     controls.enabled = false;
     instrumentView.refit = {
       elapsed: 0,
@@ -7408,6 +7604,21 @@ function animate(frameTime = performance.now()) {
 // ============================================================
 if (params.has('testhooks')) {
   renderer.info.autoReset = false;
+  if (params.has('headless')) {
+    // Hidden tabs never fire rAF and clamp timers to 1 Hz, which freezes the
+    // whole sim before the inspector can drive it. A worker interval is exempt
+    // from background throttling, so it pumps the frame loop instead.
+    const frameWorker = new Worker(URL.createObjectURL(new Blob([
+      'setInterval(() => postMessage(0), 33);',
+    ], { type: 'text/javascript' })));
+    const pendingFrames = [];
+    window.requestAnimationFrame = (cb) => pendingFrames.push(cb) && pendingFrames.length;
+    frameWorker.onmessage = () => {
+      const batch = pendingFrames.splice(0, pendingFrames.length);
+      for (const frame of batch) frame(performance.now());
+    };
+    Object.defineProperty(document, 'hidden', { get: () => false });
+  }
   window.__THREE_GAME_DIAGNOSTICS__ = {
     get renderer() {
       return {
@@ -7432,6 +7643,34 @@ if (params.has('testhooks')) {
     },
     // Debug-only scene handle for headless isolation (hide/show suspects).
     scene,
+    get state() {
+      const world = (object) => object.getWorldPosition(new THREE.Vector3())
+        .toArray().map((v) => +v.toFixed(2));
+      return {
+        phase: instrumentView.phase,
+        kind: instrumentView.kind,
+        started,
+        flyT,
+        mascot: mascot.group.position.toArray().map((v) => +v.toFixed(2)),
+        mascotScale: +mascot.group.scale.y.toFixed(2),
+        cameraDistance: +camera.position.distanceTo(controls.target).toFixed(3),
+        minDistance: +controls.minDistance.toFixed(3),
+        maxDistance: +controls.maxDistance.toFixed(3),
+        handL: world(mascot.handL),
+        handR: world(mascot.handR),
+        strumPlane: world(guitar.strumPlane),
+        destination: mascotMove.destination ? mascotMove.destination.toArray().map((v) => +v.toFixed(2)) : null,
+        waypoints: mascotMove.waypoints.length,
+        transition: Boolean(instrumentView.transition),
+      };
+    },
+    // Headless capture: render synchronously so toDataURL reads fresh pixels
+    // even when a hidden tab never composites frames.
+    captureFrame() {
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
+      return renderer.domElement.toDataURL('image/png');
+    },
     // Debug picking: what is under this client-pixel? Lists every hit front to
     // back so soft/transparent artifacts can be identified, not just the top hit.
     pick(clientX, clientY) {

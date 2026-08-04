@@ -120,20 +120,20 @@ Desktop keyboard sound does **not** require instrument focus (see §5).
 
 ### Piano performance mode
 
-**Current milestone:** improve the piano focus composition and the mascot's seated performance pose, plus reliable held-note sustain for direct key play. Focus / `E` / **ГРАТИ** still never starts a melody.
+**Current milestone:** the piano focus is a **player's-eye view** — the same over-the-shoulder language as the drums — plus reliable held-note sustain for direct key play. Focus / `E` / **ГРАТИ** still never starts a melody.
 
 #### Focus framing — current
 
-- Treat the keybed as the primary subject, the mascot's hands / forearms as the secondary subject, and the upper body / face as supporting context. Do not shrink the keys merely to keep the entire mascot in frame.
-- Use a high oblique-overhead camera from the pianist's opposite side: the complete keybed reads along the left and the seated mascot / bench read on the right. Clearly separate black and white keys; avoid a flat side view or a perfectly vertical top-down view.
+- The camera sits **behind and above the seated mascot** (steep ~72° pitch, slight side offset) so the two-octave keybed reads as a near-horizontal GarageBand-like strip across the screen, with the mascot's head, shoulders, and both hands visible below it — the pianist's own view.
+- Keys plus hand anchors are the fitted subject; the mascot deliberately crops at the frame bottom (same as drums). The head must never cover the keybed: a bigger mascot sits farther from the keys (bench standoff scales with mascot size, clamped to the bench depth).
 - Keep the piano cabinet clean in focus: no music book, sheet pages, note lines, or music-rest board.
 - Frame the complete two-octave keybed plus both hands inside a measured safe rectangle. Derive that rectangle from `visualViewport`, safe-area insets, and the actual bounds of the HUD, loop pedal, zoom controls, and ✕ exit control.
-- Target roughly `76–86%` of the safe width for the projected keybed on desktop / landscape and `84–92%` on phone portrait. Preserve at least `16 px` of visual margin around the keys and hands.
-- Use piano-local bounds and anchors, transformed to world space, instead of viewport-specific world offsets. A base camera preset may establish the angle, but safe-rectangle fitting owns the final distance and target offset.
-- The camera target should sit near the visual center of the keybed, biased slightly toward the mascot so the hands and seated posture remain legible. Shift the camera target to place the subject in the safe rectangle; do not tilt by moving the camera below the keybed.
-- The camera transition endpoint is the authoritative focused frame. Derive focused azimuth / polar limits from that endpoint before re-enabling OrbitControls so the first controls update cannot snap or reframe it.
-- Keep the focused distance envelope that preserves key readability, while leaving horizontal orbit, pinch / wheel zoom, and the `+` / `−` controls available. Zoom must not move the keyboard behind fixed UI.
+- Fit the keybed to roughly `81%` of the safe width on desktop / landscape and `88%` on phone portrait, then open **two `+` zoom steps inside that fit** so the keys fill the screen. The outer key or two therefore crop at the frame edges; `−` / pinch must always reach past the uncropped fit so the complete two-octave keybed is recoverable.
+- Use piano-local bounds and anchors, transformed to world space, instead of viewport-specific world offsets. A base camera preset establishes the eye direction; safe-rectangle fitting owns the final distance and target offset. On portrait the subject sits slightly below the safe-rect center (`centerBiasY`) so the play surface lands near the thumbs instead of floating over bare floor.
+- The camera transition endpoint is the authoritative focused frame. Derive focused azimuth / polar limits from that endpoint before re-enabling OrbitControls so the first controls update cannot snap or reframe it (the polar floor sits below the fitted steep pitch).
+- Keep the focused distance envelope that preserves key readability, while leaving horizontal orbit, pinch / wheel zoom, and the `+` / `−` controls available. The envelope allows roughly three further `+` steps in and enough `−` range to clear the opening crop. Zoom must not move the keyboard behind fixed UI.
 - Refit on focus, resize, orientation change, and `visualViewport` change. During an active entry transition, update its destination rather than teleporting the camera. Once focused, refit in one short eased correction; use an immediate correction under `prefers-reduced-motion`.
+- On coarse-pointer portrait phones, the first piano or guitar focus shows a one-time toast (`localStorage` `av2.rotate-hint.v1`): `Поверни телефон горизонтально — інструмент стане більшим`.
 
 #### Mascot performance pose — current
 
@@ -166,10 +166,12 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - **Pointer / pad / mesh guitar input** is accepted only during stable guitar focus — never while idle, approaching, entering, returning, or focused on another instrument.
 - **Desktop keyboard** chord + strum keys follow the global jam map (§5): they may sound while idle, while focused on any instrument, and during approach / enter / return camera moves. They stay silent only when the stage has not started, a modal is open, or the event target is editable / a control.
 - Global instrument shortcuts ignore key events originating from buttons, links, form fields, or editable content; the focused control handles those events itself.
-- Focus frames the soundhole, all six strings, and the first five frets from a near-front angle, two `+` zoom steps closer than the base guitar framing. On resize / orientation change, fit that play area again.
-- The mascot and guitar must read as one performance pose: fretting hand at the neck, picking hand at the soundhole. String motion and hand motion carry the action; whole-body guitar wobble stays subtle.
-- Use separate guitar-local raycast proxies for approach, strum, and fret selection. A pointer captured by a play zone or by the chord pad cannot orbit / zoom the camera until it ends.
-- Start from a composed focused frame, then leave horizontal orbit and zoom available from empty canvas (and the `+` / `−` controls). Zoom buttons remain available.
+- Focus is a **player's view**: during the entry transition the guitar lerps off its stand into the mascot's hands — held at chest height, low E nearest the viewer, face tipped up toward a steep behind-the-shoulder camera (the stand fades out; on exit both lerp back). A measured fitter frames the strings band from nut to below the bridge, reserves the chord-pad gutter, opens **two `+` zoom steps inside the fit**, and refits on resize / orientation change.
+- **The camera azimuth follows the viewport**, because a guitar is long and thin and a diagonal one wastes the frame: each orientation lays the instrument along the screen's long axis. Landscape / desktop keeps the neck to the screen left so strings read horizontally (strum = vertical swipe). Phone portrait stands the guitar up — body low and to the right, neck rising, mascot head at the left edge — so strings read vertically (strum = horizontal swipe). Strum detection works in guitar-local space, so it is unaffected by which framing is active.
+- The held pose adapts to mascot customization: hold height rides the mascot's chest and a bigger body steps farther back so the head never eclipses the soundhole; the camera pitch plus a small bout-side azimuth keep the strings clear of the head at every size.
+- The mascot and guitar must read as one performance pose: fretting hand along the neck, strum hand over the soundhole. String motion and strum-arm motion carry the action; whole-body guitar wobble stays subtle.
+- Use separate guitar-local raycast proxies for approach, strum, and fret selection (all pose-invariant: they ride the guitar body). A pointer captured by a play zone or by the chord pad cannot orbit / zoom the camera until it ends.
+- Start from a composed focused frame, then leave horizontal orbit available from empty canvas within the fitted distance / pitch envelope (and the `+` / `−` controls).
 
 #### Strum and pluck
 
@@ -193,6 +195,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 | G | 3 | 2 | 0 | 0 | 0 | 3 |
 | F | 1 | 3 | 3 | 2 | 1 | 1 |
 
+- The chord pad is laid out like a real guitar during focus: a **vertical rail on the left** (fretting hand) on landscape / desktop, with the strum zone to the right (picking hand); on portrait it stays a bottom row, sitting lower than the vocal pad and offset left of the zoom column so the two never overlap. The guitar fitter reserves that gutter so chords never cover the strings.
 - **Touch:** tap a chord to latch it for one-finger playing, or hold it with one pointer and strum with another. A quick tap on the string fan plucks the nearest string. Releasing a genuinely held chord returns to the previously latched chord (or open strings); cancel, exit, background, or lost capture clears transient holds.
 - **Fine pointer / pen:** clicking a chord latches it so the same pointer can strum repeatedly; clicking it again clears it.
 - **Desktop keyboard (jam map):** hold `Q` / `R` / `T` / `Y` / `U` / `I` for Em / Am / C / D / G / F. Key release returns to open strings. Space is a downstroke; Shift+Space is an upstroke. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
@@ -425,6 +428,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 - `av2.onboard.v2` records dismissal of the onboarding tip.
 - A first-run click on **ЗРОЗУМІЛО** closes onboarding and opens the mascot customization modal once; `av2.mascot.after-onboard.v2` records that handoff. Other onboarding dismissals do not open it.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
+- `av2.rotate-hint.v1` records the one-time portrait-phone rotate-to-landscape hint shown on first piano / guitar focus.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
 ---
@@ -439,7 +443,8 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
-| `testhooks` | Headless QA only: exposes `__THREE_GAME_TEST_HOOKS__` (setState: stage/piano/guitar/drums/mic/vibe/dance, plus debug `pick(clientX, clientY)` raycast listing and a `scene` handle for isolation toggles) + `__THREE_GAME_DIAGNOSTICS__` (renderer counts) for the canvas inspector; never active for visitors |
+| `testhooks` | Headless QA only: exposes `__THREE_GAME_TEST_HOOKS__` (setState: stage/piano/guitar/drums/mic/vibe/dance, debug `pick(clientX, clientY)` raycast listing, a `scene` handle for isolation toggles, a `state` snapshot of the view / walk / mascot / camera-distance limits, and `captureFrame()` for synchronous canvas capture) + `__THREE_GAME_DIAGNOSTICS__` (renderer counts) for the canvas inspector; never active for visitors |
+| `headless` | With `testhooks` only: pumps the frame loop from a worker interval so hidden/backgrounded QA tabs still simulate and render |
 
 ---
 
@@ -496,11 +501,11 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
 ### Piano framing / pose acceptance
 
-- At `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, the complete keybed and both hands remain inside the measured safe rectangle with at least `16 px` of visual margin.
-- The projected keybed occupies `76–86%` of safe width on desktop / landscape and `84–92%` on phone portrait. Black / white key relationships and the white-key front edge remain readable.
+- At `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, both hands and the great majority of the keybed remain in frame, with the mascot's head clear of the keys. Only the outermost key or two may crop, and `−` recovers the complete keybed.
+- Black / white key relationships and the white-key front edge remain readable, and white keys are large enough to hit confidently with a fingertip.
 - The first stable piano-focused frame exactly matches the camera transition endpoint. Re-enabling OrbitControls does not snap, rotate, zoom, or shift the target.
 - HUD, loop pedal, zoom controls, safe-area insets, and ✕ do not cover the keybed or either hand. Opening a VIBE toast does not make the play area unusable. Price chips appear only after leaving focus, so they never cover the keybed during play.
-- The seated pose remains believable at the mascot height / build extremes: pelvis on the bench, feet near the floor, hands over separate keyboard regions, relaxed shoulders, and no visible body / furniture intersections.
+- The seated pose remains believable at the mascot height / build extremes: pelvis on the bench, feet near the floor, hands over separate keyboard regions, relaxed shoulders, and no visible body / furniture intersections. At every height / build value the head stays below the keybed on screen — the scale-aware bench standoff, not the camera distance, guarantees this.
 - Entering focus blends cleanly from the preceding walk / idle pose. Ten consecutive piano focus → ✕ cycles produce no transform drift, stuck seated limbs, or return-position regression.
 - Resize, orientation, and `visualViewport` changes during entry update the transition destination; the focused frame never flashes through an obsolete preset or teleports between compositions.
 - Under `prefers-reduced-motion`, framing and pose remain complete and readable without breathing / wrist motion or a long transition.
@@ -514,7 +519,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - A complete stroke excites each crossed eligible string once and in directional order; motion along the strings stays silent. Muted strings neither sound nor animate.
 - Soft and hard strokes are audibly distinct. Reversing direction can immediately produce the reverse string order without false retriggers.
 - Twenty consecutive chord-hold + second-pointer strums work on supported iPhone Safari and Android Chrome without page zoom, orbit motion, lost pointers, or a stuck chord.
-- Chord targets are at least `48 × 48` CSS px with `8 px` separation. The strum zone remains usable at the smallest supported viewport and after portrait / landscape changes.
+- Chord targets are at least `48 × 48` CSS px with `8 px` separation on roomy viewports, never dropping below `42 px` on the narrowest phones, and never overlap the zoom column or loop pedal. The strum zone remains usable at the smallest supported viewport and after portrait / landscape changes — including the orientation-dependent guitar framing, where a stroke crosses the strings horizontally on portrait and vertically on landscape.
 - Pointer cancel, focus exit, visibility loss, and page backgrounding clear every held chord, active stroke, and captured guitar pointer.
 - Repeated guitar focus → ✕ exits on iPhone Safari restore the joystick to its non-floating home state; a lost joystick pointer-up may never leave only the blurred stick backdrop behind.
 - Input-to-audio scheduling is at most `16 ms`; target measured input-to-audible latency is at most `50 ms` desktop and `80 ms` on reference mobile devices.

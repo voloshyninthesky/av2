@@ -975,14 +975,24 @@ export function buildGuitar() {
   body.rotation.x = -0.14;
   body.rotation.y = 0.0;
 
+  // Focus performance pose: the guitar rises into the mascot's hands, neck to
+  // the player's left, face tipped up toward the behind-the-shoulder camera so
+  // strings read horizontally (low E nearest the viewer, like a held guitar).
+  const STAND_POSE = { position: new THREE.Vector3(0, 0.62, 0), euler: new THREE.Euler(-0.14, 0, 0) };
+  const PLAY_POSE = { position: new THREE.Vector3(-0.35, 1.1, 0.16), euler: new THREE.Euler(-1.72, -0.08, -1.55) };
+  const basePose = { rx: STAND_POSE.euler.x, ry: STAND_POSE.euler.y, rz: STAND_POSE.euler.z };
+  let performBlend = 0;
+
   // ---- A-frame stand ----
   const standMat = metal(0x2c2c34, 0.45);
+  standMat.transparent = true;
   const stand = new THREE.Group();
   stand.add(cylinderBetween(new THREE.Vector3(-0.3, 0, 0.22), new THREE.Vector3(-0.08, 0.6, -0.08), 0.02, standMat));
   stand.add(cylinderBetween(new THREE.Vector3(0.3, 0, 0.22), new THREE.Vector3(0.08, 0.6, -0.08), 0.02, standMat));
   stand.add(cylinderBetween(new THREE.Vector3(-0.3, 0.02, 0.22), new THREE.Vector3(0.3, 0.02, 0.22), 0.018, standMat));
   // cradle arms with rubber tips + floor feet
   const tipMat = std(0x17121c, { roughness: 0.9, metalness: 0 });
+  tipMat.transparent = true;
   stand.add(cylinderBetween(new THREE.Vector3(-0.16, 0.3, 0.1), new THREE.Vector3(-0.16, 0.34, 0.26), 0.016, standMat));
   stand.add(cylinderBetween(new THREE.Vector3(0.16, 0.3, 0.1), new THREE.Vector3(0.16, 0.34, 0.26), 0.016, standMat));
   for (const [tx, ty, tz] of [[-0.16, 0.345, 0.265], [0.16, 0.345, 0.265], [-0.3, 0.012, 0.22], [0.3, 0.012, 0.22]]) {
@@ -1003,6 +1013,28 @@ export function buildGuitar() {
 
   let wobble = 0, recoil = 0, recoilDirection = 1, time = 0;
 
+  // The held height rides the mascot's chest, so a customized short or tall
+  // mascot still reads as holding the guitar rather than reaching for it.
+  function playPosition(heightScale) {
+    const position = PLAY_POSE.position.clone();
+    position.y *= heightScale;
+    return position;
+  }
+
+  function setPerformBlend(t, heightScale = 1) {
+    performBlend = THREE.MathUtils.clamp(t, 0, 1);
+    const k = performBlend;
+    body.position.lerpVectors(STAND_POSE.position, playPosition(heightScale), k);
+    basePose.rx = THREE.MathUtils.lerp(STAND_POSE.euler.x, PLAY_POSE.euler.x, k);
+    basePose.ry = THREE.MathUtils.lerp(STAND_POSE.euler.y, PLAY_POSE.euler.y, k);
+    basePose.rz = THREE.MathUtils.lerp(STAND_POSE.euler.z, PLAY_POSE.euler.z, k);
+    // The empty stand under a held guitar reads as a bug — fade it away.
+    const standOpacity = THREE.MathUtils.clamp(1 - k * 1.6, 0, 1);
+    standMat.opacity = standOpacity;
+    tipMat.opacity = standOpacity;
+    stand.visible = standOpacity > 0.01;
+  }
+
   function queuePluck(index, velocity = 1, delayMs = 0) {
     if (!Number.isInteger(index) || index < 0 || index >= strings.length) return;
     pendingExcitations.push({
@@ -1020,6 +1052,13 @@ export function buildGuitar() {
     openFreqs: [...OPEN_FREQS],
     strumPlane,
     fretboardPlane,
+    getPerformancePose(heightScale = 1) {
+      return {
+        position: playPosition(heightScale),
+        euler: PLAY_POSE.euler.clone(),
+      };
+    },
+    setPerformBlend,
     strum(stringEvents = [], direction = 'bass-to-treble', velocity = 1) {
       recoilDirection = direction === 'treble-to-bass' ? -1 : 1;
       recoil = Math.max(recoil, THREE.MathUtils.clamp(velocity, 0.2, 1));
@@ -1042,8 +1081,9 @@ export function buildGuitar() {
       const idleZ = reducedMotion ? 0 : Math.sin(time * 0.9) * 0.006;
       const idleX = reducedMotion ? 0 : Math.sin(time * 0.65) * 0.003;
       const playRecoil = reducedMotion ? 0 : Math.sin(time * 24) * recoil * 0.012 * recoilDirection;
-      body.rotation.z = playRecoil + Math.sin(time * 26) * wobble * 0.016 + (wobble < 0.05 ? idleZ : 0);
-      body.rotation.x = -0.14 + Math.sin(time * 20) * wobble * 0.008 + (wobble < 0.05 ? idleX : 0);
+      body.rotation.z = basePose.rz + playRecoil + Math.sin(time * 26) * wobble * 0.016 + (wobble < 0.05 ? idleZ : 0);
+      body.rotation.x = basePose.rx + Math.sin(time * 20) * wobble * 0.008 + (wobble < 0.05 ? idleX : 0);
+      body.rotation.y = basePose.ry;
       for (let i = 0; i < strings.length; i++) {
         const str = strings[i];
         stringWobble[i] *= Math.pow(0.012, dt);
