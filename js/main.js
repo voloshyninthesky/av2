@@ -3169,13 +3169,10 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);
-    controls.enableZoom = true;
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
   } else if (phase === 'focused' && kind === 'guitar') {
     hideVocalPad();
     showChordPad();
-    // Prefer finger strum over page/orbit pinch-zoom while at the guitar.
-    controls.enableZoom = false;
     document.documentElement.classList.add('guitar-focused');
   } else if (previousPhase === 'focused' && phase !== 'focused') {
     // Leaving focus: clear performance holds. Keep keyboard jam alive while
@@ -3184,16 +3181,17 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
     hideChordPad();
     releaseAllHeldPianoNotes();
     releaseKeyboardVocal();
-    controls.enableZoom = true;
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
     clearGuitarInteractionState();
     audio.muteGuitar();
   } else if (phase !== 'focused') {
     hideVocalPad();
     hideChordPad();
-    controls.enableZoom = true;
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
   }
+  // Pinch-zoom is allowed in every phase now; only a finger resting on a play
+  // surface suspends it, so strums / held keys are never read as a pinch.
+  syncOrbitZoom();
 }
 
 function instrumentLocalToWorld(kind, point) {
@@ -4903,12 +4901,37 @@ function blocksOrbitPointer(info) {
     || info?.mode === 'guitar-approach';
 }
 
-canvas.addEventListener('pointerdown', (e) => {
+/**
+ * Sounding surfaces only. The piano cabinet / lid / bench carry instrument:
+ * 'piano' so a distant tap can walk over, but while focused they are scenery —
+ * claiming them would swallow the pinch that should zoom the view.
+ */
+function isPlaySurfaceMesh(mesh) {
+  const data = mesh?.userData;
+  if (!data) return false;
+  if (data.instrument === 'piano') return Number.isFinite(data.freq);
+  return true;
+}
+
+/**
+ * Pinch-zoom stays live except while a finger rests on a key / string / drum:
+ * OrbitControls counts every canvas pointer, so a two-finger play gesture would
+ * otherwise dolly the camera.
+ */
+function syncOrbitZoom() {
+  let playing = false;
+  for (const info of activePointers.values()) {
+    if (blocksOrbitPointer(info)) { playing = true; break; }
+  }
+  controls.enableZoom = !playing;
+}
+
+function handleCanvasPointerDown(e) {
   if (!started || ui.modalOpen || flyT >= 0) return;
 
   if (isMultiTouchInstrumentFocus()) {
     const mesh = hitInteractableAt(e.clientX, e.clientY);
-    if (mesh && mesh.userData.instrument === instrumentView.kind) {
+    if (mesh && mesh.userData.instrument === instrumentView.kind && isPlaySurfaceMesh(mesh)) {
       // Claim the pointer so OrbitControls cannot rotate / zoom from keys / drums.
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -4992,6 +5015,11 @@ canvas.addEventListener('pointerdown', (e) => {
     t: performance.now(),
     pointerType: e.pointerType,
   });
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  handleCanvasPointerDown(e);
+  syncOrbitZoom();
 }, { capture: true, passive: false });
 
 canvas.addEventListener('pointermove', (e) => {
@@ -5163,11 +5191,15 @@ function endActivePointer(e) {
   if (Math.hypot(dx, dy) < tapTolerance && dt < 600) handleClick(e);
 }
 
-canvas.addEventListener('pointerup', endActivePointer, { capture: true });
+canvas.addEventListener('pointerup', (e) => {
+  endActivePointer(e);
+  syncOrbitZoom();
+}, { capture: true });
 canvas.addEventListener('pointercancel', (e) => {
   const info = activePointers.get(e.pointerId);
   releaseHeldPianoNote(info?.pianoHold, { cancel: true });
   activePointers.delete(e.pointerId);
+  syncOrbitZoom();
 }, { capture: true });
 window.addEventListener('pointermove', onPointerMove, { passive: true });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
