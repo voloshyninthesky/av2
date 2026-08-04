@@ -133,7 +133,6 @@ Desktop keyboard sound does **not** require instrument focus (see §5).
 - The camera transition endpoint is the authoritative focused frame. Derive focused azimuth / polar limits from that endpoint before re-enabling OrbitControls so the first controls update cannot snap or reframe it (the polar floor sits below the fitted steep pitch).
 - Keep the focused distance envelope that preserves key readability, while leaving horizontal orbit, pinch / wheel zoom, and the `+` / `−` controls available. The envelope allows roughly three further `+` steps in and enough `−` range to clear the opening crop. Zoom must not move the keyboard behind fixed UI.
 - Refit on focus, resize, orientation change, and `visualViewport` change. During an active entry transition, update its destination rather than teleporting the camera. Once focused, refit in one short eased correction; use an immediate correction under `prefers-reduced-motion`.
-- On coarse-pointer portrait phones, the first piano or guitar focus shows a one-time toast (`localStorage` `av2.rotate-hint.v1`): `Поверни телефон горизонтально — інструмент стане більшим`.
 
 #### Mascot performance pose — current
 
@@ -228,6 +227,8 @@ Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-pan
 Only the mascot's major masses cast shadows (torso, neck, face, hair, limbs, shoes). Trim, stripes, collar, eyes and pins are excluded: they add nothing to the shadow map and would roughly double the shadow-pass draw calls now that the mascot stands in the key light. The guitar and mic follow the same rule inside that pool.
 
 Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v3`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
+
+Opening the editor while an instrument is focused leaves that focus immediately (no return animation): the instrument settles into its resting pose (the guitar drops back onto its stand) and the camera snaps straight to its pre-focus stage frame before the editor's own preview camera takes over. That snap must land exactly on the saved frame — any orbit drag made just before opening the editor must not leave a residual offset — since the editor saves this exact position as the frame to restore on close.
 
 **Dance** (click the HUD logo): toggles a **tektonik** routine — procedural 8-beat loop (overhead arm sweeps + bounce, full spin on the last two beats). Limbs relax smoothly on stop. Walk input, instrument approach, or a stage fall stops the dance.
 
@@ -428,7 +429,6 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 - `av2.onboard.v2` records dismissal of the onboarding tip.
 - A first-run click on **ЗРОЗУМІЛО** closes onboarding and opens the mascot customization modal once; `av2.mascot.after-onboard.v2` records that handoff. Other onboarding dismissals do not open it.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
-- `av2.rotate-hint.v1` records the one-time portrait-phone rotate-to-landscape hint shown on first piano / guitar focus.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
 ---

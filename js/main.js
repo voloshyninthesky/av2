@@ -3138,22 +3138,6 @@ function setSceneLabelsVisible(visible) {
   if (mascotLabel && !mascotMove.fall) mascotLabel.visible = visible;
 }
 
-// Piano keys and guitar strings lie along the screen width, so landscape is
-// the roomier way to play on a phone. One gentle nudge, then never again.
-const ROTATE_HINT_KEY = 'av2.rotate-hint.v1';
-
-function maybeShowRotateHint() {
-  if (!isMobileGameMode()) return;
-  if (window.innerWidth >= window.innerHeight) return;
-  try {
-    if (localStorage.getItem(ROTATE_HINT_KEY)) return;
-    localStorage.setItem(ROTATE_HINT_KEY, '1');
-  } catch (_) {
-    return;
-  }
-  ui.toast('Поверни телефон горизонтально — інструмент стане більшим', 4200);
-}
-
 function syncMobileInstrumentChrome() {
   // Show ✕ only once seated (entering/focused). Revealing it during approaching
   // would put it under the same finger that just pressed ГРАТИ, and the
@@ -3186,7 +3170,6 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   syncMobileInstrumentChrome();
   syncInstrumentExposure();
   if (phase === 'focused' && kind) clearKeyboardJamChipTimer(kind);
-  if (phase === 'focused' && (kind === 'piano' || kind === 'guitar')) maybeShowRotateHint();
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);
@@ -4019,9 +4002,15 @@ function finishInstrumentReturn() {
   mascot.group.position.copy(projectMascotToWalkablePoint(returnPosition));
   mascot.group.position.y = 0;
   if (home) {
-    camera.position.copy(home.position);
-    controls.target.copy(home.target);
     restoreInstrumentControlLimits(home);
+    // A damped OrbitControls carries residual sphericalDelta / panOffset from
+    // any orbit gesture made while focused. A plain position/target set +
+    // update() would re-apply that stale delta on top of the restored home
+    // frame — invisible on a normal ✕ exit (the return transition runs with
+    // controls disabled long enough for it to decay), but very visible on an
+    // immediate exit (e.g. opening the mascot editor mid-focus), which has no
+    // decay time at all. Flush it the same way instrument-focus entry does.
+    syncControlsAtInstrumentFrame(home.position, home.target);
   }
   applyMobileOrbitPolicy();
   resetMobileFollowCamera();
