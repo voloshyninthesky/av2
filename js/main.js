@@ -5424,10 +5424,10 @@ function addVibe(n) {
 
 // ---- price carousel ----
 const PRICE_SLIDES = [
-  { kind: 'mic', title: 'Уроки вокалу', anchor: 'vocal' },
-  { kind: 'guitar', title: 'Уроки гітари', anchor: 'guitar' },
-  { kind: 'drums', title: 'Уроки гри на барабанах', anchor: 'drums' },
-  { kind: 'piano', title: 'Уроки фортепіано', anchor: 'piano' },
+  { kind: 'mic', icon: '🎤', title: 'Вокал', anchor: 'vocal' },
+  { kind: 'guitar', icon: '🎸', title: 'Гітара', anchor: 'guitar' },
+  { kind: 'drums', icon: '🥁', title: 'Барабани', anchor: 'drums' },
+  { kind: 'piano', icon: '🎹', title: 'Фортепіано', anchor: 'piano' },
 ];
 const shownPriceChips = new Set();
 const pendingPriceChips = new Set();
@@ -5441,9 +5441,9 @@ function chipFor(kind, { force = false } = {}) {
   const slide = PRICE_SLIDES[index];
   const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind, { force: true });
   ui.showChip(
-    `${slide.title} <span class="accent">від 50 зл</span>`,
+    `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>${slide.title} · уроки <span class="accent">від 50 зл</span>`,
     '',
-    'ДЕТАЛІ',
+    'ЦІНИ ›',
     () => ui.open('pricing', slide.anchor),
     { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
   );

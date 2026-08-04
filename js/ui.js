@@ -248,6 +248,8 @@ export class UI {
 
   // ---- chip ----
   showChip(titleHtml, desc, ctaText, onCta, navigation = null) {
+    clearTimeout(this._chipLeaveTimer);
+    this.el.chip.classList.remove('leaving');
     this.el.chipTitle.innerHTML = titleHtml;
     this.el.chipDesc.textContent = desc;
     this.el.chipDesc.hidden = !desc;
@@ -286,7 +288,18 @@ export class UI {
     }, 400);
   }
 
-  hideChip() { this.el.chip.hidden = true; clearTimeout(this._chipTimer); }
+  hideChip() {
+    clearTimeout(this._chipTimer);
+    const chip = this.el.chip;
+    if (chip.hidden || chip.classList.contains('leaving')) return;
+    // Soft fade-out instead of an abrupt vanish; `hidden` lands after it ends.
+    chip.classList.add('leaving');
+    clearTimeout(this._chipLeaveTimer);
+    this._chipLeaveTimer = setTimeout(() => {
+      chip.hidden = true;
+      chip.classList.remove('leaving');
+    }, 240);
+  }
 
   // ---- toast ----
   toast(html, dur = 3200, kind = '') {

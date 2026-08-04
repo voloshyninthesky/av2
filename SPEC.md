@@ -316,7 +316,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **PIXEL** defaults to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
-| Chip | Once-per-instrument price teaser carousel. Its full non-control surface opens its CTA; arrow controls retain carousel navigation and swipe still changes slides. The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
+| Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від 50 зл» + «ЦІНИ ›»), fading in/out softly. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
