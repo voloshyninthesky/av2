@@ -1492,48 +1492,55 @@ function visibleBeamMaterial(color, clipToStage = false) {
   const material = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
-    opacity: 0.05,
+    opacity: 0.06,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
     depthWrite: false,
     fog: false,
   });
-  if (!clipToStage) return material;
 
-  // The volumetric shell is decorative, so keep it within the actual platform
-  // footprint. A short fade avoids a hard shader cut at the wooden stage edge.
+  // Every beam dissolves toward its wide base instead of terminating in a hard
+  // cut: the open cylinder's bright rim otherwise reads as a dark circle
+  // "sitting" at the base of the light against the backdrop. Cylinder UV v runs
+  // 1 at the fixture (narrow top) to 0 at the base, so fading on v kills the
+  // rim while the upper beam keeps its punch. The clipped variant additionally
+  // masks the shell to the platform footprint so nothing hangs over the void.
   material.onBeforeCompile = (shader) => {
     shader.uniforms.stageBeamBounds = { value: STAGE_BEAM_BOUNDS };
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying vec3 vBeamWorldPosition;',
+        '#include <common>\nvarying vec3 vBeamWorldPosition;\nvarying float vBeamAxial;',
       )
       .replace(
         '#include <begin_vertex>',
-        '#include <begin_vertex>\nvBeamWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+        `#include <begin_vertex>
+        vBeamWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vBeamAxial = uv.y;`,
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nuniform vec4 stageBeamBounds;\nvarying vec3 vBeamWorldPosition;',
+        '#include <common>\nuniform vec4 stageBeamBounds;\nvarying vec3 vBeamWorldPosition;\nvarying float vBeamAxial;',
       )
       .replace(
         '#include <opaque_fragment>',
         `
+          diffuseColor.a *= smoothstep(0.0, 0.55, vBeamAxial);
+          ${clipToStage ? `
           float beamFade = 0.24;
           float beamStageMask =
             smoothstep(stageBeamBounds.x, stageBeamBounds.x + beamFade, vBeamWorldPosition.x) *
             (1.0 - smoothstep(stageBeamBounds.y - beamFade, stageBeamBounds.y, vBeamWorldPosition.x)) *
             smoothstep(stageBeamBounds.z, stageBeamBounds.z + beamFade, vBeamWorldPosition.z) *
             (1.0 - smoothstep(stageBeamBounds.w - beamFade, stageBeamBounds.w, vBeamWorldPosition.z));
-          diffuseColor.a *= beamStageMask;
+          diffuseColor.a *= beamStageMask;` : ''}
           if (diffuseColor.a < 0.001) discard;
           #include <opaque_fragment>
         `,
       );
   };
-  material.customProgramCacheKey = () => 'stage-clipped-visible-beam-v1';
+  material.customProgramCacheKey = () => `axial-fade-visible-beam-v2-${clipToStage ? 'clipped' : 'open'}`;
   return material;
 }
 
@@ -7425,6 +7432,27 @@ if (params.has('testhooks')) {
       if (name === 'dance') { setDancing(true); return; }
       if (name === 'vibe') { addVibe(100); return; }
       if (INSTRUMENT_VIEW_PRESETS[name]) requestInstrumentView(name);
+    },
+    // Debug-only scene handle for headless isolation (hide/show suspects).
+    scene,
+    // Debug picking: what is under this client-pixel? Lists every hit front to
+    // back so soft/transparent artifacts can be identified, not just the top hit.
+    pick(clientX, clientY) {
+      const ndc = new THREE.Vector2(
+        (clientX / window.innerWidth) * 2 - 1,
+        -(clientY / window.innerHeight) * 2 + 1,
+      );
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(ndc, camera);
+      return ray.intersectObjects(scene.children, true).slice(0, 12).map((hit) => ({
+        distance: Number(hit.distance.toFixed(2)),
+        type: hit.object.type,
+        geometry: hit.object.geometry?.type,
+        material: Array.isArray(hit.object.material) ? 'multi' : hit.object.material?.type,
+        name: hit.object.name || null,
+        parentName: hit.object.parent?.name || null,
+        worldPos: hit.point ? { x: +hit.point.x.toFixed(2), y: +hit.point.y.toFixed(2), z: +hit.point.z.toFixed(2) } : null,
+      }));
     },
   };
 }
