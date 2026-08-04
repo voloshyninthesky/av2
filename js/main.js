@@ -269,6 +269,10 @@ function initTelegramEnvironment() {
       tg.ready?.();
       tg.expand?.();
       if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
+      // Clients too old for disableVerticalSwipes() (Bot API 7.7) still honor the
+      // older closing-confirmation prompt, which also guards the swipe-to-close
+      // gesture — a fallback so the stage swipe can't instantly dismiss the app.
+      if (typeof tg.enableClosingConfirmation === 'function') tg.enableClosingConfirmation();
     } catch (_) { /* older Telegram clients */ }
   }
   if (isTelegramEnvironment()) {
