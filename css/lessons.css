@@ -169,6 +169,7 @@ h1, h2, h3, p, ul { margin-top: 0; }
   gap: 12px;
 }
 
+
 /* starburst — the mandatory 2007 "NEW!" sticker */
 .badge-new {
   display: grid;
@@ -391,26 +392,30 @@ h2 {
   filter: drop-shadow(0 1px 0 var(--ext-arrow-emboss, rgba(255, 255, 255, .65)));
 }
 
+/* Label sits over the gradient's darkest band, so that band — not the light
+   top stop — sets the contrast. Both booking colours are pitched to clear it
+   comfortably, matching the gold .button above rather than inventing a second
+   standard: the old orange read 4.2:1 there and the old blue only 2.9:1. */
 .button.primary {
-  border-color: #8a2f10;
-  background: linear-gradient(#ffd18a 0, #f79433 48%, #e2650f 52%, #fbaa50 100%);
-  color: #4a1a00;
+  border-color: #9c3f14;
+  background: linear-gradient(#ffdca8 0, #fba54e 48%, #ef7f2c 52%, #ffbe70 100%);
+  color: #3d1400;
 }
 
 .button.primary:hover {
-  background: linear-gradient(#ffe4b4 0, #ffab55 48%, #f37c24 52%, #ffc57c 100%);
-  color: #4a1a00;
+  background: linear-gradient(#ffe9c6 0, #ffb970 48%, #fb9445 52%, #ffd095 100%);
+  color: #3d1400;
 }
 
 .booking-facebook {
-  border-color: #1c3f7a;
-  background: linear-gradient(#b9d3f5 0, #6d9ede 48%, #3a6cb5 52%, #85b0e7 100%);
-  color: #10254a;
+  border-color: #2b5798;
+  background: linear-gradient(#d8e9fc 0, #a3c7f0 48%, #7aa8e0 52%, #bcd8f6 100%);
+  color: #0a1e3f;
 }
 
 .booking-facebook:hover {
-  background: linear-gradient(#d8e7fb 0, #8fb8ea 48%, #5386c9 52%, #a6c6f0 100%);
-  color: #10254a;
+  background: linear-gradient(#eaf3fe 0, #bcd9f7 48%, #94bce9 52%, #d2e6fb 100%);
+  color: #0a1e3f;
 }
 
 .stage-link,
@@ -459,7 +464,7 @@ h2 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .7) 50%, transparent 60%);
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .55) 50%, transparent 60%);
   transform: translateX(-150%);
   animation: cta-sheen 9s ease-in-out infinite;
   pointer-events: none;
