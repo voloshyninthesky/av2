@@ -856,6 +856,33 @@ h2 {
   letter-spacing: .03em;
 }
 
+/* The credit folds behind a heart that reveals it on click. The name is what
+   ships visible, and lessons-credit.js sets data-state to fold it away — so
+   the states below are the enhancement, and no attribute at all is the plain
+   credit that shows when the script never runs. */
+.credit-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.credit-heart { display: none; }
+
+.credit-toggle[data-state='heart'] .credit-heart { display: inline; }
+.credit-toggle[data-state='heart'] .credit-name { display: none; }
+
+.credit-heart b {
+  color: #a8324a;
+  font-size: 11px;
+}
+
+/* The only hint that the line is live — it earns a dotted underline when
+   pointed at, and nothing at all otherwise. */
+.credit-toggle:hover { text-decoration: underline dotted; }
+
 /* --------------------------------------------------------------- a11y */
 
 :focus-visible {
