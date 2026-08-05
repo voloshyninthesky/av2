@@ -9,6 +9,13 @@ Interactive marketing experience for **Art Vibe Studio**, a cultural and educati
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTAs:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/) and [Messenger](https://m.me/61564874125852?text=%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82%2C%20%D1%85%D0%BE%D1%87%D1%83%20%D0%BD%D0%B0%20%D1%83%D1%80%D0%BE%D0%BA%21)
 
+On the `/uk` pages those two CTAs split by intent. **Booking** buttons deep-link into a
+conversation: `https://ig.me/m/artvibe.pl` and `https://m.me/61564874125852?text=<prefilled
+message naming the instrument, no emoji>`. Instagram has no text-prefill parameter, so its
+booking link carries no per-page context. **Browsing** links — the footer, and the “відгуки та
+викладачі” notes pointing visitors at student reviews and teacher posts — keep the plain profile
+URL, as does JSON-LD `sameAs`.
+
 Slogan: *Вчись творити і твори навчаючись.*
 
 ---
