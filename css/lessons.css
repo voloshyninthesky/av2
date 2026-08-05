@@ -451,6 +451,60 @@ h2 {
 
 .booking-actions .stage-return { grid-column: 1 / -1; }
 
+/* A slow sheen crosses the two booking buttons, then leaves them alone for
+   eight seconds — long enough that it reads as a stray highlight rather than
+   a looping banner. Scoped to .booking-actions so the sidebar's Instagram /
+   Facebook links, which sit next to body copy, stay still. */
+.booking-actions .booking-instagram,
+.booking-actions .booking-facebook {
+  position: relative;
+  overflow: hidden;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.booking-actions .booking-instagram::after,
+.booking-actions .booking-facebook::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .7) 50%, transparent 60%);
+  transform: translateX(-150%);
+  animation: cta-sheen 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Half a beat behind Instagram, so the pair reads as one pass across the row
+   instead of two buttons flashing at once. */
+.booking-actions .booking-facebook::after { animation-delay: .4s; }
+
+@keyframes cta-sheen {
+  0% { transform: translateX(-150%); }
+  13%, 100% { transform: translateX(150%); }
+}
+
+/* Hover takes over from the idle sheen: the button lifts, and the sweep is
+   held off-screen so it never crosses a button the pointer is already on. */
+.booking-actions .booking-instagram:hover,
+.booking-actions .booking-facebook:hover,
+.booking-actions .booking-instagram:focus-visible,
+.booking-actions .booking-facebook:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 3px 6px rgba(0, 0, 0, .3);
+}
+
+.booking-actions .booking-instagram:hover::after,
+.booking-actions .booking-facebook:hover::after,
+.booking-actions .booking-instagram:focus-visible::after,
+.booking-actions .booking-facebook:focus-visible::after {
+  animation: none;
+}
+
+.booking-actions .booking-instagram:active,
+.booking-actions .booking-facebook:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .35);
+}
+
 /* ---------------------------------------------------------- lesson poster */
 
 .lesson-vocal {
