@@ -423,6 +423,11 @@ h2 {
 
 .stage-actions { margin-bottom: 14px; }
 
+/* Jumping to the directions grid only saves a scroll once the layout is a
+   single column; on desktop the grid is already in view, so the link is a
+   no-op click and is dropped from the tab order too. */
+.jump-link { display: none; }
+
 .booking-actions {
   display: grid;
   max-width: 470px;
@@ -692,15 +697,29 @@ h2 {
   text-align: center;
 }
 
-.side-cta {
-  margin: 10px 0 0;
+/* Weather widget. The placeholder ships in the HTML and the script only fills
+   it in, so a blocked or failed request leaves the em-dash rather than an empty
+   box — and lessons-weather.js drops the whole window if the fetch rejects. */
+.weather-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0 0 3px;
 }
 
-.side-cta .button {
-  display: block;
-  padding-inline: 8px;
-  text-align: center;
+.weather-temp {
+  color: var(--purple-deep);
+  font: bold 22px/1 var(--display);
 }
+
+.weather-desc {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.weather[data-state="loading"] .weather-desc { font-style: italic; }
+
+.weather-meta:empty { display: none; }
 
 /* ---------------------------------------------------------------- footer */
 
@@ -762,12 +781,16 @@ h2 {
   }
   .brand-text { font-size: 24px; }
   .badge-new { display: none; }
+  .jump-link { display: inline-block; }
   .header-actions { width: 100%; }
   .header-actions .button { width: 100%; text-align: center; }
   .tabs { padding-inline: 8px; }
   .tabs a { padding: 5px 10px 6px; font-size: 10px; }
   .lesson-grid { grid-template-columns: minmax(0, 1fr); }
-  .side-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Desktop-only: stacked under the article on a phone the sidebar is just a
+     second copy of the booking CTAs and the 3D-scene link, both already in the
+     page body and the footer. */
+  .sidebar { display: none; }
   .retro-table th { width: auto; white-space: normal; }
   /* buy back enough width for the 4-column package table to fit a phone
      outright; .price-scroll stays as the fallback below ~330px */
