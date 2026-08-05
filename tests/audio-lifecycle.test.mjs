@@ -1,11 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const audioSource = await readFile(new URL('../js/audio.js', import.meta.url), 'utf8');
-const mainSource = await readFile(new URL('../js/main.js', import.meta.url), 'utf8');
 const audioModuleUrl = `data:text/javascript;base64,${Buffer.from(audioSource).toString('base64')}`;
 const { AudioEngine } = await import(audioModuleUrl);
+
+// The audio-activation policy is spread across the app's modules, so scan the
+// whole tree rather than a single file — that keeps these assertions about the
+// policy itself and not about where a given function currently lives.
+const appSources = await (async () => {
+  const root = fileURLToPath(new URL('../js/', import.meta.url));
+  const names = await readdir(root, { recursive: true });
+  const files = names.filter((name) => name.endsWith('.js')).map((name) => join(root, name));
+  return Promise.all(files.map((file) => readFile(file, 'utf8')));
+})();
 
 if (!globalThis.navigator) {
   Object.defineProperty(globalThis, 'navigator', {
@@ -52,11 +63,14 @@ test('normal AudioSession inactivity does not request a context rebuild', () => 
 });
 
 function functionSource(name) {
-  const start = mainSource.indexOf(`function ${name}`);
-  assert.notEqual(start, -1, `missing function ${name}`);
-  const end = mainSource.indexOf('\n}', start + 1);
-  assert.notEqual(end, -1, `unterminated function ${name}`);
-  return mainSource.slice(start, end + 2);
+  for (const source of appSources) {
+    const start = source.indexOf(`function ${name}(`);
+    if (start === -1) continue;
+    const end = source.indexOf('\n}', start + 1);
+    assert.notEqual(end, -1, `unterminated function ${name}`);
+    return source.slice(start, end + 2);
+  }
+  assert.fail(`missing function ${name}`);
 }
 
 test('enter and non-playing UI paths leave Web Audio dormant', () => {
@@ -71,7 +85,9 @@ test('enter and non-playing UI paths leave Web Audio dormant', () => {
 });
 
 test('generic stage gestures do not own audio activation', () => {
-  assert.doesNotMatch(mainSource, /unlockAudioFromGesture|resumeAudioFromActivation/);
+  for (const source of appSources) {
+    assert.doesNotMatch(source, /unlockAudioFromGesture|resumeAudioFromActivation/);
+  }
   assert.match(functionSource('playMusicalEvent'), /activateAudioForSound\(\{ allowRecovery: record \}\)/);
   assert.match(functionSource('activateAudioForSound'), /audio\.unlock\(\)/);
 });

@@ -53,11 +53,18 @@ fonts/              # self-hosted faces
 img/                # slideshow photos
 uk/                 # Ukrainian lesson hub + instrument-specific SEO pages
 js/
-  main.js           # scene, interaction, loop, onboard, pads, audio unlock
-  instruments.js    # procedural drums / piano / guitar / mic
+  main.js           # boot order, cross-module wiring, hover + frame loop
   audio.js          # Web Audio synth + buses + unlock/resume
   ui.js             # HUD, modals, chip, toast
   pricing.js        # interactive price mixer
+  guitar-gestures.js# tap-vs-hold classification for chord touches
+  core/             # errlog, telegram guards, quality tier, session flags, studio boot
+  view/             # render rig, camera framing, focus views, pointer routing, viewport
+  scene/            # procedural textures, stage, lighting, screen + slideshow, effects
+  instruments/      # procedural drums / piano / guitar / mic (+ shared materials)
+  mascot/           # appearance, model state, poses, walk collision, editor, per-frame update
+  play/             # vibe meter, loop pedal, guitar, pads, piano notes, mixer, shared state
+  shell/            # post-processing probe, intro flow, headless QA hooks
 prices.json         # lesson prices + promos
 piano-notes.json    # optional piano phrase data (kept; not auto-played on focus)
 vendor/three/       # vendored Three.js
