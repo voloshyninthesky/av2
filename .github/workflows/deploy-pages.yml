@@ -29,8 +29,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Test audio lifecycle
-        run: node --test tests/audio-lifecycle.test.mjs
+      - name: Test
+        run: node --test tests/*.test.mjs
 
       - name: Prepare static site
         run: |

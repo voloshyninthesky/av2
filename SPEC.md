@@ -48,7 +48,7 @@ Static site, no build step. ES modules + import map for Three.js.
 ```
 index.html          # shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
 css/style.css       # design system + overlays
-css/lessons.css     # lightweight static lesson pages
+css/lessons.css     # lightweight static lesson pages (deliberate 2007-era skin)
 fonts/              # self-hosted faces
 img/                # slideshow photos
 uk/                 # Ukrainian lesson hub + instrument-specific SEO pages
