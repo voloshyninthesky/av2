@@ -29,6 +29,12 @@ jobs:
         with:
           node-version: 22
 
+      # Editing prices.json is enough to change the published prices: this
+      # writes them into the static pages before anything checks or ships them,
+      # so a price update needs no HTML edit and cannot fail the build.
+      - name: Sync prices into the /uk pages
+        run: node tools/sync-prices.mjs
+
       - name: Test
         run: node --test tests/*.test.mjs
 

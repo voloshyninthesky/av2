@@ -116,6 +116,25 @@ test('pages listing subscriptions explain what the package price covers', async 
   }
 });
 
+// Prices appear only in the price tables. Marketing copy elsewhere on the page
+// deliberately names no amount, so there is no second place for one to go stale.
+
+test('marketing copy outside the price tables quotes no amount', async () => {
+  for (const { file } of [...pages, { file: 'uk/index.html' }]) {
+    const html = await read(file);
+    const outside = html.replace(/<td data-price="[^"]+">[^<]*<\/td>/g, '');
+    // \b is ASCII-only in JS, so it never matches after a Cyrillic «зл» —
+    // a Unicode lookahead is what actually ends the word here.
+    const quoted = outside.match(new RegExp(`\\d+\\s*${currency}(?!\\p{L})`, 'gu'));
+    assert.equal(
+      quoted,
+      null,
+      `${file} quotes ${quoted?.join(', ')} outside the price table — ` +
+        'prices.json can no longer keep it current',
+    );
+  }
+});
+
 // --- JSON-LD: the structured data quotes the same prices as prices.json ---
 
 const everyPrice = (instrument) => [

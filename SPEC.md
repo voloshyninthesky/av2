@@ -400,9 +400,21 @@ changing one instrument's price is a one-place edit.
 - `id` matches the instrument keys used across the stage (`mic` is the one alias, → `vocal`).
 - `name` is the label the mixer board prints; `theme` picks the board skin (`vocal` | `rhythm`).
 - `js/core/prices.js` is the single fetch of this file; the mixer and the price chips share it.
-- The `/uk` pages are static HTML and re-state these numbers. Each price cell carries
-  `data-price="single:<id>:<minutes>"` / `data-price="pack:<id>:<minutes>:<lessons>"`, and
-  `tests/lesson-prices.test.mjs` fails if the published pages and this file disagree.
+- The `/uk` pages are static HTML and re-state these numbers, but they are **generated**
+  from this file, not maintained beside it. `tools/sync-prices.mjs` writes prices.json into
+  the pages and the deploy workflow runs it before the tests, so **editing prices.json alone
+  is a complete price change** — no HTML edit, no red build. Run it locally (`node
+  tools/sync-prices.mjs`, or `--check` to only report drift) after touching this file so the
+  committed pages match too.
+- What it writes: each price cell (`data-price="single:<id>:<minutes>"` /
+  `data-price="pack:<id>:<minutes>:<lessons>"`), the payment note (`data-payment-note`), the
+  promotions list (`data-promotions`, badge and Ukrainian plural derived from the promotion),
+  and the JSON-LD `lowPrice` / `highPrice` / `priceRange`.
+- Amounts appear **only** in the price tables. Marketing copy names no price — a test fails
+  if one appears outside a `data-price` cell, since nothing would keep it current.
+- `tests/lesson-prices.test.mjs` then verifies the result. It fails only on **structural**
+  drift — a tier added or removed changes which cells exist, which the script cannot invent —
+  and names the offending key.
 
 ### `piano-notes.json`
 
