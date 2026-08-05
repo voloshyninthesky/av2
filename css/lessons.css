@@ -875,13 +875,32 @@ h2 {
 .credit-toggle[data-state='heart'] .credit-name { display: none; }
 
 .credit-heart b {
+  display: inline-block;
   color: #a8324a;
   font-size: 11px;
+  animation: credit-beat 3.6s ease-in-out infinite;
 }
 
-/* The only hint that the line is live — it earns a dotted underline when
-   pointed at, and nothing at all otherwise. */
+/* What invites the click is the heart being alive, so it beats: lub, dub, then
+   nine tenths of the cycle perfectly still. The rest is the point — a pulse
+   that never stops moving reads as a demand, while one that mostly waits is
+   caught in the corner of the eye and asks nothing. Transform-only, and the
+   reduced-motion rule at the bottom parks it unscaled. */
+@keyframes credit-beat {
+  0%, 13%, 100% { transform: scale(1); }
+  4% { transform: scale(1.22); }
+  7.5% { transform: scale(1.05); }
+  10.5% { transform: scale(1.14); }
+}
+
+/* Hovering confirms what the beat suggested. */
 .credit-toggle:hover { text-decoration: underline dotted; }
+
+/* With motion off the heart cannot do the inviting, so the underline stops
+   waiting to be hovered and simply stays. */
+@media (prefers-reduced-motion: reduce) {
+  .credit-toggle[data-state='heart'] { text-decoration: underline dotted; }
+}
 
 /* --------------------------------------------------------------- a11y */
 
