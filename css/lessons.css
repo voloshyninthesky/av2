@@ -40,6 +40,11 @@ html {
   color-scheme: light;
 }
 
+/* Between the stripes and the gradient sits a tiled wallpaper of scattered
+   quavers — the mandatory-2007 "patterned background" the gutters were missing.
+   The notes are SVG paths, not '♪' text glyphs, so no platform can tofu them,
+   and their opacity is baked into the tile. The shell covers all but ~8px of a
+   phone, so the wallpaper is effectively a desktop-gutter decoration. */
 body {
   min-height: 100vh;
   margin: 0;
@@ -47,6 +52,7 @@ body {
   overflow-x: hidden;
   background:
     repeating-linear-gradient(45deg, rgba(255, 255, 255, .035) 0 7px, rgba(0, 0, 0, 0) 7px 14px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'%3E%3Cg opacity='.15' transform='translate(30 32) rotate(-14)'%3E%3Cellipse cx='7' cy='26.5' rx='6' ry='4.4' transform='rotate(-20 7 26.5)' fill='%23f0d17d'/%3E%3Cpath d='M12.4 26V4.5c6.5 2.5 8.6 8 5.2 14.6' fill='none' stroke='%23f0d17d' stroke-width='2.6' stroke-linecap='round'/%3E%3C/g%3E%3Cg opacity='.11' transform='translate(146 118) rotate(9)'%3E%3Cellipse cx='6.5' cy='27' rx='5.6' ry='4.1' transform='rotate(-18 6.5 27)' fill='%23fff'/%3E%3Cellipse cx='24.5' cy='24.5' rx='5.6' ry='4.1' transform='rotate(-18 24.5 24.5)' fill='%23fff'/%3E%3Cpath d='M11.5 26.4V7.2M29.5 23.9V4.7' stroke='%23fff' stroke-width='2.4' fill='none'/%3E%3Cpath d='M10.3 3.4l20.4-3.2v6.4L10.3 9.8z' fill='%23fff'/%3E%3C/g%3E%3Cg opacity='.12' transform='translate(76 188) rotate(16) scale(.78)'%3E%3Cellipse cx='7' cy='26.5' rx='6' ry='4.4' transform='rotate(-20 7 26.5)' fill='%23f0d17d'/%3E%3Cpath d='M12.4 26V4.5c6.5 2.5 8.6 8 5.2 14.6' fill='none' stroke='%23f0d17d' stroke-width='2.6' stroke-linecap='round'/%3E%3C/g%3E%3Cg opacity='.1' transform='translate(192 46) rotate(-8) scale(.7)'%3E%3Cellipse cx='6.5' cy='27' rx='5.6' ry='4.1' transform='rotate(-18 6.5 27)' fill='%23f0d17d'/%3E%3Cellipse cx='24.5' cy='24.5' rx='5.6' ry='4.1' transform='rotate(-18 24.5 24.5)' fill='%23f0d17d'/%3E%3Cpath d='M11.5 26.4V7.2M29.5 23.9V4.7' stroke='%23f0d17d' stroke-width='2.4' fill='none'/%3E%3Cpath d='M10.3 3.4l20.4-3.2v6.4L10.3 9.8z' fill='%23f0d17d'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 240px 240px repeat,
     linear-gradient(#6d3190 0, #3a1350 460px, #2b0d3d 100%);
   background-attachment: fixed;
   color: var(--ink);
@@ -185,6 +191,14 @@ h1, h2, h3, p, ul { margin-top: 0; }
   font: bold 13px var(--display);
   text-shadow: 0 1px 0 rgba(255, 255, 255, .6);
   transform: rotate(-13deg);
+  animation: badge-rock 3.4s ease-in-out infinite;
+}
+
+/* The sticker rocks like the animated GIF badge it imitates. Transform-only,
+   and the reduced-motion rule at the bottom parks it on the base -13deg. */
+@keyframes badge-rock {
+  0%, 100% { transform: rotate(-13deg) scale(1); }
+  50% { transform: rotate(-6deg) scale(1.05); }
 }
 
 /* ------------------------------------------------------------ tab strip */
@@ -308,6 +322,32 @@ h1 {
   text-shadow: 1px 1px 0 #fff, 2px 2px 0 rgba(0, 0, 0, .12);
 }
 
+/* A small gold quaver caps every page title. Masked SVG rather than '♪' in
+   content: — pseudo-element text is announced by screen readers, and glyph
+   shape/weight varies by platform font; a masked path is decoration only and
+   identical everywhere (same trade as .ext-arrow). The drop-shadow stands in
+   for the h1 text-shadow, which a masked background ignores; the bob is
+   transform-only and dies with the global reduced-motion rule. */
+h1::after {
+  content: '';
+  display: inline-block;
+  width: .5em;
+  height: .64em;
+  margin-left: .26em;
+  vertical-align: -.06em;
+  background: var(--gold);
+  filter: drop-shadow(1px 1px 0 #fff);
+  animation: note-bob 2.7s ease-in-out infinite;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cellipse cx='7' cy='26.5' rx='6' ry='4.4' transform='rotate(-20 7 26.5)'/%3E%3Cpath d='M12.4 26V4.5c6.5 2.5 8.6 8 5.2 14.6' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cellipse cx='7' cy='26.5' rx='6' ry='4.4' transform='rotate(-20 7 26.5)'/%3E%3Cpath d='M12.4 26V4.5c6.5 2.5 8.6 8 5.2 14.6' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+@keyframes note-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  35% { transform: translateY(-.12em) rotate(-9deg); }
+  65% { transform: translateY(.03em) rotate(5deg); }
+}
+
 h2 {
   margin-bottom: 12px;
   color: var(--purple-deep);
@@ -330,6 +370,32 @@ h2 {
   font: bold 10px var(--sans);
   letter-spacing: .14em;
   text-transform: uppercase;
+}
+
+/* A large ghosted pair of beamed notes in the hero's top-right corner, tinted
+   by the page accent — so each lesson's watermark matches its title bar for
+   free, and the hub falls back to the default purple. Masked (screen readers
+   see nothing) and a 10% wash, which the ink text keeps full contrast through;
+   the positioned CTA buttons paint above it anyway. overflow: hidden crops the
+   rotated corner bleed at the window edge. */
+.hero .window-body {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero .window-body::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  width: 170px;
+  height: 158px;
+  background: var(--accent-lo);
+  opacity: .1;
+  transform: rotate(12deg);
+  pointer-events: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 32'%3E%3Cellipse cx='6.5' cy='27' rx='5.6' ry='4.1' transform='rotate(-18 6.5 27)'/%3E%3Cellipse cx='24.5' cy='24.5' rx='5.6' ry='4.1' transform='rotate(-18 24.5 24.5)'/%3E%3Cpath d='M11.5 26.4V7.2M29.5 23.9V4.7' stroke='%23000' stroke-width='2.4' fill='none'/%3E%3Cpath d='M10.3 3.4l20.4-3.2v6.4L10.3 9.8z'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 32'%3E%3Cellipse cx='6.5' cy='27' rx='5.6' ry='4.1' transform='rotate(-18 6.5 27)'/%3E%3Cellipse cx='24.5' cy='24.5' rx='5.6' ry='4.1' transform='rotate(-18 24.5 24.5)'/%3E%3Cpath d='M11.5 26.4V7.2M29.5 23.9V4.7' stroke='%23000' stroke-width='2.4' fill='none'/%3E%3Cpath d='M10.3 3.4l20.4-3.2v6.4L10.3 9.8z'/%3E%3C/svg%3E") no-repeat center / contain;
 }
 
 /* --------------------------------------------------------------- buttons */
@@ -649,6 +715,13 @@ h2 {
   color: var(--gold);
   content: '♪';
   font: bold 15px var(--serif);
+  transition: transform .18s ease, color .18s ease;
+}
+
+/* the card's corner note perks up with the rest of the hover state */
+.lesson-card:hover::before {
+  color: var(--link-hot);
+  transform: rotate(-15deg) scale(1.35);
 }
 
 .lesson-card::after {
