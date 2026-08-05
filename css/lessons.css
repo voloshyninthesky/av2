@@ -841,6 +841,21 @@ h2 {
   font-weight: bold;
 }
 
+/* A signature under the studio's own copyright. It stays quiet through size
+   and an italic serif that reads as someone's hand rather than site chrome —
+   not through faded text: the colour holds ~5.9:1 here, because a credit
+   nobody can read is not subtle, it is just broken. */
+.credit {
+  margin-top: 7px;
+  color: var(--ink-soft);
+  font: italic 10px/1.6 var(--serif);
+}
+
+.credit b {
+  font-style: normal;
+  letter-spacing: .03em;
+}
+
 /* --------------------------------------------------------------- a11y */
 
 :focus-visible {
