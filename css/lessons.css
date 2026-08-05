@@ -67,7 +67,6 @@ a:hover { color: var(--link-hot); background: #ffffcc; }
    once you try to win it back per component, so scope the rule to the places that
    actually want it and let every painted surface keep its own colour untouched. */
 .breadcrumb a:visited,
-.side-nav a:visited,
 .footer-links a:visited,
 .retro-table a:visited { color: var(--link-visited); }
 
@@ -431,11 +430,6 @@ h2 {
 
 .stage-actions { margin-bottom: 14px; }
 
-/* Jumping to the directions grid only saves a scroll once the layout is a
-   single column; on desktop the grid is already in view, so the link is a
-   no-op click and is dropped from the tab order too. */
-.jump-link { display: none; }
-
 .booking-actions {
   display: grid;
   max-width: 470px;
@@ -449,21 +443,19 @@ h2 {
   text-align: center;
 }
 
-.booking-actions .stage-return { grid-column: 1 / -1; }
-
-/* A slow sheen crosses the two booking buttons, then leaves them alone for
-   eight seconds — long enough that it reads as a stray highlight rather than
-   a looping banner. Scoped to .booking-actions so the sidebar's Instagram /
-   Facebook links, which sit next to body copy, stay still. */
-.booking-actions .booking-instagram,
-.booking-actions .booking-facebook {
+/* A slow sheen crosses a marked CTA button, then leaves it alone for eight
+   seconds — long enough that it reads as a stray highlight rather than a
+   looping banner. Opt-in via .cta-sheen: the booking buttons carry it on
+   lesson pages; the hub's hero has no booking CTA, so its "exit to 3D scene"
+   button carries it instead. The sidebar's plain Instagram / Facebook links,
+   which sit next to body copy, are never marked and stay still. */
+.cta-sheen {
   position: relative;
   overflow: hidden;
   transition: transform .16s ease, box-shadow .16s ease;
 }
 
-.booking-actions .booking-instagram::after,
-.booking-actions .booking-facebook::after {
+.cta-sheen::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -475,7 +467,7 @@ h2 {
 
 /* Half a beat behind Instagram, so the pair reads as one pass across the row
    instead of two buttons flashing at once. */
-.booking-actions .booking-facebook::after { animation-delay: .4s; }
+.cta-sheen.booking-facebook::after { animation-delay: .4s; }
 
 @keyframes cta-sheen {
   0% { transform: translateX(-150%); }
@@ -484,23 +476,18 @@ h2 {
 
 /* Hover takes over from the idle sheen: the button lifts, and the sweep is
    held off-screen so it never crosses a button the pointer is already on. */
-.booking-actions .booking-instagram:hover,
-.booking-actions .booking-facebook:hover,
-.booking-actions .booking-instagram:focus-visible,
-.booking-actions .booking-facebook:focus-visible {
+.cta-sheen:hover,
+.cta-sheen:focus-visible {
   transform: translateY(-1px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 3px 6px rgba(0, 0, 0, .3);
 }
 
-.booking-actions .booking-instagram:hover::after,
-.booking-actions .booking-facebook:hover::after,
-.booking-actions .booking-instagram:focus-visible::after,
-.booking-actions .booking-facebook:focus-visible::after {
+.cta-sheen:hover::after,
+.cta-sheen:focus-visible::after {
   animation: none;
 }
 
-.booking-actions .booking-instagram:active,
-.booking-actions .booking-facebook:active {
+.cta-sheen:active {
   transform: translateY(1px);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, .35);
 }
@@ -680,14 +667,6 @@ h2 {
   background: #ffffcc;
 }
 
-.lesson-card span {
-  display: block;
-  color: #7a5a10;
-  font: bold 10px var(--sans);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
 .lesson-card strong {
   display: block;
   color: var(--link);
@@ -702,22 +681,6 @@ h2 {
 .sidebar { min-width: 0; }
 
 .sidebar .window-body { padding: 10px; }
-
-.side-nav {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 11px;
-}
-
-.side-nav li {
-  padding: 4px 0 4px 15px;
-  border-bottom: 1px dotted var(--line-soft);
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpath d='M1 0l6 4.5L1 9z' fill='%23d1a13b'/%3E%3C/svg%3E") no-repeat 1px .55em;
-}
-
-.side-nav li:last-child { border-bottom: 0; }
-.side-nav .is-current { font-weight: bold; }
 
 .side-note {
   margin: 0;
@@ -806,7 +769,6 @@ h2 {
   }
   .brand-text { font-size: 24px; }
   .badge-new { display: none; }
-  .jump-link { display: inline-block; }
   .header-actions { width: 100%; }
   .header-actions .button { width: 100%; text-align: center; }
   .tabs { padding-inline: 8px; }
