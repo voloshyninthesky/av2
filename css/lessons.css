@@ -874,12 +874,12 @@ h2 {
 /* Between the phone cut and ~908px — where the shell first reaches its full
    892px design width — the two-column grid squeezes the article to ~500px
    beside the fixed 214px sidebar; portrait tablets all land in this band.
-   Drop the sidebar and give the article the whole width: as on a phone, its
-   two windows only repeat the booking CTAs and the weather, and the CTAs are
-   already in the page body. */
+   Give the article the whole width and stack the sidebar under it — dropping
+   only the booking window, which repeats CTAs the page body already carries.
+   The weather is not a copy of anything, so it comes along. */
 @media (min-width: 761px) and (max-width: 907px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { display: none; }
+  .sidebar > .window:not(.weather-window) { display: none; }
   /* Single column again, so the hub's jump to the directions grid saves a
      scroll — same rationale as the phone rule below. */
   .jump-link { display: inline-block; }
@@ -907,10 +907,11 @@ h2 {
   .tabs { padding-inline: 8px; }
   .tabs a { padding: 5px 10px 6px; font-size: 10px; }
   .lesson-grid { grid-template-columns: minmax(0, 1fr); }
-  /* Desktop-only: stacked under the article on a phone the sidebar is just a
-     second copy of the booking CTAs and the 3D-scene link, both already in the
-     page body and the footer. */
-  .sidebar { display: none; }
+  /* The booking window is a second copy of CTAs already in the page body and
+     the footer, so it goes. The weather window has no twin anywhere — it
+     stacks under the article, last thing before the footer, where an ambient
+     bit of Łódź reads as charm rather than as something to act on. */
+  .sidebar > .window:not(.weather-window) { display: none; }
   .retro-table th { width: auto; white-space: normal; }
   /* buy back enough width for the 4-column package table to fit a phone
      outright; .price-scroll stays as the fallback below ~330px */
