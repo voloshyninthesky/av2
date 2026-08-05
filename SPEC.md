@@ -16,6 +16,14 @@ booking link carries no per-page context. **Browsing** links — the footer, and
 викладачі” notes pointing visitors at student reviews and teacher posts — keep the plain profile
 URL, as does JSON-LD `sameAs`.
 
+The primary offer on those pages is the **50-зл trial lesson**: a `.trial-offer` gold strip
+(«Пробний урок — 30 хв за 50 зл…») sits above the lesson-hero CTAs (on the hub, above the
+price-section CTAs). Because Instagram cannot prefill a message, the strip closes by telling
+visitors what to type — «Напиши в директ «Хочу на пробний урок», щоб записатися» — and the
+Messenger prefill beside it repeats that same phrase. Button labels stay the neutral
+«Записатися через …» everywhere; the lesson pages' lower price-section CTAs also keep the plain
+booking prefill, since that context includes subscriptions.
+
 Slogan: *Вчись творити і твори навчаючись.*
 
 ---

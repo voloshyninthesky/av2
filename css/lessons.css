@@ -362,6 +362,22 @@ h2 {
   line-height: 1.75;
 }
 
+/* The page's actual offer — the 50-зл trial lesson — as a gold "special
+   offer" strip above the CTA buttons: dashed border + soft gold wash, same
+   family as .perk-badge, so it reads as a promo tag, not another paragraph. */
+.trial-offer {
+  max-width: 600px;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  background: linear-gradient(rgba(240, 209, 125, .42), rgba(240, 209, 125, .16));
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.trial-offer b { color: var(--purple-deep); }
+
 .location {
   margin-bottom: 0;
   padding-top: 8px;
