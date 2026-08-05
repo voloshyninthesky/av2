@@ -58,8 +58,18 @@ a {
   text-decoration: underline;
 }
 
-a:visited { color: var(--link-visited); }
 a:hover { color: var(--link-hot); background: #ffffcc; }
+
+/* The retro "already read" purple belongs on body-copy links only. A blanket
+   `a:visited` is specificity (0,1,1), so it outranks the single-class rules that
+   paint the banner wordmark and the buttons white and repaints them dark purple
+   on their own purple background. Engines disagree on how that conflict resolves
+   once you try to win it back per component, so scope the rule to the places that
+   actually want it and let every painted surface keep its own colour untouched. */
+.breadcrumb a:visited,
+.side-nav a:visited,
+.footer-links a:visited,
+.retro-table a:visited { color: var(--link-visited); }
 
 img { border: 0; }
 
@@ -110,12 +120,7 @@ h1, h2, h3, p, ul { margin-top: 0; }
     linear-gradient(#8c27b6, #45115e);
 }
 
-/* Painted surfaces (brand, tabs, buttons) re-state their colour for :visited.
-   The global `a:visited` rule is specificity (0,1,1) and would otherwise beat a
-   single-class rule, repainting white-on-purple text dark purple — invisible
-   until :hover (same specificity, declared later) took over. */
-.brand,
-.brand:visited {
+.brand {
   display: grid;
   grid-template-areas: 'logo name' 'logo slogan';
   grid-template-columns: auto 1fr;
@@ -194,8 +199,7 @@ h1, h2, h3, p, ul { margin-top: 0; }
   background: linear-gradient(#f3e2b6, #e2c584);
 }
 
-.tabs a,
-.tabs a:visited {
+.tabs a {
   padding: 6px 14px 7px;
   border: 1px solid #8a6512;
   border-bottom: 0;
@@ -349,8 +353,7 @@ h2 {
   margin-bottom: 16px;
 }
 
-.button,
-.button:visited {
+.button {
   display: inline-block;
   padding: 7px 15px;
   border: 1px solid #7a5a12;
@@ -373,8 +376,7 @@ h2 {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, .35);
 }
 
-.button.primary,
-.button.primary:visited {
+.button.primary {
   border-color: #8a2f10;
   background: linear-gradient(#ffd18a 0, #f79433 48%, #e2650f 52%, #fbaa50 100%);
   color: #4a1a00;
@@ -385,8 +387,7 @@ h2 {
   color: #4a1a00;
 }
 
-.booking-facebook,
-.booking-facebook:visited {
+.booking-facebook {
   border-color: #1c3f7a;
   background: linear-gradient(#b9d3f5 0, #6d9ede 48%, #3a6cb5 52%, #85b0e7 100%);
   color: #10254a;
@@ -398,9 +399,7 @@ h2 {
 }
 
 .stage-link,
-.stage-link:visited,
-.stage-return,
-.stage-return:visited {
+.stage-return {
   border-color: #2d0c3d;
   background: linear-gradient(#d9a3ef 0, #a944d0 48%, #7d1ea6 52%, #c274e0 100%);
   color: #fff;
