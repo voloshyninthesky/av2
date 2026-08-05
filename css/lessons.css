@@ -66,7 +66,6 @@ a:hover { color: var(--link-hot); background: #ffffcc; }
    on their own purple background. Engines disagree on how that conflict resolves
    once you try to win it back per component, so scope the rule to the places that
    actually want it and let every painted surface keep its own colour untouched. */
-.breadcrumb a:visited,
 .footer-links a:visited,
 .retro-table a:visited { color: var(--link-visited); }
 
@@ -263,17 +262,6 @@ h1, h2, h3, p, ul { margin-top: 0; }
 }
 
 main { min-width: 0; }
-
-.breadcrumb {
-  margin-bottom: 10px;
-  padding: 5px 9px;
-  border: 1px solid var(--line-soft);
-  background: linear-gradient(#fff, #f3ecdc);
-  color: var(--ink-soft);
-  font-size: 11px;
-}
-
-.breadcrumb a { font-weight: bold; }
 
 /* -------------------------------------------------------- window / boxes */
 
