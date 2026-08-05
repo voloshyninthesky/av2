@@ -12,7 +12,7 @@ import { ui, audio, piano, whiteKeys } from '../core/studio.js?v=20260804-10';
 import { instrumentView } from '../view/instrument-presets.js?v=20260804-10';
 import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260804-10';
 import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260804-10';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260805-02';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260805-03';
 import {
   LOOP_MAX_SECONDS,
   loop,

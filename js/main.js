@@ -19,7 +19,7 @@ import {
   queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
-} from './play/vibe.js?v=20260805-02';
+} from './play/vibe.js?v=20260805-03';
 import {
   updateLoopProgress,
   initLoopPedal,

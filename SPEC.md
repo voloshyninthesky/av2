@@ -58,14 +58,14 @@ js/
   ui.js             # HUD, modals, chip, toast
   pricing.js        # interactive price mixer
   guitar-gestures.js# tap-vs-hold classification for chord touches
-  core/             # errlog, telegram guards, quality tier, session flags, studio boot
+  core/             # errlog, telegram guards, quality tier, session flags, prices, studio boot
   view/             # render rig, camera framing, focus views, pointer routing, viewport
   scene/            # procedural textures, stage, lighting, screen + slideshow, effects
   instruments/      # procedural drums / piano / guitar / mic (+ shared materials)
   mascot/           # appearance, model state, poses, walk collision, editor, per-frame update
   play/             # vibe meter, loop pedal, guitar, pads, piano notes, mixer, shared state
   shell/            # post-processing probe, intro flow, headless QA hooks
-prices.json         # lesson prices + promos
+prices.json         # per-instrument lesson prices + promos
 piano-notes.json    # optional piano phrase data (kept; not auto-played on focus)
 vendor/three/       # vendored Three.js
 CNAME               # artvibe.com.pl for GitHub Pages
@@ -325,7 +325,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **PIXEL** defaults to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
-| Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від 50 зл» + «ЦІНИ ›»), fading in/out softly. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
+| Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від N зл» + «ЦІНИ ›»), fading in/out softly. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
@@ -343,7 +343,7 @@ Driven by `prices.json`:
 1. Pick instrument (**text-only** buttons — no SVG icons). Selecting an instrument (or opening the mixer on one) defaults to the cheapest option: разовий · shortest / lowest-priced duration (and the cheapest pack size for later абонемент).
 2. Format: разовий / абонемент.
 3. Duration; package size if абонемент. If the current duration is unavailable for the active format, fall back to the first (cheapest) duration.
-4. Live ticket board (total + ≈ per lesson). Theme: purple vs gold by category. Every ticket includes a prominent comic-style **ЗАПИСАТИСЬ →** CTA that opens **Як записатися?**.
+4. Live ticket board (total + ≈ per lesson). Theme: purple vs gold, from each instrument's `theme`. Every ticket includes a prominent comic-style **ЗАПИСАТИСЬ →** CTA that opens **Як записатися?**.
 5. Both **Як записатися?** and **Ціни** show a clear **Напиши нам** block with separate Instagram and Messenger buttons. The steps panel also keeps **Правила студії →** as a secondary link.
 
 ### Rules
@@ -356,13 +356,18 @@ Numbered “score rail”: language policy, single-lesson cancels, subscription 
 
 ### `prices.json`
 
+Every instrument is priced **separately** — `vocal`, `guitar`, `drums`, `piano` each own a full
+price list, even where two of them currently quote the same numbers. No consumer groups them, so
+changing one instrument's price is a one-place edit.
+
 ```json
 {
   "currency": { "code": "PLN", "display": "зл" },
-  "categories": [
+  "instruments": [
     {
-      "id": "vocal-guitar",
-      "instruments": ["vocal", "guitar"],
+      "id": "vocal",
+      "name": "Вокал",
+      "theme": "vocal",
       "singleLessons": [{ "durationMinutes": 30, "audience": "…", "price": 50 }],
       "subscriptions": [{
         "durationMinutes": 30,
@@ -375,6 +380,13 @@ Numbered “score rail”: language policy, single-lesson cancels, subscription 
   "paymentNote": "…"
 }
 ```
+
+- `id` matches the instrument keys used across the stage (`mic` is the one alias, → `vocal`).
+- `name` is the label the mixer board prints; `theme` picks the board skin (`vocal` | `rhythm`).
+- `js/core/prices.js` is the single fetch of this file; the mixer and the price chips share it.
+- The `/uk` pages are static HTML and re-state these numbers. Each price cell carries
+  `data-price="single:<id>:<minutes>"` / `data-price="pack:<id>:<minutes>:<lessons>"`, and
+  `tests/lesson-prices.test.mjs` fails if the published pages and this file disagree.
 
 ### `piano-notes.json`
 

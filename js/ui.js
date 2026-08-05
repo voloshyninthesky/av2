@@ -46,7 +46,7 @@ export class UI {
 
   async _ensurePricing() {
     if (!this._pricingPromise) {
-      this._pricingPromise = import('./pricing.js?v=20260728-04')
+      this._pricingPromise = import('./pricing.js?v=20260805-03')
         .then(({ PricingPicker }) => {
           this.pricing = new PricingPicker(this.modals.pricing);
           return this.pricing.init().then(() => this.pricing);
@@ -264,6 +264,11 @@ export class UI {
     this.el.chip.hidden = false;
     clearTimeout(this._chipTimer);
     this._chipTimer = setTimeout(() => this.hideChip(), 8000);
+  }
+  /** Rewrite the title of a chip that is already up (prices arriving late). */
+  setChipTitle(titleHtml) {
+    if (this.el.chip.hidden || this.el.chip.classList.contains('leaving')) return;
+    this.el.chipTitle.innerHTML = titleHtml;
   }
   _activateChip() {
     const action = this._chipAction;

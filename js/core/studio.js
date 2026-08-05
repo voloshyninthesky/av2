@@ -11,7 +11,7 @@ import { buildDrumKit } from '../instruments/drums.js?v=20260804-10';
 import { buildPiano } from '../instruments/piano.js?v=20260804-10';
 import { buildGuitar } from '../instruments/guitar.js?v=20260804-10';
 import { buildMic } from '../instruments/mic.js?v=20260804-10';
-import { UI } from '../ui.js?v=20260804-02';
+import { UI } from '../ui.js?v=20260805-03';
 import { scene, renderer } from '../view/rig.js?v=20260804-10';
 import {
   adaptiveQualityScene,

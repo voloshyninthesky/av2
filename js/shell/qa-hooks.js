@@ -15,7 +15,7 @@ import { raycaster } from '../view/pick.js?v=20260804-10';
 import { mascotMove } from '../mascot/state.js?v=20260804-10';
 import { setDancing } from '../mascot/pose.js?v=20260804-10';
 import { leaveInstrumentView, requestInstrumentView } from '../view/instrument-view.js?v=20260804-10';
-import { addVibe } from '../play/vibe.js?v=20260805-02';
+import { addVibe } from '../play/vibe.js?v=20260805-03';
 import { composer } from './postfx.js?v=20260804-10';
 
 // ============================================================

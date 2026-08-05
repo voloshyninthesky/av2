@@ -3,11 +3,11 @@
     "code": "PLN",
     "display": "зл"
   },
-  "categories": [
+  "instruments": [
     {
-      "id": "vocal-guitar",
-      "name": "Вокал або гітара",
-      "instruments": ["vocal", "guitar"],
+      "id": "vocal",
+      "name": "Вокал",
+      "theme": "vocal",
       "singleLessons": [
         {
           "durationMinutes": 30,
@@ -56,9 +56,111 @@
       ]
     },
     {
-      "id": "drums-piano",
-      "name": "Барабани або фортепіано",
-      "instruments": ["drums", "piano"],
+      "id": "guitar",
+      "name": "Гітара",
+      "theme": "vocal",
+      "singleLessons": [
+        {
+          "durationMinutes": 30,
+          "audience": "пробний урок або для дітей до 7 років",
+          "price": 50
+        },
+        {
+          "durationMinutes": 45,
+          "audience": "для підлітків або дорослих",
+          "price": 75
+        },
+        {
+          "durationMinutes": 55,
+          "audience": "для дорослих",
+          "price": 90
+        }
+      ],
+      "subscriptions": [
+        {
+          "durationMinutes": 30,
+          "audience": "для дітей до 7 років",
+          "packages": [
+            { "lessons": 4, "price": 190 },
+            { "lessons": 6, "price": 280 },
+            { "lessons": 8, "price": 360 }
+          ]
+        },
+        {
+          "durationMinutes": 45,
+          "audience": null,
+          "packages": [
+            { "lessons": 4, "price": 290 },
+            { "lessons": 6, "price": 420 },
+            { "lessons": 8, "price": 540 }
+          ]
+        },
+        {
+          "durationMinutes": 55,
+          "audience": null,
+          "packages": [
+            { "lessons": 4, "price": 350 },
+            { "lessons": 6, "price": 510 },
+            { "lessons": 8, "price": 650 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "drums",
+      "name": "Барабани",
+      "theme": "rhythm",
+      "singleLessons": [
+        {
+          "durationMinutes": 30,
+          "audience": "пробний урок або для дітей до 7 років",
+          "price": 50
+        },
+        {
+          "durationMinutes": 45,
+          "audience": "для підлітків або дорослих",
+          "price": 70
+        },
+        {
+          "durationMinutes": 55,
+          "audience": "для дорослих",
+          "price": 85
+        }
+      ],
+      "subscriptions": [
+        {
+          "durationMinutes": 30,
+          "audience": "для дітей до 7 років",
+          "packages": [
+            { "lessons": 4, "price": 190 },
+            { "lessons": 6, "price": 280 },
+            { "lessons": 8, "price": 360 }
+          ]
+        },
+        {
+          "durationMinutes": 45,
+          "audience": null,
+          "packages": [
+            { "lessons": 4, "price": 270 },
+            { "lessons": 6, "price": 390 },
+            { "lessons": 8, "price": 510 }
+          ]
+        },
+        {
+          "durationMinutes": 55,
+          "audience": null,
+          "packages": [
+            { "lessons": 4, "price": 330 },
+            { "lessons": 6, "price": 480 },
+            { "lessons": 8, "price": 620 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "piano",
+      "name": "Фортепіано",
+      "theme": "rhythm",
       "singleLessons": [
         {
           "durationMinutes": 30,

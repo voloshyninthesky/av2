@@ -7,7 +7,7 @@
 import { AudioEngine } from '../audio.js?v=20260802-21';
 import { ui, audio, mic } from '../core/studio.js?v=20260804-10';
 import { play } from './state.js?v=20260804-10';
-import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260805-02';
+import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260805-03';
 import {
   stampHeldLoopCaptureDuration,
   beginHeldLoopCapture,

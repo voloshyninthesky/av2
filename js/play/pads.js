@@ -10,7 +10,7 @@ import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260802-1';
 import { canvas } from '../view/rig.js?v=20260804-10';
 import { play, activePointers } from './state.js?v=20260804-10';
 import { GUITAR_CHORDS } from './guitar.js?v=20260804-10';
-import { addVibe } from './vibe.js?v=20260805-02';
+import { addVibe } from './vibe.js?v=20260805-03';
 import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260804-10';
 
 // Pad gestures compete with the stage's own pointer handling; main.js supplies

@@ -1,20 +1,13 @@
 // ============================================================
 // ART VIBE — interactive pricing mixer (driven by prices.json)
+// Every instrument carries its own prices, name and board theme in the data,
+// so this module never has to know which instruments happen to cost the same.
 // ============================================================
+import { loadPrices } from './core/prices.js?v=20260805-03';
 
-const INSTRUMENT_LABELS = {
-  vocal: 'Вокал',
-  guitar: 'Гітара',
-  drums: 'Барабани',
-  piano: 'Фортепіано',
-};
-
+/** Chip / close-up kinds that name an instrument differently than the data. */
 const ANCHOR_MAP = {
   mic: 'vocal',
-  vocal: 'vocal',
-  guitar: 'guitar',
-  drums: 'drums',
-  piano: 'piano',
 };
 
 function pluralLessons(n) {
@@ -60,14 +53,8 @@ export class PricingPicker {
   }
 
   async _load() {
-    try {
-      const res = await fetch('prices.json?v=20260725-02');
-      if (!res.ok) throw new Error(`prices.json ${res.status}`);
-      this.data = await res.json();
-    } catch (err) {
-      console.warn('PricingPicker: failed to load prices.json', err);
-      return;
-    }
+    this.data = await loadPrices();
+    if (!this.data) return;
     this._bind();
     this._renderPromos();
     this.ready = true;
@@ -75,8 +62,7 @@ export class PricingPicker {
   }
 
   selectInstrument(anchor) {
-    const key = ANCHOR_MAP[anchor] || 'vocal';
-    this.state.instrument = key;
+    this.state.instrument = ANCHOR_MAP[anchor] || anchor;
     if (this.ready) {
       this._applyCheapestDefaults();
       this.render({ flash: true });
@@ -114,17 +100,17 @@ export class PricingPicker {
   /** Prefer the first / cheapest duration and pack for the current instrument. */
   _applyCheapestDefaults() {
     this.state.format = 'single';
-    const category = this._category();
-    if (!category) return;
-    const cheapest = category.singleLessons.reduce((best, row) => {
+    const instrument = this._instrument();
+    if (!instrument) return;
+    const cheapest = instrument.singleLessons.reduce((best, row) => {
       if (!best) return row;
       return row.price < best.price ? row : best;
     }, null);
     this.state.duration = cheapest?.durationMinutes
-      ?? category.singleLessons[0]?.durationMinutes
+      ?? instrument.singleLessons[0]?.durationMinutes
       ?? this.state.duration;
-    const sub = category.subscriptions.find((r) => r.durationMinutes === this.state.duration)
-      || category.subscriptions[0];
+    const sub = instrument.subscriptions.find((r) => r.durationMinutes === this.state.duration)
+      || instrument.subscriptions[0];
     const packs = sub?.packages || [];
     const cheapestPack = packs.reduce((best, pack) => {
       if (!best) return pack;
@@ -133,8 +119,10 @@ export class PricingPicker {
     this.state.lessons = cheapestPack?.lessons ?? packs[0]?.lessons ?? this.state.lessons;
   }
 
-  _category() {
-    return this.data.categories.find((c) => c.instruments.includes(this.state.instrument));
+  /** The active instrument's prices — an unknown anchor falls back to the first. */
+  _instrument() {
+    const list = this.data.instruments;
+    return list.find((entry) => entry.id === this.state.instrument) || list[0];
   }
 
   _renderPromos() {
@@ -160,10 +148,10 @@ export class PricingPicker {
     });
   }
 
-  _fillDurations(category) {
+  _fillDurations(instrument) {
     const source = this.state.format === 'single'
-      ? category.singleLessons
-      : category.subscriptions;
+      ? instrument.singleLessons
+      : instrument.subscriptions;
     const durations = source.map((row) => row.durationMinutes);
     if (!durations.includes(this.state.duration)) {
       this.state.duration = durations[0];
@@ -190,16 +178,14 @@ export class PricingPicker {
     }).join('');
   }
 
-  _quote(category) {
+  _quote(instrument) {
     const cur = this.data.currency.display;
-    const inst = INSTRUMENT_LABELS[this.state.instrument];
-    const theme = category.instruments.includes('drums') || category.instruments.includes('piano')
-      ? 'rhythm'
-      : 'vocal';
+    const inst = instrument.name;
+    const theme = instrument.theme || 'vocal';
 
     if (this.state.format === 'single') {
-      const row = category.singleLessons.find((r) => r.durationMinutes === this.state.duration)
-        || category.singleLessons[0];
+      const row = instrument.singleLessons.find((r) => r.durationMinutes === this.state.duration)
+        || instrument.singleLessons[0];
       return {
         theme,
         price: row.price,
@@ -211,8 +197,8 @@ export class PricingPicker {
       };
     }
 
-    const sub = category.subscriptions.find((r) => r.durationMinutes === this.state.duration)
-      || category.subscriptions[0];
+    const sub = instrument.subscriptions.find((r) => r.durationMinutes === this.state.duration)
+      || instrument.subscriptions[0];
     const pack = sub.packages.find((p) => p.lessons === this.state.lessons)
       || sub.packages[0];
     const per = Math.round(pack.price / pack.lessons);
@@ -229,8 +215,11 @@ export class PricingPicker {
 
   render({ flash = false } = {}) {
     if (!this.ready) return;
-    const category = this._category();
-    if (!category) return;
+    const instrument = this._instrument();
+    if (!instrument) return;
+    // An anchor the data does not price (or a stale id) settles on the fallback
+    // instrument here, so the buttons highlight what the board actually quotes.
+    this.state.instrument = instrument.id;
 
     // First paint (and any path that never called _applyCheapestDefaults) still
     // lands on the cheapest duration / pack for the active instrument.
@@ -240,17 +229,17 @@ export class PricingPicker {
     }
 
     this._syncChoiceButtons();
-    this._fillDurations(category);
+    this._fillDurations(instrument);
 
     if (this.state.format === 'sub') {
-      const sub = category.subscriptions.find((r) => r.durationMinutes === this.state.duration)
-        || category.subscriptions[0];
+      const sub = instrument.subscriptions.find((r) => r.durationMinutes === this.state.duration)
+        || instrument.subscriptions[0];
       this._fillPacks(sub);
     } else {
       this.el.packSection.hidden = true;
     }
 
-    const q = this._quote(category);
+    const q = this._quote(instrument);
     this.el.mixer.dataset.theme = q.theme;
     this.el.board.dataset.theme = q.theme;
     this.el.kicker.textContent = q.kicker;

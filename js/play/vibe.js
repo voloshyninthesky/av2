@@ -8,6 +8,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260804-10';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260805-03';
 import { bumpHitPulse } from '../scene/effects.js?v=20260804-10';
 import { instrumentView } from '../view/instrument-presets.js?v=20260804-10';
 import { play, keyboardPianoNotes } from './state.js?v=20260804-10';
@@ -55,7 +56,8 @@ export function addVibe(n) {
 }
 
 // ---- price carousel ----
-// The icon carries the instrument; the copy stays identical on every slide.
+// The icon carries the instrument; each slide quotes that instrument's own
+// cheapest single lesson, straight out of prices.json.
 export const PRICE_SLIDES = [
   { kind: 'mic', icon: '🎤', anchor: 'vocal' },
   { kind: 'guitar', icon: '🎸', anchor: 'guitar' },
@@ -64,6 +66,15 @@ export const PRICE_SLIDES = [
 ];
 const shownPriceChips = new Set();
 const pendingPriceChips = new Set();
+let chipAwaitingPrices = null;
+
+function priceChipTitle(slide) {
+  const from = lowestSinglePrice(slide.anchor);
+  const teaser = from === null
+    ? 'в Art Vibe'
+    : `від ${from} ${pricesNow().currency.display}`;
+  return `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>Уроки <span class="accent">${teaser}</span>`;
+}
 
 export function chipFor(kind, { force = false } = {}) {
   if (ui.modalOpen) return;
@@ -74,17 +85,27 @@ export function chipFor(kind, { force = false } = {}) {
   const slide = PRICE_SLIDES[index];
   const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind, { force: true });
   ui.showChip(
-    `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>Уроки <span class="accent">від 50 зл</span>`,
+    priceChipTitle(slide),
     '',
     'ЦІНИ ›',
     () => ui.open('pricing', slide.anchor),
     { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
   );
+  // Queueing normally loads the prices long before this, but a chip forced
+  // straight up (carousel, screenshot hooks) can beat them here: show it now
+  // and fill the number in the moment the file lands.
+  chipAwaitingPrices = pricesNow() ? null : kind;
+  if (chipAwaitingPrices) {
+    loadPrices().then(() => {
+      if (chipAwaitingPrices === kind) ui.setChipTitle(priceChipTitle(slide));
+    });
+  }
 }
 
 export function queuePriceChip(kind) {
   if (!kind || shownPriceChips.has(kind)) return;
   pendingPriceChips.add(kind);
+  loadPrices();
 }
 
 export function flushPendingPriceChip(kind) {
