@@ -129,6 +129,7 @@ import {
 import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260804-10';
 import {
   setGlow,
+  isInstrumentCloseUp,
   onPointerMove,
   hitInteractableDetailsAt,
   isGuitarPlayFocus,
@@ -168,6 +169,8 @@ import { updateMascot, updateMascotEditorPreview } from './mascot/update.js?v=20
 // ============================================================
 /** Mesh currently under a hovering desktop pointer, or null. */
 let hovered = null;
+/** Whether that mesh is currently lit, which a close-up suppresses. */
+let hoverGlowing = false;
 
 const danceBtn = document.getElementById('logo-btn'); // HUD logo doubles as the dance toggle
 
@@ -442,14 +445,20 @@ function animate(frameTime = performance.now()) {
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects(interactables, false);
     const hit = hits.length ? hits[0].object : null;
-    if (hit !== hovered) {
-      if (hovered) setGlow(hovered, false);
+    // The glow says "walk over here". Inside a close-up you are already there
+    // and the pointer plays instead, so lighting the instrument only smears it.
+    const glow = Boolean(hit) && !isInstrumentCloseUp();
+    if (hit !== hovered || glow !== hoverGlowing) {
+      if (hoverGlowing) setGlow(hovered, false);
       hovered = hit;
-      if (hovered) setGlow(hovered, true);
+      hoverGlowing = glow;
+      if (hoverGlowing) setGlow(hovered, true);
     }
     canvas.style.cursor = hovered ? 'pointer' : '';
   } else {
-    if (hovered) { setGlow(hovered, false); hovered = null; }
+    if (hoverGlowing) setGlow(hovered, false);
+    hovered = null;
+    hoverGlowing = false;
     if (!canHover.matches) canvas.style.cursor = '';
   }
 

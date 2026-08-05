@@ -10,6 +10,7 @@ import { params, prefersReducedMotion } from '../core/quality.js?v=20260804-10';
 import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260804-10';
 import { ui, audio, mic, mascot } from '../core/studio.js?v=20260804-10';
 import { instrumentView } from '../view/instrument-presets.js?v=20260804-10';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260804-10';
 import { mobileFollow } from '../view/mobile-controls.js?v=20260804-10';
 import { mascotMove } from '../mascot/state.js?v=20260804-10';
 import { play } from '../play/state.js?v=20260804-10';
@@ -72,9 +73,7 @@ function clearOnboardPulse() {
   if (!onboard.pulsing) return;
   onboard.pulsing = false;
   mic.group.traverse((o) => {
-    if (!o.isMesh || !o.material?.emissive || o.userData._baseEmissive === undefined) return;
-    o.material.emissive.setHex(o.userData._baseEmissive);
-    o.material.emissiveIntensity = o.userData._baseEI;
+    if (o.isMesh) unglowMesh(o);
   });
 }
 
@@ -110,13 +109,7 @@ export function updateOnboardPulse(t) {
   if (hovered && hovered.userData.instrument !== 'mic') return;
   const intensity = 0.12 + 0.22 * (0.5 + 0.5 * Math.sin(t * 2.6));
   mic.group.traverse((o) => {
-    if (!o.isMesh || !o.material?.emissive) return;
-    if (o.userData._baseEmissive === undefined) {
-      o.userData._baseEmissive = o.material.emissive.getHex();
-      o.userData._baseEI = o.material.emissiveIntensity ?? 1;
-    }
-    o.material.emissive.setHex(0x9E33CA);
-    o.material.emissiveIntensity = intensity;
+    if (o.isMesh) glowMesh(o, 0x9E33CA, intensity);
   });
   onboard.pulsing = true;
 }

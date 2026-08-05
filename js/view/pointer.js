@@ -14,6 +14,7 @@ import { canvas, camera, controls } from './rig.js?v=20260804-10';
 import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260804-10';
 import { instrumentView } from './instrument-presets.js?v=20260804-10';
 import { raycaster, pointer } from './pick.js?v=20260804-10';
+import { glowMesh, unglowMesh } from './emissive.js?v=20260804-10';
 import { walkMascotToInstrument } from './mobile-controls.js?v=20260804-10';
 import { resetBrowserPageZoom } from './viewport.js?v=20260804-10';
 import { activePointers } from '../play/state.js?v=20260804-10';
@@ -43,18 +44,8 @@ export const INSTRUMENT_STYLE = {
 export function setGlow(mesh, on) {
   const inst = mesh.userData.instrument;
   const apply = (m) => {
-    if (!m.material || !m.material.emissive) return;
-    if (m.userData._baseEmissive === undefined) {
-      m.userData._baseEmissive = m.material.emissive.getHex();
-      m.userData._baseEI = m.material.emissiveIntensity ?? 1;
-    }
-    if (on) {
-      m.material.emissive.setHex(INSTRUMENT_STYLE[inst].glow);
-      m.material.emissiveIntensity = inst === 'piano' ? 0.5 : 0.3;
-    } else {
-      m.material.emissive.setHex(m.userData._baseEmissive);
-      m.material.emissiveIntensity = m.userData._baseEI;
-    }
+    if (on) glowMesh(m, INSTRUMENT_STYLE[inst].glow, inst === 'piano' ? 0.5 : 0.3);
+    else unglowMesh(m);
   };
   if (inst === 'piano') {
     if (mesh.userData.freq !== undefined) apply(mesh);
@@ -101,6 +92,13 @@ export function hitInteractableDetailsAt(clientX, clientY, guitarZone = null) {
 
 export function hitInteractableAt(clientX, clientY) {
   return hitInteractableDetailsAt(clientX, clientY)?.object || null;
+}
+
+/** True from the moment the camera commits to a close-up until it lets go. */
+export function isInstrumentCloseUp() {
+  return instrumentView.phase === 'entering'
+    || instrumentView.phase === 'focused'
+    || instrumentView.phase === 'returning';
 }
 
 export function isMultiTouchInstrumentFocus() {
