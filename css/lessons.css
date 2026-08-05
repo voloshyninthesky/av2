@@ -765,6 +765,22 @@ h2 {
   outline-color: var(--gold-light);
 }
 
+/* -------------------------------------------------------------- tablet */
+
+/* Between the phone cut and ~908px — where the shell first reaches its full
+   892px design width — the two-column grid squeezes the article to ~500px
+   beside the fixed 214px sidebar; portrait tablets all land in this band.
+   Drop the sidebar and give the article the whole width: as on a phone, its
+   two windows only repeat the booking CTAs and the weather, and the CTAs are
+   already in the page body. */
+@media (min-width: 761px) and (max-width: 907px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { display: none; }
+  /* Single column again, so the hub's jump to the directions grid saves a
+     scroll — same rationale as the phone rule below. */
+  .jump-link { display: inline-block; }
+}
+
 /* -------------------------------------------------------------- narrow */
 
 @media (max-width: 760px) {
