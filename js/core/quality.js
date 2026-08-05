@@ -12,6 +12,9 @@ const LIGHT_LEVEL_MIN = 0;
 const LIGHT_LEVEL_MAX = 100;
 const LIGHT_LEVEL_DEFAULT = 78;
 const LOW_QUALITY_LIGHT_LEVEL_DEFAULT = 100;
+// GLAMOUR carries bloom, so the stage arrives dimmer: at 78 the guitar close-up
+// blooms into glare. PIXEL has no bloom to catch and opens the lights all the way.
+const HIGH_QUALITY_LIGHT_LEVEL_DEFAULT = 67;
 function readStoredLightLevel() {
   try {
     const raw = localStorage.getItem(LIGHT_LEVEL_KEY);
@@ -31,9 +34,10 @@ export const forcedQuality = QUALITY_OPTIONS.has(queryQuality)
   ? queryQuality
   : (QUALITY_OPTIONS.has(savedQuality) ? savedQuality : 'auto');
 const storedLightLevel = readStoredLightLevel();
-export let stageLightLevel = storedLightLevel ?? (forcedQuality === 'low'
-  ? LOW_QUALITY_LIGHT_LEVEL_DEFAULT
-  : LIGHT_LEVEL_DEFAULT);
+export let stageLightLevel = storedLightLevel ?? ({
+  low: LOW_QUALITY_LIGHT_LEVEL_DEFAULT,
+  high: HIGH_QUALITY_LIGHT_LEVEL_DEFAULT,
+}[forcedQuality] ?? LIGHT_LEVEL_DEFAULT);
 const qualityOptions = document.querySelector('.quality-options');
 const qualityButtons = [...document.querySelectorAll('[data-quality]')];
 const qualityConfirm = document.getElementById('quality-confirm');
