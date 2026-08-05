@@ -16,6 +16,7 @@ import {
   instrumentLocalToWorld,
 } from '../view/instrument-presets.js?v=20260804-10';
 import { PIANO_HAND_ANCHORS } from '../view/focus-frame.js?v=20260804-10';
+import { guitarMascotStandoffZ } from '../instruments/guitar.js?v=20260804-10';
 import { mascotMove, dance } from './state.js?v=20260804-10';
 import { mascotCfg, MASCOT_HEIGHT_RANGE } from './appearance.js?v=20260804-10';
 
@@ -155,8 +156,9 @@ export function createGuitarMascotPose() {
   const preset = INSTRUMENT_VIEW_PRESETS.guitar;
   const localPosition = preset.mascot.clone();
   // Step a bigger body farther back from the held guitar so the head stays
-  // behind the strings instead of eclipsing the soundhole.
-  localPosition.z = THREE.MathUtils.clamp(-0.18 - 0.55 * (mascot.group.scale.y - 0.68), -0.44, -0.08);
+  // behind the strings instead of eclipsing the soundhole. The formula is
+  // shared with the guitar focus fitter, which frames this exact head.
+  localPosition.z = guitarMascotStandoffZ(mascot.group.scale.y);
   const position = instrumentLocalToWorld('guitar', localPosition);
   position.y = 0;
   const guitarQuaternion = guitar.group.getWorldQuaternion(new THREE.Quaternion());
@@ -168,8 +170,8 @@ export function createGuitarMascotPose() {
     group: groupQuaternion,
     torso: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.05, 0, 0.03)),
     headPosition: new THREE.Vector3(0, 1.54, 0.05),
-    // Eyes down toward the strings — the camera behind reads it as watching
-    // the fretting hand.
+    // Eyes down toward the strings — the overhead camera reads it as
+    // watching the hands.
     head: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.3, 0.1, 0)),
     armLPosition: new THREE.Vector3(-0.34, 1.28, 0.06),
     armRPosition: new THREE.Vector3(0.34, 1.28, 0.06),

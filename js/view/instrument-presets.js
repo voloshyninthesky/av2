@@ -44,16 +44,20 @@ export const INSTRUMENT_VIEW_PRESETS = {
     yaw: 0,
     seated: false,
     approach: [],
-    // Over-the-shoulder player view: the guitar is held across the mascot (see
-    // the performance pose in instruments.js) and the camera looks down from
-    // behind the playing shoulder, so the head reads at the screen edge and
-    // the strings stay clear of it. Only the eye direction lives here; the
-    // guitar fitter owns distance and offset.
+    // The guitar is held across the mascot (see the performance pose in
+    // instruments.js). Only the eye direction lives here; the guitar fitter
+    // owns distance and offset.
     //
     // Azimuth follows the viewport because a guitar is long and thin, and a
     // diagonal one wastes the frame: each orientation lays the instrument
-    // along the screen's long axis. Landscape keeps the neck to the left;
-    // portrait stands it up, body low-right and head at the left edge.
+    // along the screen's long axis. Landscape is the player's own first-person
+    // view — looking down from behind the head, neck to the screen left, low E
+    // nearest the viewer, exactly the orientation a guitarist sees. The head
+    // physically overhangs the strings for tall or wide builds, so the sight
+    // line often passes through it; syncGuitarFirstPersonHead (mascot/update)
+    // hides the head whenever that happens, the same way first-person games
+    // hide the player model's head. Portrait stands the guitar up, body
+    // low-right and head at the left edge.
     camera: new THREE.Vector3(-0.45, 3.7, -0.9),
     cameraPortrait: new THREE.Vector3(-1.23, 3.7, 0.37),
     target: new THREE.Vector3(0.05, 1.06, 0.28),

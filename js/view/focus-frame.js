@@ -332,7 +332,10 @@ const GUITAR_SUBJECT_LOCAL_BOUNDS = new THREE.Box3(
 );
 
 function guitarPerformanceMatrix() {
-  const pose = guitar.getPerformancePose(mascot.group.scale.y);
+  // Full mascot scale: the chest-riding hold shifts with build (x) as well as
+  // height (y), and the fitter must frame the guitar where it will actually
+  // sit for this body.
+  const pose = guitar.getPerformancePose(mascot.group.scale);
   const local = new THREE.Matrix4().compose(
     pose.position,
     new THREE.Quaternion().setFromEuler(pose.euler),
@@ -347,7 +350,7 @@ function fitGuitarFocusFrame(preset) {
   // Project the strings band under the FINAL performance pose, not whatever
   // blend the entry transition happens to be at.
   const matrix = guitarPerformanceMatrix();
-  const subjectPoints = boxCorners(GUITAR_SUBJECT_LOCAL_BOUNDS)
+  const stringsPoints = boxCorners(GUITAR_SUBJECT_LOCAL_BOUNDS)
     .map((point) => point.applyMatrix4(matrix));
   const subjectCenter = GUITAR_SUBJECT_LOCAL_BOUNDS.getCenter(new THREE.Vector3())
     .applyMatrix4(matrix);
@@ -358,8 +361,8 @@ function fitGuitarFocusFrame(preset) {
     .applyQuaternion(guitarWorldQuaternion).normalize();
   const fit = fitProjectedFocusFrame({
     safeRect,
-    widthPoints: subjectPoints,
-    subjectPoints,
+    widthPoints: stringsPoints,
+    subjectPoints: stringsPoints,
     subjectCenter,
     eyeDirection,
     desiredWidthRatio: portrait ? 0.94 : 0.86,
@@ -371,7 +374,7 @@ function fitGuitarFocusFrame(preset) {
   });
   document.documentElement.dataset.guitarFrameDebug = JSON.stringify({
     safeRect: { ...safeRect },
-    subjectBounds: projectedBounds(subjectPoints, focusFitCamera),
+    subjectBounds: projectedBounds(stringsPoints, focusFitCamera),
     distance: fit.distance,
   });
   return { position: fit.position, target: fit.target };

@@ -129,7 +129,7 @@ Desktop keyboard sound does **not** require instrument focus (see §5).
 
 ### Piano performance mode
 
-**Current milestone:** the piano focus is a **player's-eye view** — the same over-the-shoulder language as the drums — plus reliable held-note sustain for direct key play. Focus / `E` / **ГРАТИ** still never starts a melody.
+**Current milestone:** the piano focus is a **player's-eye view** — the same over-the-shoulder language as the drums — plus reliable held-note sustain for direct key play. Focus / `Enter` / **ГРАТИ** still never starts a melody.
 
 #### Focus framing — current
 
@@ -174,10 +174,11 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - **Pointer / pad / mesh guitar input** is accepted only during stable guitar focus — never while idle, approaching, entering, returning, or focused on another instrument.
 - **Desktop keyboard** chord + strum keys follow the global jam map (§5): they may sound while idle, while focused on any instrument, and during approach / enter / return camera moves. They stay silent only when the stage has not started, a modal is open, or the event target is editable / a control.
 - Global instrument shortcuts ignore key events originating from buttons, links, form fields, or editable content; the focused control handles those events itself.
-- Focus is a **player's view**: during the entry transition the guitar lerps off its stand into the mascot's hands — held at chest height, low E nearest the viewer, face tipped up toward a steep behind-the-shoulder camera (the stand fades out; on exit both lerp back). A measured fitter frames the strings band from nut to below the bridge, reserves the chord-pad gutter, opens **two `+` zoom steps inside the fit**, and refits on resize / orientation change.
-- **The camera azimuth follows the viewport**, because a guitar is long and thin and a diagonal one wastes the frame: each orientation lays the instrument along the screen's long axis. Landscape / desktop keeps the neck to the screen left so strings read horizontally (strum = vertical swipe). Phone portrait stands the guitar up — body low and to the right, neck rising, mascot head at the left edge — so strings read vertically (strum = horizontal swipe). Strum detection works in guitar-local space, so it is unaffected by which framing is active.
-- The held pose adapts to mascot customization: hold height rides the mascot's chest and a bigger body steps farther back so the head never eclipses the soundhole; the camera pitch plus a small bout-side azimuth keep the strings clear of the head at every size.
-- The mascot and guitar must read as one performance pose: fretting hand along the neck, strum hand over the soundhole. String motion and strum-arm motion carry the action; whole-body guitar wobble stays subtle.
+- Focus is a **player's view**: during the entry transition the guitar lerps off its stand into the mascot's hands — held against the chest, low E nearest the viewer, face tipped up toward a steep overhead camera (the stand fades out; on exit both lerp back). A measured fitter frames the strings band from nut to below the bridge, reserves the chord-pad gutter, opens **two `+` zoom steps inside the fit**, and refits on resize / orientation change.
+- **The camera azimuth follows the viewport**, because a guitar is long and thin and a diagonal one wastes the frame: each orientation lays the instrument along the screen's long axis. Landscape / desktop is the guitarist's own **first-person view** — looking down from behind the head, neck to the screen left, low E nearest the viewer — so strings read horizontally (strum = vertical swipe). Phone portrait stands the guitar up — body low and to the right, neck rising, mascot head at the left edge — so strings read vertically (strum = horizontal swipe). Strum detection works in guitar-local space, so it is unaffected by which framing is active.
+- The held pose adapts to mascot customization: the whole hold rides the mascot's chest — height with the height scale, and the forward/side offset with the build scale, so a broad build carries the guitar forward with it instead of leaning its face through the soundboard — while a bigger body also steps farther back.
+- **The mascot can never block or clutter the strings.** Tall or wide builds physically overhang the play band, and a headless body seen from inside reads as floating debris — so in the landscape first-person view, whenever the camera→strings sight line passes through the head's hair shell, the whole mascot is hidden and only the held guitar remains (you are looking out of that body). Hysteresis keeps the boundary from flickering; orbiting away from the sight line, portrait, and every non-guitar phase bring the body straight back.
+- In portrait (and while the body is visible) the mascot and guitar must read as one performance pose: fretting hand along the neck, strum hand over the soundhole. String motion and strum-arm motion carry the action; whole-body guitar wobble stays subtle.
 - Use separate guitar-local raycast proxies for approach, strum, and fret selection (all pose-invariant: they ride the guitar body). A pointer captured by a play zone or by the chord pad cannot orbit / zoom the camera until it ends.
 - Start from a composed focused frame, then leave horizontal orbit available from empty canvas within the fitted distance / pitch envelope (and the `+` / `−` controls).
 
@@ -206,7 +207,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - The chord pad is laid out like a real guitar during focus: a **vertical rail on the left** (fretting hand) on landscape / desktop, with the strum zone to the right (picking hand); on portrait it stays a bottom row, sitting lower than the vocal pad and offset left of the zoom column so the two never overlap. The guitar fitter reserves that gutter so chords never cover the strings.
 - **Touch:** tap a chord to latch it for one-finger playing, or hold it with one pointer and strum with another. A quick tap on the string fan plucks the nearest string. Releasing a genuinely held chord returns to the previously latched chord (or open strings); cancel, exit, background, or lost capture clears transient holds.
 - **Fine pointer / pen:** clicking a chord latches it so the same pointer can strum repeatedly; clicking it again clears it.
-- **Desktop keyboard (jam map):** hold `Q` / `R` / `T` / `Y` / `U` / `I` for Em / Am / C / D / G / F. Key release returns to open strings. Space is a downstroke; Shift+Space is an upstroke. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
+- **Desktop keyboard (jam map):** hold the QWERTY top row — `Q` / `W` / `E` / `R` / `T` / `Y` — for Em / Am / C / D / G / F. Pressing a chord key also **strums it immediately** — on a computer keyboard the chord key is the play gesture, so the two-hand rule applies to touch/pad input only. Key release returns to open strings. Space re-strums (downstroke); Shift+Space is an upstroke. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
 - Chord buttons expose visible focus, `aria-pressed`, and `aria-keyshortcuts` (matching the jam map); color is not the only signal.
 - Use one fretboard plane and derive the nearest string from its local hit point; while a chord is selected, its shape owns the fretting so every fretboard hit uses that string’s chord pitch and mute state. With no chord selected, a fretboard hit uses its local fret.
 
@@ -249,16 +250,16 @@ Opening the editor while an instrument is focused leaves that focus immediately 
 
 On desktop (fine pointer / hover-capable, not the mobile game shell), the computer keyboard is a **multi-instrument jam surface**. After Enter, with no modal open and the event not from an editable / button target, instrument maps stay live **regardless of which instrument is focused** (including idle / walking). Pointer and on-screen pads remain focus-gated as today.
 
-**Why this layout:** mascot movement stays pointer/touch based, leaving the desktop keyboard free for instruments and approach (`E`).
+**Why this layout:** mascot movement stays pointer/touch based, leaving the desktop keyboard free for instruments and approach (`Enter`).
 
 | Layer | Keys | Behavior |
 |-------|------|----------|
 | Walk | Arrows + `W` `A` `S` `D` | Idle only; ignored while any instrument view phase ≠ `idle`. `W` forward, `S` back, `A` left, `D` right (same as arrows). |
-| Approach | `E` | Idle only → nearest instrument in reach (no auto melody) |
+| Approach | `Enter` | Idle only → nearest instrument in reach (no auto melody) |
 | Loop | `L` / Shift+`L` | Pedal toggle / clear (after unlock rules unchanged) |
 | Piano | `1`–`8` | White keys C4–C5; press-and-hold sustains; multi-key chords OK |
 | Drums | `Z` `X` `C` `V` `B` | kick / snare / hihat / tom / crash |
-| Guitar chords | `Q` `R` `T` `Y` `U` `I` | Em / Am / C / D / G / F (hold); release → open strings |
+| Guitar chords | `Q` `W` `E` `R` `T` `Y` | Em / Am / C / D / G / F — press strums the chord immediately and holds it; release → open strings |
 | Guitar strum | Space / Shift+Space | Downstroke / upstroke using the active keyboard (or pad) chord |
 | Vocal | `N` `M` `,` `.` `/` | ДО / РЕ / МІ / ФА / СОЛЬ; hold sustains like the vocal pad |
 
@@ -269,7 +270,7 @@ Rules:
 3. **One owner per physical key.** Never bind the same `KeyboardEvent.code` to two instruments or to both walk and play.
 4. **Release hygiene:** `keyup`, window blur, visibility hidden, and focus exit clear held piano notes, keyboard guitar chord, and held keyboard vocal for that session path. Walk key sets clear on `keyup` / blur as today.
 5. **Price chips:** first audible play of an instrument (keyboard or pointer) still queues the once-per-instrument chip. If that play happened without focus, show the chip after the visitor next leaves any instrument focus, or after ~2 s of silence from that instrument if they never focused it.
-6. **`#keys-hint` (desktop-only):** reflect the jam map, e.g. клік · `E` · `L` · `Z X C V B` ударні · `1–8` піаніно · `Q R T Y U I`+пробіл гітара · `N M , . /` вокал.
+6. **`#keys-hint` (desktop-only):** reflect the jam map, e.g. клік · `Enter` · `L` · `Z X C V B` ударні · `1–8` піаніно · `Q W E R T Y`+пробіл гітара · `N M , . /` вокал.
 7. **Mobile unchanged:** no jam keyboard; pads + focused multitouch only. Hide `#keys-hint` as today.
 
 ### Desktop
@@ -278,11 +279,11 @@ Rules:
 |-------|--------|
 | Click floor / mobile joystick | Move mascot (idle) |
 | Click instrument | Approach if not focused; mesh / pad play only when focused |
-| `E` while idle | Approach nearest instrument in reach (no auto melody) |
+| `Enter` while idle | Approach nearest instrument in reach (no auto melody) |
 | Drag / wheel / `+` `−` | Orbit / zoom (buttons stay visible while focused) |
 | `Z` `X` `C` `V` `B` | Drums (jam — any focus / idle) |
 | `1`–`8` | Piano whites (jam — hold sustains) |
-| `Q` `R` `T` `Y` `U` `I` | Guitar chord hold (jam) |
+| `Q` `W` `E` `R` `T` `Y` | Guitar chord strum + hold (jam) |
 | Space / Shift+Space | Guitar downstroke / upstroke (jam) |
 | `N` `M` `,` `.` `/` | Vocal notes (jam — hold sustains) |
 | Drag across strings while guitar-focused | Directional guitar strum (pointer) |
@@ -390,7 +391,7 @@ changing one instrument's price is a one-place edit.
 
 ### `piano-notes.json`
 
-Ordered list of `{ "note", "freqHz" }` kept for possible phrases; focus / `E` / ГРАТИ do **not** auto-play a default melody.
+Ordered list of `{ "note", "freqHz" }` kept for possible phrases; focus / `Enter` / ГРАТИ do **not** auto-play a default melody.
 
 ### Guitar runtime event
 
@@ -536,7 +537,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 - In a five-person first-use test, at least four players make an open strum within `8 s` and a chorded strum within `20 s` after the camera settles, without verbal help.
 - The first stable guitar-focused frame must match the camera transition endpoint; enabling orbit controls and the focused azimuth limits must not snap, reframe, or otherwise move the view after the animation.
 - No **pointer / pad / mesh** guitar sound occurs outside stable guitar focus, including distant taps, camera transitions, and focus on another instrument.
-- **Desktop keyboard** guitar chords (`Q R T Y U I`) and Space / Shift+Space follow the jam map: they may sound while idle or while focused on any instrument, and must remain silent only when the stage has not started, a modal is open, or the event target is editable / a control.
+- **Desktop keyboard** guitar chords (`Q W E R T Y`) and Space / Shift+Space follow the jam map: they may sound while idle or while focused on any instrument, and must remain silent only when the stage has not started, a modal is open, or the event target is editable / a control.
 - A complete stroke excites each crossed eligible string once and in directional order; motion along the strings stays silent. Muted strings neither sound nor animate.
 - Soft and hard strokes are audibly distinct. Reversing direction can immediately produce the reverse string order without false retriggers.
 - Twenty consecutive chord-hold + second-pointer strums work on supported iPhone Safari and Android Chrome without page zoom, orbit motion, lost pointers, or a stuck chord.
@@ -551,7 +552,7 @@ Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
 
 - After Enter on a desktop viewport, with no modal open, holding `1` + tapping `Z` + holding `Q` and pressing Space produces piano + drum + guitar audio in one gesture sequence without focusing any instrument.
 - Holding `N` (vocal) together with `3` (piano) and tapping `X` (snare) keeps all three buses audible; focusing piano must not silence drums / vocal / guitar keyboard routes.
-- Mascot movement has no keyboard bindings: use click-to-move or the mobile joystick. No `KeyboardEvent.code` is shared across approach, loop, piano, drums, guitar, or vocal maps (`E` stays approach-only while idle; guitar Em is `Q`).
+- Mascot movement has no keyboard bindings: use click-to-move or the mobile joystick. No `KeyboardEvent.code` is shared across approach, loop, piano, drums, guitar, or vocal maps (`Enter` is approach-only while idle; the QWERTY row belongs to guitar, so Em is `Q` and `E` is the C chord).
 - A visitor can hold `W` to walk and tap `Z` / `1` / Space in the same session without the walk key stealing instrument input (play keys fire; walk continues on remaining held walk keys).
 - `keyup`, blur, `visibilitychange` → hidden, and ✕ exit clear held piano keys, keyboard guitar chord, and held keyboard vocal without stuck sustains.
 - Mobile / coarse-pointer shells ignore the jam keyboard and keep focus-gated pads; `#keys-hint` stays desktop-only and lists the jam map.

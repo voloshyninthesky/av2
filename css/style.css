@@ -272,6 +272,14 @@ html.stage-live .nav-btn {
 .pill-btn.outline { border-color: var(--ink); color: var(--ink); }
 .pill-btn.outline:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
 
+/* Drawn rather than typed: iOS renders U+2197 with the colour emoji font. */
+.ext-arrow {
+  display: inline-block; width: .72em; height: .72em; vertical-align: -.02em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.4 7.6 7.4 2.6'/%3E%3Cpath d='M3.9 2.6h3.5v3.5'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.4 7.6 7.4 2.6'/%3E%3Cpath d='M3.9 2.6h3.5v3.5'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+}
+
 .icon-btn {
   width: 42px; height: 42px; border-radius: 50%;
   border: 2px solid rgba(253, 251, 247, .35); background: rgba(23, 18, 28, .5);

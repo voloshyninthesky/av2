@@ -185,7 +185,9 @@ window.addEventListener('keydown', (e) => {
   if (!session.started || ui.modalOpen) return;
   if (isEditableHotkeyTarget(e.target)) return;
 
-  if (e.code === 'KeyE' && !e.repeat && instrumentView.phase === 'idle') {
+  // Enter approaches the nearest instrument; KeyE now belongs to the QWERTY
+  // guitar chord row, so approach lives on a key no instrument map can claim.
+  if (e.code === 'Enter' && !e.repeat && instrumentView.phase === 'idle') {
     hooks.playNearestInstrument();
     return;
   }
@@ -209,6 +211,11 @@ window.addEventListener('keydown', (e) => {
     if (!e.repeat) {
       play.keyboardGuitarChord = guitarChord;
       syncChordPadHeld();
+      // A chord key IS the play gesture on a computer keyboard: sound the
+      // chord immediately instead of only arming it. Space keeps re-strumming
+      // the held chord (Shift+Space upstrokes), release returns to open
+      // strings as before. Touch chord pads stay two-hand (hold + strum).
+      fireGuitarStrum(0.85, 'bass-to-treble', null, null, true, { focusRequired: false });
       noteKeyboardJamActivity('guitar');
     }
     return;

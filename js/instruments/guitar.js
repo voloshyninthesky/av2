@@ -15,6 +15,15 @@ import {
   std,
 } from './shared.js?v=20260804-10';
 
+// Where the mascot stands behind the held guitar, in guitar-group space: a
+// bigger body steps farther back so the head clears the strings. Canonical
+// home for the formula — createGuitarMascotPose (mascot/pose.js) and the
+// chest-riding playPosition below must agree on it, or the focus framing
+// and the pose drift apart.
+export function guitarMascotStandoffZ(scaleY) {
+  return THREE.MathUtils.clamp(-0.18 - 0.55 * (scaleY - 0.68), -0.44, -0.08);
+}
+
 export function buildGuitar() {
   const guitar = new THREE.Group();       // floor anchor
   const body = new THREE.Group();         // the instrument itself (wobbles)
@@ -322,18 +331,31 @@ export function buildGuitar() {
 
   let wobble = 0, recoil = 0, recoilDirection = 1, time = 0;
 
-  // The held height rides the mascot's chest, so a customized short or tall
-  // mascot still reads as holding the guitar rather than reaching for it.
-  function playPosition(heightScale) {
-    const position = PLAY_POSE.position.clone();
-    position.y *= heightScale;
-    return position;
+  // The whole held guitar rides the mascot's chest. Height follows the height
+  // scale so short or tall bodies still read as holding it; the x/z offset
+  // follows the build scale so a wide torso and head carry the guitar forward
+  // with them — otherwise a broad build leans its face past the soundboard and
+  // into the strings, and no focus camera angle can frame around that.
+  // At the default 0.68 mascot scale this reproduces PLAY_POSE exactly.
+  const CHEST_OFFSET = { x: -0.29 / 0.68, z: 0.34 / 0.68 };
+  const DEFAULT_MASCOT_SCALE = 0.68;
+
+  function playPosition(scale) {
+    const heightScale = (scale?.y ?? scale) || DEFAULT_MASCOT_SCALE;
+    const buildScale = (scale?.x ?? heightScale) || heightScale;
+    return new THREE.Vector3(
+      PLAY_POSE.position.x + CHEST_OFFSET.x * (buildScale - DEFAULT_MASCOT_SCALE),
+      PLAY_POSE.position.y * heightScale,
+      PLAY_POSE.position.z
+        + (guitarMascotStandoffZ(heightScale) - guitarMascotStandoffZ(DEFAULT_MASCOT_SCALE))
+        + CHEST_OFFSET.z * (buildScale - DEFAULT_MASCOT_SCALE),
+    );
   }
 
-  function setPerformBlend(t, heightScale = 1) {
+  function setPerformBlend(t, scale) {
     performBlend = THREE.MathUtils.clamp(t, 0, 1);
     const k = performBlend;
-    body.position.lerpVectors(STAND_POSE.position, playPosition(heightScale), k);
+    body.position.lerpVectors(STAND_POSE.position, playPosition(scale), k);
     basePose.rx = THREE.MathUtils.lerp(STAND_POSE.euler.x, PLAY_POSE.euler.x, k);
     basePose.ry = THREE.MathUtils.lerp(STAND_POSE.euler.y, PLAY_POSE.euler.y, k);
     basePose.rz = THREE.MathUtils.lerp(STAND_POSE.euler.z, PLAY_POSE.euler.z, k);
@@ -361,9 +383,9 @@ export function buildGuitar() {
     openFreqs: [...OPEN_FREQS],
     strumPlane,
     fretboardPlane,
-    getPerformancePose(heightScale = 1) {
+    getPerformancePose(scale) {
       return {
-        position: playPosition(heightScale),
+        position: playPosition(scale),
         euler: PLAY_POSE.euler.clone(),
       };
     },

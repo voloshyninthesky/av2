@@ -39,7 +39,51 @@ export function updateMascotEditorPreview(dt) {
   mascot.group.position.y = THREE.MathUtils.lerp(mascot.group.position.y, 0, relax);
 }
 
+// First-person guitar view (landscape): the focus camera sits where the
+// player's own eyes are, so the mascot's head — and, seen from inside, the
+// disjoint arm and torso pieces — would read as floating debris over the
+// strings. Hide the whole mascot exactly while the sight line runs through
+// the head, the standard first-person trick: you are looking out of this
+// body, so only the guitar remains. Hysteresis keeps the boundary from
+// flickering; orbiting away from the sight line, portrait, and every
+// non-guitar phase bring the body straight back.
+const bodySightLine = new THREE.Vector3();
+const bodySightOffset = new THREE.Vector3();
+let guitarBodyHidden = false;
+
+function syncGuitarFirstPersonBody() {
+  // Landscape only: portrait's composition keeps the whole mascot at the
+  // frame edge as a third-person pose, and it should stay visible there.
+  const guitarView = instrumentView.kind === 'guitar'
+    && ['entering', 'focused', 'returning'].includes(instrumentView.phase)
+    && window.innerWidth >= window.innerHeight;
+  if (!guitarView) {
+    if (guitarBodyHidden) {
+      mascot.group.visible = true;
+      guitarBodyHidden = false;
+    }
+    return;
+  }
+  bodySightLine.copy(controls.target).sub(camera.position);
+  const sightLength = Math.max(0.001, bodySightLine.length());
+  bodySightLine.divideScalar(sightLength);
+  mascot.head.getWorldPosition(bodySightOffset).sub(camera.position);
+  const along = bodySightOffset.dot(bodySightLine);
+  const perpendicular = Math.sqrt(Math.max(0, bodySightOffset.lengthSq() - along * along));
+  // Hair shell radius at the live height/build scale, plus band clearance.
+  const hairRadius = 0.52 * Math.max(mascot.group.scale.x, mascot.group.scale.y);
+  const headOnSightLine = along > 0 && along < sightLength + 0.45;
+  if (!guitarBodyHidden && headOnSightLine && perpendicular < hairRadius + 0.2) {
+    mascot.group.visible = false;
+    guitarBodyHidden = true;
+  } else if (guitarBodyHidden && (!headOnSightLine || perpendicular > (hairRadius + 0.2) * 1.3)) {
+    mascot.group.visible = true;
+    guitarBodyHidden = false;
+  }
+}
+
 export function updateMascot(dt) {
+  syncGuitarFirstPersonBody();
   if (!session.started || session.flyT >= 0) return;
   if (mascotEditor.active) {
     updateMascotEditorPreview(dt);

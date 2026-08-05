@@ -30,14 +30,15 @@ export const GUITAR_CHORDS = {
   F: [1, 3, 3, 2, 1, 1],
 };
 const GUITAR_OPEN_SHAPE = [0, 0, 0, 0, 0, 0];
-// Disjoint from approach (E), loop (L), drums, piano, and vocal controls.
+// The literal QWERTY top row — six keys, six chords, no gaps to memorize.
+// Disjoint from approach (Enter), loop (L), drums, piano, and vocal controls.
 export const GUITAR_KEY_CHORDS = {
   KeyQ: 'Em',
-  KeyR: 'Am',
-  KeyT: 'C',
-  KeyY: 'D',
-  KeyU: 'G',
-  KeyI: 'F',
+  KeyW: 'Am',
+  KeyE: 'C',
+  KeyR: 'D',
+  KeyT: 'G',
+  KeyY: 'F',
 };
 
 export function currentGuitarChordName() {

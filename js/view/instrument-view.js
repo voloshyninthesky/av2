@@ -327,12 +327,12 @@ export function updateInstrumentViewCamera(dt) {
         transition.guitarBlend.from,
         transition.guitarBlend.to,
         eased,
-      ), mascot.group.scale.y);
+      ), mascot.group.scale);
     }
     camera.lookAt(controls.target);
     if (k >= 1) {
       if (transition.mascotPose) applyMascotInstrumentPose(transition.mascotPose.to);
-      if (transition.guitarBlend) guitar.setPerformBlend(transition.guitarBlend.to, mascot.group.scale.y);
+      if (transition.guitarBlend) guitar.setPerformBlend(transition.guitarBlend.to, mascot.group.scale);
       instrumentView.transition = null;
       if (instrumentView.phase === 'entering') {
         applyFocusedControlLimits();
