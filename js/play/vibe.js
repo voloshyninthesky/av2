@@ -2,7 +2,8 @@
 // VIBE METER + PRICE CHIPS
 // The reward loop: playing raises the meter, filling it once unlocks the loop
 // pedal and sets off fireworks. Price chips ride on the same signal but are
-// deliberately quiet — one per instrument, and only after the visitor has
+// deliberately quiet — one per instrument, queued by playing it or by simply
+// reaching its close-up, and shown only once the visitor has left the focus or
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
@@ -54,11 +55,12 @@ export function addVibe(n) {
 }
 
 // ---- price carousel ----
+// The icon carries the instrument; the copy stays identical on every slide.
 export const PRICE_SLIDES = [
-  { kind: 'mic', icon: '🎤', title: 'Вокал', anchor: 'vocal' },
-  { kind: 'guitar', icon: '🎸', title: 'Гітара', anchor: 'guitar' },
-  { kind: 'drums', icon: '🥁', title: 'Барабани', anchor: 'drums' },
-  { kind: 'piano', icon: '🎹', title: 'Фортепіано', anchor: 'piano' },
+  { kind: 'mic', icon: '🎤', anchor: 'vocal' },
+  { kind: 'guitar', icon: '🎸', anchor: 'guitar' },
+  { kind: 'drums', icon: '🥁', anchor: 'drums' },
+  { kind: 'piano', icon: '🎹', anchor: 'piano' },
 ];
 const shownPriceChips = new Set();
 const pendingPriceChips = new Set();
@@ -72,7 +74,7 @@ export function chipFor(kind, { force = false } = {}) {
   const slide = PRICE_SLIDES[index];
   const showAt = (nextIndex) => chipFor(PRICE_SLIDES[(nextIndex + PRICE_SLIDES.length) % PRICE_SLIDES.length].kind, { force: true });
   ui.showChip(
-    `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>${slide.title} · уроки <span class="accent">від 50 зл</span>`,
+    `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>Уроки <span class="accent">від 50 зл</span>`,
     '',
     'ЦІНИ ›',
     () => ui.open('pricing', slide.anchor),

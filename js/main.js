@@ -16,9 +16,10 @@ import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260804-10
 import './shell/qa-hooks.js?v=20260804-10';
 import {
   chipFor,
+  queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
-} from './play/vibe.js?v=20260804-10';
+} from './play/vibe.js?v=20260805-02';
 import {
   updateLoopProgress,
   initLoopPedal,
@@ -272,7 +273,12 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   setSceneLabelsVisible(!['entering', 'focused'].includes(phase));
   syncMobileInstrumentChrome();
   syncInstrumentExposure();
-  if (phase === 'focused' && kind) clearKeyboardJamChipTimer(kind);
+  // Reaching a close-up is interest enough on its own: queue the chip here so
+  // it still lands on the way out of a focus the visitor never played.
+  if (phase === 'focused' && kind) {
+    clearKeyboardJamChipTimer(kind);
+    queuePriceChip(kind);
+  }
   if (phase === 'focused' && kind === 'mic') {
     hideChordPad();
     showVocalPad(false);

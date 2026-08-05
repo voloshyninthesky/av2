@@ -116,3 +116,53 @@ test('pages listing subscriptions explain what the package price covers', async 
     assert.ok(html.includes(prices.paymentNote), `${file} is missing the payment note`);
   }
 });
+
+// --- JSON-LD: the structured data quotes the same prices as prices.json ---
+
+const categoryPrices = (category) => [
+  ...category.singleLessons.map((l) => l.price),
+  ...category.subscriptions.flatMap((s) => s.packages.map((p) => p.price)),
+];
+
+function jsonLdGraph(html, file) {
+  const scripts = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)];
+  assert.equal(scripts.length, 1, `${file} should carry exactly one JSON-LD block`);
+  const parsed = JSON.parse(scripts[0][1]);
+  assert.ok(Array.isArray(parsed['@graph']), `${file} JSON-LD has no @graph`);
+  return parsed['@graph'];
+}
+
+test('lesson pages carry an AggregateOffer matching prices.json', async () => {
+  for (const { file, instrument } of pages) {
+    const graph = jsonLdGraph(await read(file), file);
+    const service = graph.find((n) => n['@type'] === 'Service');
+    assert.ok(service, `${file} has no Service node`);
+    const all = categoryPrices(categoryFor(instrument));
+    assert.equal(service.offers['@type'], 'AggregateOffer');
+    assert.equal(service.offers.priceCurrency, prices.currency.code, `${file} wrong currency`);
+    assert.equal(service.offers.lowPrice, Math.min(...all), `${file} stale lowPrice`);
+    assert.equal(service.offers.highPrice, Math.max(...all), `${file} stale highPrice`);
+  }
+});
+
+test('every page names the school with a priceRange matching prices.json', async () => {
+  const all = prices.categories.flatMap(categoryPrices);
+  const expected = `${Math.min(...all)}-${Math.max(...all)} PLN`;
+  for (const { file } of [...pages, { file: 'uk/index.html' }]) {
+    const graph = jsonLdGraph(await read(file), file);
+    const school = graph.find((n) => Array.isArray(n['@type']) && n['@type'].includes('MusicSchool'));
+    assert.ok(school, `${file} has no MusicSchool node`);
+    assert.equal(school.priceRange, expected, `${file} stale priceRange`);
+  }
+});
+
+test('lesson-page breadcrumbs point at the canonical URLs', async () => {
+  for (const { file } of pages) {
+    const html = await read(file);
+    const canonical = html.match(/<link rel="canonical" href="([^"]+)">/)[1];
+    const graph = jsonLdGraph(html, file);
+    const crumbs = graph.find((n) => n['@type'] === 'BreadcrumbList');
+    assert.ok(crumbs, `${file} has no BreadcrumbList`);
+    assert.equal(crumbs.itemListElement.at(-1).item, canonical, `${file} breadcrumb != canonical`);
+  }
+});
