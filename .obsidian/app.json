@@ -1,0 +1,15 @@
+{
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notes",
+  "attachmentFolderPath": "notes/attachments",
+  "defaultViewMode": "preview",
+  "showUnsupportedFiles": false,
+  "userIgnoreFilters": [
+    "vendor/",
+    "fonts/",
+    "brag-output-2026-08-02-235355/"
+  ]
+}

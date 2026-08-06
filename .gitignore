@@ -3,3 +3,10 @@
 .claude/
 skills-lock.json
 _site/
+
+# The repo root doubles as an Obsidian vault (see notes/). Its shared settings
+# are tracked; these three are per-machine UI state that changes on every pane
+# move and would otherwise churn in every diff.
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
