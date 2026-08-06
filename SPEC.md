@@ -62,6 +62,7 @@ Static site, no build step. ES modules + import map for Three.js.
 
 ```
 index.html          # lesson hub — the site's front door (static, no stage JS)
+404.html            # branded not-found page (GitHub Pages serves it automatically)
 uroky-*-lodz/       # instrument-specific SEO lesson pages
 stage/index.html    # 3D stage: shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
 uk/                 # redirect stubs for the pre-2026-08-06 /uk/* URLs
@@ -75,7 +76,10 @@ js/
   ui.js             # HUD, modals, chip, toast
   pricing.js        # interactive price mixer
   guitar-gestures.js# tap-vs-hold classification for chord touches
-  core/             # errlog, telegram guards, quality tier, session flags, prices, studio boot
+  lessons-weather.js# Łódź weather widget for the lesson pages
+  lessons-credit.js # footer credit fold (lesson pages)
+  lessons-analytics.js # booking-click events for the lesson pages
+  core/             # errlog, telegram guards, quality tier, session flags, prices, studio boot, analytics
   view/             # render rig, camera framing, focus views, pointer routing, viewport
   scene/            # procedural textures, stage, lighting, screen + slideshow, effects
   instruments/      # procedural drums / piano / guitar / mic (+ shared materials)
@@ -84,7 +88,8 @@ js/
   shell/            # post-processing probe, intro flow, headless QA hooks
 prices.json         # per-instrument lesson prices + promos
 piano-notes.json    # optional piano phrase data (kept; not auto-played on focus)
-vendor/three/       # vendored Three.js
+vendor/three/       # vendored Three.js r160 — the importmap loads `three.module.min.js`;
+                    # the unminified build stays for debugging (swap the importmap to use it)
 CNAME               # artvibe.com.pl for GitHub Pages
 .nojekyll
 .github/workflows/  # Deploy to GitHub Pages
@@ -497,6 +502,10 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 | `testhooks` | Headless QA only: exposes `__THREE_GAME_TEST_HOOKS__` (setState: stage/piano/guitar/drums/mic/vibe/dance, debug `pick(clientX, clientY)` raycast listing, a `scene` handle for isolation toggles, a `state` snapshot of the view / walk / mascot / camera-distance limits, and `captureFrame()` for synchronous canvas capture) + `__THREE_GAME_DIAGNOSTICS__` (renderer counts) for the canvas inspector; never active for visitors |
 | `headless` | With `testhooks` only: pumps the frame loop from a worker interval so hidden/backgrounded QA tabs still simulate and render |
 
+`testhooks`, `headless` and `shot` also stop analytics events being **sent** — QA
+runs drive the funnel deliberately and must not land in the dashboard. Events are
+still recorded into `window.__av2Events`, which is how headless checks assert them.
+
 ---
 
 ## 9. Onboarding
@@ -526,7 +535,7 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 **Primary:** GitHub Pages (Actions).
 
 - Workflow: `.github/workflows/deploy-pages.yml` on push to `main`.
-- Artifact: `css fonts img js stage uk uroky-*-lodz vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`.
+- Artifact: `css fonts img js stage uk uroky-*-lodz vendor index.html 404.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`. The list is hand-written, so a new top-level file that is not added here simply never ships — `tests/site-meta.test.mjs` guards `404.html` specifically.
 - **Paths are site-absolute** (`/js/…`, `/prices.json`, `/img/…`). The stage is served from
   `/stage/`, so a document-relative path resolves under that directory instead of the root.
 - Custom domain: `artvibe.com.pl` → GitHub Pages (`voloshyninthesky.github.io`).
@@ -538,6 +547,41 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000 (lesson site),
 http://127.0.0.1:8000/stage/ (3D stage)
 
+### Analytics
+
+GoatCounter, site `stephan-geega` (dashboard: https://stephan-geega.goatcounter.com).
+Cookieless and storing no personal data, so the site needs **no consent banner** —
+that is the reason for the choice, and swapping in a cookie-based tool would
+change what the site owes its EU visitors.
+
+Hits are sent to the first-party endpoint `https://count.artvibe.com.pl/count`, a
+CNAME onto the GoatCounter site. **That domain needs a TLS certificate covering it**
+— GoatCounter must have the custom domain configured, not just the DNS record. If it
+serves the default `goatcounter.com` certificate the name will not match, browsers
+will refuse the connection, and every hit is lost silently while the pages still
+look fine. Verify with `curl -sI https://count.artvibe.com.pl/`; a certificate error
+there means the analytics are dark.
+
+The endpoint is one identical `data-goatcounter` string on every page; changing it is
+a find-and-replace across the HTML and `tests/site-meta.test.mjs`. Note the script
+itself still loads from `gc.zgo.at`, so blockers targeting that host stop collection
+regardless of the counting domain. Sending is best-effort everywhere: no analytics
+call may ever sit in the path of a booking link.
+
+Events (`js/core/analytics.js` for the stage, `js/lessons-analytics.js` for the
+lesson pages):
+
+| Event | Fires |
+|-------|-------|
+| `stage-enter` | Scene starts. **Not** a click — the stage auto-enters when assets finish loading, so this reads as "session started", not "button pressed" |
+| `stage-first-play` | First note on any instrument (all play routes funnel through `addVibe`) |
+| `stage-pricing-open` | Pricing overlay opened by any route |
+| `book-{instagram\|messenger}-{home\|vocal\|guitar\|piano\|drums\|stage}` | Outbound booking link clicked |
+
+The first three fire at most once per page load; booking clicks fire every time.
+Booking happens inside Instagram/Messenger DMs, so the click is the last thing
+this site can observe — it is the conversion number.
+
 ---
 
 ## 12. Quality bar
@@ -545,7 +589,7 @@ http://127.0.0.1:8000/stage/ (3D stage)
 - Works on desktop and mobile Safari / Chrome (and best-effort Telegram in-app browser).
 - Keyboard focus visible on overlay controls.
 - `prefers-reduced-motion`: cut ambient / onboard pulse animations.
-- WebGL fail → `#webgl-fail` panel.
+- WebGL fail → `#webgl-fail` panel, with links back to `/` and to Instagram booking so an unsupported device is not a dead end.
 - Lock page-level pinch and double-tap zoom for the whole live stage, including simultaneous joystick + `+` / `−` touches. Keep initial UI control pointer dispatch intact (claim multi-touch on move / Safari `gesture*`, not a chrome `touchstart`) so two-control and pad↔canvas interaction still works. Informational overlays retain normal zoom / scroll.
 - In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
 - With Spotify / Apple Music already playing, Enter, walking, camera controls, instrument focus, chord selection, and settings changes leave external audio uninterrupted and do not create an `AudioContext`.

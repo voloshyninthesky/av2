@@ -24,6 +24,7 @@ import {
 import { clearGuitarInteractionState } from '../play/pads.js?v=20260804-10';
 import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260804-10';
 import { releaseKeyboardVocal } from '../play/mixer.js?v=20260804-10';
+import { trackOnce } from '../core/analytics.js?v=20260806-10';
 
 const mobileControls = document.getElementById('mobile-controls');
 const zoomControls = document.getElementById('zoom-controls');
@@ -127,6 +128,7 @@ onboardEl?.addEventListener('click', (e) => {
 export function startExperience() {
   if (session.started) return;
   session.started = true;
+  trackOnce('stage-enter');
   markIntroSeen();
   document.documentElement.classList.add('stage-live');
   hooks.syncViewportMeta();
@@ -141,6 +143,7 @@ export function startExperience() {
 export function startWithoutIntro() {
   if (session.started) return;
   session.started = true;
+  trackOnce('stage-enter');
   markIntroSeen();
   document.documentElement.classList.add('stage-live');
   hooks.syncViewportMeta();

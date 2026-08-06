@@ -41,7 +41,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp -R css fonts img js stage uk uroky-vokalu-lodz uroky-hitary-lodz uroky-fortepiano-lodz uroky-barabaniv-lodz vendor index.html favicon.ico favicon.svg apple-touch-icon.png prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME _site/
+          cp -R css fonts img js stage uk uroky-vokalu-lodz uroky-hitary-lodz uroky-fortepiano-lodz uroky-barabaniv-lodz vendor index.html 404.html favicon.ico favicon.svg apple-touch-icon.png prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME _site/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

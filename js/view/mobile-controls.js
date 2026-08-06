@@ -27,7 +27,7 @@ import { setDancing } from '../mascot/pose.js?v=20260804-10';
 import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260804-10';
 import { resyncLoopPlayback } from '../play/loop.js?v=20260804-10';
 import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260804-10';
-import { finishOnboard } from '../shell/intro.js?v=20260804-10';
+import { finishOnboard } from '../shell/intro.js?v=20260806-10';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');

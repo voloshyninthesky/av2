@@ -20,9 +20,14 @@ Serve the **repo root**, not a subdirectory:
 `file://` does not work: it breaks ES module import maps and the site-absolute paths
 ([[Architecture]]).
 
-Once the stage loads, click **ВИЙТИ НА СЦЕНУ** — the `#enter-btn` starts as
-`ЗАВАНТАЖЕННЯ…` and becomes `ВИЙТИ НА СЦЕНУ ›` when assets are ready. Nothing renders until
-you click it. Audio stays silent until you interact ([[Audio]]).
+The stage enters itself once assets are ready — wait for it, don't hunt for a button. The
+`#enter-btn` still ships reading `ЗАВАНТАЖЕННЯ…`, but since `7602710` nothing ever enables it
+and its click handler is vestigial; `window.__sceneReady` is the signal to wait on. Audio
+stays silent until you interact ([[Audio]]).
+
+An unmatched URL shows Python's own "Error response" page, **not** `404.html` —
+`http.server` has no fallback-document support, and only GitHub Pages routes to it. Open
+`/404.html` directly to preview the real page.
 
 Desktop keyboard, once on stage: `1–8` piano, `Z X C V B` drums, QWERTY row + `Space`
 guitar, `N M , . /` vocal. Toasts like `Звучить: Гітара` confirm play. Focus is **not**

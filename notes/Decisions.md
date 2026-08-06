@@ -12,6 +12,58 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The site learned to count — 2026-08-06
+
+The engineering was polished and the site was **commercially blind**: no analytics of any
+kind, so nobody could say whether the 3D stage — the expensive half of the product — produced
+a single booking.
+
+**GoatCounter, because it is cookieless.** The audience is in the EU; a cookie-based tool
+would owe them a consent banner, which is both work and a blot on the 2007-era skin. That
+constraint, not a feature comparison, picked the tool. Swapping in anything cookie-based
+re-opens the banner question. → [[Lesson site]]
+
+**Clicks, not pageviews, are the number.** Booking happens inside Instagram and Messenger
+DMs, so the outbound click is the last thing this site can observe — it *is* the conversion.
+Hence `book-{channel}-{page}` on every `ig.me` / `m.me` anchor, delegated so it survives
+markup changes. The plain profile links (footer, «відгуки та викладачі», JSON-LD `sameAs`)
+are deliberately excluded — they are browsing, not booking, which is the same distinction
+`2be3a1a` drew.
+
+**`stage-enter` measures a session starting, not a button being pressed.** Worth knowing
+before reading the dashboard: since `7602710` the scene enters itself once assets load and
+nothing ever enables `#enter-btn`, so the funnel head hooks `startExperience()` and
+`startWithoutIntro()`. `stage-first-play` hooks `addVibe()` because *every* play route —
+close-up, pad, keyboard — funnels through it; anything narrower would miss the keyboard jam.
+The stale "click enter" instruction in [[Dev workflows]], [[Gotchas]] and `AGENTS.md` was
+corrected in passing — it had been telling readers to click a button that cannot be clicked.
+
+**No analytics call may sit in the path of a booking link.** The beacon is blocked for a fair
+share of visitors, so both modules swallow their own failures and a test pins that they do.
+QA runs (`testhooks` / `headless` / `shot`) record into `window.__av2Events` but never send,
+so headless checks can assert the funnel without writing to the dashboard.
+
+Hits go to `https://count.artvibe.com.pl/count`, a CNAME onto the GoatCounter site. **That
+domain needs a certificate covering it, not just the DNS record** — at time of writing it
+serves the default `goatcounter.com` cert, so browsers refuse the connection and every hit is
+lost while the pages look perfectly healthy. The failure mode of analytics is always silence,
+which is exactly why it is worth a check rather than a glance. → [[SPEC]] §11
+
+Same change, smaller pieces:
+
+- **A branded `404.html`.** The deploy artifact list is a hand-written `cp -R`, so a new
+  top-level file silently never ships — the drums page lost its `og:image` to the same class
+  of invisible failure. A test now asserts the workflow copies it. Note `python3 -m
+  http.server` has no fallback-document support, so locally an unmatched path always shows
+  Python's own error page; only GitHub Pages routes to `404.html`. → [[Dev workflows]]
+- **The WebGL-fail panel stops being a dead end** — it now offers the lesson site and the
+  Instagram booking link, so an unsupported device can still book. Analytics never load on
+  that path, because the module graph dies at the renderer throw.
+- **The stage ships minified Three.js.** It was serving the unminified dev build: 258 KB gzip
+  down to 167 KB, importmap swap only. The unminified build stays in the repo for debugging.
+- **`og:image` removed from every page**, by owner decision — share previews are now plain
+  links. The schema.org `"image"` field and the stage's `twitter:image` were left in place.
+
 ## The lesson site became the front door — `b259446`, 2026-08-06
 
 The lesson hub was at `/uk/` while the 3D stage sat at `/`. But the lesson pages are what

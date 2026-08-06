@@ -19,7 +19,7 @@ import {
   queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
-} from './play/vibe.js?v=20260805-03';
+} from './play/vibe.js?v=20260806-10';
 import {
   updateLoopProgress,
   initLoopPedal,
@@ -65,7 +65,7 @@ import {
   restoreAfterAudioContextRebuild,
   activateAudioForSound,
   initIntro,
-} from './shell/intro.js?v=20260804-10';
+} from './shell/intro.js?v=20260806-10';
 import {
   closeSoundMixer,
   releaseKeyboardVocal,

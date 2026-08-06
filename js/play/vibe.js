@@ -12,6 +12,7 @@ import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20
 import { bumpHitPulse } from '../scene/effects.js?v=20260804-10';
 import { instrumentView } from '../view/instrument-presets.js?v=20260804-10';
 import { play, keyboardPianoNotes } from './state.js?v=20260804-10';
+import { trackOnce } from '../core/analytics.js?v=20260806-10';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -32,6 +33,7 @@ export function unlockLoopPedal() {
 }
 
 export function addVibe(n) {
+  trackOnce('stage-first-play');
   play.vibe = Math.min(100, play.vibe + n);
   play.lastVibeAdd = performance.now();
   ui.setVibe(play.vibe);

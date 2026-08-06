@@ -10,17 +10,23 @@ delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**Uncommitted:** `stage/index.html` — the HUD **ЦІНИ** button label changed to `$`.
+**Branch `obsidian-vault`**, not `main` — carries this vault's own commit plus the analytics
+work below. Nothing is on `main` yet, so **nothing described here is live**.
 
-```diff
--<button class="pill-btn nav-btn gold" data-open="pricing">ЦІНИ</button>
-+<button class="pill-btn nav-btn gold" data-open="pricing">$</button>
+The analytics + polish change ([[Decisions]] "The site learned to count"): GoatCounter on all
+six pages plus a new `404.html`, booking-click and stage-funnel events, escape links on the
+WebGL-fail panel, minified Three.js, and `og:image` removed site-wide. All 41 tests pass.
+
+**One known blocker before the numbers mean anything:** `count.artvibe.com.pl` resolves but
+serves a certificate for `goatcounter.com`, so browsers refuse the connection and every hit is
+dropped silently. GoatCounter needs the custom domain registered, not just the DNS CNAME.
+
+```bash
+curl -sI https://count.artvibe.com.pl/   # cert error here means analytics are dark
 ```
 
-Looks like a live experiment in trimming the HUD. Worth deciding deliberately: [[SPEC]] §6
-lists the HUD nav as «кроки / ціни», and the pricing mixer's instrument buttons are specified
-as **text-only, no icons** — a bare `$` is closer to an icon, and it also drops the Ukrainian.
-Either commit it *and* update [[SPEC]], or revert it.
+**Resolved:** the `$` HUD experiment was reverted — the button reads **ЦІНИ** again, matching
+[[SPEC]] §6 and keeping the Ukrainian.
 
 ## Recently landed
 
@@ -28,6 +34,7 @@ The last five commits (see [[Decisions]] for the reasoning):
 
 | Commit    | Change                                                    |
 | --------- | --------------------------------------------------------- |
+| `0872d6e` | This vault arrived at the repo root (branch only)          |
 | `b259446` | Lesson site became the front door; stage moved to `/stage/` |
 | `6e28441` | Credit heart beats                                         |
 | `233f3ea` | GLAMOUR opens dimmer (Світло default 67)                   |
@@ -74,7 +81,10 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
 
 ## Health
 
-- Four test suites, all dependency-free: `node --test tests/*.test.mjs` → [[Dev workflows]]
+- Five test suites, all dependency-free: `node --test tests/*.test.mjs` → [[Dev workflows]].
+  The newest, `tests/site-meta.test.mjs`, guards the things that fail *silently* — a missing
+  analytics tag, a `404.html` the deploy workflow forgets to copy, a funnel hook that stops
+  being called.
 - `js/audio.js` is 916 lines against the ~1000-line split rule — the next substantial audio
   change should probably split it → [[Module map]]
 - Cache stamps are mixed across the tree (`20260804-10` dominates at ~187 uses, with a few

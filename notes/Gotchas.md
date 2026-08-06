@@ -38,11 +38,14 @@ Every path it reaches for — HTML, import map, `fetch()` — must be **site-abs
 404s. This bites hardest on `fetch()`, because the failure is a runtime `undefined` rather
 than a missing-asset warning. → [[Architecture]]
 
-## Nothing renders until you press Enter
+## The enter button is dead code
 
-`#enter-btn` starts as `ЗАВАНТАЖЕННЯ…` and only becomes `ВИЙТИ НА СЦЕНУ ›` once assets
-load. A same-tab reload skips the splash (`av2.intro.v2` in `sessionStorage`) — so "the
-intro didn't show" is expected on the second load, not a regression.
+`#enter-btn` ships `disabled`, reading `ЗАВАНТАЖЕННЯ…`, and **nothing ever enables it** —
+since `7602710` the scene calls `startExperience()` / `startWithoutIntro()` itself once assets
+load, and the button's click listener is vestigial. Waiting for it, or scripting a click on
+it, will hang; wait for `window.__sceneReady`. A same-tab reload skips the splash
+(`av2.intro.v2` in `sessionStorage`) — so "the intro didn't show" is expected on the second
+load, not a regression.
 
 ## Silence is the default, and it is deliberate
 

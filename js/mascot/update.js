@@ -24,7 +24,7 @@ import { mascotMove, dance } from './state.js?v=20260804-10';
 import { mascotEditor } from './editor.js?v=20260804-10';
 import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260804-10';
 import { play } from '../play/state.js?v=20260804-10';
-import { finishOnboard } from '../shell/intro.js?v=20260804-10';
+import { finishOnboard } from '../shell/intro.js?v=20260806-10';
 
 export function updateMascotEditorPreview(dt) {
   const relax = Math.min(1, dt * 10);

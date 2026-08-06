@@ -52,8 +52,9 @@ effectively a no-op.
 
 ### Notes / gotchas
 
-- The intro screen shows an "enter" button (`#enter-btn`) that starts as `ЗАВАНТАЖЕННЯ…` (loading)
-  and becomes enabled (`ВИЙТИ НА СЦЕНУ ›`) once assets load — you must click it to render the 3D stage.
+- The intro screen shows an "enter" button (`#enter-btn`) reading `ЗАВАНТАЖЕННЯ…`, but the stage
+  enters itself once assets load — nothing ever enables the button, and its click handler is
+  vestigial. Wait for `window.__sceneReady` rather than trying to click it.
 - Audio needs a user gesture to unlock; sound stays silent until you enter the scene / interact.
 - Desktop keyboard plays instruments without focusing them: `1–8` piano, `Z X C V B` drums,
   chord row + `Space` guitar, `N M , . /` vocal. Toasts like `Звучить: Гітара` confirm play.
