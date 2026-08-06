@@ -22,10 +22,10 @@ import {
   setLowMobileQuality,
   qualityTierLabel,
   loadPostprocessingModules,
-} from '../core/quality.js?v=20260806-16';
-import { renderer, scene, camera } from '../view/rig.js?v=20260806-16';
-import { applyLowMobileSceneBudget } from '../scene/lighting.js?v=20260806-16';
-import { loadedSlideCount } from '../scene/slideshow.js?v=20260806-16';
+} from '../core/quality.js?v=20260806-18';
+import { renderer, scene, camera } from '../view/rig.js?v=20260806-18';
+import { applyLowMobileSceneBudget } from '../scene/lighting.js?v=20260806-18';
+import { loadedSlideCount } from '../scene/slideshow.js?v=20260806-18';
 
 // Settling the tier resizes the renderer, which only main.js can sequence.
 let hooks = { syncRendererToWindow: () => {} };

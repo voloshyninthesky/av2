@@ -6,22 +6,22 @@
 // guards let pinch work where it helps (inspecting an instrument) while
 // blocking the double-tap zoom that would otherwise eat a drum hit.
 // ============================================================
-import { session } from '../core/session.js?v=20260806-16';
-import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260806-16';
+import { session } from '../core/session.js?v=20260806-18';
+import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260806-18';
 import {
   renderer,
   camera,
   controls,
   fitCameraToViewport,
   applyMobileOrbitPolicy,
-} from './rig.js?v=20260806-16';
-import { ui } from '../core/studio.js?v=20260806-16';
-import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260806-16';
-import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260806-16';
-import { instrumentViewFrame } from './focus-frame.js?v=20260806-16';
-import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260806-16';
-import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260806-16';
-import { mascotEditor, queueMascotRefit } from '../mascot/editor.js?v=20260806-16';
+} from './rig.js?v=20260806-18';
+import { ui } from '../core/studio.js?v=20260806-18';
+import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260806-18';
+import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260806-18';
+import { instrumentViewFrame } from './focus-frame.js?v=20260806-18';
+import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260806-18';
+import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260806-18';
+import { mascotEditor, queueMascotRefit } from '../mascot/editor.js?v=20260806-18';
 
 // Resizing has to re-post the composer and re-sync chrome that main.js owns.
 let hooks = {

@@ -8,8 +8,8 @@
 // The copy is deliberately casual and describes the *gesture*, not the UI:
 // someone who has never used the stage needs "hit them", not "use the pads".
 // ============================================================
-import { isMobileGameMode } from '../core/quality.js?v=20260806-16';
-import { ui } from '../core/studio.js?v=20260806-16';
+import { isMobileGameMode } from '../core/quality.js?v=20260806-18';
+import { ui } from '../core/studio.js?v=20260806-18';
 
 const FOCUS_HINT_KEY = 'av2.instrument-hint.v2';
 // `skiponboard` means "no first-run tips at all" — these included.

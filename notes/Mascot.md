@@ -59,7 +59,7 @@ Exact option lists and IDs: [[SPEC]] §4 and §13. They change more often than t
 
 - Opening creates a **draft**. Changes apply live to the real 3D mascot.
 - **ГОТОВО** validates and writes `localStorage` `av2.mascot.v3`, closes, restores the
-  previous stage camera, may toast `Неперевершено!`.
+  previous stage camera. No toast — the changed mascot is its own confirmation.
 - **✕ / Esc** restores the *opening snapshot* in 3D and storage.
 - **СКИНУТИ** resets the draft without closing or persisting, and exposes **ПОВЕРНУТИ**.
 - Nothing writes storage on a tap or a slider tick — only **ГОТОВО**.

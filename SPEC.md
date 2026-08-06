@@ -706,7 +706,7 @@ The editor should feel like a small dressing room inside the stage, not a settin
 - Keep the category rail, title / close control, and bottom action bar visible. Only the category contents scroll.
 - The first-run handoff after **ЗРОЗУМІЛО** uses this same editor and never requires a choice. **ГОТОВО** is visible immediately so the visitor can keep the default and reach the stage.
 - Selecting an option updates an in-memory draft and the 3D preview immediately. It does not write `localStorage` on every tap or slider tick.
-- **ГОТОВО** writes the validated draft, closes the editor, restores the previous stage camera, and may show the short toast `Неперевершено!`.
+- **ГОТОВО** writes the validated draft, closes the editor, and restores the previous stage camera. It shows no toast — the mascot standing there in its new look is the confirmation.
 - **✕ / Esc** restores the opening snapshot in 3D and storage before closing. Backdrop taps remain inert.
 - **СКИНУТИ** changes the draft to defaults but does not close or persist it. Offer an inline **ПОВЕРНУТИ** action until the next edit; committing still requires **ГОТОВО**.
 - **РАНДОМ** chooses a random look only from curated compatible options. It updates the draft and supports the same undo / cancel behavior.
