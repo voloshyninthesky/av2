@@ -5,8 +5,8 @@
 // tracks the plane however the camera moves.
 // ============================================================
 import * as THREE from 'three';
-import { screenUniforms, slideshowScreen } from './screen.js?v=20260806-18';
-import { params, isMobileGameMode } from '../core/quality.js?v=20260806-18';
+import { screenUniforms, slideshowScreen } from './screen.js?v=20260806-19';
+import { params, isMobileGameMode } from '../core/quality.js?v=20260806-19';
 
 // ---- slideshow state ----
 // Temporary launch setting: keep the branded Art Vibe title on the stage screen

@@ -13,7 +13,7 @@ import {
   lacquer,
   metal,
   std,
-} from './shared.js?v=20260806-18';
+} from './shared.js?v=20260806-19';
 
 // Where the mascot stands behind the held guitar, in guitar-group space: a
 // bigger body steps farther back so the head clears the strings. Canonical

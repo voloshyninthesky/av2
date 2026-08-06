@@ -152,31 +152,35 @@ both now use the `ig.me` deep link, and the Messenger prefill repeats the same p
 Browsing links (footer, «відгуки та викладачі», JSON-LD `sameAs`) deliberately keep the plain
 profile URL. → [[Lesson site]]
 
-## The stage talks like a person — 2026-08-06
+## Praise, but only where it means something — 2026-08-06
 
-`js/shell/instrument-hints.js` had been sitting untracked and unimported — a finished module
-nobody loaded. Wiring it up turned into a question about **voice**.
+Short cheers — **Супер! / Потужно! / Клас!** — on the first live note a visitor gets out of
+each instrument. Four times a session at most, then silence. Three rules keep it from becoming
+wallpaper:
 
-The hints now describe the **gesture, not the UI**: «Щоб барабани застукали — по них треба
-бити», not "use the drum pads". Someone who has never seen this stage does not yet know it has
-pads, so naming them explains the wrong thing. Desktop copy appends that instrument's jam keys
-after the same sentence, so both readings start identically.
-
-Same commit adds **praise** — Супер! / Потужно! / Кльово! — on the first two live notes and on
-every VIBE fill. Two rules keep it from becoming noise:
-
-- **Never the same word twice running.** A repeat reads as a canned response rather than
+- **Never the same word twice running.** A repeat reads as a canned response rather than as
   someone reacting to what you just played.
-- **Praise yields to any toast already up.** A how-to hint or a price chip says more than a
-  cheer does, and replacing one mid-read to say "Кльово!" is a downgrade. The exception is a
-  VIBE fill, which overrides — the fireworks have already announced it. The first fill folds
-  its cheer into the loop-pedal unlock toast rather than firing a second one.
+- **Only the first note per instrument.** That is the moment of doubt — did the tap do
+  anything? By the second note the answer is obvious and a cheer is noise. It briefly fired on
+  the first two notes of a visit instead, which cheered the *same* instrument twice and left
+  the other three silent.
+- **Yields to a toast already on screen.** Anything else the stage chose to say carries more
+  than a cheer does.
 
-Loop playback never counts: replayed notes carry `feedback: false` and never reach `addVibe()`,
-so a four-bar loop cannot congratulate you on a loop.
+Loop playback can't congratulate you on a loop: replayed notes carry `feedback: false` and
+never reach `addVibe()`. Getting the instrument to the cheer meant `addVibe(n, kind)` — most
+routes get it free from `runMusicalVisual`, but the vocal pad and keyboard vocal reach
+`addVibe` directly and pass `'mic'` themselves.
 
-A screen-space arrow overlay pointing at all four instruments was built alongside this and
-removed before it shipped. `git log -S instrument-arrows` finds it.
+Filling the VIBE meter stays its own event with its own name, **МАКСИМАЛЬНИЙ ВАЙБ!** — a cheer
+there competed with what the meter already says.
+
+**A first-focus how-to hint per instrument was built and removed the same day**, along with a
+screen-space arrow overlay before it. Both were one-time nudges over the scene; the stage is
+small enough to poke at, and each layer of instruction bought less than the clutter cost.
+`git log -S showFirstFocusInstrumentHint` finds the hints, `-S instrument-arrows` the arrows.
+The one thing worth keeping from them, if discovery ever comes back: describe the **gesture,
+not the UI** — someone new needs "hit them", not "use the pads".
 
 ## The `+` / `−` zoom buttons are gone — 2026-08-06
 

@@ -38,7 +38,7 @@ curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # expec
 
 What is waiting to ship (reasoning in [[Decisions]]): the first run reversed so the mascot
 editor opens before the welcome tip, and that tip now waits for **ЗРОЗУМІЛО** alone;
-per-instrument how-to hints and short praise cheers; a generated
+short praise cheers on each instrument's first note; a generated
 guitar chord library (60 chords) with six visitor-chosen pad slots; the piano close-up's
 real-keyboard `A–L` layout; the `+` / `−` zoom buttons removed (pinch / wheel unchanged); a
 maker's mark on the back of the LED wall; and the repo-wide cache-stamp reset under Health.
@@ -101,9 +101,9 @@ The current milestone delivered **framing and pose only** ([[Focus framing]]). E
 3. **Performance feedback** — one piano-note event driving audio, key travel, glow,
    note-following hands, VIBE, haptics and loop capture; ≥16 voices, click-free same-pitch
    replacement. Event shape is already specced ([[SPEC]] §7 "Roadmap: piano runtime event")
-4. **Discoverability** — ~~first-focus hints~~ **done**: `js/shell/instrument-hints.js` is
-   wired in — one casual how-to line at each instrument's first close-up → [[SPEC]] §9. Still
-   open: the accessible DOM `#piano-pad` strip for C4–C5.
+4. **Discoverability** — still open: the accessible DOM `#piano-pad` strip for C4–C5. Note
+   that a first-focus how-to hint and an arrow overlay were both built and removed on
+   2026-08-06 — read [[Decisions]] before rebuilding either.
 5. **Expressive controls** — sustain pedal, MIDI, velocity-sensitive touch / pen, selectable
    octave. ~~computer-keyboard mapping~~ **done** in `314464b`: `A–L` whites + upper-row
    blacks while piano-focused, covering C4–D5 (not the full two octaves) → [[SPEC]]

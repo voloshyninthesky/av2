@@ -195,7 +195,7 @@ These items are planned, but they are not blockers for the current framing / pos
 1. **Reliable key surface:** piano-local hit plane, dead-gap removal, black-key priority, captured pointers, held key state, ordered glissando, and robust multi-finger chords.
 2. **Gesture ownership:** a pointer on keys, drums, guitar strings / frets, or the chord pad claims that finger so OrbitControls cannot rotate or zoom from it; empty canvas still orbits / pinches. Loop-pedal + key multitouch stays supported.
 3. **Performance feedback:** one piano-note event driving audio, key travel, glow, note-following hands, VIBE, haptics, and loop capture; at least `16` voices and click-free same-pitch replacement. First play queues a once-per-instrument price chip shown after leaving focus.
-4. **Discoverability and access:** first-focus hints (`Торкайся клавіш — можна кількома пальцями` / `Клікай клавіші або грай A–L, чорні — верхній ряд`) and an accessible DOM `#piano-pad` strip for `C4–C5`. Desktop `#keys-hint` still advertises the `1–8` jam digits, since those work without focus and the real-shape layout does not.
+4. **Discoverability and access:** an accessible DOM `#piano-pad` strip for `C4–C5`. Desktop `#keys-hint` advertises the `1–8` jam digits, since those work without focus and the real-shape layout does not. (A first-focus how-to hint was built and removed; `notes/Decisions.md` has the reasoning.)
 5. **Expressive controls still open:** sustain pedal, MIDI input, velocity-sensitive touch / pen input, and selectable octave (the two-octave keybed itself now has a focused computer-keyboard mapping — see above — though it covers C4–D5, not the full two octaves).
 6. **Learning layer:** optional guided phrases, hand-separated exercises, metronome, and note-name overlays. These may read `piano-notes.json`, but focus itself remains silent.
 
@@ -506,7 +506,6 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 ### First-run UI state (localStorage / sessionStorage)
 
 - `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
-- `av2.instrument-hint.v2` records the per-instrument how-to hints (§9) as an object keyed by instrument, so each is shown once.
 - `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
@@ -519,7 +518,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 |-------|--------|
 | `nointro` | Skip splash; land on stage + HUD |
 | `autoenter` | Auto-click enter after load |
-| `skiponboard` | Never show the first run — no mascot editor, tip or focus hints |
+| `skiponboard` | Never show the first run — no mascot editor and no tip |
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
@@ -545,28 +544,13 @@ Default copy:
 
 **Only ЗРОЗУМІЛО dismisses the tip.** Playing, walking, Esc and tapping the card all leave it standing — it is the last thing the first run says, and a visitor who walks past it never reads it. Soft purple pulse on the mic while active (disabled under reduced motion).
 
-That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothing: quit partway and the next visit offers both steps again.
-
-### Instrument how-to hints
-
-3. **One short line per instrument** (`av2.instrument-hint.v2`), the first time that instrument reaches its focused close-up. Touch copy for the pads / multitouch surfaces; desktop copy appends that instrument's jam keys after the same sentence.
-
-The copy describes the **gesture, not the UI** — someone who has never used the stage needs "hit them", not "use the pads" — and stays deliberately casual:
-
-| Kind | Line |
-|------|------|
-| `drums` | Щоб барабани застукали — по них треба бити |
-| `guitar` | Затисни акорд і проведи по струнах |
-| `piano` | Звук на піаніно дають натиски на клавіші |
-| `mic` | Щоб заспівати — подумай про ноту і натисни на неї |
-
-`skiponboard` suppresses the whole of §9: editor, tip and focus hints alike.
+That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothing: quit partway and the next visit offers both steps again. `skiponboard` suppresses the whole of §9.
 
 ### Praise
 
 Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, never the same word twice running — on the **first live note the visitor gets out of each instrument**. Four times a visit at most, then silence: praise that keeps arriving stops meaning anything.
 
-- Praise **yields to a toast already on screen**, which at that moment is that instrument's own how-to hint and says more than a cheer does.
+- Praise **yields to a toast already on screen** rather than replacing it: anything else the stage has chosen to say carries more than a cheer does.
 - Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
 - Every live play route passes its instrument to `addVibe(n, kind)`; the vocal pad and keyboard vocal reach it directly rather than through `playMusicalEvent`.
 
