@@ -372,7 +372,6 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від N зл» + «ЦІНИ ›»), fading in/out softly. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
-| Instrument arrows | One-time screen-space pointers over all four instruments after the first run (§9). Decorative, non-interactive |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
@@ -507,7 +506,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 ### First-run UI state (localStorage / sessionStorage)
 
 - `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
-- `av2.instrument-arrows.v1` and `av2.instrument-hint.v1` record the two instrument-discovery nudges (§9); the second is an object keyed by instrument, so each is shown once.
+- `av2.instrument-hint.v2` records the per-instrument how-to hints (§9) as an object keyed by instrument, so each is shown once.
 - `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
@@ -520,7 +519,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 |-------|--------|
 | `nointro` | Skip splash; land on stage + HUD |
 | `autoenter` | Auto-click enter after load |
-| `skiponboard` | Never show the first run — no mascot editor, tip, arrows or focus hints |
+| `skiponboard` | Never show the first run — no mascot editor, tip or focus hints |
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
@@ -548,14 +547,28 @@ Default copy:
 
 That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothing: quit partway and the next visit offers both steps again.
 
-### Instrument discovery
+### Instrument how-to hints
 
-Two further one-time nudges, both after the tip and both persisted separately, so a returning visitor never repeats them:
+3. **One short line per instrument** (`av2.instrument-hint.v2`), the first time that instrument reaches its focused close-up. Touch copy for the pads / multitouch surfaces; desktop copy appends that instrument's jam keys after the same sentence.
 
-3. **Arrows** (`av2.instrument-arrows.v1`): gold pointers labelled with each instrument, tracking all four in screen space, under a **Це все грає** caption. Shown once, ~0.8 s after the mascot editor closes — but held until the welcome tip is dismissed, so the two never compete. They retire on a ~14 s timer, Esc, any modal, any focus approach, or the first audible play, whichever comes first. Purely decorative: `pointer-events: none`, `aria-hidden`, and every instrument is reachable without them.
-4. **A how-to toast** (`av2.instrument-hint.v1`), once per instrument the first time it reaches its focused close-up — touch copy for pads / multitouch, desktop copy naming that instrument's jam keys.
+The copy describes the **gesture, not the UI** — someone who has never used the stage needs "hit them", not "use the pads" — and stays deliberately casual:
 
-`skiponboard` suppresses the whole of §9: editor, tip, arrows and focus hints alike.
+| Kind | Line |
+|------|------|
+| `drums` | Щоб барабани застукали — по них треба бити |
+| `guitar` | Затисни акорд і проведи по струнах |
+| `piano` | Звук на піаніно дають натиски на клавіші |
+| `mic` | Щоб заспівати — подумай про ноту і натисни на неї |
+
+`skiponboard` suppresses the whole of §9: editor, tip and focus hints alike.
+
+### Praise
+
+Short spoken-aloud cheers — **Супер! / Потужно! / Кльово! / Вогонь! / Красиво! / Оце так!** — never the same word twice running:
+
+- On the **first two live notes** of a visit, and only then. These are the moments a visitor is least sure anything happened. Praise **yields to any toast already on screen**, because a how-to hint or price chip says more than a cheer does.
+- On **every VIBE fill**. The first fill folds the cheer into the loop-pedal unlock toast rather than firing a second one; later fills are a cheer alone, and these *do* override a lingering toast since the fireworks already announce them.
+- Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`.
 
 ## 10. Telegram / in-app browser
 

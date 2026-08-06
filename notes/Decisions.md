@@ -152,22 +152,31 @@ both now use the `ig.me` deep link, and the Messenger prefill repeats the same p
 Browsing links (footer, «відгуки та викладачі», JSON-LD `sameAs`) deliberately keep the plain
 profile URL. → [[Lesson site]]
 
-## Discovery arrives as beats, not all at once — 2026-08-06
+## The stage talks like a person — 2026-08-06
 
 `js/shell/instrument-hints.js` had been sitting untracked and unimported — a finished module
-nobody loaded. Wiring it in needed its markup, its CSS and two call sites, but the real work
-was **sequencing**, because reversing the first run had quietly broken its premise.
+nobody loaded. Wiring it up turned into a question about **voice**.
 
-Its own header says the arrows "follow the first onboarding tip". That was true when the tip
-came first; after the reversal the editor closes straight into the tip, so both would have
-landed together — a welcome message and four arrows competing for the same glance. The arrows
-now hold on `onboard.active` and do not even start their settle timer until **ЗРОЗУМІЛО**
-clears the tip. First run reads as four beats: dress up → read the tip → see what plays →
-learn how, once per instrument at its first close-up.
+The hints now describe the **gesture, not the UI**: «Щоб барабани застукали — по них треба
+бити», not "use the drum pads". Someone who has never seen this stage does not yet know it has
+pads, so naming them explains the wrong thing. Desktop copy appends that instrument's jam keys
+after the same sentence, so both readings start identically.
 
-They are deliberately **decorative**: `pointer-events: none`, `aria-hidden`, and every
-instrument is reachable without them. A one-time nudge that can swallow a tap is worse than no
-nudge.
+Same commit adds **praise** — Супер! / Потужно! / Кльово! — on the first two live notes and on
+every VIBE fill. Two rules keep it from becoming noise:
+
+- **Never the same word twice running.** A repeat reads as a canned response rather than
+  someone reacting to what you just played.
+- **Praise yields to any toast already up.** A how-to hint or a price chip says more than a
+  cheer does, and replacing one mid-read to say "Кльово!" is a downgrade. The exception is a
+  VIBE fill, which overrides — the fireworks have already announced it. The first fill folds
+  its cheer into the loop-pedal unlock toast rather than firing a second one.
+
+Loop playback never counts: replayed notes carry `feedback: false` and never reach `addVibe()`,
+so a four-bar loop cannot congratulate you on a loop.
+
+A screen-space arrow overlay pointing at all four instruments was built alongside this and
+removed before it shipped. `git log -S instrument-arrows` finds it.
 
 ## The `+` / `−` zoom buttons are gone — 2026-08-06
 

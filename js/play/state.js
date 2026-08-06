@@ -25,6 +25,8 @@ export const play = {
   /** Vocal note held by a desktop key, and its repeat-pulse timer. */
   keyboardVocal: null,
   keyboardVocalPulseTimer: null,
+  /** Live notes played this visit — only the first couple get a cheer. */
+  notesPlayed: 0,
   /** Residual strum-arm swing, decayed every frame by the mascot update. */
   guitarStrokeMotion: 0,
   guitarStrokeDirection: 1,

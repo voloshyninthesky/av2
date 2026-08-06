@@ -7,28 +7,28 @@
 // injected here through their init* functions so the graph stays a tree.
 // ============================================================
 import * as THREE from 'three';
-import './core/errlog.js?v=20260806-14';
-import './core/telegram.js?v=20260806-14';
-import { session, easeInOut } from './core/session.js?v=20260806-14';
-import { mascotMove, dance } from './mascot/state.js?v=20260806-14';
-import { play } from './play/state.js?v=20260806-14';
-import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260806-14';
-import './shell/qa-hooks.js?v=20260806-14';
+import './core/errlog.js?v=20260806-15';
+import './core/telegram.js?v=20260806-15';
+import { session, easeInOut } from './core/session.js?v=20260806-15';
+import { mascotMove, dance } from './mascot/state.js?v=20260806-15';
+import { play } from './play/state.js?v=20260806-15';
+import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260806-15';
+import './shell/qa-hooks.js?v=20260806-15';
 import {
   chipFor,
   queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
-} from './play/vibe.js?v=20260806-14';
+} from './play/vibe.js?v=20260806-15';
 import {
   updateLoopProgress,
   initLoopPedal,
-} from './play/loop.js?v=20260806-14';
+} from './play/loop.js?v=20260806-15';
 import {
   currentGuitarChordName,
   allGuitarPitches,
   initGuitarPlay,
-} from './play/guitar.js?v=20260806-14';
+} from './play/guitar.js?v=20260806-15';
 import {
   showVocalPad,
   hideVocalPad,
@@ -39,20 +39,20 @@ import {
   captureHeldVocalIntoLoop,
   finishHeldLoopCapture,
   initPads,
-} from './play/pads.js?v=20260806-14';
+} from './play/pads.js?v=20260806-15';
 import {
   releaseAllHeldPianoNotes,
   finishHeldPianoLoopCaptures,
   captureHeldPianoIntoLoop,
   finalizeHeldPianoLoopCapture,
   initPianoNotes,
-} from './play/piano-notes.js?v=20260806-14';
+} from './play/piano-notes.js?v=20260806-15';
 import {
   composer,
   initPostprocessing,
   updateMobileQualityProbe,
   initPostfx,
-} from './shell/postfx.js?v=20260806-14';
+} from './shell/postfx.js?v=20260806-15';
 import {
   FLY_DUR,
   shouldSkipIntro,
@@ -64,18 +64,15 @@ import {
   restoreAfterAudioContextRebuild,
   activateAudioForSound,
   initIntro,
-} from './shell/intro.js?v=20260806-14';
+} from './shell/intro.js?v=20260806-15';
 import {
   closeSoundMixer,
   releaseKeyboardVocal,
   beginKeyboardVocal,
   initMixer,
-} from './play/mixer.js?v=20260806-14';
-import {
-  updateInstrumentArrows,
-  showFirstFocusInstrumentHint,
-} from './shell/instrument-hints.js?v=20260806-14';
-import { mascotEditor, queueMascotRefit, mascotCam, initMascotEditor } from './mascot/editor.js?v=20260806-14';
+} from './play/mixer.js?v=20260806-15';
+import { showFirstFocusInstrumentHint } from './shell/instrument-hints.js?v=20260806-15';
+import { mascotEditor, queueMascotRefit, mascotCam, initMascotEditor } from './mascot/editor.js?v=20260806-15';
 import {
   params,
   isLowEndMobileGameMode,
@@ -84,7 +81,7 @@ import {
   prefersReducedMotion,
   stageAmbience,
   stageLightLevel,
-} from './core/quality.js?v=20260806-14';
+} from './core/quality.js?v=20260806-15';
 import {
   canvas,
   renderer,
@@ -94,7 +91,7 @@ import {
   CAM_START,
   CAM_END,
   TARGET,
-} from './view/rig.js?v=20260806-14';
+} from './view/rig.js?v=20260806-15';
 import {
   ui,
   audio,
@@ -111,25 +108,25 @@ import {
   addLabels,
   instruments,
   interactables,
-} from './core/studio.js?v=20260806-14';
-import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260806-14';
+} from './core/studio.js?v=20260806-15';
+import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260806-15';
 import {
   instrumentView,
-} from './view/instrument-presets.js?v=20260806-14';
+} from './view/instrument-presets.js?v=20260806-15';
 import {
   updateInstrumentViewCamera,
   initInstrumentView,
-} from './view/instrument-view.js?v=20260806-14';
+} from './view/instrument-view.js?v=20260806-15';
 import {
   setDancing,
-} from './mascot/pose.js?v=20260806-14';
+} from './mascot/pose.js?v=20260806-15';
 import {
   PHOTO_SLIDES_ENABLED,
   loadSlideTextures,
   updateSlideshow,
   updateSlideshowNavLayout,
-} from './scene/slideshow.js?v=20260806-14';
-import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260806-14';
+} from './scene/slideshow.js?v=20260806-15';
+import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260806-15';
 import {
   setGlow,
   isInstrumentCloseUp,
@@ -139,7 +136,7 @@ import {
   canPlayInstrument,
   canKeyboardJamPlay,
   syncOrbitZoom,
-} from './view/pointer.js?v=20260806-14';
+} from './view/pointer.js?v=20260806-15';
 import {
   syncViewportMeta,
   resetBrowserPageZoom,
@@ -147,7 +144,7 @@ import {
   eventInvolvesUiChrome,
   isLiveStageZoomLocked,
   initViewport,
-} from './view/viewport.js?v=20260806-14';
+} from './view/viewport.js?v=20260806-15';
 import {
   syncMobileInstrumentChrome,
   releaseMoveJoystick,
@@ -160,8 +157,8 @@ import {
   playNearestInstrument,
   updateMobilePlayAvailability,
   initMobileControls,
-} from './view/mobile-controls.js?v=20260806-14';
-import { updateMascot, updateMascotEditorPreview } from './mascot/update.js?v=20260806-14';
+} from './view/mobile-controls.js?v=20260806-15';
+import { updateMascot, updateMascotEditorPreview } from './mascot/update.js?v=20260806-15';
 
 
 // ============================================================
@@ -392,7 +389,6 @@ function animate(frameTime = performance.now()) {
   updateMascot(dt);
   updateMobilePlayAvailability();
   updateOnboardPulse(t);
-  updateInstrumentArrows(dt);
 
   // stage atmosphere (materials/motion only — lights unchanged)
   if (!prefersReducedMotion.matches) {

@@ -10,7 +10,7 @@ import {
   lacquer,
   metal,
   std,
-} from './shared.js?v=20260806-14';
+} from './shared.js?v=20260806-15';
 
 export function buildPiano() {
   const piano = new THREE.Group();

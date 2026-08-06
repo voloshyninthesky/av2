@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260806-14';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260806-14';
-import { bumpHitPulse } from '../scene/effects.js?v=20260806-14';
-import { instrumentView } from '../view/instrument-presets.js?v=20260806-14';
-import { play, keyboardPianoNotes } from './state.js?v=20260806-14';
-import { trackOnce } from '../core/analytics.js?v=20260806-14';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260806-15';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260806-15';
+import { bumpHitPulse } from '../scene/effects.js?v=20260806-15';
+import { instrumentView } from '../view/instrument-presets.js?v=20260806-15';
+import { play, keyboardPianoNotes } from './state.js?v=20260806-15';
+import { trackOnce } from '../core/analytics.js?v=20260806-15';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -32,8 +32,35 @@ export function unlockLoopPedal() {
   return true;
 }
 
+// ---- praise ----
+// Short, warm, and never twice in a row: the same word repeating reads as a
+// canned response rather than someone reacting to what you just played.
+const PRAISE = ['Супер!', 'Потужно!', 'Кльово!', 'Вогонь!', 'Красиво!', 'Оце так!'];
+let lastPraise = -1;
+function praiseWord() {
+  let index = Math.floor(Math.random() * PRAISE.length);
+  if (index === lastPraise) index = (index + 1) % PRAISE.length;
+  lastPraise = index;
+  return PRAISE[index];
+}
+
+/**
+ * Cheer without talking over anything. A toast already on screen at this point
+ * is an instrument how-to hint, which says far more than "Кльово!" does — so
+ * praise yields rather than replacing it mid-read. (Price chips live in
+ * `#chip`, a separate element, and are unaffected either way.)
+ */
+function praise(duration = 1500) {
+  if (!ui.el.toast.hidden) return;
+  ui.toast(praiseWord(), duration);
+}
+
 export function addVibe(n) {
   trackOnce('stage-first-play');
+  // The first couple of notes are the ones a visitor is least sure about —
+  // answer them, then get out of the way and let the meter do the talking.
+  play.notesPlayed += 1;
+  if (play.notesPlayed <= 2) praise();
   play.vibe = Math.min(100, play.vibe + n);
   play.lastVibeAdd = performance.now();
   ui.setVibe(play.vibe);
@@ -44,11 +71,17 @@ export function addVibe(n) {
     spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
     bumpHitPulse(1.35);
     if (justUnlocked) {
+      // The first fill carries real news, so praise rides along with it
+      // instead of arriving as a second toast that would replace it.
       ui.toast(
-        'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
+        `${praiseWord()} <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>`,
         4200,
         'vibe-max',
       );
+    } else {
+      // Every later fill is pure celebration — and this one does override a
+      // lingering toast, because the fireworks are already saying it.
+      ui.toast(praiseWord(), 2200, 'vibe-max');
     }
     // Meter celebrates at 100% while the fireworks/toast run, then settles.
     play.vibe = 55;

@@ -641,67 +641,6 @@ html.pads-open #toast,
   box-shadow: 0 0 0 3px var(--gold), 0 0 24px rgba(209, 161, 59, .85);
 }
 
-/* ============ INSTRUMENT DISCOVERY ARROWS ============ */
-/* Sits under the toast / onboard layer (46) so a hint is never covered, and
-   above the HUD's 40 so an arrow near the top edge still reads. Never
-   interactive — the whole overlay is a pointer-events hole. */
-#instrument-arrows {
-  position: fixed; inset: 0; z-index: 45;
-  pointer-events: none;
-  opacity: 0; transition: opacity .45s ease;
-}
-#instrument-arrows.on { opacity: 1; }
-#instrument-arrows[hidden] { display: none !important; }
-
-.instrument-arrows-caption {
-  /* Clears the HUD's measured box (82px at desktop), not just its visible row. */
-  position: absolute; left: 50%; top: 94px;
-  transform: translateX(-50%);
-  margin: 0; padding: 7px 16px;
-  font-size: 10px; letter-spacing: .26em; text-transform: uppercase;
-  color: var(--gold);
-  border: 1px solid rgba(209, 161, 59, .42); border-radius: 999px;
-  background: rgba(23, 18, 28, .82); backdrop-filter: blur(8px);
-  white-space: nowrap;
-}
-
-/* The module writes `transform: translate3d(x, y, 0)` in screen pixels, so the
-   box itself must sit at the origin and the visible pill does its own
-   centring — otherwise every arrow would hang off its anchor's corner. */
-.instrument-arrow {
-  position: absolute; left: 0; top: 0;
-  visibility: hidden;
-  will-change: transform;
-}
-.instrument-arrow > span {
-  position: absolute; left: 0; bottom: 0;
-  transform: translate(-50%, -12px);
-  display: block; padding: 6px 11px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; letter-spacing: .16em; white-space: nowrap;
-  color: var(--ink); background: var(--gold);
-  border-radius: 999px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
-  animation: instrumentArrowBob 1.9s ease-in-out infinite;
-}
-/* The pointer itself — a gold triangle under the pill, aimed at the instrument. */
-.instrument-arrow > span::after {
-  content: ''; position: absolute; left: 50%; top: 100%;
-  transform: translateX(-50%);
-  border: 5px solid transparent; border-top-color: var(--gold);
-}
-@keyframes instrumentArrowBob {
-  50% { transform: translate(-50%, -19px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .instrument-arrow > span { animation: none; }
-  #instrument-arrows { transition: none; }
-}
-@media (max-width: 720px) {
-  .instrument-arrows-caption { top: 64px; font-size: 9px; letter-spacing: .2em; }
-  .instrument-arrow > span { font-size: 8px; padding: 5px 9px; }
-}
-
 /* ============ GUITAR CHORD PAD ============ */
 #chord-pad {
   position: fixed; left: 50%; bottom: 104px; z-index: 46;
