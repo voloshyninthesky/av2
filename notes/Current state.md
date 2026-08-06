@@ -29,8 +29,10 @@ curl -sI https://count.artvibe.com.pl/   # cert error here means analytics are d
 Until that is fixed the dashboard will read zero, which is indistinguishable from having no
 visitors — do not conclude anything from an empty dashboard before this check passes.
 
-**Resolved:** the `$` HUD experiment was reverted — the button reads **ЦІНИ** again, matching
-[[SPEC]] §6 and keeping the Ukrainian.
+**Resolved:** the `$` HUD experiment was reverted — the control kept its Ukrainian wording, and
+it has since become the gold graduation-cap button titled **Уроки та ціни** ([[SPEC]] §6).
+The one lesson that outlived the experiment: whatever this control is, it is not a currency
+glyph. → [[Decisions]]
 
 **Deploy note:** the first push timed out inside `actions/deploy-pages` (GitHub side, nothing
 in the artifact). Do **not** fix that with `gh run rerun` — it re-runs the upload step too and

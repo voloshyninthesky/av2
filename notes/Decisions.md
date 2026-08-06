@@ -143,6 +143,20 @@ both now use the `ig.me` deep link, and the Messenger prefill repeats the same p
 Browsing links (footer, «відгуки та викладачі», JSON-LD `sameAs`) deliberately keep the plain
 profile URL. → [[Lesson site]]
 
+## The pricing control sells lessons, not a price list — 2026-08-06
+
+The HUD entry point was a gold **ЦІНИ** pill and the panel behind it was headed **Ціни.** —
+both framed the studio's one conversion step as a number to compare. It is now a graduation-cap
+icon button titled **Уроки та ціни**, and the panel matches. «Уроки» leads because that is what
+a visitor is buying; the price is the second word, not the whole proposition.
+
+It stays a **solid gold disc** while every sibling control is a dark circle. That is the point:
+losing the word costs it the width that made it read as primary, and the fill is what buys that
+back. `.icon-btn.gold` mirrors `.pill-btn.gold` exactly — same fill, same purple hover — so
+there is one gold-CTA treatment in the stylesheet rather than two. A glow was tried and
+removed: a gold disc is already the brightest thing in the nav. `.nav-btn` had no other user
+and went with the pill.
+
 ---
 
 ## Standing decisions (not from one commit)

@@ -49,7 +49,7 @@ html, body {
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
 #zoom-controls, #loop-pedal, #vocal-pad, #chord-pad, .overlay,
-button, a, .pill-btn, .icon-btn, .nav-btn {
+button, a, .pill-btn, .icon-btn {
   touch-action: manipulation;
 }
 /* Keep chrome tappable under a second finger (pedal + instrument). Canvas stays none. */
@@ -68,8 +68,7 @@ html.stage-live .overlay,
 html.stage-live button,
 html.stage-live a,
 html.stage-live .pill-btn,
-html.stage-live .icon-btn,
-html.stage-live .nav-btn {
+html.stage-live .icon-btn {
   touch-action: manipulation;
 }
 
@@ -289,6 +288,17 @@ html.stage-live .nav-btn {
 }
 .icon-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
 
+/* The one conversion control in the HUD, so it keeps the gold fill the ЦІНИ pill
+   used to carry — as a plain circle it would read as chrome beside the mascot and
+   gear buttons. Same fill and same purple hover as `.pill-btn.gold`, and no glow:
+   a solid gold disc is already the brightest thing in the nav. */
+.icon-btn.gold {
+  background: var(--gold); border-color: var(--gold); color: var(--ink);
+}
+.icon-btn.gold:hover {
+  background: var(--purple); border-color: var(--purple); color: var(--cream);
+}
+
 /* Leaves the stage rather than opening a panel, so it ranks below the controls
    beside it: same circle, a size down, thinner rim. Compounded with `.icon-btn`
    so the mobile sizes below cannot flatten it back to full width. */
@@ -429,15 +439,6 @@ html.stage-live .nav-btn {
 @keyframes vibeFlash { 50% { filter: brightness(1.7); } }
 
 .hud-right { display: flex; align-items: center; gap: 8px; position: relative; }
-.nav-btn {
-  flex: 0 0 auto;
-  padding: 8px 13px; font-size: 10px;
-  background: rgba(23, 18, 28, .55); backdrop-filter: blur(8px);
-  border-color: rgba(253, 251, 247, .35);
-}
-.nav-btn:hover { border-color: var(--purple); }
-.nav-btn.gold { background: var(--gold); color: var(--ink); border-color: var(--gold); }
-.nav-btn.gold:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
 
 #keys-hint {
   position: fixed; bottom: 16px; left: 18px; z-index: 40;
@@ -1502,10 +1503,6 @@ html.mascot-editor-open #toast {
   .vibe-track { width: auto; min-width: 0; flex: 1; height: 7px; }
   .hud-right {
     flex: 0 0 auto; gap: 5px; margin: 0;
-  }
-  .nav-btn {
-    min-height: 32px; padding: 7px 11px;
-    font-size: 9px; letter-spacing: .08em; text-align: center;
   }
   .icon-btn { width: 36px; height: 36px; }
   .icon-btn.site-btn { width: 28px; height: 28px; }

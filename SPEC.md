@@ -344,7 +344,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts the visual fly-in while audio stays dormant. A reload / same-tab return bypasses the splash and also leaves audio dormant until a real sound action. |
 | Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
-| HUD | Logo (click = mascot dance), VIBE, nav (кроки / ціни), **mascot button**, **settings mixer** (gear) |
+| HUD | Logo (click = mascot dance), VIBE, **pricing button** (gold graduation-cap icon, **Уроки та ціни**), **mascot button**, **settings mixer** (gear) |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **GLAMOUR** defaults to `67` and **PIXEL** to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
@@ -367,7 +367,7 @@ Driven by `prices.json`:
 2. Format: разовий / абонемент.
 3. Duration; package size if абонемент. If the current duration is unavailable for the active format, fall back to the first (cheapest) duration.
 4. Live ticket board (total + ≈ per lesson). Theme: purple vs gold, from each instrument's `theme`. Every ticket includes a prominent comic-style **ЗАПИСАТИСЬ →** CTA that opens **Як записатися?**.
-5. Both **Як записатися?** and **Ціни** show a clear **Напиши нам** block with separate Instagram and Messenger buttons. The steps panel also keeps **Правила студії →** as a secondary link.
+5. Both **Як записатися?** and **Уроки та ціни** show a clear **Напиши нам** block with separate Instagram and Messenger buttons. The steps panel also keeps **Правила студії →** as a secondary link.
 
 ### Rules
 
