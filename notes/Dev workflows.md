@@ -39,17 +39,23 @@ required for keyboard sound.
 node --test tests/*.test.mjs
 ```
 
-Four suites, no dependencies:
+Six suites, no dependencies:
 
 | Suite                        | Guards                                                        |
 | ---------------------------- | ------------------------------------------------------------- |
 | `audio-lifecycle.test.mjs`   | The [[Audio]] rules — by asserting on source text across `js/**/*.js` |
 | `lesson-prices.test.mjs`     | Generated price cells and the no-prices-in-copy rule → [[Prices]] |
 | `guitar-gestures.test.mjs`   | Tap-vs-hold classification for chord touches                   |
+| `guitar-chords.test.mjs`     | Every generated chord voicing sounds its own chord tones        |
 | `emissive-highlight.test.mjs`| Hover glow not leaking through shared materials                |
+| `site-meta.test.mjs`         | Analytics tag, `404.html` shipping, funnel hooks, minified three |
 
-The audio suite reads source rather than running a browser, which is why it survives code
-moving between modules — and why renaming things in `audio.js` can fail it.
+Two of these assert on **source text** rather than running anything: `audio-lifecycle` reads
+across `js/**/*.js`, and `guitar-chords` extracts the chord-maker slice out of
+`js/play/guitar.js` and evaluates it alone, because that file imports three.js and the studio
+singleton and so cannot be imported under plain node. Both survive code moving between
+modules — and both can fail on a pure rename. If `guitar-chords` reports "chord-maker slice
+not found", the `CHORD_ROOTS` / pad-slots marker comments it splits on have moved.
 
 ## Verify the 3D stage headlessly
 

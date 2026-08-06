@@ -179,10 +179,12 @@ lines**, lowest position winning so nothing passes fret 8. A short table of pref
 voicings still overrides the common chords — the generated form is correct, just thinner.
 
 **The correctness argument is why this is safe.** A wrong barre shape is silent-but-wrong: it
-sounds like a chord, just not the one on the label. So every voicing is checked in Node
-against its own interval definition and the open-string pitches — all 60 sound exactly their
-chord tones, no extras, none missing. That check is the reason to trust generation over a
-hand-written table, not the line count.
+sounds like a chord, just not the one on the label, and nothing in the running app would ever
+show you that. So every voicing is checked against its own interval definition and the
+open-string pitches — all 60 sound exactly their chord tones, no extras, none missing. That
+check is the reason to trust generation over a hand-written table, not the line count, so it
+lives in `tests/guitar-chords.test.mjs` rather than in someone's scratch file. Mutating one
+shape (minor's major third) fails it on `Fm`, so it is not passing vacuously.
 
 **Keys stopped being mnemonic.** `E A C D G F` (each chord's first letter) was tried and
 reverted the same day: once the visitor can put `Cmaj7` next to `C`, initials collide and the
