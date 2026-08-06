@@ -48,6 +48,11 @@ ways to play, then convert into **ціни / як записатися → Insta
 - [[Prices]] — editing one JSON file is a complete price change
 - [[Current state]] — what is in flight right now
 
+## Tooling
+
+- [[Experience chain]] — the `xp` skill family: this architecture, generalized into a
+  staged, re-runnable pipeline for building *new* interactive 3D experiences
+
 ## Canonical docs (already notes in this vault)
 
 - [[SPEC]] — the product / UX contract, 680 lines. **This is the authority.** These notes
