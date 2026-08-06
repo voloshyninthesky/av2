@@ -10,23 +10,32 @@ delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**Branch `obsidian-vault`**, not `main` — carries this vault's own commit plus the analytics
-work below. Nothing is on `main` yet, so **nothing described here is live**.
+Working tree clean; `main` is pushed and **live** — `c69e846` ([[Decisions]] "The site learned
+to count") shipped GoatCounter on all six pages, a branded `404.html`, booking-click and
+stage-funnel events, escape links on the WebGL-fail panel, minified Three.js, and `og:image`
+removed site-wide. Verified on production: the analytics tag is on all six pages, an unmatched
+URL returns a real `404` with the branded page, and `/stage/` serves `three.module.min.js`.
 
-The analytics + polish change ([[Decisions]] "The site learned to count"): GoatCounter on all
-six pages plus a new `404.html`, booking-click and stage-funnel events, escape links on the
-WebGL-fail panel, minified Three.js, and `og:image` removed site-wide. All 41 tests pass.
-
-**One known blocker before the numbers mean anything:** `count.artvibe.com.pl` resolves but
-serves a certificate for `goatcounter.com`, so browsers refuse the connection and every hit is
-dropped silently. GoatCounter needs the custom domain registered, not just the DNS CNAME.
+**The one thing still outstanding — the analytics are collecting nothing.**
+`count.artvibe.com.pl` resolves (CNAME onto the GoatCounter site) but serves a certificate for
+`goatcounter.com`, so browsers refuse the connection and every hit is dropped in silence while
+the pages look perfectly healthy. GoatCounter needs the **custom domain registered**, not just
+the DNS record.
 
 ```bash
 curl -sI https://count.artvibe.com.pl/   # cert error here means analytics are dark
 ```
 
+Until that is fixed the dashboard will read zero, which is indistinguishable from having no
+visitors — do not conclude anything from an empty dashboard before this check passes.
+
 **Resolved:** the `$` HUD experiment was reverted — the button reads **ЦІНИ** again, matching
 [[SPEC]] §6 and keeping the Ukrainian.
+
+**Deploy note:** the first push timed out inside `actions/deploy-pages` (GitHub side, nothing
+in the artifact). Do **not** fix that with `gh run rerun` — it re-runs the upload step too and
+the run then holds two artifacts named `github-pages`, which the deploy action refuses. Start a
+fresh run instead: `gh workflow run "Deploy to GitHub Pages" --ref main`. → [[Dev workflows]]
 
 ## Recently landed
 
