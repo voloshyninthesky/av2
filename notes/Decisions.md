@@ -152,6 +152,36 @@ both now use the `ig.me` deep link, and the Messenger prefill repeats the same p
 Browsing links (footer, «відгуки та викладачі», JSON-LD `sameAs`) deliberately keep the plain
 profile URL. → [[Lesson site]]
 
+## Discovery arrives as beats, not all at once — 2026-08-06
+
+`js/shell/instrument-hints.js` had been sitting untracked and unimported — a finished module
+nobody loaded. Wiring it in needed its markup, its CSS and two call sites, but the real work
+was **sequencing**, because reversing the first run had quietly broken its premise.
+
+Its own header says the arrows "follow the first onboarding tip". That was true when the tip
+came first; after the reversal the editor closes straight into the tip, so both would have
+landed together — a welcome message and four arrows competing for the same glance. The arrows
+now hold on `onboard.active` and do not even start their settle timer until **ЗРОЗУМІЛО**
+clears the tip. First run reads as four beats: dress up → read the tip → see what plays →
+learn how, once per instrument at its first close-up.
+
+They are deliberately **decorative**: `pointer-events: none`, `aria-hidden`, and every
+instrument is reachable without them. A one-time nudge that can swallow a tap is worse than no
+nudge.
+
+## The `+` / `−` zoom buttons are gone — 2026-08-06
+
+Removed on request, and cheap because they were never the zoom *mechanism* — just two callers
+of `zoomScene()`. Pinch and wheel go through OrbitControls' own `enableZoom`, so zoom is
+unchanged on every device; only the on-screen buttons went. `zoomScene()` had no other caller
+and went with them.
+
+The knock-on worth knowing: the focus fitter measured `#zoom-controls` as one of the chrome
+rectangles it frames the keybed *around* ([[Focus framing]]). One fewer blocker on the right
+edge means slightly more usable width in a close-up. `visibleChromeRect()` was already
+null-safe, so nothing depended on the element existing — but [[SPEC]] named it in the framing
+contract in four places, and those had to move too.
+
 ## The cache stamp is global, and per-module bumping is the trap — 2026-08-06
 
 Worth writing down because the wrong model *looks* more careful. Bumping only the modules you

@@ -5,29 +5,28 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260806-13';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260806-13';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260806-13';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260806-13';
-import { instrumentView } from '../view/instrument-presets.js?v=20260806-13';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260806-13';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260806-13';
-import { mascotMove } from '../mascot/state.js?v=20260806-13';
-import { play } from '../play/state.js?v=20260806-13';
+import { session, easeInOut } from '../core/session.js?v=20260806-14';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260806-14';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260806-14';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260806-14';
+import { instrumentView } from '../view/instrument-presets.js?v=20260806-14';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260806-14';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260806-14';
+import { mascotMove } from '../mascot/state.js?v=20260806-14';
+import { play } from '../play/state.js?v=20260806-14';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260806-13';
-import { clearGuitarInteractionState } from '../play/pads.js?v=20260806-13';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260806-13';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260806-13';
-import { trackOnce } from '../core/analytics.js?v=20260806-13';
+} from '../play/loop.js?v=20260806-14';
+import { clearGuitarInteractionState } from '../play/pads.js?v=20260806-14';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260806-14';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260806-14';
+import { trackOnce } from '../core/analytics.js?v=20260806-14';
 
 const mobileControls = document.getElementById('mobile-controls');
-const zoomControls = document.getElementById('zoom-controls');
 
 // Starting the experience takes over the viewport and the render loop, both of
 // which main.js owns; `hovered` is the stage's own hover tracking.
@@ -136,7 +135,6 @@ export function startExperience() {
   hooks.syncViewportMeta();
   intro.classList.add('gone');
   mobileControls.classList.add('active');
-  zoomControls.hidden = false;
   session.flyT = 0;
   hooks.resetBrowserPageZoom();
   hooks.syncRendererToWindow();
@@ -151,7 +149,6 @@ export function startWithoutIntro() {
   hooks.syncViewportMeta();
   intro.classList.add('gone');
   mobileControls.classList.add('active');
-  zoomControls.hidden = false;
   camera.position.copy(CAM_END);
   camera.lookAt(TARGET);
   controls.enabled = true;

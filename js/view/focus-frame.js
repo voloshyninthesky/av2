@@ -7,15 +7,14 @@
 // any aspect ratio, notch or browser chrome height.
 // ============================================================
 import * as THREE from 'three';
-import { camera, controls, FOCUS_ZOOM_FACTOR } from './rig.js?v=20260806-13';
-import { isMobileGameMode } from '../core/quality.js?v=20260806-13';
-import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260806-13';
-import { instrumentView } from './instrument-presets.js?v=20260806-13';
-import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260806-13';
+import { camera, controls, FOCUS_ZOOM_FACTOR } from './rig.js?v=20260806-14';
+import { isMobileGameMode } from '../core/quality.js?v=20260806-14';
+import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260806-14';
+import { instrumentView } from './instrument-presets.js?v=20260806-14';
+import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260806-14';
 
 const loopPedal = document.getElementById('loop-pedal');
 const mobileExit = document.getElementById('mobile-exit');
-const zoomControls = document.getElementById('zoom-controls');
 
 const PIANO_FRAME_MARGIN = 16;
 export const PIANO_HAND_ANCHORS = {
@@ -104,7 +103,6 @@ function focusSafeRect(reservedRects = []) {
   };
   const blockers = [
     document.getElementById('hud'),
-    zoomControls,
     loopPedal,
     mobileExit,
     document.getElementById('chip'),

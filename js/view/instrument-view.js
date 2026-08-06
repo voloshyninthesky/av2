@@ -7,23 +7,22 @@
 // this module stays downstream of the features it interrupts.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260806-13';
-import { isMobileGameMode, prefersReducedMotion } from '../core/quality.js?v=20260806-13';
+import { session, easeInOut } from '../core/session.js?v=20260806-14';
+import { isMobileGameMode, prefersReducedMotion } from '../core/quality.js?v=20260806-14';
 import {
   camera,
   controls,
-  ZOOM_IN_STEP,
   FOCUSED_MIN_DISTANCE,
   applyMobileOrbitPolicy,
-} from './rig.js?v=20260806-13';
-import { ui, audio, mascot, guitar } from '../core/studio.js?v=20260806-13';
+} from './rig.js?v=20260806-14';
+import { ui, audio, mascot, guitar } from '../core/studio.js?v=20260806-14';
 import {
   INSTRUMENT_VIEW_PRESETS,
   instrumentView,
   instrumentLocalToWorld,
-} from './instrument-presets.js?v=20260806-13';
-import { instrumentViewFrame } from './focus-frame.js?v=20260806-13';
-import { mascotMove } from '../mascot/state.js?v=20260806-13';
+} from './instrument-presets.js?v=20260806-14';
+import { instrumentViewFrame } from './focus-frame.js?v=20260806-14';
+import { mascotMove } from '../mascot/state.js?v=20260806-14';
 import {
   resetMascotPose,
   captureMascotInstrumentPose,
@@ -33,15 +32,13 @@ import {
   createGuitarMascotPose,
   setDancing,
   poseMascotAtInstrument,
-} from '../mascot/pose.js?v=20260806-13';
+} from '../mascot/pose.js?v=20260806-14';
 import {
   projectMascotToWalkablePoint,
   planMascotWalkRoute,
   nearestInstrumentWalkPoint,
-} from '../mascot/walk.js?v=20260806-13';
+} from '../mascot/walk.js?v=20260806-14';
 
-const zoomIn = document.getElementById('zoom-in');
-const zoomOut = document.getElementById('zoom-out');
 
 // Entering or leaving a close-up interrupts whatever else was mid-gesture.
 // main.js supplies those teardowns so this module does not have to import the
@@ -392,25 +389,3 @@ export function requestInstrumentView(kind) {
   if (!mascotMove.destination) activateInstrumentView(kind);
 }
 
-function zoomScene(factor) {
-  if (!session.started || !controls.enabled || ui.modalOpen) return;
-  const offset = camera.position.clone().sub(controls.target);
-  const nextDistance = THREE.MathUtils.clamp(
-    offset.length() * factor,
-    controls.minDistance,
-    controls.maxDistance,
-  );
-  if (Math.abs(nextDistance - offset.length()) < 0.001) return;
-  controls.autoRotate = false;
-  camera.position.copy(controls.target).add(offset.setLength(nextDistance));
-  controls.update();
-}
-
-zoomIn.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  zoomScene(ZOOM_IN_STEP);
-});
-zoomOut.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  zoomScene(1.22);
-});

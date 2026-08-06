@@ -33,14 +33,15 @@ Then verify the live HTML actually carries the new stamp, because a green run is
 CDN caught up:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # expect 20260806-13
+curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # expect 20260806-14
 ```
 
-What is waiting to ship, all in `314464b` (reasoning in [[Decisions]]): the first run reversed
-so the mascot editor opens before the welcome tip, and that tip now waits for **ЗРОЗУМІЛО**
-alone; a generated guitar chord library (60 chords) with six visitor-chosen pad slots; the
-piano close-up's real-keyboard `A–L` layout; a maker's mark on the back of the LED wall; and
-the repo-wide cache-stamp reset described under Health. `fb68d7d` is notes only.
+What is waiting to ship (reasoning in [[Decisions]]): the first run reversed so the mascot
+editor opens before the welcome tip, and that tip now waits for **ЗРОЗУМІЛО** alone;
+instrument-discovery arrows and per-instrument how-to hints wired in behind it; a generated
+guitar chord library (60 chords) with six visitor-chosen pad slots; the piano close-up's
+real-keyboard `A–L` layout; the `+` / `−` zoom buttons removed (pinch / wheel unchanged); a
+maker's mark on the back of the LED wall; and the repo-wide cache-stamp reset under Health.
 
 **The one thing still outstanding — the analytics are collecting nothing.**
 `count.artvibe.com.pl` resolves (CNAME onto the GoatCounter site) but serves a certificate for
@@ -100,10 +101,10 @@ The current milestone delivered **framing and pose only** ([[Focus framing]]). E
 3. **Performance feedback** — one piano-note event driving audio, key travel, glow,
    note-following hands, VIBE, haptics and loop capture; ≥16 voices, click-free same-pitch
    replacement. Event shape is already specced ([[SPEC]] §7 "Roadmap: piano runtime event")
-4. **Discoverability** — first-focus hints and an accessible DOM `#piano-pad` strip for C4–C5.
-   Note `js/shell/instrument-hints.js` exists **untracked and unwired** — nothing imports it
-   and `#instrument-arrows` is not in the markup, so it currently does nothing. Finish or
-   delete it; do not assume the hints ship.
+4. **Discoverability** — ~~first-focus hints~~ **done**: `js/shell/instrument-hints.js` is
+   wired in (arrows over all four instruments after the first run, plus a how-to toast at each
+   instrument's first close-up) → [[SPEC]] §9. Still open: the accessible DOM `#piano-pad`
+   strip for C4–C5.
 5. **Expressive controls** — sustain pedal, MIDI, velocity-sensitive touch / pen, selectable
    octave. ~~computer-keyboard mapping~~ **done** in `314464b`: `A–L` whites + upper-row
    blacks while piano-focused, covering C4–D5 (not the full two octaves) → [[SPEC]]
@@ -140,8 +141,8 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
   chord but not the one on its label — nothing in the running app would ever show you that.
 - `js/audio.js` is 916 lines against the ~1000-line split rule — the next substantial audio
   change should probably split it → [[Module map]]
-- Cache stamps are **uniform again**: all 209 `?v=` across `js/` and `stage/index.html` read
-  `20260806-13`. `css/style.css` carries its own (`20260806-03`), which is fine — it is one
+- Cache stamps are **uniform again**: every `?v=` across `js/` and `stage/index.html` read
+  `20260806-14`. `css/style.css` carries its own (`20260806-04`), which is fine — it is one
   file with no import graph.
 
   The old note here said mixed stamps were "expected — files are stamped as they change."

@@ -158,11 +158,11 @@ Desktop keyboard sound does **not** require instrument focus (see §5).
 - The camera sits **behind and above the seated mascot** (steep ~72° pitch, slight side offset) so the two-octave keybed reads as a near-horizontal GarageBand-like strip across the screen, with the mascot's head, shoulders, and both hands visible below it — the pianist's own view.
 - Keys plus hand anchors are the fitted subject; the mascot deliberately crops at the frame bottom (same as drums). The head must never cover the keybed: a bigger mascot sits farther from the keys (bench standoff scales with mascot size, clamped to the bench depth).
 - Keep the piano cabinet clean in focus: no music book, sheet pages, note lines, or music-rest board.
-- Frame the complete two-octave keybed plus both hands inside a measured safe rectangle. Derive that rectangle from `visualViewport`, safe-area insets, and the actual bounds of the HUD, loop pedal, zoom controls, and ✕ exit control.
-- Fit the keybed to roughly `81%` of the safe width on desktop / landscape and `88%` on phone portrait, then open **two `+` zoom steps inside that fit** so the keys fill the screen. The outer key or two therefore crop at the frame edges; `−` / pinch must always reach past the uncropped fit so the complete two-octave keybed is recoverable.
+- Frame the complete two-octave keybed plus both hands inside a measured safe rectangle. Derive that rectangle from `visualViewport`, safe-area insets, and the actual bounds of the HUD, loop pedal, and ✕ exit control.
+- Fit the keybed to roughly `81%` of the safe width on desktop / landscape and `88%` on phone portrait, then open **two zoom steps inside that fit** so the keys fill the screen. The outer key or two therefore crop at the frame edges; pinch / wheel must always reach past the uncropped fit so the complete two-octave keybed is recoverable.
 - Use piano-local bounds and anchors, transformed to world space, instead of viewport-specific world offsets. A base camera preset establishes the eye direction; safe-rectangle fitting owns the final distance and target offset. On portrait the subject sits slightly below the safe-rect center (`centerBiasY`) so the play surface lands near the thumbs instead of floating over bare floor.
 - The camera transition endpoint is the authoritative focused frame. Derive focused azimuth / polar limits from that endpoint before re-enabling OrbitControls so the first controls update cannot snap or reframe it (the polar floor sits below the fitted steep pitch).
-- Keep the focused distance envelope that preserves key readability, while leaving horizontal orbit, pinch / wheel zoom, and the `+` / `−` controls available. The envelope allows roughly three further `+` steps in and enough `−` range to clear the opening crop. Zoom must not move the keyboard behind fixed UI.
+- Keep the focused distance envelope that preserves key readability, while leaving horizontal orbit and pinch / wheel zoom available. The envelope allows roughly three further steps in and enough range out to clear the opening crop. Zoom must not move the keyboard behind fixed UI.
 - Refit on focus, resize, orientation change, and `visualViewport` change. During an active entry transition, update its destination rather than teleporting the camera. Once focused, refit in one short eased correction; use an immediate correction under `prefers-reduced-motion`.
 
 #### Mascot performance pose — current
@@ -225,7 +225,7 @@ The pad has **six slots**, and which chord sits in each is the visitor's choice.
 - **The mascot can never block or clutter the strings.** Tall or wide builds physically overhang the play band, and a headless body seen from inside reads as floating debris — so in the landscape first-person view, whenever the camera→strings sight line passes through the head's hair shell, the whole mascot is hidden and only the held guitar remains (you are looking out of that body). Hysteresis keeps the boundary from flickering; orbiting away from the sight line, portrait, and every non-guitar phase bring the body straight back.
 - In portrait (and while the body is visible) the mascot and guitar must read as one performance pose: fretting hand along the neck, strum hand over the soundhole. String motion and strum-arm motion carry the action; whole-body guitar wobble stays subtle.
 - Use separate guitar-local raycast proxies for approach, strum, and fret selection (all pose-invariant: they ride the guitar body). A pointer captured by a play zone or by the chord pad cannot orbit / zoom the camera until it ends.
-- Start from a composed focused frame, then leave horizontal orbit available from empty canvas within the fitted distance / pitch envelope (and the `+` / `−` controls).
+- Start from a composed focused frame, then leave horizontal orbit available from empty canvas within the fitted distance / pitch envelope (pinch / wheel zoom included).
 
 #### Strum and pluck
 
@@ -372,6 +372,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від N зл» + «ЦІНИ ›»), fading in/out softly. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
+| Instrument arrows | One-time screen-space pointers over all four instruments after the first run (§9). Decorative, non-interactive |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
@@ -506,6 +507,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 ### First-run UI state (localStorage / sessionStorage)
 
 - `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
+- `av2.instrument-arrows.v1` and `av2.instrument-hint.v1` record the two instrument-discovery nudges (§9); the second is an object keyed by instrument, so each is shown once.
 - `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
@@ -518,7 +520,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 |-------|--------|
 | `nointro` | Skip splash; land on stage + HUD |
 | `autoenter` | Auto-click enter after load |
-| `skiponboard` | Never show the first run — neither the mascot editor nor the tip |
+| `skiponboard` | Never show the first run — no mascot editor, tip, arrows or focus hints |
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
@@ -545,6 +547,15 @@ Default copy:
 **Only ЗРОЗУМІЛО dismisses the tip.** Playing, walking, Esc and tapping the card all leave it standing — it is the last thing the first run says, and a visitor who walks past it never reads it. Soft purple pulse on the mic while active (disabled under reduced motion).
 
 That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothing: quit partway and the next visit offers both steps again.
+
+### Instrument discovery
+
+Two further one-time nudges, both after the tip and both persisted separately, so a returning visitor never repeats them:
+
+3. **Arrows** (`av2.instrument-arrows.v1`): gold pointers labelled with each instrument, tracking all four in screen space, under a **Це все грає** caption. Shown once, ~0.8 s after the mascot editor closes — but held until the welcome tip is dismissed, so the two never compete. They retire on a ~14 s timer, Esc, any modal, any focus approach, or the first audible play, whichever comes first. Purely decorative: `pointer-events: none`, `aria-hidden`, and every instrument is reachable without them.
+4. **A how-to toast** (`av2.instrument-hint.v1`), once per instrument the first time it reaches its focused close-up — touch copy for pads / multitouch, desktop copy naming that instrument's jam keys.
+
+`skiponboard` suppresses the whole of §9: editor, tip, arrows and focus hints alike.
 
 ## 10. Telegram / in-app browser
 
@@ -618,7 +629,7 @@ this site can observe — it is the conversion number.
 - Keyboard focus visible on overlay controls.
 - `prefers-reduced-motion`: cut ambient / onboard pulse animations.
 - WebGL fail → `#webgl-fail` panel, with links back to `/` and to Instagram booking so an unsupported device is not a dead end.
-- Lock page-level pinch and double-tap zoom for the whole live stage, including simultaneous joystick + `+` / `−` touches. Keep initial UI control pointer dispatch intact (claim multi-touch on move / Safari `gesture*`, not a chrome `touchstart`) so two-control and pad↔canvas interaction still works. Informational overlays retain normal zoom / scroll.
+- Lock page-level pinch and double-tap zoom for the whole live stage. Keep initial UI control pointer dispatch intact (claim multi-touch on move / Safari `gesture*`, not a chrome `touchstart`) so two-control and pad↔canvas interaction still works. Informational overlays retain normal zoom / scroll.
 - In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
 - With Spotify / Apple Music already playing, Enter, walking, camera controls, instrument focus, chord selection, and settings changes leave external audio uninterrupted and do not create an `AudioContext`.
 - On platforms supporting Audio Session `ambient`, the external source continues while Art Vibe instruments play over it. On unsupported platforms, external audio remains uninterrupted at least until the first real Art Vibe sound action.
@@ -630,7 +641,7 @@ this site can observe — it is the conversion number.
 - At `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, both hands and the great majority of the keybed remain in frame, with the mascot's head clear of the keys. Only the outermost key or two may crop, and `−` recovers the complete keybed.
 - Black / white key relationships and the white-key front edge remain readable, and white keys are large enough to hit confidently with a fingertip.
 - The first stable piano-focused frame exactly matches the camera transition endpoint. Re-enabling OrbitControls does not snap, rotate, zoom, or shift the target.
-- HUD, loop pedal, zoom controls, safe-area insets, and ✕ do not cover the keybed or either hand. Opening a VIBE toast does not make the play area unusable. Price chips appear only after leaving focus, so they never cover the keybed during play.
+- HUD, loop pedal, safe-area insets, and ✕ do not cover the keybed or either hand. Opening a VIBE toast does not make the play area unusable. Price chips appear only after leaving focus, so they never cover the keybed during play.
 - The seated pose remains believable at the mascot height / build extremes: pelvis on the bench, feet near the floor, hands over separate keyboard regions, relaxed shoulders, and no visible body / furniture intersections. At every height / build value the head stays below the keybed on screen — the scale-aware bench standoff, not the camera distance, guarantees this.
 - Entering focus blends cleanly from the preceding walk / idle pose. Ten consecutive piano focus → ✕ cycles produce no transform drift, stuck seated limbs, or return-position regression.
 - Resize, orientation, and `visualViewport` changes during entry update the transition destination; the focused frame never flashes through an obsolete preset or teleports between compositions.

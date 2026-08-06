@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260806-03">
+<link rel="stylesheet" href="/css/style.css?v=20260806-04">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -197,11 +197,6 @@
 </div>
 <div id="drag-hint" class="mono hidden">перетягуй — огляд сцени · коліщатко — зум</div>
 
-<div id="zoom-controls" hidden aria-label="Масштаб сцени">
-  <button id="zoom-in" type="button" aria-label="Наблизити сцену" title="Наблизити">+</button>
-  <button id="zoom-out" type="button" aria-label="Віддалити сцену" title="Віддалити">−</button>
-</div>
-
 <div id="loop-pedal" data-state="empty" role="group" aria-label="Loop-педаль" hidden>
   <button id="loop-toggle" type="button" aria-label="Почати запис музичного циклу" aria-describedby="loop-status" title="Loop-педаль · L">
     <span class="loop-led" aria-hidden="true"></span>
@@ -225,6 +220,18 @@
   <div id="chip-desc" class="mono"></div>
   <button id="chip-next" class="chip-arrow" aria-label="Наступний інструмент">›</button>
   <button id="chip-cta" class="pill-btn gold small">ЦІНИ ›</button>
+</div>
+<!-- Screen-space pointers over the four instruments, shown once after the first
+     mascot-editor close (js/shell/instrument-hints.js positions these each
+     frame from the instruments' measured world bounds). Decorative: the same
+     "everything here plays" message arrives as copy elsewhere, and every
+     instrument is reachable without them. -->
+<div id="instrument-arrows" hidden aria-hidden="true">
+  <p class="instrument-arrows-caption mono">Це все грає</p>
+  <div class="instrument-arrow" data-kind="drums"><span>УДАРНІ</span></div>
+  <div class="instrument-arrow" data-kind="piano"><span>ПІАНІНО</span></div>
+  <div class="instrument-arrow" data-kind="guitar"><span>ГІТАРА</span></div>
+  <div class="instrument-arrow" data-kind="mic"><span>ВОКАЛ</span></div>
 </div>
 <div id="toast" class="mono" hidden></div>
 <div id="onboard" class="mono" hidden role="status">
@@ -254,7 +261,6 @@
   <button type="button" id="chord-edit-btn" aria-pressed="false" aria-label="Змінити акорди" title="Змінити акорди">✎</button>
   <div id="chord-picker" hidden role="group" aria-label="Бібліотека акордів"></div>
 </div>
-
 
 <div id="mobile-controls" aria-label="Ігрове керування">
   <div id="move-zone" aria-label="Зона руху — торкнись ліворуч">
@@ -619,6 +625,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260806-13"></script>
+  <script type="module" src="/js/main.js?v=20260806-14"></script>
 </body>
 </html>

@@ -48,7 +48,7 @@ html, body {
 }
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
-#zoom-controls, #loop-pedal, #vocal-pad, #chord-pad, .overlay,
+#loop-pedal, #vocal-pad, #chord-pad, .overlay,
 button, a, .pill-btn, .icon-btn {
   touch-action: manipulation;
 }
@@ -60,7 +60,6 @@ html.stage-live #toast,
 html.stage-live #chip,
 html.stage-live #keys-hint,
 html.stage-live #drag-hint,
-html.stage-live #zoom-controls,
 html.stage-live #loop-pedal,
 html.stage-live #vocal-pad,
 html.stage-live #chord-pad,
@@ -485,28 +484,6 @@ html.stage-live .icon-btn {
   #onboard { animation: none; }
 }
 
-#zoom-controls {
-  position: fixed; right: 18px; top: 50%; z-index: 44;
-  transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 5px; border: 1px solid rgba(209, 161, 59, .22); border-radius: 999px;
-  background: rgba(23, 18, 28, .38); backdrop-filter: blur(10px);
-  opacity: .55; transition: opacity .25s ease, transform .3s ease;
-}
-#zoom-controls:hover, #zoom-controls:focus-within { opacity: 1; }
-#zoom-controls button {
-  width: 36px; height: 36px; display: grid; place-items: center;
-  border: 1px solid rgba(253, 251, 247, .18); border-radius: 50%;
-  background: rgba(253, 251, 247, .08); color: var(--cream);
-  font: 500 22px/1 'Manrope', system-ui, sans-serif; cursor: pointer;
-  touch-action: none; -webkit-tap-highlight-color: transparent;
-  transition: background .16s, border-color .16s, color .16s, transform .16s;
-}
-#zoom-controls { touch-action: none; }
-#zoom-controls button:hover, #zoom-controls button:focus-visible {
-  background: var(--gold); border-color: var(--gold); color: var(--ink); outline: none;
-}
-#zoom-controls button:active { transform: scale(.91); }
 
 /* ============ LOOP PEDAL ============ */
 #loop-pedal {
@@ -662,6 +639,67 @@ html.pads-open #toast,
   transform: translateY(-5px) scale(1.08);
   background: var(--cream); color: var(--purple-deep);
   box-shadow: 0 0 0 3px var(--gold), 0 0 24px rgba(209, 161, 59, .85);
+}
+
+/* ============ INSTRUMENT DISCOVERY ARROWS ============ */
+/* Sits under the toast / onboard layer (46) so a hint is never covered, and
+   above the HUD's 40 so an arrow near the top edge still reads. Never
+   interactive — the whole overlay is a pointer-events hole. */
+#instrument-arrows {
+  position: fixed; inset: 0; z-index: 45;
+  pointer-events: none;
+  opacity: 0; transition: opacity .45s ease;
+}
+#instrument-arrows.on { opacity: 1; }
+#instrument-arrows[hidden] { display: none !important; }
+
+.instrument-arrows-caption {
+  /* Clears the HUD's measured box (82px at desktop), not just its visible row. */
+  position: absolute; left: 50%; top: 94px;
+  transform: translateX(-50%);
+  margin: 0; padding: 7px 16px;
+  font-size: 10px; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid rgba(209, 161, 59, .42); border-radius: 999px;
+  background: rgba(23, 18, 28, .82); backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+
+/* The module writes `transform: translate3d(x, y, 0)` in screen pixels, so the
+   box itself must sit at the origin and the visible pill does its own
+   centring — otherwise every arrow would hang off its anchor's corner. */
+.instrument-arrow {
+  position: absolute; left: 0; top: 0;
+  visibility: hidden;
+  will-change: transform;
+}
+.instrument-arrow > span {
+  position: absolute; left: 0; bottom: 0;
+  transform: translate(-50%, -12px);
+  display: block; padding: 6px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .16em; white-space: nowrap;
+  color: var(--ink); background: var(--gold);
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+  animation: instrumentArrowBob 1.9s ease-in-out infinite;
+}
+/* The pointer itself — a gold triangle under the pill, aimed at the instrument. */
+.instrument-arrow > span::after {
+  content: ''; position: absolute; left: 50%; top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent; border-top-color: var(--gold);
+}
+@keyframes instrumentArrowBob {
+  50% { transform: translate(-50%, -19px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .instrument-arrow > span { animation: none; }
+  #instrument-arrows { transition: none; }
+}
+@media (max-width: 720px) {
+  .instrument-arrows-caption { top: 64px; font-size: 9px; letter-spacing: .2em; }
+  .instrument-arrow > span { font-size: 8px; padding: 5px 9px; }
 }
 
 /* ============ GUITAR CHORD PAD ============ */
@@ -1513,7 +1551,6 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 }
 html.mascot-editor-open #keys-hint,
 html.mascot-editor-open #drag-hint,
-html.mascot-editor-open #zoom-controls,
 html.mascot-editor-open #mobile-controls,
 html.mascot-editor-open #loop-pedal,
 html.mascot-editor-open #vocal-pad,
@@ -1557,14 +1594,6 @@ html.mascot-editor-open #toast {
   }
   .icon-btn { width: 36px; height: 36px; }
   .icon-btn.site-btn { width: 28px; height: 28px; }
-  #zoom-controls {
-    right: max(10px, env(safe-area-inset-right));
-    top: auto; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 108px);
-    transform: none; gap: 4px; padding: 4px;
-    opacity: .42; background: rgba(23, 18, 28, .32);
-  }
-  #zoom-controls:active, #zoom-controls:focus-within { opacity: .9; }
-  #zoom-controls button { width: 32px; height: 32px; font-size: 18px; }
   #loop-pedal {
     right: calc(max(14px, env(safe-area-inset-right)) + 88px);
     bottom: max(18px, env(safe-area-inset-bottom));
@@ -1665,7 +1694,6 @@ html.mascot-editor-open #toast {
   #mobile-play { width: 70px; height: 70px; font-size: 9px; }
   #mobile-exit { width: 74px; height: 74px; font-size: 31px; }
   #mobile-play-hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); width: min(180px, 62vw); font-size: 7px; }
-  #zoom-controls { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 96px); }
   #loop-pedal { right: calc(max(14px, env(safe-area-inset-right)) + 78px); }
   #loop-toggle { width: 52px; height: 52px; grid-template-rows: 9px 14px 8px; padding-top: 7px; }
   #loop-label { font-size: 7px; }

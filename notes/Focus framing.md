@@ -21,7 +21,7 @@ insets and browser chrome all eat into it, and `visualViewport` moves under you 
 So instead:
 
 1. **Derive a safe rectangle** from `visualViewport`, safe-area insets and the *actual
-   measured bounds* of the HUD, loop pedal, zoom controls and ✕ control.
+   measured bounds* of the HUD, loop pedal and ✕ control.
 2. **Define the subject in instrument-local space** — keybed bounds plus hand anchors,
    or the string band from nut to below the bridge — then transform to world space. Never
    viewport-specific world offsets.
