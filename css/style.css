@@ -289,6 +289,15 @@ html.stage-live .nav-btn {
 }
 .icon-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
 
+/* Leaves the stage rather than opening a panel, so it ranks below the controls
+   beside it: same circle, a size down, thinner rim. Compounded with `.icon-btn`
+   so the mobile sizes below cannot flatten it back to full width. */
+.icon-btn.site-btn {
+  width: 32px; height: 32px; text-decoration: none;
+  border-width: 1px; border-color: rgba(253, 251, 247, .28);
+}
+.icon-btn.site-btn svg { width: 14px; height: 14px; }
+
 .sound-wrap { position: relative; }
 #sound-mixer {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 55;
@@ -1499,6 +1508,7 @@ html.mascot-editor-open #toast {
     font-size: 9px; letter-spacing: .08em; text-align: center;
   }
   .icon-btn { width: 36px; height: 36px; }
+  .icon-btn.site-btn { width: 28px; height: 28px; }
   #zoom-controls {
     right: max(10px, env(safe-area-inset-right));
     top: auto; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 108px);
@@ -1613,6 +1623,7 @@ html.mascot-editor-open #toast {
   #loop-label { font-size: 7px; }
   #loop-meta { max-width: 42px; font-size: 4.5px; }
   .icon-btn { width: 34px; height: 34px; }
+  .icon-btn.site-btn { width: 26px; height: 26px; }
 }
 
 /* Mascot editor uses the measured open canvas as its preview, then the camera

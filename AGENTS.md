@@ -3,14 +3,18 @@
 ## Cursor Cloud specific instructions
 
 This is a **static WebGL site** (Art Vibe Studio) — no build step, no package manager, and no lint
-config. Three.js is vendored under `vendor/three/`, loaded via an import map in `index.html`.
+config. Three.js is vendored under `vendor/three/`, loaded via an import map in `stage/index.html`.
 The dependency-free audio lifecycle tests use Node's built-in test runner. See `SPEC.md` for the
 full product/architecture spec.
 
 ### Code layout
 
-`index.html` loads exactly one module, `js/main.js`, which owns boot order, cross-module wiring and
-the frame loop. Everything else lives in a themed directory:
+The site root (`index.html` plus the `uroky-*-lodz/` pages) is the static lesson site — plain HTML,
+no stage code. The 3D stage lives at `stage/index.html` and loads exactly one module, `js/main.js`,
+which owns boot order, cross-module wiring and the frame loop. Because the stage is served from
+`/stage/`, every asset path it reaches for — in HTML, in the import map, and in `fetch()` calls from
+JS — is site-absolute (`/js/…`, `/prices.json`, `/img/…`); a document-relative one would look inside
+`/stage/`. Everything else lives in a themed directory:
 
 | directory | owns |
 | --- | --- |
@@ -35,14 +39,16 @@ Shared mutable state has explicit homes — `js/core/session.js` (started / fly-
 
 ### Running (development)
 
-Serve the repo root over HTTP (opening `index.html` via `file://` breaks ES module import maps):
+Serve the repo root over HTTP (opening the pages via `file://` breaks ES module import maps and the
+site-absolute paths):
 
 ```
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Then open http://127.0.0.1:8000. `python3` is preinstalled; there is nothing to install, so the
-startup update script is effectively a no-op.
+Then open http://127.0.0.1:8000 for the lesson site, or http://127.0.0.1:8000/stage/ for the 3D
+stage. `python3` is preinstalled; there is nothing to install, so the startup update script is
+effectively a no-op.
 
 ### Notes / gotchas
 
@@ -55,7 +61,7 @@ startup update script is effectively a no-op.
   GitHub Pages; there is no build to run locally. The audio-lifecycle suite asserts on source text
   across all of `js/**/*.js`, so it follows code that moves between modules.
 - Verifying the 3D stage in a headless / backgrounded browser: load
-  `?testhooks=1&headless=1`. A hidden tab never fires `requestAnimationFrame` (black canvas, no
+  `/stage/?testhooks=1&headless=1`. A hidden tab never fires `requestAnimationFrame` (black canvas, no
   `window.__sceneReady`), and `headless` pumps the frame loop from a worker instead. `setTimeout` is
   also throttled to ~1Hz there, so in-page test scripts should drive their waits off
   `requestAnimationFrame`. `window.__THREE_GAME_DIAGNOSTICS__.renderer` and

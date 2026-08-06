@@ -8,7 +8,9 @@
 // Every instrument is priced on its own in the file; nothing here groups them.
 // ============================================================
 
-const SOURCE = 'prices.json?v=20260805-03';
+// Site-absolute: the stage lives at /stage/, so a document-relative path would
+// look for the file next to that page instead of at the site root.
+const SOURCE = '/prices.json?v=20260805-03';
 
 let loaded = null;
 let request = null;

@@ -9,7 +9,7 @@ Interactive marketing experience for **Art Vibe Studio**, a cultural and educati
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTAs:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/) and [Messenger](https://m.me/61564874125852?text=%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82%2C%20%D1%85%D0%BE%D1%87%D1%83%20%D0%BD%D0%B0%20%D1%83%D1%80%D0%BE%D0%BA%21)
 
-Both the stage and the `/uk` pages split those two CTAs by intent. **Booking** buttons deep-link into a
+Both the stage and the lesson pages split those two CTAs by intent. **Booking** buttons deep-link into a
 conversation: `https://ig.me/m/artvibe.pl` and `https://m.me/61564874125852?text=<prefilled
 message naming the instrument, no emoji>`. Instagram has no text-prefill parameter, so its
 booking link carries no per-page context. **Browsing** links — the footer, and the “відгуки та
@@ -61,12 +61,14 @@ Non-goals: accounts, payments, CMS, sample libraries, native apps.
 Static site, no build step. ES modules + import map for Three.js.
 
 ```
-index.html          # shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
+index.html          # lesson hub — the site's front door (static, no stage JS)
+uroky-*-lodz/       # instrument-specific SEO lesson pages
+stage/index.html    # 3D stage: shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
+uk/                 # redirect stubs for the pre-2026-08-06 /uk/* URLs
 css/style.css       # design system + overlays
 css/lessons.css     # lightweight static lesson pages (deliberate 2007-era skin)
 fonts/              # self-hosted faces
 img/                # slideshow photos
-uk/                 # Ukrainian lesson hub + instrument-specific SEO pages
 js/
   main.js           # boot order, cross-module wiring, hover + frame loop
   audio.js          # Web Audio synth + buses + unlock/resume
@@ -400,7 +402,7 @@ changing one instrument's price is a one-place edit.
 - `id` matches the instrument keys used across the stage (`mic` is the one alias, → `vocal`).
 - `name` is the label the mixer board prints; `theme` picks the board skin (`vocal` | `rhythm`).
 - `js/core/prices.js` is the single fetch of this file; the mixer and the price chips share it.
-- The `/uk` pages are static HTML and re-state these numbers, but they are **generated**
+- The lesson pages are static HTML and re-state these numbers, but they are **generated**
   from this file, not maintained beside it. `tools/sync-prices.mjs` writes prices.json into
   the pages and the deploy workflow runs it before the tests, so **editing prices.json alone
   is a complete price change** — no HTML edit, no red build. Run it locally (`node
@@ -524,14 +526,17 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 **Primary:** GitHub Pages (Actions).
 
 - Workflow: `.github/workflows/deploy-pages.yml` on push to `main`.
-- Artifact: `css fonts img js uk vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`.
+- Artifact: `css fonts img js stage uk uroky-*-lodz vendor index.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`.
+- **Paths are site-absolute** (`/js/…`, `/prices.json`, `/img/…`). The stage is served from
+  `/stage/`, so a document-relative path resolves under that directory instead of the root.
 - Custom domain: `artvibe.com.pl` → GitHub Pages (`voloshyninthesky.github.io`).
 - Enforce HTTPS in Pages settings after DNS verifies.
 - **Cache bust:** bump `?v=` on `css/style.css`, `js/main.js`, and module imports as needed (including `audio.js` when unlock behavior changes).
 
 **Live VPS release:** nginx release dirs under `/var/www/vibe2.ton.zone/releases/<UTC>/` via `deploy/nginx/`. Update all three Nginx `root` entries, validate with `nginx -t`, reload, and move `current` only after the new release is ready.
 
-Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000
+Local: `python3 -m http.server 8000 --bind 127.0.0.1` → http://127.0.0.1:8000 (lesson site),
+http://127.0.0.1:8000/stage/ (3D stage)
 
 ---
 

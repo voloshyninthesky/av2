@@ -177,11 +177,12 @@ function waitForSlideLoadBudget() {
 }
 
 export async function loadSlideTextures(maxAnisotropy) {
-  const fallbackFiles = ['img/wicked-ensemble.jpg', 'img/wicked-cast.jpg', 'img/wicked-duet.jpg', 'img/stage-guitar.jpg'];
+  const fallbackFiles = ['/img/wicked-ensemble.jpg', '/img/wicked-cast.jpg', '/img/wicked-duet.jpg', '/img/stage-guitar.jpg'];
 
   // `slides.json` is the complete manifest of images in /img that belong in the slideshow.
   // Keeping it separate lets the stage load every supplied slide without bundling a stale list in the app.
-  const files = await fetch('img/slides.json')
+  // Paths here and in the manifest are site-absolute — the stage is served from /stage/.
+  const files = await fetch('/img/slides.json')
     .then((response) => response.ok ? response.json() : fallbackFiles)
     .then((files) => Array.isArray(files) && files.length ? files : fallbackFiles)
     .catch(() => fallbackFiles);

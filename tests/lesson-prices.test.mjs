@@ -46,10 +46,10 @@ function renderedIn(html) {
 }
 
 const pages = [
-  { file: 'uk/uroky-vokalu-lodz/index.html', instrument: 'vocal' },
-  { file: 'uk/uroky-hitary-lodz/index.html', instrument: 'guitar' },
-  { file: 'uk/uroky-fortepiano-lodz/index.html', instrument: 'piano' },
-  { file: 'uk/uroky-barabaniv-lodz/index.html', instrument: 'drums' },
+  { file: 'uroky-vokalu-lodz/index.html', instrument: 'vocal' },
+  { file: 'uroky-hitary-lodz/index.html', instrument: 'guitar' },
+  { file: 'uroky-fortepiano-lodz/index.html', instrument: 'piano' },
+  { file: 'uroky-barabaniv-lodz/index.html', instrument: 'drums' },
 ];
 
 const read = (file) => readFile(new URL(`../${file}`, import.meta.url), 'utf8');
@@ -82,8 +82,8 @@ for (const { file, instrument } of pages) {
   });
 }
 
-test('uk/index.html shows the single-lesson price of every instrument', async () => {
-  const html = await read('uk/index.html');
+test('index.html shows the single-lesson price of every instrument', async () => {
+  const html = await read('index.html');
   const expected = expectedFor(prices.instruments, { packages: false });
   const rendered = renderedIn(html);
 
@@ -98,7 +98,7 @@ test('uk/index.html shows the single-lesson price of every instrument', async ()
 });
 
 test('every page carries the promotions verbatim', async () => {
-  for (const { file } of [...pages, { file: 'uk/index.html' }]) {
+  for (const { file } of [...pages, { file: 'index.html' }]) {
     const html = await read(file);
     for (const promotion of prices.promotions) {
       assert.ok(
@@ -120,7 +120,7 @@ test('pages listing subscriptions explain what the package price covers', async 
 // deliberately names no amount, so there is no second place for one to go stale.
 
 test('marketing copy outside the price tables quotes no amount', async () => {
-  for (const { file } of [...pages, { file: 'uk/index.html' }]) {
+  for (const { file } of [...pages, { file: 'index.html' }]) {
     const html = await read(file);
     const outside = html.replace(/<td data-price="[^"]+">[^<]*<\/td>/g, '');
     // \b is ASCII-only in JS, so it never matches after a Cyrillic «зл» —
@@ -166,7 +166,7 @@ test('lesson pages carry an AggregateOffer matching prices.json', async () => {
 test('every page names the school with a priceRange matching prices.json', async () => {
   const all = prices.instruments.flatMap(everyPrice);
   const expected = `${Math.min(...all)}-${Math.max(...all)} PLN`;
-  for (const { file } of [...pages, { file: 'uk/index.html' }]) {
+  for (const { file } of [...pages, { file: 'index.html' }]) {
     const graph = jsonLdGraph(await read(file), file);
     const school = graph.find((n) => Array.isArray(n['@type']) && n['@type'].includes('MusicSchool'));
     assert.ok(school, `${file} has no MusicSchool node`);

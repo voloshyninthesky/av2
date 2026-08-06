@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Writes prices.json into the static /uk pages.
+// Writes prices.json into the static lesson pages.
 //
 // The pages load no JavaScript, so every price they show is a copy of the data.
 // This script makes prices.json the single source those copies are generated
@@ -24,11 +24,11 @@ const prices = JSON.parse(await readFile(new URL('prices.json', ROOT), 'utf8'));
 const currency = prices.currency.display;
 
 const PAGES = [
-  { file: 'uk/index.html', instrument: null },
-  { file: 'uk/uroky-vokalu-lodz/index.html', instrument: 'vocal' },
-  { file: 'uk/uroky-hitary-lodz/index.html', instrument: 'guitar' },
-  { file: 'uk/uroky-fortepiano-lodz/index.html', instrument: 'piano' },
-  { file: 'uk/uroky-barabaniv-lodz/index.html', instrument: 'drums' },
+  { file: 'index.html', instrument: null },
+  { file: 'uroky-vokalu-lodz/index.html', instrument: 'vocal' },
+  { file: 'uroky-hitary-lodz/index.html', instrument: 'guitar' },
+  { file: 'uroky-fortepiano-lodz/index.html', instrument: 'piano' },
+  { file: 'uroky-barabaniv-lodz/index.html', instrument: 'drums' },
 ];
 
 const priceOf = (id) => prices.instruments.find((i) => i.id === id);

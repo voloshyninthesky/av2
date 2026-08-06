@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover">
+<title>ArtVibe Studio</title>
+<meta name="description" content="Art Vibe Studio — культурно-освітній простір у Лодзі (Łódź), Польща. Уроки вокалу, гітари, фортепіано та барабанів для дітей і дорослих.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0a0612">
+<link rel="canonical" href="https://artvibe.com.pl/stage/">
+<link rel="alternate" hreflang="uk" href="https://artvibe.com.pl/stage/">
+<link rel="alternate" hreflang="x-default" href="https://artvibe.com.pl/stage/">
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="uk_UA">
+<meta property="og:site_name" content="Art Vibe Studio">
+<meta property="og:title" content="ArtVibe Studio">
+<meta property="og:description" content="Уроки вокалу, гітари, фортепіано та барабанів для дітей і дорослих у Лодзі (Łódź).">
+<meta property="og:url" content="https://artvibe.com.pl/stage/">
+<meta property="og:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
+<meta property="og:image:width" content="2000">
+<meta property="og:image:height" content="1331">
+<meta property="og:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ArtVibe Studio">
+<meta name="twitter:description" content="Уроки вокалу, гітари, фортепіано та барабанів для дітей і дорослих у Лодзі (Łódź).">
+<meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
+<meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/css/style.css?v=20260806-01">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://artvibe.com.pl/#website",
+      "url": "https://artvibe.com.pl/",
+      "name": "Art Vibe Studio",
+      "description": "Культурно-освітній простір у Лодзі з уроками вокалу, гітари, фортепіано та барабанів",
+      "inLanguage": "uk-UA",
+      "publisher": { "@id": "https://artvibe.com.pl/#organization" }
+    },
+    {
+      "@type": "EducationalOrganization",
+      "@id": "https://artvibe.com.pl/#organization",
+      "name": "Art Vibe Studio",
+      "url": "https://artvibe.com.pl/",
+      "sameAs": ["https://www.instagram.com/artvibe.pl/"],
+      "slogan": "Вчись творити і твори навчаючись.",
+      "description": "Культурно-освітній простір у Лодзі (Łódź) з уроками вокалу, гітари, фортепіано та барабанів.",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Łódź",
+        "addressCountry": "PL"
+      },
+      "areaServed": {
+        "@type": "City",
+        "name": "Łódź"
+      },
+      "knowsAbout": [
+        "Уроки вокалу",
+        "Уроки гітари",
+        "Уроки фортепіано",
+        "Уроки барабанів"
+      ]
+    }
+  ]
+}
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/build/three.module.js",
+    "three/addons/": "/vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div id="slideshow-nav" hidden aria-label="Свайп для перемикання слайдів"></div>
+
+<!-- ======= INTRO OVERLAY ======= -->
+<div id="intro" aria-label="Заставка">
+  <div class="intro-bg"></div>
+  <div class="intro-top">
+    <span class="tag mono">ART VIBE STUDIO</span>
+  </div>
+  <div class="intro-center">
+    <div class="intro-kicker mono">інтерактивна музична сцена</div>
+    <h1 class="intro-logo">ART&nbsp;VIBE</h1>
+    <div class="intro-studio">STUDIO</div>
+    <p class="intro-slogan">
+      <span class="tri"></span> ВЧИСЬ ТВОРИТИ І ТВОРИ НАВЧАЮЧИСЬ <span class="tri flip"></span>
+    </p>
+    <button id="enter-btn" class="pill-btn big" type="button" aria-busy="true" disabled>
+      <span id="enter-label">ЗАВАНТАЖЕННЯ…</span>
+    </button>
+  </div>
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track mono" id="ticker-track"></div>
+  </div>
+</div>
+
+<!-- ======= HUD ======= -->
+<header id="hud" class="hidden" aria-label="Панель керування" inert>
+  <div class="hud-left">
+    <button class="logo-chip" id="logo-btn" type="button" title="Танець — тектонік" aria-label="Art Vibe Studio — танець (тектонік)" aria-pressed="false">
+      <span class="logo-av">AV</span>
+      <span class="logo-text mono">ART VIBE STUDIO</span>
+    </button>
+  </div>
+
+  <div class="hud-center">
+    <div id="vibe" title="Грай на інструментах, щоб заповнити вайб-ометр">
+      <span class="vibe-label mono">VIBE</span>
+      <div class="vibe-track"><div id="vibe-fill"></div></div>
+    </div>
+  </div>
+
+  <nav class="hud-right" aria-label="Навігація">
+    <button class="pill-btn nav-btn gold" data-open="pricing">ЦІНИ</button>
+    <button class="icon-btn" id="mascot-btn" type="button" data-open="mascot" title="Твій образ — змінити маскота" aria-label="Твій образ — змінити маскота">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg>
+    </button>
+    <div class="sound-wrap">
+      <button class="icon-btn" id="sound-btn" type="button" title="Налаштування" aria-label="Налаштування" aria-expanded="false" aria-controls="sound-mixer">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path id="sound-icon" fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+      </button>
+      <div id="sound-mixer" hidden role="dialog" aria-label="Налаштування">
+        <div class="sound-mixer-head">
+          <span class="mono">МІКШЕР</span>
+          <button type="button" id="sound-recover-btn" title="Перезапустити й перевірити звук" aria-label="Перезапустити й перевірити звук">ТЕСТ ЗВУКУ</button>
+        </div>
+        <label class="sound-fader light-fader" id="light-controls" for="stage-light-level" title="Яскравість сцени">
+          <span>Світло · <output id="stage-light-level-val">78%</output></span>
+          <input type="range" id="stage-light-level" class="light-fader-range" min="0" max="100" step="1" value="78" aria-label="Яскравість сцени" aria-valuetext="78 відсотків">
+        </label>
+        <span class="mixer-section-label mono">Гучність</span>
+        <label class="sound-fader">
+          <span>Ударні</span>
+          <input type="range" min="0" max="100" value="50" data-bus="drums" aria-label="Гучність ударних">
+        </label>
+        <label class="sound-fader">
+          <span>Піаніно</span>
+          <input type="range" min="0" max="100" value="50" data-bus="piano" aria-label="Гучність піаніно">
+        </label>
+        <label class="sound-fader">
+          <span>Гітара</span>
+          <input type="range" min="0" max="100" value="30" data-bus="guitar" aria-label="Гучність гітари">
+        </label>
+        <label class="sound-fader">
+          <span>Вокал</span>
+          <input type="range" min="0" max="100" value="50" data-bus="mic" aria-label="Гучність вокалу">
+        </label>
+        <div class="quality-control" role="radiogroup" aria-label="Графіка">
+          <span class="mono">ГРАФІКА</span>
+          <div class="quality-options">
+            <button class="quality-option" type="button" data-quality="high" role="radio" aria-checked="false">GLAMOUR</button>
+            <button class="quality-option" type="button" data-quality="low" role="radio" aria-checked="false">PIXEL</button>
+            <button class="quality-option" type="button" data-quality="auto" role="radio" aria-checked="false">AUTO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- The stage sits at /stage/, so this is the only way back to the lesson
+         site. `#mobile-exit` already means "leave the instrument close-up", so
+         this one is named for where it goes rather than for exiting. -->
+    <a class="icon-btn site-btn" id="site-btn" href="/" title="На сайт студії — уроки, ціни, запис" aria-label="На сайт студії — уроки, ціни, запис">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h7v2H5v14h7v2zm11-4l-1.375-1.45l2.55-2.55H9v-2h8.175l-2.55-2.55L16 7l5 5z"/></svg>
+    </a>
+  </nav>
+</header>
+
+<div id="keys-hint" class="mono hidden">
+  клік — рух · <b>Enter</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — гітара · <b>N M , . /</b> — вокал
+</div>
+
+<div id="quality-confirm" class="overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="quality-confirm-title" aria-describedby="quality-confirm-copy">
+  <div class="panel quality-confirm-panel">
+    <h2 id="quality-confirm-title">Змінити якість графіки?</h2>
+    <p id="quality-confirm-copy">Сторінка перезавантажиться, щоб застосувати зміни.</p>
+    <div class="quality-confirm-loader" id="quality-confirm-loader" hidden role="status" aria-live="polite">
+      <span aria-hidden="true"></span> Застосовуємо зміни…
+    </div>
+    <div class="quality-confirm-actions">
+      <button class="pill-btn outline small" id="quality-confirm-cancel" type="button">СКАСУВАТИ</button>
+      <button class="pill-btn gold small" id="quality-confirm-apply" type="button">ПЕРЕЗАВАНТАЖИТИ</button>
+    </div>
+  </div>
+</div>
+<div id="drag-hint" class="mono hidden">перетягуй — огляд сцени · коліщатко — зум</div>
+
+<div id="zoom-controls" hidden aria-label="Масштаб сцени">
+  <button id="zoom-in" type="button" aria-label="Наблизити сцену" title="Наблизити">+</button>
+  <button id="zoom-out" type="button" aria-label="Віддалити сцену" title="Віддалити">−</button>
+</div>
+
+<div id="loop-pedal" data-state="empty" role="group" aria-label="Loop-педаль" hidden>
+  <button id="loop-toggle" type="button" aria-label="Почати запис музичного циклу" aria-describedby="loop-status" title="Loop-педаль · L">
+    <span class="loop-led" aria-hidden="true"></span>
+    <span id="loop-label">LOOP</span>
+    <span id="loop-meta" class="mono">ЗАПИСАТИ</span>
+    <span class="loop-progress" aria-hidden="true"><span id="loop-progress-bar"></span></span>
+  </button>
+  <div id="loop-tools" hidden>
+    <button id="loop-pause" type="button" aria-label="Призупинити loop" aria-pressed="false" title="Пауза">Ⅱ</button>
+    <button id="loop-clear" type="button" aria-label="Очистити всі шари loop" title="Очистити loop">×</button>
+  </div>
+  <span id="loop-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true">Loop порожній</span>
+</div>
+
+<!-- floating tooltip / chip / toast -->
+<div id="tooltip" class="mono" hidden></div>
+<div id="chip" hidden>
+  <button id="chip-close" aria-label="Закрити">✕</button>
+  <button id="chip-prev" class="chip-arrow" aria-label="Попередній інструмент">‹</button>
+  <div id="chip-title"></div>
+  <div id="chip-desc" class="mono"></div>
+  <button id="chip-next" class="chip-arrow" aria-label="Наступний інструмент">›</button>
+  <button id="chip-cta" class="pill-btn gold small">ЦІНИ ›</button>
+</div>
+<div id="toast" class="mono" hidden></div>
+<div id="onboard" class="mono" hidden role="status">
+  <p id="onboard-text">Вітаємо на сцені Art Vibe! Сьогодні вона повністю твоя. По ній можна ходити, а на інструментах — грати.</p>
+  <button type="button" id="onboard-ok" class="pill-btn gold small">ЗРОЗУМІЛО</button>
+</div>
+
+<div id="vocal-pad" hidden aria-label="Ноти вокалу">
+  <button type="button" data-vocal-freq="261.63" data-vocal-vowel="0" aria-label="Нота До">ДО</button>
+  <button type="button" data-vocal-freq="293.66" data-vocal-vowel="1" aria-label="Нота Ре">РЕ</button>
+  <button type="button" data-vocal-freq="329.63" data-vocal-vowel="2" aria-label="Нота Мі">МІ</button>
+  <button type="button" data-vocal-freq="349.23" data-vocal-vowel="0" aria-label="Нота Фа">ФА</button>
+  <button type="button" data-vocal-freq="392.00" data-vocal-vowel="1" aria-label="Нота Соль">СОЛЬ</button>
+</div>
+
+<div id="chord-pad" hidden role="group" aria-label="Акорди гітари">
+  <div class="guitar-chord-buttons">
+    <button type="button" data-chord="Em" aria-label="Акорд Em" aria-pressed="false" aria-keyshortcuts="Q">Em</button>
+    <button type="button" data-chord="Am" aria-label="Акорд Am" aria-pressed="false" aria-keyshortcuts="W">Am</button>
+    <button type="button" data-chord="C" aria-label="Акорд C" aria-pressed="false" aria-keyshortcuts="E">C</button>
+    <button type="button" data-chord="D" aria-label="Акорд D" aria-pressed="false" aria-keyshortcuts="R">D</button>
+    <button type="button" data-chord="G" aria-label="Акорд G" aria-pressed="false" aria-keyshortcuts="T">G</button>
+    <button type="button" data-chord="F" aria-label="Акорд F" aria-pressed="false" aria-keyshortcuts="Y">F</button>
+  </div>
+</div>
+
+<div id="mobile-controls" aria-label="Ігрове керування">
+  <div id="move-zone" aria-label="Зона руху — торкнись ліворуч">
+    <div id="move-stick" role="application" aria-label="Джойстик руху">
+      <span class="stick-arrows" aria-hidden="true">◆</span>
+      <span id="move-thumb"></span>
+    </div>
+  </div>
+  <div id="mobile-actions">
+    <button id="mobile-exit" type="button" aria-label="Зійти з інструмента" hidden>✕</button>
+    <button id="mobile-play" type="button" aria-label="Грати на найближчому інструменті">
+      <span>ГРАТИ</span>
+    </button>
+  </div>
+  <span id="mobile-play-hint" role="status" hidden>Підійди до інструмента ближче щоб заграти</span>
+</div>
+
+<!-- ======= MODAL: ЯК ЗАПИСАТИСЯ ======= -->
+<div id="modal-steps" class="overlay" hidden>
+  <div class="panel">
+    <button class="close-btn" data-close aria-label="Закрити">✕</button>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
+    <h2 class="panel-title">Як записатися?</h2>
+    <ol class="steps-list">
+      <li><span class="step-tri"></span><div><b>Крок 1.</b> Обери напрямок — <em>вокал</em>, <em>гітара</em>, <em>барабани</em> або <em>фортепіано</em>.</div></li>
+      <li><span class="step-tri"></span><div><b>Крок 2.</b> Визнач, чи хочеш прийти на пробний урок, чи одразу придбати абонемент.</div></li>
+      <li><span class="step-tri"></span><div><b>Крок 3.</b> Обери кількість уроків та їх тривалість.</div></li>
+      <li><span class="step-tri"></span><div><b>Крок 4.</b> Напиши нам у директ «Хочу на урок».</div></li>
+    </ol>
+    <div class="panel-contact">
+      <p class="panel-action-label mono">Напиши нам</p>
+      <div class="panel-actions">
+        <a class="pill-btn gold big contact-channel" id="direct-btn-1" href="https://ig.me/m/artvibe.pl" target="_blank" rel="noopener noreferrer"><svg data-icon="simple-icons:instagram" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.03.084c-1.277.06-2.149.264-2.91.563a5.9 5.9 0 0 0-2.124 1.388a5.9 5.9 0 0 0-1.38 2.127C.321 4.926.12 5.8.064 7.076s-.069 1.688-.063 4.947s.021 3.667.083 4.947c.061 1.277.264 2.149.563 2.911c.308.789.72 1.457 1.388 2.123a5.9 5.9 0 0 0 2.129 1.38c.763.295 1.636.496 2.913.552c1.278.056 1.689.069 4.947.063s3.668-.021 4.947-.082c1.28-.06 2.147-.265 2.91-.563a5.9 5.9 0 0 0 2.123-1.388a5.9 5.9 0 0 0 1.38-2.129c.295-.763.496-1.636.551-2.912c.056-1.28.07-1.69.063-4.948c-.006-3.258-.02-3.667-.081-4.947c-.06-1.28-.264-2.148-.564-2.911a5.9 5.9 0 0 0-1.387-2.123a5.9 5.9 0 0 0-2.128-1.38c-.764-.294-1.636-.496-2.914-.55C15.647.009 15.236-.006 11.977 0S8.31.021 7.03.084m.14 21.693c-1.17-.05-1.805-.245-2.228-.408a3.7 3.7 0 0 1-1.382-.895a3.7 3.7 0 0 1-.9-1.378c-.165-.423-.363-1.058-.417-2.228c-.06-1.264-.072-1.644-.08-4.848c-.006-3.204.006-3.583.061-4.848c.05-1.169.246-1.805.408-2.228c.216-.561.477-.96.895-1.382a3.7 3.7 0 0 1 1.379-.9c.423-.165 1.057-.361 2.227-.417c1.265-.06 1.644-.072 4.848-.08c3.203-.006 3.583.006 4.85.062c1.168.05 1.804.244 2.227.408c.56.216.96.475 1.382.895s.681.817.9 1.378c.165.422.362 1.056.417 2.227c.06 1.265.074 1.645.08 4.848c.005 3.203-.006 3.583-.061 4.848c-.051 1.17-.245 1.805-.408 2.23c-.216.56-.477.96-.896 1.38a3.7 3.7 0 0 1-1.378.9c-.422.165-1.058.362-2.226.418c-1.266.06-1.645.072-4.85.079s-3.582-.006-4.848-.06m9.783-16.192a1.44 1.44 0 1 0 1.437-1.442a1.44 1.44 0 0 0-1.437 1.442M5.839 12.012a6.161 6.161 0 1 0 12.323-.024a6.162 6.162 0 0 0-12.323.024M8 12.008A4 4 0 1 1 12.008 16A4 4 0 0 1 8 12.008"/></svg><span>Instagram <span class="ext-arrow" aria-hidden="true"></span></span></a>
+        <a class="pill-btn outline big contact-channel" href="https://m.me/61564874125852?text=%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82!%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%BD%D0%B0%20%D1%83%D1%80%D0%BE%D0%BA" target="_blank" rel="noopener noreferrer"><svg data-icon="simple-icons:messenger" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.24 0 0 4.952 0 11.64c0 3.499 1.434 6.521 3.769 8.61a.96.96 0 0 1 .323.683l.065 2.135a.96.96 0 0 0 1.347.85l2.381-1.053a.96.96 0 0 1 .641-.046A13 13 0 0 0 12 23.28c6.76 0 12-4.952 12-11.64S18.76 0 12 0m6.806 7.44c.522-.03.971.567.63 1.094l-4.178 6.457a.707.707 0 0 1-.977.208l-3.87-2.504a.44.44 0 0 0-.49.007l-4.363 3.01c-.637.438-1.415-.317-.995-.966l4.179-6.457a.706.706 0 0 1 .977-.21l3.87 2.505c.15.097.344.094.491-.007l4.362-3.008a.7.7 0 0 1 .364-.13"/></svg><span>Messenger <span class="ext-arrow" aria-hidden="true"></span></span></a>
+      </div>
+    </div>
+    <button class="panel-secondary-link" type="button" data-goto="rules">Правила студії →</button>
+  </div>
+</div>
+
+<!-- ======= MODAL: ПРАВИЛА ======= -->
+<div id="modal-rules" class="overlay" hidden>
+  <div class="panel rules-panel">
+    <button class="close-btn" data-close aria-label="Закрити">✕</button>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>4 ПРАВИЛА</span></div>
+    <h2 class="panel-title">Правила<span class="dot">.</span></h2>
+    <p class="panel-lead">Коротко про мову, оплату й переноси — щоб усі грали за одними нотами.</p>
+
+    <div class="rules-score">
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>1</span></div>
+        <div class="rule-body">
+          <h3>Мовна політика</h3>
+          <p class="status no"><span class="mark" aria-hidden="true">✕</span><span>Ні російській мові. Уроки — українською. Без російської мови, пісень, творів і методик російських авторів.</span></p>
+          <p class="status yes"><span class="mark" aria-hidden="true">✓</span><span>Завжди раді іншим мовам.</span></p>
+        </div>
+      </section>
+
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>2</span></div>
+        <div class="rule-body">
+          <h3>Одноразовий урок</h3>
+          <p class="rule-sub">Оплата та переноси</p>
+          <ul class="dots">
+            <li>Щоб забронювати час, урок оплачується повністю.</li>
+            <li>Скасування за 24+ години — оплата переноситься.</li>
+            <li>Скасування менше ніж за 24 години — знімається 50% від вартості.</li>
+            <li>Скасування менше ніж за 2 години або неявка — урок вважається проведеним; оплата не переноситься й не повертається.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>3</span></div>
+        <div class="rule-body">
+          <h3>Абонемент</h3>
+          <p class="rule-sub">Оплата та переноси</p>
+          <ul class="dots">
+            <li>Діє 1 місяць з дати першого заняття.</li>
+            <li>Щоб продовжити, оплатіть наступний абонемент до останнього заняття поточного.</li>
+            <li>Гарантує фіксований час (дні можуть відрізнятися, але фіксуються на початку місяця).</li>
+            <li>2 переноси на місяць без втрати уроку — з дотриманням правил переносу.</li>
+            <li>«Заморожування» до 2 тижнів без втрати оплати. Автоматично — якщо немає викладача (відпустка чи лікарняний).</li>
+            <li>Можна придбати у будь-який день місяця.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="rule-block">
+        <div class="rule-num" aria-hidden="true"><span>4</span></div>
+        <div class="rule-body">
+          <h3>Прийняття і уточнення</h3>
+          <ul class="dots">
+            <li>Оплата підтверджує, що ви ознайомлені та погоджуєтеся з правилами.</li>
+            <li>Якщо викладач скасовує менше ніж за 24 години — наступний урок зі знижкою 50%.</li>
+            <li>Якщо викладач скасовує менше ніж за 2 години — наступний урок безкоштовний.</li>
+            <li>Перша оплата — переказ на картку. Далі — переказом або готівкою.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <div class="panel-actions">
+      <button class="pill-btn outline big" data-goto="pricing">ДАЛІ — ЦІНИ ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: ОБРАЗ (mascot customization) ======= -->
+<div id="modal-mascot" class="overlay" role="dialog" aria-modal="true" aria-labelledby="mascot-title" aria-describedby="mascot-lead" hidden>
+  <div id="mascot-preview-zone" aria-label="Попередній перегляд маскота. Проведи горизонтально, щоб повернути.">
+    <p class="mascot-preview-hint mono" aria-hidden="true">ПРОВЕДИ, ЩОБ ПОВЕРНУТИ</p>
+  </div>
+
+  <div class="panel mascot-panel">
+    <button class="close-btn" data-close aria-label="Закрити">✕</button>
+    <div class="mascot-editor-head">
+      <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>ТВІЙ ГЕРОЙ</span></div>
+      <h2 class="panel-title" id="mascot-title">Твій образ<span class="dot">.</span></h2>
+      <p class="sr-only" id="mascot-lead">Обери деталі образу. Зміни видно на маскоті одразу і зберігаються після натискання Готово.</p>
+
+      <div class="mascot-tabs" role="tablist" aria-label="Категорії образу">
+        <button type="button" role="tab" id="mascot-tab-face" aria-controls="mascot-section-face" aria-selected="true" data-mascot-tab="face">ОБЛИЧЧЯ</button>
+        <button type="button" role="tab" id="mascot-tab-outfit" aria-controls="mascot-section-outfit" aria-selected="false" tabindex="-1" data-mascot-tab="outfit">ОДЯГ</button>
+        <button type="button" role="tab" id="mascot-tab-shape" aria-controls="mascot-section-shape" aria-selected="false" tabindex="-1" data-mascot-tab="shape">ФОРМА</button>
+      </div>
+    </div>
+
+    <div class="mascot-editor-scroll">
+      <section class="mascot-category is-active" id="mascot-section-face" role="tabpanel" aria-labelledby="mascot-tab-face" data-mascot-section="face">
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-hair">ЗАЧІСКА · <b id="mascot-hair-name">ДОВГЕ</b></span>
+          <div class="chip-row" id="mascot-hair-row" role="radiogroup" aria-labelledby="lbl-mascot-hair">
+            <button type="button" class="choice-chip is-on" data-mascot-hair="long" role="radio" aria-checked="true" tabindex="0">Довге</button>
+            <button type="button" class="choice-chip" data-mascot-hair="bob" role="radio" aria-checked="false" tabindex="-1">Боб</button>
+            <button type="button" class="choice-chip" data-mascot-hair="short" role="radio" aria-checked="false" tabindex="-1">Коротке</button>
+            <button type="button" class="choice-chip" data-mascot-hair="bald" role="radio" aria-checked="false" tabindex="-1">Лисий</button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-smile">УСМІШКА · <b id="mascot-smile-name">ЛЕГКА</b></span>
+          <div class="chip-row" id="mascot-smile-row" role="radiogroup" aria-labelledby="lbl-mascot-smile">
+            <button type="button" class="choice-chip is-on" data-mascot-smile="soft" role="radio" aria-checked="true" tabindex="0">Легка</button>
+            <button type="button" class="choice-chip" data-mascot-smile="wide" role="radio" aria-checked="false" tabindex="-1">Широка</button>
+            <button type="button" class="choice-chip" data-mascot-smile="neutral" role="radio" aria-checked="false" tabindex="-1">Рівна</button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-hair-color">КОЛІР ВОЛОССЯ · <b id="mascot-color-name">КАШТАНОВЕ</b></span>
+          <div class="chip-row swatch-row" id="mascot-color-row" role="radiogroup" aria-labelledby="lbl-mascot-hair-color">
+            <button type="button" class="swatch is-on" data-mascot-color="5a2f22" role="radio" aria-checked="true" tabindex="0" aria-label="Каштанове" style="--sw:#5a2f22"></button>
+            <button type="button" class="swatch" data-mascot-color="241a14" role="radio" aria-checked="false" tabindex="-1" aria-label="Чорне" style="--sw:#241a14"></button>
+            <button type="button" class="swatch" data-mascot-color="c9a35f" role="radio" aria-checked="false" tabindex="-1" aria-label="Блонд" style="--sw:#c9a35f"></button>
+            <button type="button" class="swatch" data-mascot-color="a14d2d" role="radio" aria-checked="false" tabindex="-1" aria-label="Руде" style="--sw:#a14d2d"></button>
+            <button type="button" class="swatch" data-mascot-color="b04a68" role="radio" aria-checked="false" tabindex="-1" aria-label="Рожеве" style="--sw:#b04a68"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-eyes">ОЧІ · <b id="mascot-eyes-name">ТЕМНІ</b></span>
+          <div class="chip-row swatch-row" id="mascot-eyes-row" role="radiogroup" aria-labelledby="lbl-mascot-eyes">
+            <button type="button" class="swatch is-on" data-mascot-eyes="dark" role="radio" aria-checked="true" tabindex="0" aria-label="Темні" style="--sw:#17121c"></button>
+            <button type="button" class="swatch" data-mascot-eyes="green" role="radio" aria-checked="false" tabindex="-1" aria-label="Зелені" style="--sw:#2e6b4f"></button>
+            <button type="button" class="swatch" data-mascot-eyes="blue" role="radio" aria-checked="false" tabindex="-1" aria-label="Блакитні" style="--sw:#3c5f9e"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-skin">ТОН ШКІРИ · <b id="mascot-skin-name">ТЕПЛИЙ</b></span>
+          <div class="chip-row swatch-row" id="mascot-skin-row" role="radiogroup" aria-labelledby="lbl-mascot-skin">
+            <button type="button" class="swatch is-on" data-mascot-skin="tone-3" role="radio" aria-checked="true" tabindex="0" aria-label="Теплий" style="--sw:#f2c4a6"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-5" role="radio" aria-checked="false" tabindex="-1" aria-label="Світлий" style="--sw:#f6d7c5"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-4" role="radio" aria-checked="false" tabindex="-1" aria-label="Золотий" style="--sw:#d99b72"></button>
+            <button type="button" class="swatch" data-mascot-skin="tone-7" role="radio" aria-checked="false" tabindex="-1" aria-label="Чорний" style="--sw:#4a3128"></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="mascot-category" id="mascot-section-outfit" role="tabpanel" aria-labelledby="mascot-tab-outfit" data-mascot-section="outfit" hidden>
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-outfit">ПАЛІТРА · <b id="mascot-outfit-name">СЦЕНА</b></span>
+          <div class="outfit-grid" id="mascot-outfit-row" role="radiogroup" aria-labelledby="lbl-mascot-outfit">
+            <button type="button" class="outfit-choice is-on" data-mascot-outfit="stage" role="radio" aria-checked="true" tabindex="0"><span class="outfit-colors" style="--c1:#FDFBF7;--c2:#233f9d;--c3:#D1A13B"></span><b>Сцена</b></button>
+            <button type="button" class="outfit-choice" data-mascot-outfit="vibe" role="radio" aria-checked="false" tabindex="-1"><span class="outfit-colors" style="--c1:#FDFBF7;--c2:#9E33CA;--c3:#D1A13B"></span><b>Фірмовий</b></button>
+            <button type="button" class="outfit-choice" data-mascot-outfit="denim" role="radio" aria-checked="false" tabindex="-1"><span class="outfit-colors" style="--c1:#FDFBF7;--c2:#5B82A6;--c3:#f2e6cc"></span><b>Джинс</b></button>
+            <button type="button" class="outfit-choice" data-mascot-outfit="night" role="radio" aria-checked="false" tabindex="-1"><span class="outfit-colors" style="--c1:#241a2e;--c2:#9E33CA;--c3:#D1A13B"></span><b>Ніч</b></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-primary">ОСНОВНИЙ КОЛІР · <b id="mascot-primary-name">З ПАЛІТРИ</b></span>
+          <div class="chip-row swatch-row" role="radiogroup" aria-labelledby="lbl-mascot-primary">
+            <button type="button" class="swatch palette-default is-on" data-mascot-primary="default" role="radio" aria-checked="true" tabindex="0" aria-label="З палітри"></button>
+            <button type="button" class="swatch" data-mascot-primary="purple" role="radio" aria-checked="false" tabindex="-1" aria-label="Фіолетовий" style="--sw:#9E33CA"></button>
+            <button type="button" class="swatch" data-mascot-primary="gold" role="radio" aria-checked="false" tabindex="-1" aria-label="Золотий" style="--sw:#D1A13B"></button>
+            <button type="button" class="swatch" data-mascot-primary="denim" role="radio" aria-checked="false" tabindex="-1" aria-label="Джинсовий" style="--sw:#5B82A6"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-accent">АКЦЕНТ · <b id="mascot-accent-name">З ПАЛІТРИ</b></span>
+          <div class="chip-row swatch-row" role="radiogroup" aria-labelledby="lbl-mascot-accent">
+            <button type="button" class="swatch palette-default is-on" data-mascot-accent="default" role="radio" aria-checked="true" tabindex="0" aria-label="З палітри"></button>
+            <button type="button" class="swatch" data-mascot-accent="purple" role="radio" aria-checked="false" tabindex="-1" aria-label="Фіолетовий" style="--sw:#9E33CA"></button>
+            <button type="button" class="swatch" data-mascot-accent="gold" role="radio" aria-checked="false" tabindex="-1" aria-label="Золотий" style="--sw:#D1A13B"></button>
+            <button type="button" class="swatch" data-mascot-accent="cream" role="radio" aria-checked="false" tabindex="-1" aria-label="Кремовий" style="--sw:#FDFBF7"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-shoes">ВЗУТТЯ · <b id="mascot-shoes-name">З ПАЛІТРИ</b></span>
+          <div class="chip-row swatch-row" id="mascot-shoes-row" role="radiogroup" aria-labelledby="lbl-mascot-shoes">
+            <button type="button" class="swatch palette-default is-on" data-mascot-shoes="default" role="radio" aria-checked="true" tabindex="0" aria-label="З палітри"></button>
+            <button type="button" class="swatch" data-mascot-shoes="ink" role="radio" aria-checked="false" tabindex="-1" aria-label="Чорні" style="--sw:#17121c"></button>
+            <button type="button" class="swatch" data-mascot-shoes="cream" role="radio" aria-checked="false" tabindex="-1" aria-label="Білі" style="--sw:#FDFBF7"></button>
+            <button type="button" class="swatch" data-mascot-shoes="red" role="radio" aria-checked="false" tabindex="-1" aria-label="Червоні" style="--sw:#b93a3a"></button>
+          </div>
+        </div>
+
+        <div class="mixer-section">
+          <span class="mixer-label mono" id="lbl-mascot-accessory">АКСЕСУАР · <b id="mascot-accessory-name">СЕРЕЖКИ</b></span>
+          <div class="chip-row" role="radiogroup" aria-labelledby="lbl-mascot-accessory">
+            <button type="button" class="choice-chip" data-mascot-accessory="none" role="radio" aria-checked="false" tabindex="-1">Немає</button>
+            <button type="button" class="choice-chip is-on" data-mascot-accessory="hoops" role="radio" aria-checked="true" tabindex="0">Сережки</button>
+            <button type="button" class="choice-chip" data-mascot-accessory="glasses" role="radio" aria-checked="false" tabindex="-1">Окуляри</button>
+            <button type="button" class="choice-chip" data-mascot-accessory="headphones" role="radio" aria-checked="false" tabindex="-1">Навушники</button>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="mascot-category" id="mascot-section-shape" role="tabpanel" aria-labelledby="mascot-tab-shape" data-mascot-section="shape" hidden>
+        <div class="mixer-section shape-control">
+          <label class="mixer-label mono" for="mascot-height">ЗРІСТ</label>
+          <input type="range" class="mascot-range" id="mascot-height" min="70" max="145" step="1" value="100">
+        </div>
+
+        <div class="mixer-section shape-control">
+          <label class="mixer-label mono" for="mascot-width">СТАТУРА</label>
+          <input type="range" class="mascot-range" id="mascot-width" min="65" max="150" step="1" value="100">
+        </div>
+      </section>
+    </div>
+
+    <div class="mascot-editor-footer">
+      <div class="mascot-utility-actions">
+        <button class="mascot-text-btn" id="mascot-reset" type="button">СКИНУТИ</button>
+        <button class="mascot-text-btn" id="mascot-undo" type="button" hidden>ПОВЕРНУТИ</button>
+        <button class="mascot-text-btn random" id="mascot-random" type="button" aria-label="Випадковий образ">РАНДОМ</button>
+      </div>
+      <button class="pill-btn gold big" id="mascot-commit" type="button">ГОТОВО ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: ЦІНИ ======= -->
+<div id="modal-pricing" class="overlay" hidden>
+  <div class="panel pricing-panel">
+    <button class="close-btn" data-close aria-label="Закрити">✕</button>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>PLN · ЗЛ</span></div>
+    <h2 class="panel-title">Ціни<span class="dot">.</span></h2>
+
+    <div class="price-mixer" id="price-mixer" data-theme="vocal">
+      <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-instrument">НАПРЯМОК</span>
+        <div class="inst-grid" role="radiogroup" aria-labelledby="lbl-instrument">
+          <button type="button" class="inst-btn is-on" data-instrument="vocal" role="radio" aria-checked="true">Вокал</button>
+          <button type="button" class="inst-btn" data-instrument="guitar" role="radio" aria-checked="false">Гітара</button>
+          <button type="button" class="inst-btn" data-instrument="drums" role="radio" aria-checked="false">Барабани</button>
+          <button type="button" class="inst-btn" data-instrument="piano" role="radio" aria-checked="false">Фортепіано</button>
+        </div>
+      </div>
+
+      <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-format">ФОРМАТ</span>
+        <div class="format-toggle" role="radiogroup" aria-labelledby="lbl-format">
+          <button type="button" class="format-btn is-on" data-format="single" role="radio" aria-checked="true">Разовий урок</button>
+          <button type="button" class="format-btn" data-format="sub" role="radio" aria-checked="false">Абонемент</button>
+        </div>
+      </div>
+
+      <div class="mixer-section">
+        <span class="mixer-label mono" id="lbl-duration">ТРИВАЛІСТЬ</span>
+        <div class="chip-row" id="price-durations" role="radiogroup" aria-labelledby="lbl-duration"></div>
+      </div>
+
+      <div class="mixer-section" id="price-pack-section" hidden>
+        <span class="mixer-label mono" id="lbl-pack">ПАКЕТ</span>
+        <div class="chip-row" id="price-packs" role="radiogroup" aria-labelledby="lbl-pack"></div>
+      </div>
+
+      <article class="price-board" id="price-board" data-theme="vocal" aria-live="polite">
+        <p class="board-kicker mono" id="price-board-kicker">Вокал · разовий</p>
+        <p class="board-amount"><span id="price-board-value">75</span><span class="board-cur">зл</span></p>
+        <p class="board-meta" id="price-board-meta">45 хв · 1 урок</p>
+        <p class="board-note" id="price-board-note">для підлітків або дорослих</p>
+        <p class="board-per mono" id="price-board-per" hidden></p>
+        <button class="price-signup-cta" type="button" data-goto="steps"><span>Записатись</span></button>
+      </article>
+    </div>
+
+    <section class="promotions" aria-labelledby="promotions-title">
+      <h3 id="promotions-title">Спеціальні пропозиції</h3>
+      <div class="promo-grid" id="price-promos">
+        <p><b>−15%</b>На другий напрямок у студії Art Vibe</p>
+        <p><b>−15%</b>Якщо декілька дітей із сімʼї відвідують Art Vibe Studio</p>
+        <p><b>Бонусний урок</b>Безкоштовний бонусний урок за кожні пів року навчання</p>
+      </div>
+    </section>
+
+    <p class="mono price-foot" id="price-foot">ціна абонементу — за весь пакет · перша оплата на картку, далі — карткою або готівкою</p>
+    <div class="panel-actions">
+      <button class="pill-btn outline big" data-goto="steps">ЯК ЗАПИСАТИСЯ? ›</button>
+    </div>
+    <div class="panel-contact">
+      <p class="panel-action-label mono">Напиши нам</p>
+      <div class="panel-actions">
+        <a class="pill-btn gold big contact-channel" id="direct-btn-2" href="https://ig.me/m/artvibe.pl" target="_blank" rel="noopener noreferrer"><svg data-icon="simple-icons:instagram" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7.03.084c-1.277.06-2.149.264-2.91.563a5.9 5.9 0 0 0-2.124 1.388a5.9 5.9 0 0 0-1.38 2.127C.321 4.926.12 5.8.064 7.076s-.069 1.688-.063 4.947s.021 3.667.083 4.947c.061 1.277.264 2.149.563 2.911c.308.789.72 1.457 1.388 2.123a5.9 5.9 0 0 0 2.129 1.38c.763.295 1.636.496 2.913.552c1.278.056 1.689.069 4.947.063s3.668-.021 4.947-.082c1.28-.06 2.147-.265 2.91-.563a5.9 5.9 0 0 0 2.123-1.388a5.9 5.9 0 0 0 1.38-2.129c.295-.763.496-1.636.551-2.912c.056-1.28.07-1.69.063-4.948c-.006-3.258-.02-3.667-.081-4.947c-.06-1.28-.264-2.148-.564-2.911a5.9 5.9 0 0 0-1.387-2.123a5.9 5.9 0 0 0-2.128-1.38c-.764-.294-1.636-.496-2.914-.55C15.647.009 15.236-.006 11.977 0S8.31.021 7.03.084m.14 21.693c-1.17-.05-1.805-.245-2.228-.408a3.7 3.7 0 0 1-1.382-.895a3.7 3.7 0 0 1-.9-1.378c-.165-.423-.363-1.058-.417-2.228c-.06-1.264-.072-1.644-.08-4.848c-.006-3.204.006-3.583.061-4.848c.05-1.169.246-1.805.408-2.228c.216-.561.477-.96.895-1.382a3.7 3.7 0 0 1 1.379-.9c.423-.165 1.057-.361 2.227-.417c1.265-.06 1.644-.072 4.848-.08c3.203-.006 3.583.006 4.85.062c1.168.05 1.804.244 2.227.408c.56.216.96.475 1.382.895s.681.817.9 1.378c.165.422.362 1.056.417 2.227c.06 1.265.074 1.645.08 4.848c.005 3.203-.006 3.583-.061 4.848c-.051 1.17-.245 1.805-.408 2.23c-.216.56-.477.96-.896 1.38a3.7 3.7 0 0 1-1.378.9c-.422.165-1.058.362-2.226.418c-1.266.06-1.645.072-4.85.079s-3.582-.006-4.848-.06m9.783-16.192a1.44 1.44 0 1 0 1.437-1.442a1.44 1.44 0 0 0-1.437 1.442M5.839 12.012a6.161 6.161 0 1 0 12.323-.024a6.162 6.162 0 0 0-12.323.024M8 12.008A4 4 0 1 1 12.008 16A4 4 0 0 1 8 12.008"/></svg><span>Instagram <span class="ext-arrow" aria-hidden="true"></span></span></a>
+        <a class="pill-btn outline big contact-channel" href="https://m.me/61564874125852?text=%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82!%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%BD%D0%B0%20%D1%83%D1%80%D0%BE%D0%BA" target="_blank" rel="noopener noreferrer"><svg data-icon="simple-icons:messenger" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.24 0 0 4.952 0 11.64c0 3.499 1.434 6.521 3.769 8.61a.96.96 0 0 1 .323.683l.065 2.135a.96.96 0 0 0 1.347.85l2.381-1.053a.96.96 0 0 1 .641-.046A13 13 0 0 0 12 23.28c6.76 0 12-4.952 12-11.64S18.76 0 12 0m6.806 7.44c.522-.03.971.567.63 1.094l-4.178 6.457a.707.707 0 0 1-.977.208l-3.87-2.504a.44.44 0 0 0-.49.007l-4.363 3.01c-.637.438-1.415-.317-.995-.966l4.179-6.457a.706.706 0 0 1 .977-.21l3.87 2.505c.15.097.344.094.491-.007l4.362-3.008a.7.7 0 0 1 .364-.13"/></svg><span>Messenger <span class="ext-arrow" aria-hidden="true"></span></span></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="webgl-fail" hidden>
+  <div class="panel">
+    <h2 class="panel-title">Ой<span class="dot">.</span></h2>
+    <p>Твій браузер не підтримує WebGL, тож 3D-сцена недоступна. Спробуй оновити браузер або відкрити на іншому пристрої.</p>
+  </div>
+</div>
+
+<div id="errlog" style="position:fixed;left:-9999px;top:-9999px" aria-hidden="true"></div>
+
+<script>
+  window.__telegramReady = (() => {
+    const search = new URLSearchParams(location.search);
+    // Mini App launch params arrive in the URL *hash* (#tgWebAppData=...), and
+    // iOS Telegram's webview UA does not mention Telegram — check all of them.
+    // Persist the verdict: in-app reloads can strip the hash.
+    let flagged = false;
+    try { flagged = sessionStorage.getItem('__inTelegramWebApp') === '1'; } catch (_) {}
+    const needsTelegramSdk = flagged
+      || /Telegram/i.test(navigator.userAgent || '')
+      || search.has('tgWebAppData')
+      || search.has('tgWebAppVersion')
+      || /[#&]tgWebApp(Data|Version|Platform)=/.test(location.hash || '');
+    if (!needsTelegramSdk) return Promise.resolve(null);
+    try { sessionStorage.setItem('__inTelegramWebApp', '1'); } catch (_) {}
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://telegram.org/js/telegram-web-app.js';
+      script.async = true;
+      script.onload = () => resolve(window.Telegram?.WebApp || null);
+      script.onerror = () => resolve(null);
+      document.head.appendChild(script);
+    });
+  })();
+</script>
+  <script type="module" src="/js/main.js?v=20260805-03"></script>
+</body>
+</html>
