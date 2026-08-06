@@ -14,12 +14,12 @@
 // untouched. Leaving focus restores the global map immediately.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260806-15';
-import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260806-15';
-import { instrumentView } from '../view/instrument-presets.js?v=20260806-15';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260806-15';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260806-15';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260806-15';
+import { session } from '../core/session.js?v=20260806-16';
+import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260806-16';
+import { instrumentView } from '../view/instrument-presets.js?v=20260806-16';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260806-16';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260806-16';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260806-16';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -28,9 +28,9 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260806-15';
-import { GUITAR_KEY_CHORDS, fireGuitarStrum } from './guitar.js?v=20260806-15';
-import { syncChordPadHeld, deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260806-15';
+} from './loop.js?v=20260806-16';
+import { GUITAR_KEY_CHORDS, fireGuitarStrum } from './guitar.js?v=20260806-16';
+import { syncChordPadHeld, deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260806-16';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.

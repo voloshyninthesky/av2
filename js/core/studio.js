@@ -6,27 +6,27 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260806-15';
-import { buildDrumKit } from '../instruments/drums.js?v=20260806-15';
-import { buildPiano } from '../instruments/piano.js?v=20260806-15';
-import { buildGuitar } from '../instruments/guitar.js?v=20260806-15';
-import { buildMic } from '../instruments/mic.js?v=20260806-15';
-import { UI } from '../ui.js?v=20260806-15';
-import { scene, renderer } from '../view/rig.js?v=20260806-15';
+import { AudioEngine } from '../audio.js?v=20260806-16';
+import { buildDrumKit } from '../instruments/drums.js?v=20260806-16';
+import { buildPiano } from '../instruments/piano.js?v=20260806-16';
+import { buildGuitar } from '../instruments/guitar.js?v=20260806-16';
+import { buildMic } from '../instruments/mic.js?v=20260806-16';
+import { UI } from '../ui.js?v=20260806-16';
+import { scene, renderer } from '../view/rig.js?v=20260806-16';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260806-15';
-import { buildStage } from '../scene/stage.js?v=20260806-15';
+} from './quality.js?v=20260806-16';
+import { buildStage } from '../scene/stage.js?v=20260806-16';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260806-15';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260806-15';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260806-15';
+} from '../scene/lighting.js?v=20260806-16';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260806-16';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260806-16';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -37,7 +37,7 @@ import {
   MASCOT_SKIN_TONES,
   MASCOT_OUTFIT_COLORS,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260806-15';
+} from '../mascot/appearance.js?v=20260806-16';
 
 export const ui = new UI();
 export const audio = new AudioEngine();

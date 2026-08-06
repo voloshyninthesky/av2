@@ -7,11 +7,11 @@
 // `playMusicalEvent` is the one road every note takes — pointer, pad, keyboard
 // and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260806-15';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260806-15';
-import { mascotMove } from '../mascot/state.js?v=20260806-15';
-import { play, heldPianoNotes } from './state.js?v=20260806-15';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260806-15';
+import { session } from '../core/session.js?v=20260806-16';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260806-16';
+import { mascotMove } from '../mascot/state.js?v=20260806-16';
+import { play, heldPianoNotes } from './state.js?v=20260806-16';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260806-16';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');
@@ -131,7 +131,7 @@ export function runMusicalVisual(event, feedback) {
   if (!feedback || !kind) return;
   if (kind !== 'mic') hooks.hideVocalPad();
   if (kind === 'mic' && event.showPad !== false) hooks.showVocalPad();
-  addVibe(event.vibe ?? ({ drums: 4, piano: 3.5, guitar: 5, mic: 4 }[kind] || 3));
+  addVibe(event.vibe ?? ({ drums: 4, piano: 3.5, guitar: 5, mic: 4 }[kind] || 3), kind);
   if (event.showPrice !== false) queuePriceChip(kind);
 }
 

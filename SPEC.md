@@ -564,11 +564,13 @@ The copy describes the **gesture, not the UI** — someone who has never used th
 
 ### Praise
 
-Short spoken-aloud cheers — **Супер! / Потужно! / Кльово! / Вогонь! / Красиво! / Оце так!** — never the same word twice running:
+Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, never the same word twice running — on the **first live note the visitor gets out of each instrument**. Four times a visit at most, then silence: praise that keeps arriving stops meaning anything.
 
-- On the **first two live notes** of a visit, and only then. These are the moments a visitor is least sure anything happened. Praise **yields to any toast already on screen**, because a how-to hint or price chip says more than a cheer does.
-- On **every VIBE fill**. The first fill folds the cheer into the loop-pedal unlock toast rather than firing a second one; later fills are a cheer alone, and these *do* override a lingering toast since the fireworks already announce them.
-- Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`.
+- Praise **yields to a toast already on screen**, which at that moment is that instrument's own how-to hint and says more than a cheer does.
+- Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
+- Every live play route passes its instrument to `addVibe(n, kind)`; the vocal pad and keyboard vocal reach it directly rather than through `playMusicalEvent`.
+
+Filling the VIBE meter is its own event with its own name — **МАКСИМАЛЬНИЙ ВАЙБ!** — on every fill, plus **LOOP-ПЕДАЛЬ ВІДКРИТО** on the first, which is the one piece of news it carries.
 
 ## 10. Telegram / in-app browser
 
