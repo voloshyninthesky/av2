@@ -6,9 +6,9 @@
 // live one, and fret hit-testing maps a touch on the neck back to a string.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, guitar } from '../core/studio.js?v=20260804-10';
-import { play } from './state.js?v=20260804-10';
-import { playMusicalEvent } from './loop.js?v=20260804-10';
+import { ui, audio, guitar } from '../core/studio.js?v=20260806-13';
+import { play } from './state.js?v=20260806-13';
+import { playMusicalEvent } from './loop.js?v=20260806-13';
 
 // Whether a strum should sound at all depends on the current focus view, which
 // main.js owns; the touch-chord bookkeeping lives with the chord pad.
@@ -21,25 +21,130 @@ export function initGuitarPlay(next) {
 }
 
 const GUITAR_OPEN_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
-export const GUITAR_CHORDS = {
-  Em: [0, 2, 2, 0, 0, 0],
-  Am: [null, 0, 2, 2, 1, 0],
-  C: [null, 3, 2, 0, 1, 0],
-  D: [null, null, 0, 2, 3, 2],
-  G: [3, 2, 0, 0, 0, 3],
-  F: [1, 3, 3, 2, 1, 1],
-};
 const GUITAR_OPEN_SHAPE = [0, 0, 0, 0, 0, 0];
-// The literal QWERTY top row — six keys, six chords, no gaps to memorize.
-// Disjoint from approach (Enter), loop (L), drums, piano, and vocal controls.
-export const GUITAR_KEY_CHORDS = {
-  KeyQ: 'Em',
-  KeyW: 'Am',
-  KeyE: 'C',
-  KeyR: 'D',
-  KeyT: 'G',
-  KeyY: 'F',
+
+// ============================================================
+// CHORD MAKER
+// Chords are generated, not listed: any root × any supported quality. That is
+// what a movable barre shape *is* on a guitar — one fingering slid up the neck —
+// so the same trick covers all 12 roots from two shape families instead of an
+// unmaintainable table of 60 hand-written voicings.
+// ============================================================
+export const CHORD_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+/** Semitones above the root, per quality. The theory these voicings must match. */
+export const CHORD_QUALITIES = {
+  '':     { label: 'major', intervals: [0, 4, 7] },
+  m:      { label: 'minor', intervals: [0, 3, 7] },
+  7:      { label: 'dominant 7', intervals: [0, 4, 7, 10] },
+  m7:     { label: 'minor 7', intervals: [0, 3, 7, 10] },
+  maj7:   { label: 'major 7', intervals: [0, 4, 7, 11] },
 };
+// Open-position forms whose root sits on string 0 (E, pitch class 4) and
+// string 1 (A, pitch class 9). Sliding one up N frets transposes it N
+// semitones, which is the whole mechanism.
+const E_SHAPES = {
+  '':   [0, 2, 2, 1, 0, 0],
+  m:    [0, 2, 2, 0, 0, 0],
+  7:    [0, 2, 0, 1, 0, 0],
+  m7:   [0, 2, 0, 0, 0, 0],
+  maj7: [0, 2, 1, 1, 0, 0],
+};
+const A_SHAPES = {
+  '':   [null, 0, 2, 2, 2, 0],
+  m:    [null, 0, 2, 2, 1, 0],
+  7:    [null, 0, 2, 0, 2, 0],
+  m7:   [null, 0, 2, 0, 1, 0],
+  maj7: [null, 0, 2, 1, 2, 0],
+};
+const shiftShape = (shape, frets) => shape.map((f) => (f === null ? null : f + frets));
+
+// Better-sounding open voicings for the chords a beginner actually reaches
+// for. These win over the generated barre form purely on tone — the generated
+// one is correct too, just thinner and higher up the neck.
+const OPEN_VOICINGS = {
+  E: [0, 2, 2, 1, 0, 0],
+  Em: [0, 2, 2, 0, 0, 0],
+  Em7: [0, 2, 0, 0, 0, 0],
+  A: [null, 0, 2, 2, 2, 0],
+  Am: [null, 0, 2, 2, 1, 0],
+  Am7: [null, 0, 2, 0, 1, 0],
+  C: [null, 3, 2, 0, 1, 0],
+  Cmaj7: [null, 3, 2, 0, 0, 0],
+  D: [null, null, 0, 2, 3, 2],
+  Dm: [null, null, 0, 2, 3, 1],
+  D7: [null, null, 0, 2, 1, 2],
+  G: [3, 2, 0, 0, 0, 3],
+  G7: [3, 2, 0, 0, 0, 1],
+  F: [1, 3, 3, 2, 1, 1],
+  B7: [null, 2, 1, 2, 0, 2],
+};
+
+/** Playable fret shape for a root + quality, lowest position that fits. */
+function makeChordShape(rootIndex, quality) {
+  const eFrets = (rootIndex - 4 + 12) % 12; // open E is pitch class 4
+  const aFrets = (rootIndex - 9 + 12) % 12; // open A is pitch class 9
+  const fromE = shiftShape(E_SHAPES[quality], eFrets);
+  const fromA = shiftShape(A_SHAPES[quality], aFrets);
+  // Lowest top fret wins: barre chords get unplayable and thin high up, and
+  // the guitar mesh only draws so many frets.
+  const top = (shape) => Math.max(...shape.filter((f) => f !== null));
+  return top(fromE) <= top(fromA) ? fromE : fromA;
+}
+
+/** Every chord this build can play, `name -> six fret offsets`. */
+export const GUITAR_CHORDS = {};
+export const CHORD_NAMES = [];
+for (const suffix of Object.keys(CHORD_QUALITIES)) {
+  CHORD_ROOTS.forEach((root, rootIndex) => {
+    const name = root + suffix;
+    GUITAR_CHORDS[name] = OPEN_VOICINGS[name] || makeChordShape(rootIndex, suffix);
+    CHORD_NAMES.push(name);
+  });
+}
+
+// ---- the six pad slots ----
+// Which chords currently sit on the pad, in slot order. The QWERTY jam row and
+// both pads re-derive from this array via syncGuitarKeymaps().
+const PAD_CHORDS_KEY = 'av2.guitar-chords.v2';
+const DEFAULT_PAD_CHORDS = ['Em', 'Am', 'C', 'D', 'G', 'F'];
+export const padChords = [...DEFAULT_PAD_CHORDS];
+try {
+  const saved = JSON.parse(localStorage.getItem(PAD_CHORDS_KEY) || 'null');
+  if (Array.isArray(saved)) {
+    // Per-slot fallback, mascot-style: an unknown name (library changed, bad
+    // write) restores that slot's default rather than discarding the rest.
+    saved.slice(0, 6).forEach((name, slot) => {
+      if (GUITAR_CHORDS[name]) padChords[slot] = name;
+    });
+  }
+} catch { /* storage is optional */ }
+
+// The literal QWERTY top row — six keys, six slots, no gaps to memorize.
+// Disjoint from approach (Enter), loop (L), drums, piano, and vocal controls.
+// This is the map in both modes: chord *names* can no longer supply a stable
+// mnemonic now that the library generates them (C, Cm, C7, Cm7 and Cmaj7 all
+// start with C), so position on the pad is the only unambiguous handle.
+// Values follow the pad slots; syncGuitarKeymaps() rewrites them in place so
+// every importer sees the current assignment through the same object.
+export const GUITAR_KEY_CHORDS = {};
+const QWERTY_ROW = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY'];
+
+export function syncGuitarKeymaps() {
+  QWERTY_ROW.forEach((code, slot) => { GUITAR_KEY_CHORDS[code] = padChords[slot]; });
+}
+syncGuitarKeymaps();
+
+/** The QWERTY letter a pad slot answers to, for labels and aria-keyshortcuts. */
+export const slotKeyLabel = (slot) => QWERTY_ROW[slot]?.slice(3) || '';
+
+/** Swap one pad slot to another chord; keymaps and storage follow. */
+export function setPadChord(slot, name) {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 5 || !GUITAR_CHORDS[name]) return false;
+  padChords[slot] = name;
+  syncGuitarKeymaps();
+  try { localStorage.setItem(PAD_CHORDS_KEY, JSON.stringify(padChords)); } catch { /* optional */ }
+  return true;
+}
 
 export function currentGuitarChordName() {
   return play.keyboardGuitarChord || play.heldGuitarChord || play.latchedGuitarChord || null;
@@ -57,7 +162,10 @@ function guitarPitchForString(stringIndex, fret = currentGuitarShape()[stringInd
 export function allGuitarPitches() {
   const seen = new Set();
   const pitches = [];
-  for (const shape of [GUITAR_OPEN_SHAPE, ...Object.values(GUITAR_CHORDS)]) {
+  // Prewarm only what the pad can actually sound right now — the six active
+  // slots plus open strings — not the whole library; a swapped-in chord is
+  // warmed by the next strum's prewarm call.
+  for (const shape of [GUITAR_OPEN_SHAPE, ...padChords.map((name) => GUITAR_CHORDS[name])]) {
     shape.forEach((fret, stringIndex) => {
       const freqHz = guitarPitchForString(stringIndex, fret);
       if (!freqHz) return;

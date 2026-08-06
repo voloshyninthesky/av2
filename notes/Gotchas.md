@@ -78,9 +78,30 @@ far from the cause. Inject the callback through the module's `init*()` instead â
 
 ## The cache stamp is a find-and-replace
 
-~187 copies of the current `?v=` across `js/`. Miss some and the browser can hold two
-versions of the same module at once, which produces genuinely baffling behaviour. Bump
-`audio.js` whenever unlock behaviour changes.
+~209 copies of the current `?v=` across `js/` and `stage/index.html`, and they all move
+**together**. Miss some and the browser can hold two versions of the same module at once,
+which produces genuinely baffling behaviour. Bump `audio.js` whenever unlock behaviour
+changes.
+
+Bumping "just the modules I changed, plus their importers" is the tempting wrong answer: an
+untouched file keeps its own stamp, so it is served from cache, and that cached body still
+imports the *old* stamp of the thing you did change.
+
+**Grep cannot see this** â€” the stale reference lives only inside a cached response. Check the
+live page instead, after any bump:
+
+```js
+// paste in the console on a freshly loaded /stage/
+const by = {};
+for (const e of performance.getEntriesByType('resource')) {
+  if (!e.name.includes('/js/') || !e.name.includes('?v=')) continue;
+  const [p, v] = e.name.split('?v='); (by[p] ??= new Set()).add(v);
+}
+console.log(Object.entries(by).filter(([, s]) => s.size > 1));
+```
+
+Anything printed is a module loaded twice. The correct result is one stamp across all ~48
+loaded modules.
 
 ## A new top-level directory does not deploy
 

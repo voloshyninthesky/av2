@@ -210,6 +210,29 @@ export function plateTexture() {
   return t;
 }
 
+// Signature on the reverse of the LED wall. Mono rather than Unbounded: this is
+// the same register as the HUD's small chrome, and it should read as a maker's
+// mark rather than a second piece of branding competing with the plate.
+export function backCreditTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 160;
+  const x = c.getContext('2d');
+  x.fillStyle = '#160a20';
+  x.fillRect(0, 0, 1024, 160);
+  x.strokeStyle = 'rgba(209, 161, 59, .5)';
+  x.lineWidth = 3;
+  x.strokeRect(8, 8, 1008, 144);
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillStyle = '#D1A13B';
+  x.letterSpacing = '7px'; // no-op where Canvas2D letterSpacing is unsupported
+  x.font = '500 44px "JetBrains Mono", monospace';
+  x.fillText('made by @vadymbek', 512, 84);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 // speaker/monitor cloth: perforated grille with a soft top sheen
 export function perforatedTexture() {
   const c = document.createElement('canvas');

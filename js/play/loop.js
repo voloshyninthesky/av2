@@ -7,11 +7,11 @@
 // `playMusicalEvent` is the one road every note takes — pointer, pad, keyboard
 // and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260804-10';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260804-10';
-import { mascotMove } from '../mascot/state.js?v=20260804-10';
-import { play, heldPianoNotes } from './state.js?v=20260804-10';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260806-10';
+import { session } from '../core/session.js?v=20260806-13';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260806-13';
+import { mascotMove } from '../mascot/state.js?v=20260806-13';
+import { play, heldPianoNotes } from './state.js?v=20260806-13';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260806-13';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');
@@ -27,7 +27,6 @@ const loopStatus = document.getElementById('loop-status');
 // pad / keyboard modules own those holds. main.js wires them in at boot.
 let hooks = {
   activateAudioForSound: () => {},
-  finishOnboard: () => {},
   allGuitarPitches: () => [],
   showVocalPad: () => {},
   hideVocalPad: () => {},
@@ -142,7 +141,6 @@ export function playMusicalEvent(event, { record = true, at = null, feedback = t
   hooks.activateAudioForSound({ allowRecovery: record });
   if (record) {
     captureLoopEvent(event);
-    hooks.finishOnboard();
   }
 
   const startAt = Number.isFinite(at) ? at : null;

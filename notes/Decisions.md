@@ -12,7 +12,16 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
-## The site learned to count — 2026-08-06
+## The stage's architecture became a reusable skill chain — 2026-08-06
+
+Every new-experience idea ("what if a forest? a warehouse?") was re-deriving the same
+answers this repo already paid for: the layering, the test hooks, the funnel-survives-WebGL
+rule. Six skills under `.claude/skills/` (`xp`, `xp-scene`, `xp-objects`, `xp-mascot`,
+`xp-customize`, `xp-funnel`) now encode them as a staged pipeline. Two choices carry the
+design: a per-experience `experience.json` manifest makes every stage **re-runnable**
+(iteration is a manifest diff, not a rebuild), and the optional stages record a
+`skipped` decision instead of a silent absence, so "no mascot" reads as a choice, not an
+oversight. Not site behaviour — [[SPEC]] untouched. → [[Experience chain]]
 
 The engineering was polished and the site was **commercially blind**: no analytics of any
 kind, so nobody could say whether the 3D stage — the expensive half of the product — produced
@@ -142,6 +151,68 @@ beside it should land where that message goes. The Instagram ones opened the pro
 both now use the `ig.me` deep link, and the Messenger prefill repeats the same phrase.
 Browsing links (footer, «відгуки та викладачі», JSON-LD `sameAs`) deliberately keep the plain
 profile URL. → [[Lesson site]]
+
+## The cache stamp is global, and per-module bumping is the trap — 2026-08-06
+
+Worth writing down because the wrong model *looks* more careful. Bumping only the modules you
+edited, plus every import of them, seems tidier than a repo-wide find-and-replace — and it is
+broken. A file you did **not** edit keeps its own stamp, so a returning visitor serves it from
+cache, and that cached body still names the *old* dependency stamp. `mascot/state.js` was
+pinning an old `core/studio.js` exactly this way.
+
+Caught by reading `performance.getEntriesByType('resource')` on a freshly-loaded page and
+grouping the module URLs by path: twelve modules were being fetched at two stamps at once.
+Grepping the source finds nothing, because the stale reference only exists inside a cached
+copy — **the live document is the only place this shows up.** Worth re-running after any bump.
+
+One stamp for the whole of `js/` + `stage/index.html`, always. The same pass closed the
+pre-existing `vibe.js` split (one import lagged five others), which had been quietly giving
+`piano-notes.js` its own copy of the keyboard-jam chip timer. → [[Gotchas]]
+
+## Chords are generated, and the visitor picks six — 2026-08-06
+
+The pad's six chords were hardcoded, which made "let me play something else" impossible and
+"add more chords" an ever-growing table. Both problems have the same answer: **a chord is a
+root plus a quality**, and on a guitar a quality is one movable shape slid up the neck. Two
+shape families (root on low E, root on A) × 12 roots × 5 qualities = **60 chords from ~10
+lines**, lowest position winning so nothing passes fret 8. A short table of preferred *open*
+voicings still overrides the common chords — the generated form is correct, just thinner.
+
+**The correctness argument is why this is safe.** A wrong barre shape is silent-but-wrong: it
+sounds like a chord, just not the one on the label. So every voicing is checked in Node
+against its own interval definition and the open-string pitches — all 60 sound exactly their
+chord tones, no extras, none missing. That check is the reason to trust generation over a
+hand-written table, not the line count.
+
+**Keys stopped being mnemonic.** `E A C D G F` (each chord's first letter) was tried and
+reverted the same day: once the visitor can put `Cmaj7` next to `C`, initials collide and the
+map becomes unpredictable. `Q W E R T Y` now addresses pad *positions*, which cannot collide.
+Focused, those keys are **select-only** like the touch pad — the fretting hand chooses, Space
+strums; unfocused they still strum on press, because with no pad on screen a silent arm looks
+broken. → [[SPEC]] §Guitar performance mode
+
+A piano chord pad that highlighted the chord's keys was built alongside this and removed
+before it shipped — worth knowing it was tried. `git log -S setChordHighlight` finds it.
+
+## The first run dresses you before it explains anything — 2026-08-06
+
+The order was: tip, then **ЗРОЗУМІЛО** opens the mascot editor. It is now the reverse — editor
+first, tip after it closes — so the visitor has something of their own on stage *before* being
+told they can walk it around.
+
+Two consequences worth keeping:
+
+- **The tip only closes on ЗРОЗУМІЛО.** Playing, walking, Esc and tapping the card all leave it
+  standing. It is the last thing the first run says, and every one of those dismissal routes
+  was a way to walk past it unread. This deleted `finishOnboard` calls from five modules — and
+  with them two genuinely upward imports (`mascot/update.js` and `view/mobile-controls.js` both
+  reached into `shell/intro.js`, the second forming a real cycle). Removing a feature removed
+  the layering violation, which is the usual shape of these.
+- **One key gates the whole sequence.** `av2.onboard.v2` is written only by that click, so
+  quitting halfway replays both steps rather than stranding someone who saw the wardrobe but
+  never the tip. The old second key (`av2.mascot.after-onboard.v2`) existed only because the
+  editor was a *consequence* of a dismissal that had several other routes; with one route it
+  is redundant. → [[SPEC]] §9
 
 ## The pricing control sells lessons, not a price list — 2026-08-06
 

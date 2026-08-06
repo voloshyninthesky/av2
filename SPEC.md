@@ -129,7 +129,7 @@ Mute chosen before the context exists is honored when `init` runs.
 - Wooden platform, gold front trim, footlights (emissive + point lights). Downward volumetric spotlight shells meet the platform top and fade at its finite X/Z footprint; no beam geometry hangs over the surrounding void. The larger under-stage venue plane is intentionally unlit so non-shadow-casting mobile spotlights cannot create false beam spill below the platform.
 - Back wall, curtains, valance, speaker stacks.
 - Mascot walking uses convex X/Z footprints derived from the visible meshes of instruments and speaker stacks, expanded by the mascot's rounded clearance. Rotated and irregular objects keep silhouette-following borders instead of oversized axis-aligned boxes. Keyboard / stick movement slides along angled edges; click routes use expanded footprint corners; instrument approaches stop at the nearest clear silhouette edge before focus, and exiting a seated focus pose returns the mascot to clear floor.
-- Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate.
+- Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate. On the **reverse** of that wall, a maker's mark reading **made by @vadymbek** — the screen stack and the backdrop are all front-facing, so it is invisible from the audience side and only found by orbiting behind the stage.
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).
 - Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). The game-style mascot-follow camera and temporary scout-on-drag behavior run on both mobile and desktop; focused instrument views retain their own cameras. Extra zoom-in headroom vs older builds.
 - After Enter: `html.stage-live` — fixed layout, `touch-action` guards, `visualViewport` scale reset to fight Chrome iOS letterboxing from stuck page zoom.
@@ -139,8 +139,8 @@ Mute chosen before the context exists is honored when `init` runs.
 | Kind | Pointer / touch play | Desktop keyboard play |
 |------|----------------------|------------------------|
 | `mic` / vocal | Vocal pad / mesh hits **only while mic-focused** | `N M , . /` → ДО РЕ МІ ФА СОЛЬ (hold to sustain; see §5 Desktop keyboard jam) |
-| `guitar` | Two-hand chord + strum / pluck **only while guitar-focused** | Chord row + Space strum — works **with or without** guitar focus |
-| `piano` | Mesh keys + `#piano-pad` **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. | `1–8` whites — with or without piano focus |
+| `guitar` | Two-hand chord + strum / pluck **only while guitar-focused**. Six **visitor-chosen** chord slots (✎ → quality × root picker) | Chord row `Q W E R T Y` = pad slots 1–6 + Space strum — works **with or without** guitar focus; focused it is select-only, see § Guitar performance mode |
+| `piano` | Mesh keys + `#piano-pad` **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. | `1–8` whites — with or without piano focus. **Piano-focused only:** `A–L` + upper row, real-keyboard shape (§ Piano interaction roadmap) |
 | `drums` | Kit parts **only while drums-focused** (multitouch) | `Z X C V B` kit — with or without drums focus |
 
 Seated focus poses (drums throne, piano bench) place the pelvis by subtracting the scaled hip height from the seat top, so the mascot rests on the seat at every saved height / build value instead of floating above it or sinking through it.
@@ -178,6 +178,16 @@ Desktop keyboard sound does **not** require instrument focus (see §5).
 - Hold a calm ready pose while focused. This milestone does not add note-following hands; only a subtle breathing / wrist settle is allowed, and it is disabled under `prefers-reduced-motion`.
 - On ✕ exit, restore the neutral mascot pose before returning control and project the mascot to clear walkable floor as today. Repeated focus / exit cycles must not accumulate transform drift.
 
+#### Piano-focused keyboard layout — current
+
+While piano is focused (`canPlayInstrument('piano')`), the computer keyboard switches from the global `1–8` jam digits to a **real-piano-shaped** layout spanning C4–D5 (an octave plus a whole step — the classic GarageBand "Musical Typing" span):
+
+- **White keys**, left to right: `A S D F G H J K L` → `C4 D4 E4 F4 G4 A4 B4 C5 D5`.
+- **Black keys** sit on the row above, physically between the two white keys they fall between — gaps included, so nothing sits above the `D/F` or `J/K` pairs (matching the missing sharp between E-F and B-C on a real keyboard): `W E _ T Y U _ O` → `C#4 D#4 (gap) F#4 G#4 A#4 (gap) C#5`.
+- This layout **takes priority over the global guitar-chord map** for the four letters they share (`W E T Y`) — for as long as piano focus holds, those keys strike piano notes instead of `Am / C / G / F`. `Q` and `R` are untouched (guitar's other two chord letters) since the piano layout has no use for them. Leaving focus restores the global chord map on those keys immediately.
+- The global `1–8` digits keep working too, focused or not — this layout is additive, not a replacement.
+- Held notes, sustain, and release follow the same rules as pointer/pad play (§ above); `keyup` / focus-exit teardown is shared with the `1–8` path.
+
 #### Piano interaction roadmap
 
 These items are planned, but they are not blockers for the current framing / pose milestone:
@@ -185,8 +195,8 @@ These items are planned, but they are not blockers for the current framing / pos
 1. **Reliable key surface:** piano-local hit plane, dead-gap removal, black-key priority, captured pointers, held key state, ordered glissando, and robust multi-finger chords.
 2. **Gesture ownership:** a pointer on keys, drums, guitar strings / frets, or the chord pad claims that finger so OrbitControls cannot rotate or zoom from it; empty canvas still orbits / pinches. Loop-pedal + key multitouch stays supported.
 3. **Performance feedback:** one piano-note event driving audio, key travel, glow, note-following hands, VIBE, haptics, and loop capture; at least `16` voices and click-free same-pitch replacement. First play queues a once-per-instrument price chip shown after leaving focus.
-4. **Discoverability and access:** first-focus hints (`Торкайся клавіш — можна кількома пальцями` / `Клікай клавіші або грай 1–8`) and an accessible DOM `#piano-pad` strip for `C4–C5`. Desktop `#keys-hint` also advertises jam play without focus.
-5. **Expressive controls:** sustain pedal, full two-octave computer-keyboard mapping, MIDI input, velocity-sensitive touch / pen input, and selectable octave.
+4. **Discoverability and access:** first-focus hints (`Торкайся клавіш — можна кількома пальцями` / `Клікай клавіші або грай A–L, чорні — верхній ряд`) and an accessible DOM `#piano-pad` strip for `C4–C5`. Desktop `#keys-hint` still advertises the `1–8` jam digits, since those work without focus and the real-shape layout does not.
+5. **Expressive controls still open:** sustain pedal, MIDI input, velocity-sensitive touch / pen input, and selectable octave (the two-octave keybed itself now has a focused computer-keyboard mapping — see above — though it covers C4–D5, not the full two octaves).
 6. **Learning layer:** optional guided phrases, hand-separated exercises, metronome, and note-name overlays. These may read `piano-notes.json`, but focus itself remains silent.
 
 ### Guitar performance mode
@@ -195,6 +205,19 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 - **Pointer / pad / mesh guitar input** is accepted only during stable guitar focus — never while idle, approaching, entering, returning, or focused on another instrument.
 - **Desktop keyboard** chord + strum keys follow the global jam map (§5): they may sound while idle, while focused on any instrument, and during approach / enter / return camera moves. They stay silent only when the stage has not started, a modal is open, or the event target is editable / a control.
+- **The QWERTY row addresses pad *slots*, not chord names.** `Q W E R T Y` map to pad positions 1–6 in both modes. Position is the only unambiguous handle once chords are generated (`C`, `Cm`, `C7`, `Cm7` and `Cmaj7` all start with `C`), so a chord's name never determines its key.
+- **Focused, those keys are select-only.** While guitar is focused, pressing a chord key arms the chord **silently** — exactly like holding its on-screen pad — and Space (Shift+Space upstroke) strums it; releasing returns to open strings. That is the two-hand model above, applied to the keyboard. **Unfocused**, the same key still selects *and* strums immediately, because there is no visible pad to read and a silent arm would look broken.
+
+#### Chord slots and the chord maker
+
+The pad has **six slots**, and which chord sits in each is the visitor's choice.
+
+- **Chords are generated, not listed:** 12 roots × 5 qualities (major, `m`, `7`, `m7`, `maj7`) = **60 chords**. A quality is defined by its intervals above the root, and the fret shape comes from sliding one of two open forms (root on the low E string, or on the A string) up the neck — which is what a movable barre chord already is. The lower of the two positions wins, so nothing reaches past fret 8.
+- Every generated voicing must sound **exactly** its chord tones — no extra notes, none missing. This is checkable in Node against the intervals and the open-string pitches, and should be, since a wrong shape is silent-but-wrong.
+- A table of **preferred open voicings** overrides the generated shape for the chords a beginner reaches for (`E Em Em7 A Am Am7 C Cmaj7 D Dm D7 G G7 F B7`). Purely a tone choice: the generated form is correct too, just thinner and higher up.
+- **Editing:** ✎ on the pad arms slot-editing (a separate mode, because *holding* a chord button is already the play gesture). Tapping a slot opens a picker of **quality × root** — 5 + 12 controls rather than 60 — which opens on the slot's current chord. A chord already sitting on another slot cannot be picked twice.
+- Slots persist in `localStorage` `av2.guitar-chords.v2`, with **per-slot** fallback: an unknown or corrupt entry restores that one slot's default (`Em Am C D G F`) rather than discarding the layout.
+- A swap clears any held / latched / key-armed chord, so pad state and sound never disagree, and rewrites the QWERTY row in place — every module reads the same object.
 - Global instrument shortcuts ignore key events originating from buttons, links, form fields, or editable content; the focused control handles those events itself.
 - Focus is a **player's view**: during the entry transition the guitar lerps off its stand into the mascot's hands — held against the chest, low E nearest the viewer, face tipped up toward a steep overhead camera (the stand fades out; on exit both lerp back). A measured fitter frames the strings band from nut to below the bridge, reserves the chord-pad gutter, opens **two `+` zoom steps inside the fit**, and refits on resize / orientation change.
 - **The camera azimuth follows the viewport**, because a guitar is long and thin and a diagonal one wastes the frame: each orientation lays the instrument along the screen's long axis. Landscape / desktop is the guitarist's own **first-person view** — looking down from behind the head, neck to the screen left, low E nearest the viewer — so strings read horizontally (strum = vertical swipe). Phone portrait stands the guitar up — body low and to the right, neck rising, mascot head at the left edge — so strings read vertically (strum = horizontal swipe). Strum detection works in guitar-local space, so it is unaffected by which framing is active.
@@ -311,7 +334,7 @@ Rules:
 | Drag across strings while guitar-focused | Directional guitar strum (pointer) |
 | `L` | Loop pedal (after first VIBE fill unlock) |
 | HUD logo click | Toggle mascot tektonik dance |
-| Esc | Dismiss onboard / close settings mixer (does **not** leave instrument focus) |
+| Esc | Close settings mixer (does **not** dismiss the onboarding tip or leave instrument focus) |
 | ✕ (`#mobile-exit`) | Leave instrument focus (desktop + mobile) |
 
 ### Mobile
@@ -343,7 +366,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Overlay | Purpose |
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts the visual fly-in while audio stays dormant. A reload / same-tab return bypasses the splash and also leaves audio dormant until a real sound action. |
-| Onboard | One first-run tip (`localStorage` `av2.onboard.v2`); mic pulse cue |
+| Onboard | Second step of the first run, after mascot customization: one tip (`localStorage` `av2.onboard.v2`) dismissed only by **ЗРОЗУМІЛО**; mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, **pricing button** (gold graduation-cap icon, **Уроки та ціни**), **mascot button**, **settings mixer** (gear) |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **GLAMOUR** defaults to `67` and **PIXEL** to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
@@ -482,8 +505,8 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 
 ### First-run UI state (localStorage / sessionStorage)
 
-- `av2.onboard.v2` records dismissal of the onboarding tip.
-- A first-run click on **ЗРОЗУМІЛО** closes onboarding and opens the mascot customization modal once; `av2.mascot.after-onboard.v2` records that handoff. Other onboarding dismissals do not open it.
+- `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
+- `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
@@ -495,7 +518,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 |-------|--------|
 | `nointro` | Skip splash; land on stage + HUD |
 | `autoenter` | Auto-click enter after load |
-| `skiponboard` | Never show first-run tip |
+| `skiponboard` | Never show the first run — neither the mascot editor nor the tip |
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
@@ -510,13 +533,18 @@ still recorded into `window.__av2Events`, which is how headless checks assert th
 
 ## 9. Onboarding
 
-**As simple as possible:** one tip after camera fly-in.
+**Two steps, in this order,** once the camera fly-in lands:
+
+1. **Mascot customization** opens on its own (`#modal-mascot`, §Mascot). The visitor leaves it by any of its normal routes — **ГОТОВО**, **✕**, Esc.
+2. **The tip** appears one frame later.
 
 Default copy:
 
 > Вітаємо на сцені Art Vibe! Сьогодні вона повністю твоя. По ній можна ходити, а на інструментах — грати.
 
-Dismiss: play, move, **ЗРОЗУМІЛО**, Esc. Persists via `localStorage`. A first-run **ЗРОЗУМІЛО** then opens mascot customization once; the other dismissal routes do not. Soft purple pulse on the mic while active (disabled under reduced motion).
+**Only ЗРОЗУМІЛО dismisses the tip.** Playing, walking, Esc and tapping the card all leave it standing — it is the last thing the first run says, and a visitor who walks past it never reads it. Soft purple pulse on the mic while active (disabled under reduced motion).
+
+That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothing: quit partway and the next visit offers both steps again.
 
 ## 10. Telegram / in-app browser
 
@@ -628,7 +656,7 @@ this site can observe — it is the conversion number.
 
 - After Enter on a desktop viewport, with no modal open, holding `1` + tapping `Z` + holding `Q` and pressing Space produces piano + drum + guitar audio in one gesture sequence without focusing any instrument.
 - Holding `N` (vocal) together with `3` (piano) and tapping `X` (snare) keeps all three buses audible; focusing piano must not silence drums / vocal / guitar keyboard routes.
-- Mascot movement has no keyboard bindings: use click-to-move or the mobile joystick. No `KeyboardEvent.code` is shared across approach, loop, piano, drums, guitar, or vocal maps (`Enter` is approach-only while idle; the QWERTY row belongs to guitar, so Em is `Q` and `E` is the C chord).
+- Mascot movement has no keyboard bindings: use click-to-move or the mobile joystick. No `KeyboardEvent.code` is shared across the **global** approach, loop, piano, drums, guitar, or vocal maps (`Enter` is approach-only while idle; the QWERTY row belongs to guitar, so Em is `Q` and `E` is the C chord). The two **focus-only** layers (piano `A–L` + upper row, guitar `E A C D G F`) deliberately reuse global letters and win over them for exactly as long as their instrument is focused — that shadowing is scoped, deterministic, and reversed on exit.
 - A visitor can hold `W` to walk and tap `Z` / `1` / Space in the same session without the walk key stealing instrument input (play keys fire; walk continues on remaining held walk keys).
 - `keyup`, blur, `visibilitychange` → hidden, and ✕ exit clear held piano keys, keyboard guitar chord, and held keyboard vocal without stuck sustains.
 - Mobile / coarse-pointer shells ignore the jam keyboard and keep focus-gated pads; `#keys-hint` stays desktop-only and lists the jam map.

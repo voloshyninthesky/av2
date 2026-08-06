@@ -6,27 +6,27 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260802-21';
-import { buildDrumKit } from '../instruments/drums.js?v=20260804-10';
-import { buildPiano } from '../instruments/piano.js?v=20260804-10';
-import { buildGuitar } from '../instruments/guitar.js?v=20260804-10';
-import { buildMic } from '../instruments/mic.js?v=20260804-10';
-import { UI } from '../ui.js?v=20260805-03';
-import { scene, renderer } from '../view/rig.js?v=20260804-10';
+import { AudioEngine } from '../audio.js?v=20260806-13';
+import { buildDrumKit } from '../instruments/drums.js?v=20260806-13';
+import { buildPiano } from '../instruments/piano.js?v=20260806-13';
+import { buildGuitar } from '../instruments/guitar.js?v=20260806-13';
+import { buildMic } from '../instruments/mic.js?v=20260806-13';
+import { UI } from '../ui.js?v=20260806-13';
+import { scene, renderer } from '../view/rig.js?v=20260806-13';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260804-10';
-import { buildStage } from '../scene/stage.js?v=20260804-10';
+} from './quality.js?v=20260806-13';
+import { buildStage } from '../scene/stage.js?v=20260806-13';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260804-10';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260804-10';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260804-10';
+} from '../scene/lighting.js?v=20260806-13';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260806-13';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260806-13';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -37,7 +37,7 @@ import {
   MASCOT_SKIN_TONES,
   MASCOT_OUTFIT_COLORS,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260804-10';
+} from '../mascot/appearance.js?v=20260806-13';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
@@ -181,6 +181,9 @@ mascot.group.traverse((object) => {
 
 export const instruments = [drums, piano, guitar, mic];
 export const whiteKeys = piano.keys.filter((k) => !k.userData.black).sort((a, b) => a.userData.whiteIdx - b.userData.whiteIdx);
+// Black keys carry no index of their own, but `buildPiano()` places them
+// left-to-right in build order, so x position sorts them the same way.
+export const blackKeys = piano.keys.filter((k) => k.userData.black).sort((a, b) => a.position.x - b.position.x);
 
 // interactable meshes
 export const interactables = [];

@@ -7,7 +7,7 @@
 // keeps the mascot from clipping a speaker stack on the way to the piano.
 // ============================================================
 import * as THREE from 'three';
-import { mascotCfg, MASCOT_BASE_SCALE } from './appearance.js?v=20260804-10';
+import { mascotCfg, MASCOT_BASE_SCALE } from './appearance.js?v=20260806-13';
 
 const walkColliders = [];
 let walkColliderRoots = [];

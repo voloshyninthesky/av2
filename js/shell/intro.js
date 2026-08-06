@@ -5,26 +5,26 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260804-10';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260804-10';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260804-10';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260804-10';
-import { instrumentView } from '../view/instrument-presets.js?v=20260804-10';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260804-10';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260804-10';
-import { mascotMove } from '../mascot/state.js?v=20260804-10';
-import { play } from '../play/state.js?v=20260804-10';
+import { session, easeInOut } from '../core/session.js?v=20260806-13';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260806-13';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260806-13';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260806-13';
+import { instrumentView } from '../view/instrument-presets.js?v=20260806-13';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260806-13';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260806-13';
+import { mascotMove } from '../mascot/state.js?v=20260806-13';
+import { play } from '../play/state.js?v=20260806-13';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260804-10';
-import { clearGuitarInteractionState } from '../play/pads.js?v=20260804-10';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260804-10';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260804-10';
-import { trackOnce } from '../core/analytics.js?v=20260806-10';
+} from '../play/loop.js?v=20260806-13';
+import { clearGuitarInteractionState } from '../play/pads.js?v=20260806-13';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260806-13';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260806-13';
+import { trackOnce } from '../core/analytics.js?v=20260806-13';
 
 const mobileControls = document.getElementById('mobile-controls');
 const zoomControls = document.getElementById('zoom-controls');
@@ -51,7 +51,6 @@ const onboardText = document.getElementById('onboard-text');
 const onboardOk = document.getElementById('onboard-ok');
 const ONBOARD_KEY = 'av2.onboard.v2';
 const INTRO_SESSION_KEY = 'av2.intro.v2';
-const MASCOT_ONBOARD_KEY = 'av2.mascot.after-onboard.v2';
 export const onboard = { active: false, pulsing: false };
 
 function markIntroSeen() {
@@ -78,7 +77,10 @@ function clearOnboardPulse() {
   });
 }
 
-export function finishOnboard() {
+// ЗРОЗУМІЛО is the only way out: the tip is the last step of the first run, and
+// a visitor who walks or plays past it would never have read it. Nothing else —
+// walking, playing, Esc, a tap on the card — dismisses it.
+function finishOnboard() {
   if (!onboard.active) return;
   onboard.active = false;
   try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* ignore */ }
@@ -86,22 +88,30 @@ export function finishOnboard() {
   clearOnboardPulse();
 }
 
-export function startOnboard() {
-  if (!shouldOfferOnboard() || !onboardEl) return;
+function showOnboardTip() {
   onboard.active = true;
   onboardText.textContent = 'Вітаємо на сцені Art Vibe! Сьогодні вона повністю твоя. По ній можна ходити, а на інструментах — грати.';
   onboardEl.hidden = false;
 }
 
-function openMascotAfterFirstOnboard() {
-  let shouldOpen = false;
-  try {
-    shouldOpen = !localStorage.getItem(MASCOT_ONBOARD_KEY);
-    if (shouldOpen) localStorage.setItem(MASCOT_ONBOARD_KEY, '1');
-  } catch {
-    shouldOpen = true;
-  }
-  if (shouldOpen) requestAnimationFrame(() => ui.open('mascot'));
+// First run is two steps in this order: make a mascot, then read what the stage
+// lets you do with it. Dressing up first gives the visitor something of their own
+// on stage before the tip tells them to walk it around.
+//
+// `ONBOARD_KEY` gates the whole sequence and is only written by ЗРОЗУМІЛО, so
+// leaving midway replays both steps next visit rather than stranding a visitor
+// who saw the wardrobe but never the tip.
+export function startOnboard() {
+  if (!shouldOfferOnboard() || !onboardEl) return;
+  const onMascotClose = (event) => {
+    if (event.detail?.open !== false || event.detail?.name !== 'mascot') return;
+    window.removeEventListener('av2:modal', onMascotClose);
+    // One frame late, so `closeAll()` has released its modal isolation first —
+    // it restores `inert` on every body child, this card included.
+    requestAnimationFrame(showOnboardTip);
+  };
+  window.addEventListener('av2:modal', onMascotClose);
+  requestAnimationFrame(() => ui.open('mascot'));
 }
 
 export function updateOnboardPulse(t) {
@@ -115,15 +125,7 @@ export function updateOnboardPulse(t) {
   onboard.pulsing = true;
 }
 
-onboardOk?.addEventListener('click', () => {
-  const completedFirstOnboard = onboard.active;
-  finishOnboard();
-  if (completedFirstOnboard) openMascotAfterFirstOnboard();
-});
-onboardEl?.addEventListener('click', (e) => {
-  if (e.target !== onboardEl && e.target !== onboardText) return;
-  finishOnboard();
-});
+onboardOk?.addEventListener('click', finishOnboard);
 
 export function startExperience() {
   if (session.started) return;

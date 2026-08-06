@@ -4,7 +4,7 @@
 // with a Ken Burns drift. `screenUniforms` is the seam the slideshow drives.
 // ============================================================
 import * as THREE from 'three';
-import { titleSlideTexture, plateTexture } from './textures.js?v=20260804-10';
+import { titleSlideTexture, plateTexture, backCreditTexture } from './textures.js?v=20260806-13';
 
 // ---- backdrop screen: shader slideshow w/ crossfade + Ken Burns ----
 export const screenUniforms = {
@@ -75,6 +75,18 @@ export function buildScreen() {
   );
   plate.position.set(0, 2.62, -5.45);
   g.add(plate);
+
+  // Maker's mark on the reverse of the wall, found by orbiting behind the stage.
+  // The whole screen stack and the backdrop wall are FrontSide, so from back
+  // there they are culled and this is the only thing facing you — hence its own
+  // plane turned to face -Z, sitting just behind `frameBack`.
+  const credit = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.2, 0.5),
+    new THREE.MeshBasicMaterial({ map: backCreditTexture(), fog: false })
+  );
+  credit.position.set(0, 5.35, -5.52);
+  credit.rotation.y = Math.PI;
+  g.add(credit);
 
   return g;
 }

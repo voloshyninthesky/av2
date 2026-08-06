@@ -5,13 +5,20 @@
 // release, so loop capture opens an entry on press and stamps it on release.
 // The chord pad also supports latching, so a quick tap frees the strum hand.
 // ============================================================
-import { ui, audio, guitar, mic } from '../core/studio.js?v=20260804-10';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260802-1';
-import { canvas } from '../view/rig.js?v=20260804-10';
-import { play, activePointers } from './state.js?v=20260804-10';
-import { GUITAR_CHORDS } from './guitar.js?v=20260804-10';
-import { addVibe } from './vibe.js?v=20260806-10';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260804-10';
+import { ui, audio, guitar, mic } from '../core/studio.js?v=20260806-13';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260806-13';
+import { canvas } from '../view/rig.js?v=20260806-13';
+import { play, activePointers } from './state.js?v=20260806-13';
+import {
+  CHORD_QUALITIES,
+  CHORD_ROOTS,
+  GUITAR_CHORDS,
+  padChords,
+  setPadChord,
+  slotKeyLabel,
+} from './guitar.js?v=20260806-13';
+import { addVibe } from './vibe.js?v=20260806-13';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260806-13';
 
 // Pad gestures compete with the stage's own pointer handling; main.js supplies
 // the predicates and teardown that only it can answer.
@@ -33,11 +40,134 @@ const vocalButtons = [...vocalPad.querySelectorAll('[data-vocal-freq]')];
 let vocalPadTimer = null;
 const chordPad = document.getElementById('chord-pad');
 const chordButtons = [...(chordPad?.querySelectorAll('[data-chord]') || [])];
+const chordEditBtn = document.getElementById('chord-edit-btn');
+const chordPicker = document.getElementById('chord-picker');
+// Slot editing: ✎ arms it, a slot tap opens the picker, ✓ / focus exit ends it.
+// A separate mode instead of long-press, because holding a chord button IS the
+// play gesture — the pad cannot give "hold" a second meaning.
+const chordEdit = { on: false, slot: null };
+
+// The six button elements are permanent (touch bookkeeping is keyed on them);
+// a slot change restyles them in place rather than replacing nodes.
+function renderChordPad() {
+  chordButtons.forEach((button, slot) => {
+    const name = padChords[slot];
+    button.dataset.chord = name;
+    button.textContent = name;
+    button.setAttribute('aria-label', `Акорд ${name}`);
+    // Position, not the chord's name, is what the keyboard addresses — a
+    // generated library has too many same-initial names to key off.
+    button.setAttribute('aria-keyshortcuts', slotKeyLabel(slot));
+  });
+  syncChordPadHeld();
+}
+
+function closeChordPicker() {
+  if (!chordPicker) return;
+  chordPicker.hidden = true;
+  chordEdit.slot = null;
+  for (const button of chordButtons) button.classList.remove('editing');
+}
+
+function setChordEditMode(on) {
+  if (!chordEditBtn || chordEdit.on === on) return;
+  chordEdit.on = on;
+  chordEditBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  chordEditBtn.textContent = on ? '✓' : '✎';
+  chordPad?.classList.toggle('editing', on);
+  if (!on) closeChordPicker();
+}
+
+// 84 chords will not fit in a flat list, and they do not need to: a chord is
+// a root plus a quality, so the picker asks for those two separately — 12 + 7
+// controls instead of 84. The quality row is sticky within one open picker so
+// picking "m" then trying several roots is one tap each.
+function openChordPicker(slot) {
+  if (!chordPicker) return;
+  chordEdit.slot = slot;
+  chordButtons.forEach((button, index) => button.classList.toggle('editing', index === slot));
+
+  const current = padChords[slot];
+  // Split the current chord back into root + quality so the picker opens on it.
+  const currentRoot = CHORD_ROOTS.find((r) => current === r || (current.startsWith(r)
+    && CHORD_QUALITIES[current.slice(r.length)] !== undefined
+    // "C#..." must not match root "C"
+    && !CHORD_ROOTS.includes(current.slice(0, r.length + 1)))) || 'C';
+  let quality = current.slice(currentRoot.length);
+  if (CHORD_QUALITIES[quality] === undefined) quality = '';
+
+  const qualityRow = document.createElement('div');
+  qualityRow.className = 'chord-picker-qualities';
+  qualityRow.setAttribute('role', 'radiogroup');
+  qualityRow.setAttribute('aria-label', 'Тип акорду');
+  const rootRow = document.createElement('div');
+  rootRow.className = 'chord-picker-roots';
+  rootRow.setAttribute('role', 'radiogroup');
+  rootRow.setAttribute('aria-label', 'Нота акорду');
+
+  const paint = () => {
+    for (const button of qualityRow.children) {
+      const on = button.dataset.quality === quality;
+      button.classList.toggle('current', on);
+      button.setAttribute('aria-checked', on ? 'true' : 'false');
+    }
+    for (const button of rootRow.children) {
+      const name = button.dataset.root + quality;
+      const isCurrent = name === padChords[slot];
+      button.classList.toggle('current', isCurrent);
+      button.setAttribute('aria-checked', isCurrent ? 'true' : 'false');
+      // Already on another slot: a second pad with the same chord just wastes
+      // one of six. Harmless now that keys are positional, still pointless.
+      button.disabled = !isCurrent && padChords.includes(name);
+      button.title = name;
+    }
+  };
+
+  for (const [suffix, { label }] of Object.entries(CHORD_QUALITIES)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.quality = suffix;
+    button.textContent = suffix || 'maj';
+    button.setAttribute('role', 'radio');
+    button.setAttribute('aria-label', label);
+    button.addEventListener('click', () => { quality = suffix; paint(); });
+    qualityRow.appendChild(button);
+  }
+  for (const root of CHORD_ROOTS) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.root = root;
+    button.textContent = root;
+    button.setAttribute('role', 'radio');
+    button.addEventListener('click', () => {
+      if (!setPadChord(slot, root + quality)) return;
+      // The swapped-out chord may still be held / latched / key-armed;
+      // clearing selection keeps pad state and sound in agreement.
+      clearGuitarInteractionState();
+      renderChordPad();
+      closeChordPicker();
+    });
+    rootRow.appendChild(button);
+  }
+
+  chordPicker.replaceChildren(qualityRow, rootRow);
+  paint();
+  chordPicker.hidden = false;
+}
+
+chordEditBtn?.addEventListener('click', () => setChordEditMode(!chordEdit.on));
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && chordEdit.on) setChordEditMode(false);
+});
 chordPad?.addEventListener('pointerdown', (event) => {
   // Swallow pad chrome only — chord buttons handle their own pointer claim.
   if (event.target.closest?.('[data-chord]')) return;
   event.stopPropagation();
   event.stopImmediatePropagation();
+  // The ✎ toggle and the picker options are ordinary buttons driven by click:
+  // keep their pointer off the canvas, but do NOT preventDefault, or touch
+  // never gets the synthesized click and the controls read as dead.
+  if (event.target.closest?.('#chord-edit-btn, #chord-picker')) return;
   if (event.pointerType === 'touch') event.preventDefault();
 }, { capture: true });
 
@@ -141,6 +271,7 @@ export function showChordPad() {
 export function hideChordPad() {
   if (!chordPad) return;
   clearGuitarInteractionState();
+  setChordEditMode(false); // leaving focus also leaves slot editing
   chordPad.hidden = true;
   syncPadsOpenClass();
 }
@@ -222,6 +353,9 @@ for (const button of chordButtons) {
   button.addEventListener('pointerdown', (event) => {
     event.stopPropagation();
     event.stopImmediatePropagation();
+    // Edit mode repurposes the tap: no hold, no capture, and no preventDefault
+    // so the browser still synthesizes the click that opens the picker.
+    if (chordEdit.on) return;
     if (event.pointerType === 'touch') {
       event.preventDefault();
       recentTouchChordAt.set(button, performance.now());
@@ -247,6 +381,10 @@ for (const button of chordButtons) {
     );
   });
   button.addEventListener('click', (event) => {
+    if (chordEdit.on) {
+      openChordPicker(chordButtons.indexOf(button));
+      return;
+    }
     if (event.detail !== 0 && performance.now() - (recentTouchChordAt.get(button) || 0) < 700) return;
     toggleLatchedGuitarChord(button.dataset.chord);
   });
@@ -325,3 +463,6 @@ for (const button of vocalButtons) {
   button.addEventListener('touchend', (event) => event.preventDefault(), { passive: false });
 }
 
+
+// Restore any saved chord-slot layout onto the pad's permanent buttons.
+renderChordPad();

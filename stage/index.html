@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260806-02">
+<link rel="stylesheet" href="/css/style.css?v=20260806-03">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -240,6 +240,8 @@
   <button type="button" data-vocal-freq="392.00" data-vocal-vowel="1" aria-label="Нота Соль">СОЛЬ</button>
 </div>
 
+<!-- Slot labels are re-rendered from the saved layout on boot (renderChordPad);
+     these six buttons are the defaults and the permanent DOM nodes. -->
 <div id="chord-pad" hidden role="group" aria-label="Акорди гітари">
   <div class="guitar-chord-buttons">
     <button type="button" data-chord="Em" aria-label="Акорд Em" aria-pressed="false" aria-keyshortcuts="Q">Em</button>
@@ -249,7 +251,10 @@
     <button type="button" data-chord="G" aria-label="Акорд G" aria-pressed="false" aria-keyshortcuts="T">G</button>
     <button type="button" data-chord="F" aria-label="Акорд F" aria-pressed="false" aria-keyshortcuts="Y">F</button>
   </div>
+  <button type="button" id="chord-edit-btn" aria-pressed="false" aria-label="Змінити акорди" title="Змінити акорди">✎</button>
+  <div id="chord-picker" hidden role="group" aria-label="Бібліотека акордів"></div>
 </div>
+
 
 <div id="mobile-controls" aria-label="Ігрове керування">
   <div id="move-zone" aria-label="Зона руху — торкнись ліворуч">
@@ -614,6 +619,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260806-10"></script>
+  <script type="module" src="/js/main.js?v=20260806-13"></script>
 </body>
 </html>

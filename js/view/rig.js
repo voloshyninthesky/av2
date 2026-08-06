@@ -15,7 +15,7 @@ import {
   MOBILE_MAX_PIXEL_RATIO,
   LOW_END_MOBILE_MAX_PIXEL_RATIO,
   DESKTOP_MAX_PIXEL_RATIO,
-} from '../core/quality.js?v=20260804-10';
+} from '../core/quality.js?v=20260806-13';
 
 export const canvas = document.getElementById('scene');
 export let renderer;

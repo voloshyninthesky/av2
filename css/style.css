@@ -698,6 +698,49 @@ html.pads-open #toast,
   background: var(--cream); color: var(--purple-deep);
   box-shadow: 0 0 0 3px var(--gold), 0 0 22px rgba(209, 161, 59, .85);
 }
+
+/* ---- chord slot editing (✎) ---- */
+#chord-edit-btn {
+  width: 34px; height: 34px; margin-left: 8px; flex: none;
+  border: 1px solid rgba(253, 251, 247, .28); border-radius: 50%;
+  background: rgba(23, 18, 28, .5); color: rgba(253, 251, 247, .75);
+  font-size: 14px; line-height: 1; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+#chord-edit-btn:hover { border-color: var(--gold); color: var(--gold); }
+#chord-edit-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .16); }
+#chord-pad.editing [data-chord] { opacity: .82; }
+#chord-pad.editing [data-chord].editing {
+  opacity: 1;
+  box-shadow: 0 0 0 3px var(--gold), 0 0 18px rgba(209, 161, 59, .6);
+}
+#chord-picker {
+  position: absolute; bottom: calc(100% + 10px); left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  width: max-content; max-width: min(92vw, 430px);
+  padding: 10px; border: 1px solid rgba(209, 161, 59, .72); border-radius: 16px;
+  background: rgba(23, 18, 28, .92); backdrop-filter: blur(12px);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .42);
+}
+#chord-picker[hidden] { display: none !important; }
+#chord-picker button {
+  min-width: 44px; height: 40px; padding: 0 10px;
+  border: 1px solid rgba(253, 251, 247, .28); border-radius: 999px;
+  background: rgba(158, 51, 202, .35); color: var(--cream);
+  font: 700 10px/1 'Unbounded', sans-serif; letter-spacing: .04em;
+  cursor: pointer; transition: background .12s, border-color .12s;
+}
+#chord-picker button:hover:not(:disabled) { border-color: var(--gold); background: rgba(158, 51, 202, .6); }
+#chord-picker button.current { background: var(--cream); color: var(--purple-deep); border-color: var(--gold); }
+#chord-picker button:disabled { opacity: .35; cursor: default; }
+.chord-picker-qualities, .chord-picker-roots {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%;
+}
+.chord-picker-qualities { padding-bottom: 9px; border-bottom: 1px solid rgba(253, 251, 247, .16); }
+.chord-picker-qualities button { min-width: 40px; height: 32px; font-size: 9px; }
+.chord-picker-roots button { min-width: 38px; }
+
 /* Landscape / desktop: chords rail on the left = fretting hand, strum zone on
    the right = picking hand — the same split as a real guitar. */
 @media (orientation: landscape) {
@@ -712,6 +755,14 @@ html.pads-open #toast,
   }
   html.guitar-focused #chord-pad [data-chord].held {
     transform: translateX(4px) scale(1.06);
+  }
+  /* Column rail: ✎ under the chords, picker beside the rail (above it would
+     leave the viewport — the rail is already vertically centered). */
+  html.guitar-focused #chord-edit-btn { margin: 8px 0 0; }
+  html.guitar-focused #chord-picker {
+    bottom: auto; left: calc(100% + 10px); top: 50%;
+    transform: translateY(-50%);
+    max-width: min(72vw, 380px);
   }
 }
 /* Short landscape phones: keep the six chords inside the viewport. */
