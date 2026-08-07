@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-02';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-02';
-import { bumpHitPulse } from '../scene/effects.js?v=20260807-02';
-import { instrumentView } from '../view/instrument-presets.js?v=20260807-02';
-import { play, keyboardPianoNotes } from './state.js?v=20260807-02';
-import { trackOnce } from '../core/analytics.js?v=20260807-02';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-03';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-03';
+import { bumpHitPulse } from '../scene/effects.js?v=20260807-03';
+import { instrumentView } from '../view/instrument-presets.js?v=20260807-03';
+import { play, keyboardPianoNotes } from './state.js?v=20260807-03';
+import { trackOnce } from '../core/analytics.js?v=20260807-03';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -81,31 +81,26 @@ export const VIBE_NOTE_GAIN = 0.7;
 export function addVibe(n, kind = null) {
   trackOnce('stage-first-play');
   praiseNthNote(kind);
+  // Filling is a one-way door: the meter stays at 100 for the rest of the
+  // visit rather than settling back and being re-earned. So this fires exactly
+  // once — no cooldown needed to throttle repeat celebrations, and the idle
+  // decay in main.js stands down (see `play.vibeFull`).
+  if (play.vibeFull) return;
   play.vibe = Math.min(100, play.vibe + n * VIBE_NOTE_GAIN);
   play.lastVibeAdd = performance.now();
   ui.setVibe(play.vibe);
-  const justUnlocked = play.vibe >= 100 && unlockLoopPedal();
-  if (play.vibe >= 100 && (justUnlocked || performance.now() > play.vibeCooldown)) {
-    play.vibeCooldown = performance.now() + 4000;
-    const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
-    spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
-    bumpHitPulse(1.35);
-    // Announced once, on the fill that actually changes something. Every later
-    // fill still gets the fireworks and the meter flash — by then the visitor
-    // knows what a full meter looks like, and repeating the words would only
-    // make the loop pedal's arrival read as routine in hindsight.
-    if (justUnlocked) {
-      ui.toast(
-        'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
-        4200,
-        'vibe-max',
-      );
-    }
-    // Meter celebrates at 100% while the fireworks/toast run, then settles.
-    play.vibe = 55;
-    play.lastVibeAdd = performance.now() + 3600;
-    setTimeout(() => ui.setVibe(play.vibe), 3600);
-  }
+  if (play.vibe < 100) return;
+
+  play.vibeFull = true;
+  unlockLoopPedal();
+  const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
+  spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
+  bumpHitPulse(1.35);
+  ui.toast(
+    'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
+    4200,
+    'vibe-max',
+  );
 }
 
 // ---- price carousel ----

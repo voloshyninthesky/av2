@@ -353,7 +353,7 @@ Rules:
 
 ### VIBE meter
 
-Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar strum `5`, piano `3.5`…) which are **relative** values; a single `VIBE_NOTE_GAIN` scales all of them, so how long a full meter takes is one number rather than eight call sites. At 100%: surprise (fireworks / loop unlock). The maximum-vibe toast appears below the HUD, never over instrument pads, and claims its own taps so it cannot trigger browser double-tap zoom. Meter decays when idle.
+Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar strum `5`, piano `3.5`…) which are **relative** values; a single `VIBE_NOTE_GAIN` scales all of them, so how long a full meter takes is one number rather than eight call sites. **Reaching 100% is a one-way door**: fireworks, the loop-pedal unlock, and the announcement fire exactly once, and the meter then *stays* full for the rest of the visit — it never settles back to be re-earned, and the idle decay stands down. Because the maxed state is now permanent, its flash is a finite burst that settles into a brighter steady rail rather than an endless strobe. The maximum-vibe toast appears below the HUD, never over instrument pads, and claims its own taps so it cannot trigger browser double-tap zoom. Below 100% the meter decays when idle.
 
 ### Loop pedal
 

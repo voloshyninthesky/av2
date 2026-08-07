@@ -434,8 +434,18 @@ html.stage-live .icon-btn {
   box-shadow: 0 0 12px rgba(209, 161, 59, .8);
   transition: width .25s ease;
 }
-#vibe.max #vibe-fill { animation: vibeFlash .5s linear infinite; }
+/* A full meter now stays full for the visit, so `.max` is permanent — the
+   flash has to be a finite burst rather than `infinite`, or the HUD strobes
+   for as long as the tab is open. It settles into a brighter steady rail so a
+   maxed meter still reads as maxed once the celebrating stops. */
+#vibe.max #vibe-fill {
+  animation: vibeFlash .5s linear 6;
+  box-shadow: 0 0 16px rgba(209, 161, 59, .95);
+}
 @keyframes vibeFlash { 50% { filter: brightness(1.7); } }
+@media (prefers-reduced-motion: reduce) {
+  #vibe.max #vibe-fill { animation: none; }
+}
 
 .hud-right { display: flex; align-items: center; gap: 8px; position: relative; }
 

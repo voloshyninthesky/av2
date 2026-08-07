@@ -38,10 +38,11 @@ export const play = {
    *  only once the note is released. */
   heldLoopCapture: null,
 
-  /** Vibe meter: current level, when it last rose, and the reward cooldown. */
+  /** Vibe meter: current level and when it last rose. */
   vibe: 0,
   lastVibeAdd: 0,
-  vibeCooldown: 0,
+  /** Latched once the meter reaches 100 — it stays there for the visit. */
+  vibeFull: false,
   /** The loop pedal stays hidden until the meter has been filled once. */
   loopUnlocked: false,
 };
