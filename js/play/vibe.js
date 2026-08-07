@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-01';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-01';
-import { bumpHitPulse } from '../scene/effects.js?v=20260807-01';
-import { instrumentView } from '../view/instrument-presets.js?v=20260807-01';
-import { play, keyboardPianoNotes } from './state.js?v=20260807-01';
-import { trackOnce } from '../core/analytics.js?v=20260807-01';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-02';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-02';
+import { bumpHitPulse } from '../scene/effects.js?v=20260807-02';
+import { instrumentView } from '../view/instrument-presets.js?v=20260807-02';
+import { play, keyboardPianoNotes } from './state.js?v=20260807-02';
+import { trackOnce } from '../core/analytics.js?v=20260807-02';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -45,26 +45,43 @@ function praiseWord() {
 }
 
 /**
- * Cheer the *first* note a visitor gets out of each instrument — the moment
- * they are least sure anything happened. Four times a visit at most, then
- * silence: praise that keeps arriving stops meaning anything.
+ * Cheer once per instrument, on the third note rather than the first. By the
+ * third the visitor is deliberately playing, so it reads as "you've got this";
+ * on the first they may not even be sure they caused the sound. Four times a
+ * visit at most, then silence — praise that keeps arriving stops meaning
+ * anything.
  *
  * Yields to a toast already on screen rather than replacing it: anything else
- * the stage chose to say carries more than a cheer does. (Price chips live in
- * `#chip`, a separate element, and are unaffected either way.)
+ * the stage chose to say carries more than a cheer does. A cheer swallowed
+ * that way is retried on the next note instead of being spent, so each
+ * instrument still gets its one. (Price chips live in `#chip`, a separate
+ * element, and are unaffected either way.)
  */
+const PRAISE_AFTER_NOTES = 3;
+const notesPerKind = new Map();
 const praisedKinds = new Set();
-function praiseFirstNote(kind) {
+function praiseNthNote(kind) {
   if (!kind || praisedKinds.has(kind)) return;
-  praisedKinds.add(kind);
+  const played = (notesPerKind.get(kind) || 0) + 1;
+  notesPerKind.set(kind, played);
+  if (played < PRAISE_AFTER_NOTES) return;
   if (!ui.el.toast.hidden) return;
+  praisedKinds.add(kind);
   ui.toast(praiseWord(), 1500);
 }
 
+/**
+ * How much of a note's nominal vibe actually lands. The per-event weights in
+ * the play modules (drums 4, guitar 5, piano 3.5…) are *relative* values worth
+ * keeping as they are; this one number sets how long a full meter takes, so
+ * retuning the reward loop never means editing eight call sites.
+ */
+export const VIBE_NOTE_GAIN = 0.7;
+
 export function addVibe(n, kind = null) {
   trackOnce('stage-first-play');
-  praiseFirstNote(kind);
-  play.vibe = Math.min(100, play.vibe + n);
+  praiseNthNote(kind);
+  play.vibe = Math.min(100, play.vibe + n * VIBE_NOTE_GAIN);
   play.lastVibeAdd = performance.now();
   ui.setVibe(play.vibe);
   const justUnlocked = play.vibe >= 100 && unlockLoopPedal();

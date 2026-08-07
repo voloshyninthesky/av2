@@ -353,7 +353,7 @@ Rules:
 
 ### VIBE meter
 
-Playing adds vibe. At 100%: surprise (fireworks / loop unlock). The maximum-vibe toast appears below the HUD, never over instrument pads, and claims its own taps so it cannot trigger browser double-tap zoom. Meter decays when idle.
+Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar strum `5`, piano `3.5`…) which are **relative** values; a single `VIBE_NOTE_GAIN` scales all of them, so how long a full meter takes is one number rather than eight call sites. At 100%: surprise (fireworks / loop unlock). The maximum-vibe toast appears below the HUD, never over instrument pads, and claims its own taps so it cannot trigger browser double-tap zoom. Meter decays when idle.
 
 ### Loop pedal
 
@@ -548,9 +548,9 @@ That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothi
 
 ### Praise
 
-Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, never the same word twice running — on the **first live note the visitor gets out of each instrument**. Four times a visit at most, then silence: praise that keeps arriving stops meaning anything.
+Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, never the same word twice running — on the **third live note out of each instrument**. Four times a visit at most, then silence: praise that keeps arriving stops meaning anything. Third rather than first because by then the visitor is deliberately playing, so it reads as "you've got this"; on the first note they may not be sure they caused the sound at all.
 
-- Praise **yields to a toast already on screen** rather than replacing it: anything else the stage has chosen to say carries more than a cheer does.
+- Praise **yields to a toast already on screen** rather than replacing it: anything else the stage chose to say carries more than a cheer does. A cheer swallowed that way is retried on the next note rather than spent, so each instrument still gets its one.
 - Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
 - Every live play route passes its instrument to `addVibe(n, kind)`; the vocal pad and keyboard vocal reach it directly rather than through `playMusicalEvent`.
 
