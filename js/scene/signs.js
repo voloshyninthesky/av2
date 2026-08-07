@@ -134,7 +134,11 @@ function makeSurface(spec) {
     roughness: 1,
     emissive: 0xffffff,
     emissiveMap: tex,
-    emissiveIntensity: 0.85,
+    // The wall band glows — it reads as a lit sign hanging in the dark. The
+    // floor surfaces are paint on boards: enough emissive to stay legible
+    // where the spotlights do not reach, not enough to look like neon lying
+    // on the stage.
+    emissiveIntensity: spec.flat ? 0.3 : 0.85,
     // A surface lying on the boards has to win against the contact shadows
     // already painted there; one standing on the wall does not.
     ...(spec.flat ? {
@@ -225,9 +229,14 @@ function drawSign(slot, sign, alpha) {
   ctx.rotate(rot);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.globalAlpha = alpha * 0.92;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = size * (0.5 + (1 - alpha) * 0.7);
+  ctx.globalAlpha = alpha * (spec.flat ? 0.86 : 0.92);
+  // Only the wall band carries a halo. On the boards a glow reads as light
+  // spilling out of the floor; the fade-in still gets a brief one so a fresh
+  // sign announces itself.
+  if (!spec.flat || alpha < 1) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = size * (spec.flat ? (1 - alpha) * 0.6 : 0.5 + (1 - alpha) * 0.7);
+  }
   ctx.fillStyle = color;
   ctx.fillText(sign.text, 0, 0);
   if (flourish) {

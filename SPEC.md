@@ -151,7 +151,11 @@ without the feature. No retry, no error surface.
   piano stand on. Signs run underneath them on purpose — a kit parked over old graffiti is
   how a real stage looks. All three are transparent `CanvasTexture` planes, emissive-driven
   and registered dimmable so the **Світло** fader dims the tags with the stage; each stays
-  invisible while it has nothing to show. The mid band is wider than the front strip
+  invisible while it has nothing to show. **Only the wall band glows**: it reads as a lit
+  sign hanging in the dark, while the two floor surfaces are paint on boards — a halo there
+  looked like light spilling out of the stage. The floor keeps just enough emissive to stay
+  legible outside the spotlight pools, and a fresh sign still gets a brief glow as it fades
+  in, so it announces itself. The mid band is wider than the front strip
   because it sits further from the camera, where the frame opens out — measured through the
   settled follow camera, it spills the frame far less than the front strip already does.
 - **A sign's position is part of the sign.** At creation the client picks the first free
@@ -163,6 +167,11 @@ without the feature. No retry, no error surface.
   sign is what frees a slot for the newcomer. Rows without a valid slot (legacy or
   hand-tampered state) fall back to a derived `(id − 1) % 75` home with a deterministic
   probe, so every visitor still computes the same stage.
+- **The stage fills once.** Slots are never recycled: when the last one goes, the stage is
+  closed and the marker button is gone. A visitor who cannot sign is never shown a control
+  that refuses them — the button is present only while the storage answered, the visitor
+  has not signed today, and a slot is free. (A sign draining out of the head on the
+  character budget frees its slot again, which is the one way the stage reopens.)
 - **Leaving a sign:** a marker button fixed **below the HUD's right cluster** (`#sign-btn`,
   hidden until the probe passes; a once-a-day gesture, not navigation) opens `#modal-sign`:
   one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
@@ -171,8 +180,8 @@ without the feature. No retry, no error surface.
   (~0.9 s; instant under reduced motion) and shows a toast; failures surface as friendly
   inline one-liners and never block the stage.
 - **Once a day, on the device only.** `localStorage` `av2.sign.v1` (`{ text, color, ts }`)
-  prefills the form and arms a rolling 24 h gate; while gated the button stays visible in
-  a dimmed done-state whose click explains itself with a toast. No IPs, no identifiers,
+  prefills the form and arms a rolling 24 h gate; while gated the button carries
+  no state at all — it is simply absent until tomorrow. No IPs, no identifiers,
   nothing personal is stored anywhere, and the site stays cookie-less — no consent banner
   required.
 - Copy speaks of the **сцена**, never «стіна»: «Залиш свій слід», «Твій знак на сцені»,
@@ -496,11 +505,20 @@ There is no backend: the store is a Telegram channel driven straight from the br
 (`api.telegram.org` answers with `Access-Control-Allow-Origin: *`; requests use
 form-encoded bodies so they stay preflight-free).
 
-- **The head is one pinned channel message** of compact JSON —
-  `{"v":2,"n":<next id>,"t":<tail chunk message_id>,"s":[[id,color,text,slot],…]}` — where
-  `s` is exactly what the stage displays (at most 75 rows), ids strictly
-  monotonic and never reissued, `slot` fixed at creation (§ Signs). The stage reads only
-  the head, via `getChat` → `pinned_message`, and rewrites it via `editMessageText`.
+- **The head is one pinned channel message**, a terse line format rather than JSON —
+  about 25% smaller, and legible to the owner scrolling the channel:
+
+  ```
+  AV2 n=<next id> t=<tail chunk message_id>
+  <id>|<colour index>|<slot>|<text>
+  …
+  ```
+
+  Those rows are exactly what the stage displays (at most 75). Ids are strictly monotonic
+  and never reissued; `slot` is fixed at creation (§ Signs); the text goes last so it may
+  contain `|`, and it can never contain a newline because input whitespace is collapsed.
+  The stage reads only the head, via `getChat` → `pinned_message`, and rewrites it via
+  `editMessageText`. Archive chunks use the same shape, headed `P=<previous chunk id>`.
 - **History never gets discarded — it seals into a linked list of messages.** A Telegram
   message tops out at 4096 chars, so the head holds only what the stage can show. Rows
   drain from the oldest end for two independent reasons — more rows than the stage has
@@ -508,8 +526,8 @@ form-encoded bodies so they stay preflight-free).
   leave the head, or it would be archived again on every write while the head grew past the
   limit anyway. **The budget is counted in characters, not rows: that is the limit which
   actually exists, and a row count drifts the moment the stage gains slots.** Drained rows
-  go into one archive message `{"p":<previous chunk message_id>,"r":[rows]}` and the head's
-  `t` points at it.
+  go into one archive message headed `P=<previous chunk message_id>`, and the head's `t`
+  points at it.
   Chunks chain backwards through `p`, so the complete run of signs is walkable from the
   head. Bots cannot fetch arbitrary messages, so the stage never reads chunks — they are
   the archive, sitting visibly in the channel for the owner (or any user-account MTProto

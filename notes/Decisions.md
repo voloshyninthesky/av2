@@ -45,7 +45,8 @@ are worth keeping:
   core promise must not inherit a network dependency.
 - **The stage is the canvas, not just the wall.** Signs now cover three surfaces — the
   wall band, the front strip the visitor stands on, and the mid-stage boards the drum kit
-  and piano sit on. Running tags *under* the instruments is deliberate: a kit parked over
+  and piano sit on. Only the wall glows; on the boards a halo read as light leaking out of
+  the floor, so those are plain paint. Running tags *under* the instruments is deliberate: a kit parked over
   old graffiti is what a real stage looks like, and that middle band is both the largest
   bare patch of the platform and better framed than the front strip, because it sits
   further from the camera where the frustum opens out.
@@ -56,6 +57,18 @@ are worth keeping:
   ceiling anyway. It now drains from the oldest end until the head fits both the slot count
   and a character budget. **A limit expressed in one unit (rows) that really exists in
   another (characters) will drift the moment either side moves.**
+- **A control that cannot do anything should not be on screen.** The marker button is
+  present only while the storage answered, the visitor has not signed today, and a slot is
+  free. The first version dimmed the button and answered a tap with a toast; a disabled-
+  looking control still invites the tap, and the refusal is the reply. Absence says the
+  same thing without the round trip.
+- **The stage fills once and closes.** Slots are not recycled, so the wall is
+  first-come-first-served rather than a rolling window — which is what makes leaving a sign
+  worth anything. When it is full the owner clears it from Telegram.
+- **The head is a line format, not JSON.** `id|colour|slot|text` per line under an
+  `AV2 n=… t=…` header is ~25% smaller than the equivalent JSON, which directly buys
+  displayed signs against Telegram's 4096-character ceiling — and it is readable to the
+  owner scrolling the channel, which JSON was not.
 - **A sign's position is decided once, at creation, and stored with it.** The first cut
   derived positions from ids on every render — which meant a sign could shift when an
   older neighbour retired and the layout re-flowed around it. Now the creating client

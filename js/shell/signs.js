@@ -36,13 +36,45 @@ const API = `https://api.telegram.org/bot${BOT}`;
 const STORE_KEY = 'av2.sign.v1';
 const MAX_LEN = 24;
 const DAY_MS = 86_400_000;
-// A Telegram message tops out at 4096 chars, so the pinned head holds only
-// what the stage can show and seals the rest into linked archive messages.
-// The budget is in characters, not rows, because that is the limit that
-// actually exists — a row count drifts the moment the stage gains slots.
-// (Chars as Telegram counts them, UTF-16 units, which is exactly what
-// JSON.stringify().length already reports.)
+// A Telegram message tops out at 4096 UTF-16 units, and that ceiling — not
+// the slot count — is what really limits how many signs the stage can show.
+// So the head is a terse line format rather than JSON (roughly 40% smaller,
+// and legible to the owner scrolling the channel), and the writer drains to
+// a character budget rather than a row count.
 const HOT_MAX_CHARS = 3300;
+const COLOR_IDS = ['cream', 'gold', 'purple', 'pink', 'mint'];
+
+/** One sign as `id|colourIndex|slot|text`. Text goes last so it may contain
+ *  the separator; input whitespace is collapsed, so it has no newline. */
+function encodeRow(sign) {
+  return `${sign.id}|${COLOR_IDS.indexOf(sign.color)}|${sign.slot}|${sign.text}`;
+}
+
+function decodeRow(row) {
+  const parts = String(row).split('|');
+  if (parts.length < 4) return null;
+  const id = Number(parts[0]);
+  const color = COLOR_IDS[Number(parts[1])];
+  const slot = Number(parts[2]);
+  const text = parts.slice(3).join('|');
+  if (!Number.isInteger(id) || !color || !Number.isInteger(slot) || !text) return null;
+  return { id, color, slot, text };
+}
+
+function encodeHead(n, tail, rows) {
+  return [`AV2 n=${n} t=${tail}`, ...rows].join('\n');
+}
+
+function parseHead(text) {
+  const lines = String(text || '').split('\n');
+  const header = /^AV2 n=(\d+) t=(\d+)/.exec(lines[0] || '');
+  if (!header) return null;
+  return {
+    n: Number(header[1]),
+    t: Number(header[2]),
+    rows: lines.slice(1).filter(Boolean),
+  };
+}
 
 let els = null;
 let btn = null;
@@ -59,10 +91,8 @@ function sanitize(raw) {
     .trim();
 }
 
-function fromState(parsed) {
-  return (Array.isArray(parsed?.s) ? parsed.s : [])
-    .filter((row) => Array.isArray(row) && Number.isInteger(row[0]) && typeof row[2] === 'string')
-    .map(([id, color, text, slot]) => ({ id, color, text, slot }));
+function fromRows(rows) {
+  return rows.map(decodeRow).filter(Boolean);
 }
 
 async function tg(method, body) {
@@ -86,12 +116,16 @@ function readGate() {
   }
 }
 
-function syncButtonGate() {
-  const gated = Boolean(readGate());
-  btn.classList.toggle('is-done', gated);
-  const label = gated ? 'Твій знак уже на сцені — новий можна завтра' : 'Залиш свій слід на сцені';
-  btn.title = label;
-  btn.setAttribute('aria-label', label);
+/**
+ * The button exists only while a visitor can actually use it: the storage
+ * answered, they have not signed today, and the stage still has a free slot.
+ * A control that is visible but cannot do anything is worse than no control —
+ * it invites a tap and answers with a refusal.
+ */
+function syncSignAvailability() {
+  if (!btn) return;
+  const free = chooseSlot(new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger)));
+  btn.hidden = Boolean(readGate()) || free === null;
 }
 
 function showError(message) {
@@ -162,36 +196,32 @@ async function submitSign(event) {
     // remaining write race can drop one sign from the stage, but its channel
     // post below still records it for the owner.
     const chat = await tg('getChat', { chat_id: CHAT }).catch(() => null);
-    const pinned = chat?.pinned_message;
-    if (pinned?.text) {
-      try {
-        const fresh = JSON.parse(pinned.text);
-        state = {
-          n: Number(fresh.n) || state.n,
-          s: Array.isArray(fresh.s) ? fresh.s : state.s,
-          t: Number.isInteger(fresh.t) ? fresh.t : 0,
-        };
-        pinnedMessageId = pinned.message_id;
-      } catch { /* keep the state we booted with */ }
+    const fresh = parseHead(chat?.pinned_message?.text);
+    if (fresh) {
+      state = { n: fresh.n, s: fresh.rows, t: fresh.t };
+      pinnedMessageId = chat.pinned_message.message_id;
     }
-    // The position is decided here, once, and travels with the sign — it
-    // stays where it was put even as older signs retire around it. Wall
-    // slots fill first; the freed slot of the sign leaving the displayed
-    // window (if the stage is at capacity) is what comes back around.
-    const displayed = state.s.slice(-(TOTAL_SLOTS - 1));
-    const used = new Set(displayed.map((row) => row[3]).filter((s) => Number.isInteger(s)));
-    const slot = chooseSlot(used) ?? 0;
+    // The position is decided here, once, and travels with the sign, so it
+    // stays where it was put. Surfaces fill in their declared order, and the
+    // stage closes when the last slot goes.
+    const used = new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger));
+    const slot = chooseSlot(used);
+    if (slot === null) {
+      // Someone took the last slot while this modal sat open.
+      showError('Сцена вже заповнена — вільних місць більше немає.');
+      syncSignAvailability();
+      return;
+    }
     const sign = { id: state.n, text, color: selectedColor, slot };
     const nextN = state.n + 1;
-    let hot = [...state.s, [sign.id, sign.color, sign.text, sign.slot]];
+    let hot = [...state.s, encodeRow(sign)];
     let tail = state.t;
-    // Nothing is ever discarded: when the head outgrows its budget, every
-    // row older than the displayed window seals into an archive message
-    // whose `p` points at the previous chunk — a linked list of messages
-    // hanging off the head's `t`. The stage never needs to read them (bots
-    // cannot fetch arbitrary messages back anyway); they are the archive,
-    // sitting visibly in the channel.
-    const head = () => JSON.stringify({ v: 2, n: nextN, t: tail, s: hot });
+    // Nothing is ever discarded: rows that no longer fit seal into an archive
+    // message whose `P=` points at the previous chunk — a linked list hanging
+    // off the head's `t`. The stage never reads them (a bot cannot fetch
+    // arbitrary messages back anyway); they are the record, sitting visibly
+    // in the channel.
+    const head = () => encodeHead(nextN, tail, hot);
     // Drain from the oldest end until the head both fits the stage and fits
     // a Telegram message. Each row must genuinely leave `hot`, or it would
     // be archived again on every write while the head grew past the limit
@@ -202,7 +232,7 @@ async function submitSign(event) {
     if (sealed.length) {
       const node = await tg('sendMessage', {
         chat_id: CHAT,
-        text: JSON.stringify({ p: tail, r: sealed }),
+        text: [`P=${tail}`, ...sealed].join('\n'),
         disable_notification: 'true',
       });
       tail = node.message_id;
@@ -216,7 +246,7 @@ async function submitSign(event) {
     // Best-effort feed post so the owner sees each sign arrive in Telegram.
     tg('sendMessage', { chat_id: CHAT, text: `✍️ ${text} · ${sign.color}` }).catch(() => {});
     rememberSign(text, selectedColor);
-    syncButtonGate();
+    syncSignAvailability();
     showError('');
     addSign(sign);
     ui.closeAll();
@@ -281,13 +311,8 @@ function enable(signs) {
   recallSign();
   wireForm();
   selectColor(selectedColor);
-  // Not data-open: the once-a-day gate decides between the modal and a toast.
-  btn.addEventListener('click', () => {
-    if (readGate()) ui.toast('Один знак на день — <span class="hl">повернись завтра</span> ✦', 3200);
-    else ui.open('sign', null, btn);
-  });
-  syncButtonGate();
-  btn.hidden = false;
+  btn.addEventListener('click', () => ui.open('sign', null, btn));
+  syncSignAvailability();
 }
 
 export function initSigns() {
@@ -302,16 +327,11 @@ export function initSigns() {
   }
   probe
     .then((chat) => {
-      const pinned = chat?.pinned_message;
-      if (!pinned?.text) return;
-      const parsed = JSON.parse(pinned.text);
-      pinnedMessageId = pinned.message_id;
-      state = {
-        n: Number(parsed.n) || 1,
-        s: Array.isArray(parsed.s) ? parsed.s : [],
-        t: Number.isInteger(parsed.t) ? parsed.t : 0,
-      };
-      enable(fromState(parsed));
+      const parsed = parseHead(chat?.pinned_message?.text);
+      if (!parsed) return; // no readable head → nothing to show, nowhere to write
+      pinnedMessageId = chat.pinned_message.message_id;
+      state = { n: parsed.n, s: parsed.rows, t: parsed.t };
+      enable(fromRows(parsed.rows));
     })
     .catch(() => { /* storage unreachable: the feature stays invisible */ });
 }
