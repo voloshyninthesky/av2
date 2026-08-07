@@ -8,9 +8,9 @@
 // One sign per device per 7 days, enforced only in localStorage — no IPs,
 // no identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260807-05';
-import { params } from '../core/quality.js?v=20260807-05';
-import { track } from '../core/analytics.js?v=20260807-05';
+import { ui } from '../core/studio.js?v=20260807-06';
+import { params } from '../core/quality.js?v=20260807-06';
+import { track } from '../core/analytics.js?v=20260807-06';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -18,7 +18,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260807-05';
+} from '../scene/signs.js?v=20260807-06';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —

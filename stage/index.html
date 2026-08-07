@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260807-05">
+<link rel="stylesheet" href="/css/style.css?v=20260807-06">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -129,6 +129,12 @@
     <button class="icon-btn" id="mascot-btn" type="button" data-open="mascot" title="Твій образ — змінити маскота" aria-label="Твій образ — змінити маскота">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg>
     </button>
+    <!-- Hidden until js/shell/signs.js confirms the storage is alive; the
+         click is wired there (gate → toast, otherwise the modal), not via
+         data-open, since availability decides which of the two happens. -->
+    <button class="icon-btn" id="sign-btn" type="button" title="Залиш свій слід на сцені" aria-label="Залиш свій слід на сцені" hidden>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+    </button>
     <div class="sound-wrap">
       <button class="icon-btn" id="sound-btn" type="button" title="Налаштування" aria-label="Налаштування" aria-expanded="false" aria-controls="sound-mixer">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path id="sound-icon" fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
@@ -177,13 +183,6 @@
     </a>
   </nav>
 </header>
-
-<!-- Below the HUD, not in it: leaving a sign is a once-a-week gesture, not
-     navigation. Hidden until js/shell/signs.js confirms the storage is alive;
-     the click is wired there (gate → toast, otherwise the modal). -->
-<button class="icon-btn" id="sign-btn" type="button" title="Залиш свій слід на сцені" aria-label="Залиш свій слід на сцені" hidden>
-  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-</button>
 
 <div id="keys-hint" class="mono hidden">
   клік — рух · <b>Enter</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — гітара · <b>N M , . /</b> — вокал
@@ -646,6 +645,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260807-05"></script>
+  <script type="module" src="/js/main.js?v=20260807-06"></script>
 </body>
 </html>

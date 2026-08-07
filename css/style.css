@@ -1412,16 +1412,9 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 }
 
 /* ===== Signs («знаки на сцені») ===== */
-/* Below the HUD's right cluster — a once-a-day gesture, not navigation. */
-#sign-btn {
-  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 74px); right: 18px;
-  z-index: 39;
-}
-/* .icon-btn's display:grid outranks the UA [hidden] rule, so be explicit. */
+/* An ordinary HUD icon button; .icon-btn's display:grid outranks the UA
+   [hidden] rule, so be explicit rather than relying on it. */
 #sign-btn[hidden] { display: none; }
-/* Today's sign is spent: stays discoverable, reads as done. */
-#sign-btn.is-done { opacity: .55; }
-#sign-btn.is-done:hover { transform: none; border-color: rgba(253, 251, 247, .35); color: var(--cream); }
 .sign-panel { width: min(560px, 100%); }
 .sign-label {
   display: block; margin: 16px 0 8px; font-size: 12px;

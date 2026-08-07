@@ -181,8 +181,8 @@ without the feature. No retry, no error surface.
   surface that changed — leaving a sign uploads ~3.6 MB, not 16 — and the fade-in, which
   repaints on every third frame, is skipped entirely under reduced motion and on the low
   budget.
-- **Leaving a sign:** a marker button fixed **below the HUD's right cluster** (`#sign-btn`,
-  hidden until the probe passes; a once-a-week gesture, not navigation) opens `#modal-sign`:
+- **Leaving a sign:** a marker button in the **HUD's right nav** (`#sign-btn`, after
+  **Твій образ**, hidden until the probe passes) opens `#modal-sign`:
   one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
   rejected), five curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
   live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. The panel carries no explanatory lead — the
