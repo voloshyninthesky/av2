@@ -62,20 +62,6 @@ are worth keeping:
   free. The first version dimmed the button and answered a tap with a toast; a disabled-
   looking control still invites the tap, and the refusal is the reply. Absence says the
   same thing without the round trip.
-- **The void below the stage is a surface too.** Once the platform is covered, signs land
-  on the venue floor around and under it — readable by peering off the edge or during the
-  fall, whose camera sinks below platform level. Falling off the stage was already a small
-  scripted moment; now it doubles as the only way to browse the overflow, which turns a
-  failure state into a discovery. Cells the platform would hide are masked out rather than
-  wasted.
-- **One pinned message is the read limit, and that is Telegram's, not ours.** Everything
-  else was tried against the live API: uploaded `.txt` documents download fine over curl
-  but `api.telegram.org/file/…` sends no CORS headers, so browsers are blocked; a linked
-  chain of messages (which the archive already is) cannot be traversed because bots have no
-  get-message-by-id; `forwardMessage`'s return value technically reads a message back, but
-  as a reader it would spray forward-and-delete junk through the channel against a shared
-  ~20/min limit. The honest ceiling is one 4096-character head — ~120–170 signs in the
-  line format — and the geometry (123 slots) is sized to sit just inside it.
 - **The stage fills once and closes.** Slots are not recycled, so the wall is
   first-come-first-served rather than a rolling window — which is what makes leaving a sign
   worth anything. When it is full the owner clears it from Telegram.
