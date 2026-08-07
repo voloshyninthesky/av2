@@ -28,24 +28,96 @@ export function makeMascotPointer() {
   spr.scale.set(0.55, 0.55, 1);
   return spr;
 }
+// Micro-texture painter. Near-white canvases multiplied under material.color,
+// so every recolor slot keeps tinting exactly as before — the weave only takes
+// the flat plastic off the surface. Deterministic (seeded) so renders and
+// fingerprints stay reproducible.
+function makeClothTexture(paint, repeatX, repeatY, size = 128) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+  let seed = 7;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  paint(ctx, size, rand);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX, repeatY);
+  return tex;
+}
+
+// Felt/knit body cloth: fine warp/weft grid plus sparse flecks.
+function makeFabricTexture() {
+  return makeClothTexture((x, size, rand) => {
+    x.fillStyle = 'rgba(0,0,0,0.045)';
+    for (let i = 0; i < size; i += 2) x.fillRect(i, 0, 1, size);
+    x.fillStyle = 'rgba(0,0,0,0.03)';
+    for (let i = 0; i < size; i += 3) x.fillRect(0, i, size, 1);
+    for (let i = 0; i < 900; i++) {
+      x.fillStyle = rand() > 0.5 ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.05)';
+      x.fillRect((rand() * size) | 0, (rand() * size) | 0, 1, 1);
+    }
+  }, 3, 3);
+}
+
+// Ribbed varsity trim: vertical knit ridges for hem band, cuffs, stripe, collar.
+function makeRibTexture() {
+  return makeClothTexture((x, size) => {
+    for (let i = 0; i < size; i += 8) {
+      const g = x.createLinearGradient(i, 0, i + 8, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0.11)');
+      g.addColorStop(0.45, 'rgba(255,255,255,0)');
+      g.addColorStop(0.75, 'rgba(0,0,0,0.02)');
+      g.addColorStop(1, 'rgba(0,0,0,0.11)');
+      x.fillStyle = g;
+      x.fillRect(i, 0, 8, size);
+    }
+  }, 10, 2, 64);
+}
+
+// Hair strands: wavy vertical streaks, a few bright, most as soft shadow.
+function makeStrandTexture() {
+  return makeClothTexture((x, size, rand) => {
+    for (let i = 0; i < 46; i++) {
+      const sx = rand() * size;
+      const wobble = 2 + rand() * 3;
+      const phase = rand() * Math.PI * 2;
+      x.lineWidth = 0.7 + rand() * 1.1;
+      x.strokeStyle = rand() > 0.82 ? 'rgba(255,255,255,0.35)' : `rgba(0,0,0,${0.05 + rand() * 0.08})`;
+      x.beginPath();
+      for (let y = 0; y <= size; y += 8) {
+        const px = sx + Math.sin(phase + y * 0.05) * wobble;
+        if (y === 0) x.moveTo(px, y); else x.lineTo(px, y);
+      }
+      x.stroke();
+    }
+  }, 3, 2);
+}
+
 // ---- compact young stage mascot ----
 export function buildMascot() {
   const group = new THREE.Group();
   group.name = 'Ти';
 
+  const fabricTex = makeFabricTexture();
+  const ribTex = makeRibTexture();
+  const strandTex = makeStrandTexture();
+
   // Recolorable outfit slots (mascot customization recolors these in place).
   const mats = {
-    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75, envMapIntensity: 0.65 }),
-    panel: new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72 }),
-    stripes: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 }),
-    sleeveL: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76 }),
-    sleeveR: new THREE.MeshStandardMaterial({ color: 0x7fa1bd, roughness: 0.82 }),
-    shoulder: new THREE.MeshStandardMaterial({ color: 0xb93a3a, roughness: 0.76 }),
-    collar: new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.7 }),
-    pants: new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82 }),
+    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75, envMapIntensity: 0.65, map: fabricTex }),
+    panel: new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72, map: fabricTex }),
+    stripes: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76, map: ribTex }),
+    sleeveL: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76, map: fabricTex }),
+    sleeveR: new THREE.MeshStandardMaterial({ color: 0x7fa1bd, roughness: 0.82, map: fabricTex }),
+    shoulder: new THREE.MeshStandardMaterial({ color: 0xb93a3a, roughness: 0.76, map: fabricTex }),
+    collar: new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.7, map: ribTex }),
+    pants: new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82, map: fabricTex }),
     shoes: new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 }),
   };
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.72 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.6, envMapIntensity: 0.7, map: strandTex });
   // Skin tones come from the customization config; keep env response low so
   // close-up palms/faces do not clip to white under stacked warm spots.
   const skin = new THREE.MeshStandardMaterial({ color: 0xf2c4a6, roughness: 0.88, envMapIntensity: 0.5 });
@@ -131,17 +203,34 @@ export function buildMascot() {
   );
   fringe.position.set(0, 0.04, 0.045);
   head.add(fringe);
-  // Dedicated iris material so eye color can be customized without touching
-  // the shared ink material (glasses, badge) — recolored in place.
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.45 });
+  // Back fall: the tapered mass below the skull that the back/cap spheres
+  // cannot fake — long hair actually hangs down the back with it. Styles place
+  // or hide it like every other piece.
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), hairMat);
+  tail.position.set(0, -0.44, -0.17);
+  head.add(tail);
+  // Layered eye: sclera almond behind a large iris and pupil, so the
+  // customizable iris color actually reads instead of tinting one dark blob.
+  // The iris keeps its dedicated material (recolored in place); the pupil
+  // reuses the shared ink material, which is never recolored.
+  const scleraMat = new THREE.MeshStandardMaterial({ color: 0xf4efe4, roughness: 0.35 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.4 });
   const eyeShine = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const x of [-0.09, 0.09]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), eyeMat);
-    eye.scale.set(1.4, 0.72, 0.7);
-    eye.position.set(x, 0.025, 0.286);
-    head.add(eye);
+    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), scleraMat);
+    sclera.scale.set(1.35, 0.8, 0.5);
+    sclera.position.set(x, 0.025, 0.281);
+    head.add(sclera);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.0225, 10, 8), eyeMat);
+    iris.scale.set(1, 1, 0.55);
+    iris.position.set(x, 0.023, 0.292);
+    head.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 6), ink);
+    pupil.scale.set(1, 1, 0.5);
+    pupil.position.set(x, 0.023, 0.301);
+    head.add(pupil);
     const shine = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 5), eyeShine);
-    shine.position.set(x + 0.011, 0.034, 0.304);
+    shine.position.set(x + 0.008, 0.034, 0.305);
     head.add(shine);
     const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.012), hairMat);
     brow.position.set(x, 0.085, 0.284);
@@ -190,15 +279,24 @@ export function buildMascot() {
     headphones: new THREE.Group(),
   };
   for (const x of [-0.285, 0.285]) {
-    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.009, 6, 14), silver);
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.011, 6, 16), silver);
     hoop.position.set(x, -0.02, 0.035);
     hoop.rotation.y = Math.PI / 2;
     accessoryGroups.hoops.add(hoop);
   }
+  // Tinted glass fills inside the rims — depthWrite off so the transparent
+  // pass draws them over the eye stack without sorting artifacts.
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0xa8c6dd, transparent: true, opacity: 0.2, roughness: 0.08,
+    metalness: 0.25, envMapIntensity: 1.4, depthWrite: false,
+  });
   for (const x of [-0.095, 0.095]) {
     const lens = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.012, 6, 18), ink);
     lens.position.set(x, 0.018, 0.304);
     accessoryGroups.glasses.add(lens);
+    const lensFill = new THREE.Mesh(new THREE.CircleGeometry(0.058, 18), lensMat);
+    lensFill.position.set(x, 0.018, 0.31);
+    accessoryGroups.glasses.add(lensFill);
   }
   const glassesBridge = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.012, 0.012), ink);
   glassesBridge.position.set(0, 0.018, 0.304);
@@ -303,7 +401,7 @@ export function buildMascot() {
   // Only the major masses cast shadows. Trim, stripes, eyes, collar and pins
   // are too small to read in the shadow map and would roughly double the
   // shadow-pass draw calls now that the mascot stands in the key light.
-  const shadowCasters = new Set([torso, neck, face, hairBack, hairCap, fringe, ...locks]);
+  const shadowCasters = new Set([torso, neck, face, hairBack, hairCap, fringe, tail, ...locks]);
   group.traverse((object) => {
     if (!object.isMesh) return;
     object.castShadow = shadowCasters.has(object) || object.userData.majorMass === true;
@@ -314,7 +412,7 @@ export function buildMascot() {
     handL: armL.userData.hand,
     handR: armR.userData.hand,
     custom: {
-      mats, hairMat, skinMat: skin, hairBack, hairCap, fringe, locks, accessoryGroups, headphoneMats,
+      mats, hairMat, skinMat: skin, hairBack, hairCap, fringe, tail, locks, accessoryGroups, headphoneMats,
       eyeMat,
       mouths: { soft: softSmile, wide: wideSmile, neutral: neutralMouth },
     },

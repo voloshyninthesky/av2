@@ -10,7 +10,14 @@ delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**Nothing. `main` is deployed and live**, tip `abae451`, verified rather than assumed:
+**Mascot variant-quality pass, uncommitted in the working tree** (stamp `20260807-08`):
+layered eyes, long-hair back fall, cloth/hair micro-textures, glasses lens fills — same
+option IDs throughout, see [[Decisions]]. Verified by Node math against the vendored
+three.js (15 assertions) plus the full test suite, because the agent browser pane hit the
+wedged-GPU failure in [[Gotchas]] — **a human eyeball of the live stage is pending**,
+especially the face close-up in the dressing room.
+
+Otherwise **`main` is deployed and live**, tip `abae451`, verified rather than assumed:
 
 ```bash
 curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # 20260807-03

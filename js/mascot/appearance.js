@@ -37,18 +37,24 @@ export const MASCOT_HAIR_STYLES = {
     // wide, set back, and stopping at the jaw so the face stays open
     locks: { s: [0.88, 2.75, 0.82], x: 0.288, y: -0.2, z: -0.035 },
     fringe: { s: [1.0, 1.02, 1.0], p: [0, 0.04, 0.045], rz: -0.22 },
+    // The fall down the back, tilted in so the tip hugs the shoulder blades.
+    // Length is capped so the face-category frame (head bounds) stays a
+    // portrait — the tail is part of the head group and counts toward it.
+    tail: { s: [1.12, 1.9, 0.72], p: [0, -0.41, -0.17], rx: 0.14 },
   },
   bob: {
     back: { s: [1.16, 1.05, 0.95], p: [0, -0.03, -0.055] },
     cap: { s: [1.03, 1, 1.03], p: [0, 0.04, 0.05] },
     locks: { s: [0.82, 1.62, 0.8], x: 0.272, y: -0.14, z: -0.01 },
     fringe: { s: [1.02, 1.08, 1.02], p: [0, 0.04, 0.045], rz: 0 },
+    tail: null,
   },
   short: {
     back: { s: [1.06, 0.62, 0.88], p: [0, 0.06, -0.03] },
     cap: { s: [1.04, 0.96, 1.04], p: [0, 0.04, 0.05] },
     locks: { s: [0.4, 0.75, 0.45], x: 0.255, y: 0.02, z: 0.045 },
     fringe: { s: [1.0, 0.82, 1.0], p: [0, 0.045, 0.045], rz: 0.14 },
+    tail: null,
   },
   // No hair pieces at all: the skin-toned face sphere shows through on top,
   // reading as a bald scalp. Brows stay on (they're not part of this set).
@@ -57,6 +63,7 @@ export const MASCOT_HAIR_STYLES = {
     cap: null,
     locks: null,
     fringe: null,
+    tail: null,
   },
 };
 
@@ -72,10 +79,13 @@ export const MASCOT_SMILES = new Set(['soft', 'wide', 'neutral']);
 // Curated hair palette — retired swatch values fall back to the default so no
 // look ever shows a color the editor can no longer name.
 export const MASCOT_HAIR_COLOR_VALUES = new Set(['5a2f22', '241a14', 'c9a35f', 'a14d2d', 'b04a68']);
+// Iris hexes are tuned for the layered eye: bright enough to read next to the
+// dark pupil at stage distance, matched by the editor swatches in
+// stage/index.html.
 export const MASCOT_EYE_COLORS = {
   dark: 0x17121c,
-  green: 0x2e6b4f,
-  blue: 0x3c5f9e,
+  green: 0x3f8f63,
+  blue: 0x4d7fd1,
 };
 export const MASCOT_SHOE_COLORS = {
   default: null,

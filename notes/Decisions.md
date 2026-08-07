@@ -12,6 +12,22 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## Variant quality is a rendering pass, not a new wardrobe — 2026-08-07
+
+The mascot's customization options kept their exact IDs and sets, but each variant now
+renders richer: eyes are layered sclera / iris / pupil so ЗЕЛЕНІ and БЛАКИТНІ read as
+colors instead of dark blobs (the iris hexes brightened with them, swatches in
+`stage/index.html` updated to match); ДОВГЕ gets an authored back-fall mass so long hair
+exists from behind; окуляри get tinted lens fills; and the garment and hair carry
+build-time canvas micro-textures (knit weave, ribbed trim, strands) that are near-white so
+every recolor slot tints exactly as before. Nothing new allocates on change — geometry and
+textures are built once in `buildMascot()` and toggled or recolored in place, which keeps
+the 20-change stress contract and the curated-shadow-caster rule intact (the back fall
+joined the casters as a major hair mass). Saved `av2.mascot.v3` configs render unchanged
+in identity, just better — that's why no key bump.
+
+---
+
 ## The full meter is the stage's one unlock — 2026-08-07
 
 Signing used to be available the moment the Telegram storage answered, which put it on

@@ -815,7 +815,7 @@ The editor should feel like a small dressing room inside the stage, not a settin
 1. A first-time visitor can make a recognizable change and return to play in **under 30 seconds**.
 2. Every change is visible on the real mascot at a useful scale; the panel never covers the face or the body part being edited.
 3. Exploration is reversible. **ГОТОВО** commits the draft; **✕ / Esc** cancels it and restores the configuration from when the editor opened.
-4. The feature stays lightweight: procedural geometry, shared materials, curated choices, local persistence, and no account or asset download.
+4. The feature stays lightweight: procedural geometry, shared materials and build-time canvas micro-textures (knit, rib, hair strands), curated choices, local persistence, and no account or asset download.
 
 ### Information architecture and flow
 
@@ -861,8 +861,8 @@ The editor should feel like a small dressing room inside the stage, not a settin
 | Layer | Scope |
 |-------|-------|
 | **Editor foundation** | Measured preview safe rectangle; category rail; sticky actions; draft / commit / cancel model; reset undo; accessible dialog and radio behavior; compact landscape layout |
-| **Identity and delight** | Four curated skin tones applied to face and both hands; five hair colors; three eye colors on a dedicated iris material; three authored smiles (soft default, open singing wide, calm neutral); drag-to-rotate preview; compatible random look |
-| **Wardrobe** | Accessories `немає / сережки / окуляри / навушники` (glasses have temple arms); four authored hairstyles (including bald) with a restyled shared fringe and per-style lock placement; four varsity palettes (**Сцена / Фірмовий / Джинс / Ніч**) on the placket / chest-stripe / hem-band / cuffs garment; four-option primary / accent overrides; shoe-color override with a palette-default option |
+| **Identity and delight** | Four curated skin tones applied to face and both hands; five hair colors; three eye colors on a dedicated iris material inside a layered sclera / iris / pupil eye, so the chosen color reads at stage distance; three authored smiles (soft default, open singing wide, calm neutral); drag-to-rotate preview; compatible random look |
+| **Wardrobe** | Accessories `немає / сережки / окуляри / навушники` (glasses have temple arms and tinted lens fills); four authored hairstyles (including bald) with a restyled shared fringe, per-style lock placement, and a long-style back fall; four varsity palettes (**Сцена / Фірмовий / Джинс / Ніч**) on the placket / chest-stripe / hem-band / cuffs garment; four-option primary / accent overrides; shoe-color override with a palette-default option |
 
 All options reuse or toggle cached geometry and shared materials. Changing a choice must not allocate new meshes, materials, textures, or synthesis work inside the input handler. Arbitrary uploads, AI avatars, an unrestricted color picker, accounts, and a downloadable wardrobe remain out of scope.
 
