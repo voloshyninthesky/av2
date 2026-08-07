@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260806-19';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260806-19';
-import { bumpHitPulse } from '../scene/effects.js?v=20260806-19';
-import { instrumentView } from '../view/instrument-presets.js?v=20260806-19';
-import { play, keyboardPianoNotes } from './state.js?v=20260806-19';
-import { trackOnce } from '../core/analytics.js?v=20260806-19';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-01';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-01';
+import { bumpHitPulse } from '../scene/effects.js?v=20260807-01';
+import { instrumentView } from '../view/instrument-presets.js?v=20260807-01';
+import { play, keyboardPianoNotes } from './state.js?v=20260807-01';
+import { trackOnce } from '../core/analytics.js?v=20260807-01';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -49,9 +49,9 @@ function praiseWord() {
  * they are least sure anything happened. Four times a visit at most, then
  * silence: praise that keeps arriving stops meaning anything.
  *
- * Yields to a toast already on screen, which at this point is that
- * instrument's how-to hint and says far more than "Клас!" does. (Price chips
- * live in `#chip`, a separate element, and are unaffected either way.)
+ * Yields to a toast already on screen rather than replacing it: anything else
+ * the stage chose to say carries more than a cheer does. (Price chips live in
+ * `#chip`, a separate element, and are unaffected either way.)
  */
 const praisedKinds = new Set();
 function praiseFirstNote(kind) {
@@ -73,15 +73,17 @@ export function addVibe(n, kind = null) {
     const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
     spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
     bumpHitPulse(1.35);
-    // The meter filling is its own event with its own name — the first fill
-    // adds the one piece of news it carries.
-    ui.toast(
-      justUnlocked
-        ? 'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>'
-        : 'МАКСИМАЛЬНИЙ ВАЙБ!',
-      justUnlocked ? 4200 : 2200,
-      'vibe-max',
-    );
+    // Announced once, on the fill that actually changes something. Every later
+    // fill still gets the fireworks and the meter flash — by then the visitor
+    // knows what a full meter looks like, and repeating the words would only
+    // make the loop pedal's arrival read as routine in hindsight.
+    if (justUnlocked) {
+      ui.toast(
+        'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
+        4200,
+        'vibe-max',
+      );
+    }
     // Meter celebrates at 100% while the fireworks/toast run, then settles.
     play.vibe = 55;
     play.lastVibeAdd = performance.now() + 3600;

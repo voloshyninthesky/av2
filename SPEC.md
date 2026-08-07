@@ -554,7 +554,7 @@ Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, nev
 - Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
 - Every live play route passes its instrument to `addVibe(n, kind)`; the vocal pad and keyboard vocal reach it directly rather than through `playMusicalEvent`.
 
-Filling the VIBE meter is its own event with its own name — **МАКСИМАЛЬНИЙ ВАЙБ!** — on every fill, plus **LOOP-ПЕДАЛЬ ВІДКРИТО** on the first, which is the one piece of news it carries.
+Filling the VIBE meter announces itself **once** — **МАКСИМАЛЬНИЙ ВАЙБ! LOOP-ПЕДАЛЬ ВІДКРИТО** on the first fill, the one that actually changes something. Later fills keep the fireworks and the meter flash but say nothing: by then a full meter is self-explanatory, and repeating the words would make the loop pedal's arrival read as routine in hindsight.
 
 ## 10. Telegram / in-app browser
 
