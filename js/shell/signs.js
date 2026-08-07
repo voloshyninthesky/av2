@@ -5,12 +5,12 @@
 // stage state lives in one pinned message — read via getChat, rewritten
 // via editMessageText. Probed once per load; on any failure nothing at all
 // appears, so the stage must look exactly as it does without the feature.
-// One sign per device per day, enforced only in localStorage — no IPs, no
-// identifiers, nothing personal stored anywhere.
+// One sign per device per 7 days, enforced only in localStorage — no IPs,
+// no identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260807-04';
-import { params } from '../core/quality.js?v=20260807-04';
-import { track } from '../core/analytics.js?v=20260807-04';
+import { ui } from '../core/studio.js?v=20260807-05';
+import { params } from '../core/quality.js?v=20260807-05';
+import { track } from '../core/analytics.js?v=20260807-05';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -18,7 +18,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260807-04';
+} from '../scene/signs.js?v=20260807-05';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -35,7 +35,7 @@ const API = `https://api.telegram.org/bot${BOT}`;
 
 const STORE_KEY = 'av2.sign.v1';
 const MAX_LEN = 24;
-const DAY_MS = 86_400_000;
+const GATE_MS = 7 * 86_400_000;
 // A Telegram message tops out at 4096 UTF-16 units, and that ceiling — not
 // the slot count — is what really limits how many signs the stage can show.
 // So the head is a terse line format rather than JSON (roughly 40% smaller,
@@ -110,7 +110,7 @@ async function tg(method, body) {
 function readGate() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-    return typeof saved?.ts === 'number' && Date.now() - saved.ts < DAY_MS ? saved : null;
+    return typeof saved?.ts === 'number' && Date.now() - saved.ts < GATE_MS ? saved : null;
   } catch {
     return null;
   }
@@ -118,9 +118,9 @@ function readGate() {
 
 /**
  * The button exists only while a visitor can actually use it: the storage
- * answered, they have not signed today, and the stage still has a free slot.
- * A control that is visible but cannot do anything is worse than no control —
- * it invites a tap and answers with a refusal.
+ * answered, they have not signed in the last 7 days, and the stage still has
+ * a free slot. A control that is visible but cannot do anything is worse
+ * than no control — it invites a tap and answers with a refusal.
  */
 function syncSignAvailability() {
   if (!btn) return;
@@ -157,7 +157,7 @@ function syncPreview() {
 function rememberSign(text, color) {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({ text, color, ts: Date.now() }));
-  } catch { /* storage may be unavailable; the once-a-day gate just relaxes */ }
+  } catch { /* storage may be unavailable; the 7-day gate just relaxes */ }
 }
 
 function recallSign() {
@@ -185,7 +185,7 @@ async function submitSign(event) {
     return;
   }
   if (readGate()) {
-    showError('Один знак на день — повернись завтра.');
+    showError('Один знак на тиждень — повернись за кілька днів.');
     return;
   }
   posting = true;
@@ -238,22 +238,24 @@ async function submitSign(event) {
       tail = node.message_id;
     }
     state = { n: nextN, s: hot, t: tail };
+    // The pinned head is the whole write: one edit, nothing else. An earlier
+    // version also posted "✍️ text · colour" to the channel as a feed, but
+    // that is a second message per sign for no functional reason — the head
+    // (plus the archive chunks a drain produces) already is the record.
     await tg('editMessageText', {
       chat_id: CHAT,
       message_id: pinnedMessageId,
       text: head(),
     });
-    // Best-effort feed post so the owner sees each sign arrive in Telegram.
-    tg('sendMessage', { chat_id: CHAT, text: `✍️ ${text} · ${sign.color}` }).catch(() => {});
     rememberSign(text, selectedColor);
     syncSignAvailability();
     showError('');
     addSign(sign);
     ui.closeAll();
-    ui.toast('Готово! <span class="hl">Твій знак на сцені</span> — його бачать усі гості', 4200);
+    ui.toast('Готово! Шукай свій підпис на сцені.', 4200);
     track('stage-sign-left');
   } catch {
-    showError('Сцена зараз недоступна — спробуй пізніше.');
+    showError('ой, не сьогодні :(');
   } finally {
     posting = false;
     els.submit.disabled = false;

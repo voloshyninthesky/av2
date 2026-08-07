@@ -14,7 +14,7 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ## Signs live in a Telegram channel, not on a server — 2026-08-07
 
-Visitors can now sign the stage: short glowing tags, one per visitor per day, on the
+Visitors can now sign the stage: short glowing tags, one per visitor per 7 days, on the
 back-wall band under the screen — spilling onto the stage floor once the wall's twenty
 slots are taken. The first cut ran on the VPS (nginx + a Node file at
 `back.artvibe.com.pl`, per-IP rate limits); it was replaced the same day, and the reasons
@@ -22,11 +22,10 @@ are worth keeping:
 
 - **No personal data beats rate-limit rigor.** Per-IP limiting means storing IPs. Dropping
   it makes the privacy story trivial — no cookies, nothing personal, no banner needed —
-  and the once-a-day gate lives in `localStorage` on the device instead. A determined
+  and the 7-day gate lives in `localStorage` on the device instead. A determined
   visitor can clear it; the stage survives that.
-- **A Telegram channel is the whole backend.** Each accepted sign is a channel post (the
-  owner's feed), and the aggregate the stage loads is one pinned JSON message — read via
-  `getChat`, rewritten via `editMessageText`, straight from the browser
+- **A Telegram channel is the whole backend.** The aggregate the stage loads is one pinned
+  message — read via `getChat`, rewritten via `editMessageText`, straight from the browser
   (`api.telegram.org` sends `Access-Control-Allow-Origin: *`). Bots cannot read channel
   history, which is why the aggregate is a pinned message and not "sum the messages".
   When the head nears Telegram's 4096-char ceiling, rows older than the displayed 45 seal
@@ -37,9 +36,17 @@ are worth keeping:
 - **The write key ships in the bundle, and that is accepted.** It is base64-chunked so the
   token never appears in the repo or GitHub code search as plain text, but anyone who opens
   DevTools can extract it and spam or wipe the wall. At this scale the blast radius is one
-  pinned message the owner can restore from the feed; a real secret would require the
-  server we just deleted. This is the one deliberate exception to «no secrets in repo»
-  (SPEC §12).
+  pinned message — restorable from `deploy/signs-backup/`'s two-hourly snapshot, since
+  nothing else records it once the per-sign channel post was dropped (below); a real secret
+  would require the server we just deleted. This is the one deliberate exception to
+  «no secrets in repo» (SPEC §12).
+- **The per-sign channel post was dropped.** Every accepted sign used to also land as a
+  plain `✍️ text · colour` post, meant as a human-readable feed for the owner. It was a
+  second Telegram message per sign buying nothing the head didn't already have, so it is
+  gone — the write is exactly one edit. The trade-off is real: a sign lost to the
+  last-writer-wins race (§ Concurrency) is now recorded nowhere until the next backup runs,
+  where before the feed post would have caught it. Accepted, because the race is already
+  rare and the backup already exists.
 - **If storage doesn't answer — or the run is QA (`testhooks`/`headless`/`shot`) — the
   feature doesn't exist.** One probe gates the button, modal and both surfaces; the stage's
   core promise must not inherit a network dependency.

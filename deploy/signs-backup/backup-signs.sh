@@ -2,9 +2,9 @@
 # ============================================================
 # Art Vibe — signs backup
 # Snapshots the pinned "head" message (the live stage: every sign, its colour
-# and its slot) out of the Telegram channel. The head is the one thing with no
-# second copy — the channel's ✍️ feed posts record what was said, but not the
-# layout — so a wiped or hand-mangled pin is unrecoverable without this.
+# and its slot) out of the Telegram channel. Nothing else in the channel
+# records it — each sign is written straight into the head with no separate
+# feed post — so a wiped or hand-mangled pin is unrecoverable without this.
 #
 # Credentials come from /etc/av2-signs-backup.env so they never live in the
 # repo:

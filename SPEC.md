@@ -136,7 +136,7 @@ Mute chosen before the context exists is honored when `init` runs.
 
 ### Signs («знаки на сцені»)
 
-Visitors can leave one short glowing sign per day and see everyone else's. The feature is
+Visitors can leave one short glowing sign per 7 days and see everyone else's. The feature is
 **absent unless its storage answers**: one boot-time probe gates the button, the modal and
 both sign surfaces together; on any failure — and in `testhooks` / `headless` / `shot` QA
 runs, which must not read or write the live stage — the stage looks exactly as it does
@@ -182,7 +182,7 @@ without the feature. No retry, no error surface.
   repaints on every third frame, is skipped entirely under reduced motion and on the low
   budget.
 - **Leaving a sign:** a marker button fixed **below the HUD's right cluster** (`#sign-btn`,
-  hidden until the probe passes; a once-a-day gesture, not navigation) opens `#modal-sign`:
+  hidden until the probe passes; a once-a-week gesture, not navigation) opens `#modal-sign`:
   one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
   rejected), five curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
   live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. The panel carries no explanatory lead — the
@@ -190,7 +190,7 @@ without the feature. No retry, no error surface.
   (~0.9 s; instant under reduced motion) and shows a toast; failures surface as friendly
   inline one-liners and never block the stage.
 - **Once a day, on the device only.** `localStorage` `av2.sign.v1` (`{ text, color, ts }`)
-  prefills the form and arms a rolling 24 h gate; while gated the button carries
+  prefills the form and arms a rolling 7-day gate; while gated the button carries
   no state at all — it is simply absent until tomorrow. No IPs, no identifiers,
   nothing personal is stored anywhere, and the site stays cookie-less — no consent banner
   required.
@@ -547,13 +547,17 @@ form-encoded bodies so they stay preflight-free).
   head. Bots cannot fetch arbitrary messages, so the stage never reads chunks — they are
   the archive, sitting visibly in the channel for the owner (or any user-account MTProto
   tool) to walk.
-- **Every accepted sign is also sent as a plain channel post** (`✍️ text · color`) — the
-  owner's human-readable feed and audit log. (Bots cannot read channel history back, which
-  is why the aggregate lives in the pinned message rather than being summed from posts.)
+- **The write is exactly one message edit, nothing more.** An earlier version also sent a
+  plain channel post per sign as a human-readable feed; that was a second Telegram message
+  for no functional reason — the head is the whole record — so it was removed. Bots cannot
+  read channel history back regardless, which is why the aggregate lives in the pinned
+  head rather than being summed from any posts, feed or otherwise.
 - **Concurrency:** the client re-reads the pinned head immediately before writing; the
-  residual last-writer-wins race can drop a concurrent sign from the stage, but its feed
-  post still records it. Two concurrent seals can duplicate rows across archive chunks —
-  the archive is append-only and tolerant of that. Accepted at this scale.
+  residual last-writer-wins race can drop a concurrent sign from the stage **with nothing
+  else recording it** — there is no feed post as a backstop. Accepted at this scale, and it
+  is the reason `deploy/signs-backup/` snapshots the head every 2 hours rather than being
+  purely a convenience. Two concurrent seals can duplicate rows across archive chunks —
+  the archive is append-only and tolerant of that.
 - The channel write key ships in the bundle **base64-chunked** (`js/shell/signs.js`) so the
   raw token never appears in the repo or in code search; anyone determined can extract it
   from DevTools — an accepted trade-off for having no server (reasoning in
@@ -624,7 +628,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 - `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
 - `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
-- `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 24 h once-a-day gate.
+- `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 7-day gate.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
 ---
@@ -732,7 +736,7 @@ lesson pages):
 | `stage-first-play` | First note on any instrument (all play routes funnel through `addVibe`) |
 | `stage-pricing-open` | Pricing overlay opened by any route |
 | `book-{instagram\|messenger}-{home\|vocal\|guitar\|piano\|drums\|stage}` | Outbound booking link clicked |
-| `stage-sign-left` | A sign was accepted onto the stage (at most once a day per device by construction) |
+| `stage-sign-left` | A sign was accepted onto the stage (at most once per 7 days per device by construction) |
 
 The first three fire at most once per page load; booking clicks fire every time.
 Booking happens inside Instagram/Messenger DMs, so the click is the last thing
