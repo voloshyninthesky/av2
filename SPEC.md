@@ -142,7 +142,7 @@ both sign surfaces together; on any failure — and in `testhooks` / `headless` 
 runs, which must not read or write the live stage — the stage looks exactly as it does
 without the feature. No retry, no error surface.
 
-- **Three surfaces, filled in order — 75 slots.** The back-wall band takes the first
+- **Four surfaces, filled in order — 123 slots.** The back-wall band takes the first
   **20** (X ±4.05, Y 0.35–2.30 at z −5.78, clear of the brand plate above, the upstage
   curtain legs beside, the star drop and the platform). Only once it is full do signs
   reach the **front strip** the visitor stands on (**25** — X ±4.7, Z 0.55–3.25, with the
@@ -158,16 +158,23 @@ without the feature. No retry, no error surface.
   in, so it announces itself. The mid band is wider than the front strip
   because it sits further from the camera, where the frame opens out — measured through the
   settled follow camera, it spills the frame far less than the front strip already does.
+  Last comes **под сценою**: the venue floor around and beneath the platform (**48** usable
+  cells of a 9×7 grid spanning X ±13, Z −7…11 at y −0.585; the 15 cells whose centres fall
+  under the platform footprint are dropped, since the boards would hide them). Signs down
+  there are read the hard way — by peering off the edge, or during the fall, whose camera
+  sinks below platform level on the way down. It glows brighter than the stage floors
+  (0.62) because nothing else lights the void.
 - **A sign's position is part of the sign.** At creation the client picks the first free
-  slot — wall (`0–19`), then front strip (`20–44`), then mid band (`45–74`) — and stores it
+  slot — wall (`0–19`), then front strip (`20–44`), then mid band (`45–74`), then the
+  under-stage ring (`75–122`) — and stores it
   in the sign's row, so a sign stays where it was put for as long as it lives, even as
   older signs retire around it. Within its slot, each surface's fixed shuffle plus
   id-seeded jitter, rotation, size variance and an occasional underline flourish keep the
   fill organic (stable, since id and slot never change). At capacity the retiring oldest
   sign is what frees a slot for the newcomer. Rows without a valid slot (legacy or
-  hand-tampered state) fall back to a derived `(id − 1) % 75` home with a deterministic
+  hand-tampered state) fall back to a derived `(id − 1) % 123` home with a deterministic
   probe, so every visitor still computes the same stage.
-- **The stage fills once.** Slots are never recycled: when the last one goes, the stage is
+- **The stage fills once.** Slots are never recycled: when the last of the 123 goes, the stage is
   closed and the marker button is gone. A visitor who cannot sign is never shown a control
   that refuses them — the button is present only while the storage answered, the visitor
   has not signed today, and a slot is free. (A sign draining out of the head on the
@@ -514,11 +521,19 @@ form-encoded bodies so they stay preflight-free).
   …
   ```
 
-  Those rows are exactly what the stage displays (at most 75). Ids are strictly monotonic
+  Those rows are exactly what the stage displays (at most 123; a typical full house is ~2.4k chars). Ids are strictly monotonic
   and never reissued; `slot` is fixed at creation (§ Signs); the text goes last so it may
   contain `|`, and it can never contain a newline because input whitespace is collapsed.
   The stage reads only the head, via `getChat` → `pinned_message`, and rewrites it via
   `editMessageText`. Archive chunks use the same shape, headed `P=<previous chunk id>`.
+- **Why one message is the display limit.** The Bot API can *edit* any message it knows the
+  id of, but can read back only the pinned one (`getChat`); there is no get-message-by-id.
+  Uploaded documents (`sendDocument`) can't help either: `api.telegram.org/file/…` sends no
+  CORS headers, so browsers cannot download them (verified — curl reads the file, `fetch`
+  is blocked). The one read loophole, `forwardMessage`'s return value, would make every
+  page load forward-and-delete messages through the channel — feed junk, shared ~20/min
+  channel rate limit, races. So the stage displays what one 4096-char message holds, which
+  the line format makes ~120–170 signs.
 - **History never gets discarded — it seals into a linked list of messages.** A Telegram
   message tops out at 4096 chars, so the head holds only what the stage can show. Rows
   drain from the oldest end for two independent reasons — more rows than the stage has

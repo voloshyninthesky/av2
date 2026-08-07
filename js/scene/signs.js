@@ -71,11 +71,58 @@ const MID = {
   shuffleSeed: 0x5ca1e,
 };
 
+// The venue floor around and beneath the platform (y -0.6). Once the stage
+// itself is covered, further signs land down here — where the only way to
+// read them is to walk off the edge and fall past them. Cells whose centre
+// lands under the platform are dropped: the boards would hide them.
+const UNDER = {
+  key: 'under',
+  flat: true,
+  w: 26,
+  h: 18,
+  pos: new THREE.Vector3(0, -0.585, 2), // just above the venue floor plane
+  canvasW: 1536,
+  canvasH: 1063,
+  cols: 9,
+  rows: 7,
+  maxRot: 0.34,
+  // Brighter than the stage surfaces: nothing lights the void, so the tags
+  // have to carry themselves.
+  emissive: 0.62,
+  avoid: { halfX: 8.4, zMin: -5.4, zMax: 4.4 }, // the platform footprint
+  shuffleSeed: 0xba5e1,
+};
+
 // Fill order, and it is the whole seating plan: wall, then the strip the
-// visitor is standing on, then the boards behind it.
-const SURFACES = [WALL, FRONT, MID];
+// visitor is standing on, then the boards behind it, then the dark below.
+const SURFACES = [WALL, FRONT, MID, UNDER];
+
+/** Centre of a grid cell in world space. Flat surfaces are laid down by a
+ *  -90° X rotation, which sends local +Y (canvas top) to world -Z. */
+function cellCenterWorld(spec, cell) {
+  const col = cell % spec.cols;
+  const row = Math.floor(cell / spec.cols);
+  const x = spec.pos.x - spec.w / 2 + (col + 0.5) * (spec.w / spec.cols);
+  const z = spec.pos.z - spec.h / 2 + (row + 0.5) * (spec.h / spec.rows);
+  return { x, z };
+}
+
+// Cells a surface can actually use — everything, unless something opaque
+// sits over part of it.
+const USABLE = Object.fromEntries(SURFACES.map((spec) => {
+  const all = Array.from({ length: spec.cols * spec.rows }, (_, i) => i);
+  if (!spec.avoid) return [spec.key, all];
+  return [spec.key, all.filter((cell) => {
+    const { x, z } = cellCenterWorld(spec, cell);
+    const hidden = Math.abs(x) <= spec.avoid.halfX && z >= spec.avoid.zMin && z <= spec.avoid.zMax;
+    return !hidden;
+  })];
+}));
+
 export const WALL_SLOTS = WALL.cols * WALL.rows;
-export const TOTAL_SLOTS = SURFACES.reduce((n, s) => n + s.cols * s.rows, 0);
+export const TOTAL_SLOTS = SURFACES.reduce((n, s) => n + USABLE[s.key].length, 0);
+/** Slots on the stage itself; everything at or past this lives below it. */
+export const STAGE_SLOTS = TOTAL_SLOTS - USABLE.under.length;
 
 const FADE_S = 0.9; // fade-in of a freshly left sign
 const FADE_REPAINT_EVERY = 3; // texture re-uploads are the cost — skip frames
@@ -102,7 +149,7 @@ function shuffledOrder(count, seed) {
 }
 
 const ORDERS = Object.fromEntries(
-  SURFACES.map((spec) => [spec.key, shuffledOrder(spec.cols * spec.rows, spec.shuffleSeed)]),
+  SURFACES.map((spec) => [spec.key, shuffledOrder(USABLE[spec.key].length, spec.shuffleSeed)]),
 );
 
 /** Which surface a slot lives on, and which grid cell inside it. The
@@ -111,8 +158,10 @@ const ORDERS = Object.fromEntries(
 function placementForSlot(slot) {
   let base = 0;
   for (const spec of SURFACES) {
-    const count = spec.cols * spec.rows;
-    if (slot < base + count) return { spec, cell: ORDERS[spec.key][slot - base] };
+    const count = USABLE[spec.key].length;
+    if (slot < base + count) {
+      return { spec, cell: USABLE[spec.key][ORDERS[spec.key][slot - base]] };
+    }
     base += count;
   }
   return null;
@@ -138,7 +187,7 @@ function makeSurface(spec) {
     // floor surfaces are paint on boards: enough emissive to stay legible
     // where the spotlights do not reach, not enough to look like neon lying
     // on the stage.
-    emissiveIntensity: spec.flat ? 0.3 : 0.85,
+    emissiveIntensity: spec.emissive ?? (spec.flat ? 0.3 : 0.85),
     // A surface lying on the boards has to win against the contact shadows
     // already painted there; one standing on the wall does not.
     ...(spec.flat ? {
