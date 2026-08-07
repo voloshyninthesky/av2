@@ -7,16 +7,24 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-06';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-06';
-import { bumpHitPulse } from '../scene/effects.js?v=20260807-06';
-import { instrumentView } from '../view/instrument-presets.js?v=20260807-06';
-import { play, keyboardPianoNotes } from './state.js?v=20260807-06';
-import { trackOnce } from '../core/analytics.js?v=20260807-06';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260807-07';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260807-07';
+import { bumpHitPulse } from '../scene/effects.js?v=20260807-07';
+import { instrumentView } from '../view/instrument-presets.js?v=20260807-07';
+import { play, keyboardPianoNotes } from './state.js?v=20260807-07';
+import { trackOnce } from '../core/analytics.js?v=20260807-07';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
 const loopKeyHint = document.getElementById('loop-key-hint');
+
+// Filling the meter opens more than the loop pedal now, and the other things
+// it opens live above this module. main.js injects them rather than this
+// importing upward — see AGENTS.md on keeping the module graph a tree.
+let hooks = { onFirstFill: () => {} };
+export function initVibe(next) {
+  hooks = { ...hooks, ...next };
+}
 
 // ---- vibe ----
 
@@ -93,14 +101,14 @@ export function addVibe(n, kind = null) {
 
   play.vibeFull = true;
   unlockLoopPedal();
+  // Everything the first fill opens arrives at once: the loop pedal, and the
+  // sign button where the storage is up. The toast stays deliberately vague
+  // about what "more" is — the controls appearing say it better than a list.
+  hooks.onFirstFill();
   const spots = [new THREE.Vector3(-2, 4.6, 0), new THREE.Vector3(2.2, 5.2, -1), new THREE.Vector3(0, 5.6, 1)];
   spots.forEach((p, i) => setTimeout(() => fireworks.spawn(p), i * 260));
   bumpHitPulse(1.35);
-  ui.toast(
-    'МАКСИМАЛЬНИЙ ВАЙБ! <span class="hl">LOOP-ПЕДАЛЬ ВІДКРИТО</span>',
-    4200,
-    'vibe-max',
-  );
+  ui.toast('Максимальний вайб! Тепер ти можеш більше.', 4200, 'vibe-max');
 }
 
 // ---- price carousel ----

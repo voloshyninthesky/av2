@@ -5,10 +5,10 @@
 // release, so loop capture opens an entry on press and stamps it on release.
 // The chord pad also supports latching, so a quick tap frees the strum hand.
 // ============================================================
-import { ui, audio, guitar, mic } from '../core/studio.js?v=20260807-06';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260807-06';
-import { canvas } from '../view/rig.js?v=20260807-06';
-import { play, activePointers } from './state.js?v=20260807-06';
+import { ui, audio, guitar, mic } from '../core/studio.js?v=20260807-07';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260807-07';
+import { canvas } from '../view/rig.js?v=20260807-07';
+import { play, activePointers } from './state.js?v=20260807-07';
 import {
   CHORD_QUALITIES,
   CHORD_ROOTS,
@@ -16,9 +16,9 @@ import {
   padChords,
   setPadChord,
   slotKeyLabel,
-} from './guitar.js?v=20260807-06';
-import { addVibe } from './vibe.js?v=20260807-06';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260807-06';
+} from './guitar.js?v=20260807-07';
+import { addVibe } from './vibe.js?v=20260807-07';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260807-07';
 
 // Pad gestures compete with the stage's own pointer handling; main.js supplies
 // the predicates and teardown that only it can answer.

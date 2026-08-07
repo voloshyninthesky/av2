@@ -168,11 +168,18 @@ without the feature. No retry, no error surface.
   sign is what frees a slot for the newcomer. Rows without a valid slot (legacy or
   hand-tampered state) fall back to a derived `(id − 1) % 67` home with a deterministic
   probe, so every visitor still computes the same stage.
+- **Signing is earned, not offered.** The button stays hidden until the visitor fills the
+  VIBE meter for the first time — the same moment that opens the loop pedal (§9 Praise), so
+  the stage has exactly one unlock beat rather than two. Playing comes first; the stage is
+  signed by someone who played it.
 - **The stage fills once.** Slots are never recycled: when the last one goes, the stage is
   closed and the marker button is gone. A visitor who cannot sign is never shown a control
-  that refuses them — the button is present only while the storage answered, the visitor
-  has not signed today, and a slot is free. (A sign draining out of the head on the
-  character budget frees its slot again, which is the one way the stage reopens.)
+  that refuses them — the button is present only once the meter has been filled, the
+  storage answered, the visitor has not signed in the last 7 days, and a slot is free.
+  (A sign draining out of the head on the character budget frees its slot again, which is
+  the one way the stage reopens.) The meter can fill before or after the storage probe
+  resolves, so availability is recomputed rather than revealed once — either order has to
+  end with the right thing on screen.
 - **Cost.** Three extra draw calls, and three canvas textures — ~16 MB of VRAM once
   mipmapped at full size, **quartered on the low budget** (`usesLowMobileSceneBudget()`
   halves each dimension), since the tier scales pixel ratio, shadows and AA but would
@@ -182,7 +189,8 @@ without the feature. No retry, no error surface.
   repaints on every third frame, is skipped entirely under reduced motion and on the low
   budget.
 - **Leaving a sign:** a marker button in the **HUD's right nav** (`#sign-btn`, after
-  **Твій образ**, hidden until the probe passes) opens `#modal-sign`:
+  **Твій образ**, hidden until the meter has been filled and the probe passes) opens
+  `#modal-sign`:
   one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
   rejected), five curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
   live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. The panel carries no explanatory lead — the
@@ -675,7 +683,7 @@ Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, nev
 - Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
 - Every live play route passes its instrument to `addVibe(n, kind)`; the vocal pad and keyboard vocal reach it directly rather than through `playMusicalEvent`.
 
-Filling the VIBE meter announces itself **once** — **МАКСИМАЛЬНИЙ ВАЙБ! LOOP-ПЕДАЛЬ ВІДКРИТО** on the first fill, the one that actually changes something. Later fills keep the fireworks and the meter flash but say nothing: by then a full meter is self-explanatory, and repeating the words would make the loop pedal's arrival read as routine in hindsight.
+Filling the VIBE meter announces itself **once** — **Максимальний вайб! Тепер ти можеш більше.** on the first fill, the one that actually changes something. That fill is the stage's single unlock moment: it opens the **loop pedal** and, where the signs storage answered, the **sign button** — both appear together as the toast lands. The copy names neither, deliberately: two controls arriving on screen say it better than a list, and the wording no longer needs editing each time the fill unlocks something new. Later fills keep the fireworks and the meter flash but say nothing: by then a full meter is self-explanatory, and repeating the words would make the unlock read as routine in hindsight.
 
 ## 10. Telegram / in-app browser
 

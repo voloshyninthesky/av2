@@ -12,6 +12,28 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The full meter is the stage's one unlock — 2026-08-07
+
+Signing used to be available the moment the Telegram storage answered, which put it on
+screen before the visitor had done anything. It now opens on the **first VIBE fill**,
+alongside the loop pedal, so the stage has a single unlock beat instead of two unrelated
+ones — and the wall gets signed by someone who actually played, which is the whole point of
+a signature on a stage.
+
+The toast lost its inventory: **Максимальний вайб! Тепер ти можеш більше.** replaces
+naming the loop pedal. Two controls appearing at once say what opened better than a list
+does, and the copy no longer has to be rewritten every time the fill unlocks something
+new — which had already happened once.
+
+`js/play/vibe.js` sits below `js/shell/`, so it cannot reach the sign button directly.
+main.js injects the reveal through `initVibe({ onFirstFill })`, the same pattern the rest
+of the play modules use — see [[Architecture]] on why an upward import here would be a
+silent `undefined` rather than an error. The button's visibility is recomputed rather than
+flipped on, because the meter can fill either side of the storage probe resolving and both
+orders have to land correctly.
+
+---
+
 ## Signs live in a Telegram channel, not on a server — 2026-08-07
 
 Visitors can now sign the stage: short glowing tags, one per visitor per 7 days, on the

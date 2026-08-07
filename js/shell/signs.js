@@ -1,16 +1,17 @@
 // ============================================================
 // SIGNS — «знаки на сцені» controller
-// Storage is a Telegram channel, no server of our own: every accepted sign
-// is sent as a channel post (the owner's human-readable feed), and the
-// stage state lives in one pinned message — read via getChat, rewritten
-// via editMessageText. Probed once per load; on any failure nothing at all
-// appears, so the stage must look exactly as it does without the feature.
-// One sign per device per 7 days, enforced only in localStorage — no IPs,
-// no identifiers, nothing personal stored anywhere.
+// Storage is a Telegram channel, no server of our own: the whole stage lives
+// in one pinned message — read via getChat, rewritten via editMessageText, and
+// that edit is the entire write. Probed once per load; on any failure nothing
+// at all appears, so the stage must look exactly as it does without the
+// feature. Signing opens on the first VIBE fill, with the loop pedal. One sign
+// per device per 7 days, enforced only in localStorage — no IPs, no
+// identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260807-06';
-import { params } from '../core/quality.js?v=20260807-06';
-import { track } from '../core/analytics.js?v=20260807-06';
+import { ui } from '../core/studio.js?v=20260807-07';
+import { params } from '../core/quality.js?v=20260807-07';
+import { track } from '../core/analytics.js?v=20260807-07';
+import { play } from '../play/state.js?v=20260807-07';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -18,7 +19,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260807-06';
+} from '../scene/signs.js?v=20260807-07';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -117,15 +118,25 @@ function readGate() {
 }
 
 /**
- * The button exists only while a visitor can actually use it: the storage
- * answered, they have not signed in the last 7 days, and the stage still has
- * a free slot. A control that is visible but cannot do anything is worse
- * than no control — it invites a tap and answers with a refusal.
+ * The button exists only while a visitor can actually use it: they have filled
+ * the vibe meter once, the storage answered, they have not signed in the last
+ * 7 days, and the stage still has a free slot. A control that is visible but
+ * cannot do anything is worse than no control — it invites a tap and answers
+ * with a refusal.
+ *
+ * The vibe gate is why this is a function rather than a one-time reveal: the
+ * meter can fill before or after the storage probe resolves, and either order
+ * has to end with the right thing on screen.
  */
 function syncSignAvailability() {
   if (!btn) return;
   const free = chooseSlot(new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger)));
-  btn.hidden = Boolean(readGate()) || free === null;
+  btn.hidden = !play.vibeFull || Boolean(readGate()) || free === null;
+}
+
+/** Called when the vibe meter first fills — signing opens with the loop pedal. */
+export function revealSigns() {
+  syncSignAvailability();
 }
 
 function showError(message) {
@@ -192,9 +203,10 @@ async function submitSign(event) {
   els.submit.disabled = true;
   els.submit.textContent = 'ЛИШАЄМО…';
   try {
-    // Re-read the pinned state so a concurrent visitor's sign survives; the
-    // remaining write race can drop one sign from the stage, but its channel
-    // post below still records it for the owner.
+    // Re-read the pinned state so a concurrent visitor's sign survives. The
+    // residual last-writer-wins race can still drop one, and with no per-sign
+    // channel post there is nothing else recording it — the two-hourly backup
+    // in deploy/signs-backup/ is the only net under that.
     const chat = await tg('getChat', { chat_id: CHAT }).catch(() => null);
     const fresh = parseHead(chat?.pinned_message?.text);
     if (fresh) {
