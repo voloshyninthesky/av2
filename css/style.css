@@ -1411,6 +1411,42 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   box-shadow: 0 3px 0 rgba(23, 18, 28, .86);
 }
 
+/* ===== Signs («знаки на сцені») ===== */
+/* Below the HUD's right cluster — a once-a-day gesture, not navigation. */
+#sign-btn {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 74px); right: 18px;
+  z-index: 39;
+}
+/* .icon-btn's display:grid outranks the UA [hidden] rule, so be explicit. */
+#sign-btn[hidden] { display: none; }
+/* Today's sign is spent: stays discoverable, reads as done. */
+#sign-btn.is-done { opacity: .55; }
+#sign-btn.is-done:hover { transform: none; border-color: rgba(253, 251, 247, .35); color: var(--cream); }
+.sign-panel { width: min(560px, 100%); }
+.sign-label {
+  display: block; margin: 16px 0 8px; font-size: 12px;
+  letter-spacing: .14em; color: rgba(23, 18, 28, .65);
+}
+#sign-text {
+  width: 100%; font: 600 20px 'Manrope', sans-serif; color: var(--ink);
+  padding: 12px 14px; border: 3px solid var(--ink); border-radius: 12px;
+  background: #fff;
+}
+#sign-text:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.sign-swatches { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
+.sign-preview {
+  background: #15091f; border: 3px solid var(--ink); border-radius: 12px;
+  min-height: 74px; display: grid; place-items: center; padding: 12px 16px;
+  overflow: hidden;
+}
+#sign-preview-text {
+  font-family: 'Unbounded', sans-serif; font-weight: 700;
+  font-size: clamp(18px, 5vw, 30px); transform: rotate(-2deg);
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.sign-error { margin: 10px 0 0; color: #a3123f; font-weight: 700; }
+.sign-error[hidden] { display: none; }
+
 .mascot-panel .swatch-row { gap: 10px; }
 .swatch {
   position: relative; width: 48px; height: 48px; flex: none; border-radius: 50%;

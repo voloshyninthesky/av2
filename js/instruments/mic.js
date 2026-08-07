@@ -8,7 +8,7 @@ import {
   markInteract,
   metal,
   std,
-} from './shared.js?v=20260807-03';
+} from './shared.js?v=20260807-04';
 
 export function buildMic() {
   const mic = new THREE.Group();

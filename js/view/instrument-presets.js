@@ -5,8 +5,8 @@
 // moving a prop on stage carries its whole close-up with it.
 // ============================================================
 import * as THREE from 'three';
-import { drums, piano, guitar, mic } from '../core/studio.js?v=20260807-03';
-import { isMobileGameMode } from '../core/quality.js?v=20260807-03';
+import { drums, piano, guitar, mic } from '../core/studio.js?v=20260807-04';
+import { isMobileGameMode } from '../core/quality.js?v=20260807-04';
 
 export const instrumentGroups = { drums: drums.group, piano: piano.group, guitar: guitar.group, mic: mic.group };
 export const instrumentWorldPositions = Object.fromEntries(

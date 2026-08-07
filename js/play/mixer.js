@@ -4,16 +4,16 @@
 // fader is also the app's "sound is broken, fix it" affordance: it can rebuild
 // a stalled audio context and restore what was playing.
 // ============================================================
-import { AudioEngine } from '../audio.js?v=20260807-03';
-import { ui, audio, mic } from '../core/studio.js?v=20260807-03';
-import { play } from './state.js?v=20260807-03';
-import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260807-03';
+import { AudioEngine } from '../audio.js?v=20260807-04';
+import { ui, audio, mic } from '../core/studio.js?v=20260807-04';
+import { play } from './state.js?v=20260807-04';
+import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260807-04';
 import {
   stampHeldLoopCaptureDuration,
   beginHeldLoopCapture,
   finishHeldLoopCapture,
-} from './pads.js?v=20260807-03';
-import { VOCAL_KEYS } from './piano-notes.js?v=20260807-03';
+} from './pads.js?v=20260807-04';
+import { VOCAL_KEYS } from './piano-notes.js?v=20260807-04';
 
 // Recovering audio has to re-arm whatever the visit had going; the intro flow
 // owns those snapshots and main.js owns the jam gate.

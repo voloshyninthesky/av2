@@ -26,6 +26,7 @@ export class UI {
       rules: document.getElementById('modal-rules'),
       pricing: document.getElementById('modal-pricing'),
       mascot: document.getElementById('modal-mascot'),
+      sign: document.getElementById('modal-sign'),
     };
     this.current = null;
     this._toastTimer = null;
@@ -46,7 +47,7 @@ export class UI {
 
   async _ensurePricing() {
     if (!this._pricingPromise) {
-      this._pricingPromise = import('./pricing.js?v=20260807-03')
+      this._pricingPromise = import('./pricing.js?v=20260807-04')
         .then(({ PricingPicker }) => {
           this.pricing = new PricingPicker(this.modals.pricing);
           return this.pricing.init().then(() => this.pricing);
@@ -68,7 +69,7 @@ export class UI {
     document.querySelectorAll('[data-close]').forEach((b) =>
       b.addEventListener('click', () => this.closeAll()));
 
-    for (const key of ['steps', 'rules', 'pricing']) {
+    for (const key of ['steps', 'rules', 'pricing', 'sign']) {
       this.modals[key]?.addEventListener('click', (e) => {
         if (e.target === this.modals[key]) this.closeAll();
       });

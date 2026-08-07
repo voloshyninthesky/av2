@@ -81,11 +81,11 @@ js/
   lessons-analytics.js # booking-click events for the lesson pages
   core/             # errlog, telegram guards, quality tier, session flags, prices, studio boot, analytics
   view/             # render rig, camera framing, focus views, pointer routing, viewport
-  scene/            # procedural textures, stage, lighting, screen + slideshow, effects
+  scene/            # procedural textures, stage, lighting, screen + slideshow, effects, sign surfaces
   instruments/      # procedural drums / piano / guitar / mic (+ shared materials)
   mascot/           # appearance, model state, poses, walk collision, editor, per-frame update
   play/             # vibe meter, loop pedal, guitar, pads, piano notes, mixer, shared state
-  shell/            # post-processing probe, intro flow, headless QA hooks
+  shell/            # post-processing probe, intro flow, signs controller, headless QA hooks
 prices.json         # per-instrument lesson prices + promos
 piano-notes.json    # optional piano phrase data (kept; not auto-played on focus)
 vendor/three/       # vendored Three.js r160 — the importmap loads `three.module.min.js`;
@@ -133,6 +133,50 @@ Mute chosen before the context exists is honored when `init` runs.
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).
 - Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). The game-style mascot-follow camera and temporary scout-on-drag behavior run on both mobile and desktop; focused instrument views retain their own cameras. Extra zoom-in headroom vs older builds.
 - After Enter: `html.stage-live` — fixed layout, `touch-action` guards, `visualViewport` scale reset to fight Chrome iOS letterboxing from stuck page zoom.
+
+### Signs («знаки на сцені»)
+
+Visitors can leave one short glowing sign per day and see everyone else's. The feature is
+**absent unless its storage answers**: one boot-time probe gates the button, the modal and
+both sign surfaces together; on any failure — and in `testhooks` / `headless` / `shot` QA
+runs, which must not read or write the live stage — the stage looks exactly as it does
+without the feature. No retry, no error surface.
+
+- **Three surfaces, filled in order — 75 slots.** The back-wall band takes the first
+  **20** (X ±4.05, Y 0.35–2.30 at z −5.78, clear of the brand plate above, the upstage
+  curtain legs beside, the star drop and the platform). Only once it is full do signs
+  reach the **front strip** the visitor stands on (**25** — X ±4.7, Z 0.55–3.25, with the
+  guitar stand and mic rising out of it), and last the **mid-stage band** (**30** — X ±5.1,
+  Z −3.5…0.55): the widest bare patch of the platform, and the boards the drum kit and
+  piano stand on. Signs run underneath them on purpose — a kit parked over old graffiti is
+  how a real stage looks. All three are transparent `CanvasTexture` planes, emissive-driven
+  and registered dimmable so the **Світло** fader dims the tags with the stage; each stays
+  invisible while it has nothing to show. The mid band is wider than the front strip
+  because it sits further from the camera, where the frame opens out — measured through the
+  settled follow camera, it spills the frame far less than the front strip already does.
+- **A sign's position is part of the sign.** At creation the client picks the first free
+  slot — wall (`0–19`), then front strip (`20–44`), then mid band (`45–74`) — and stores it
+  in the sign's row, so a sign stays where it was put for as long as it lives, even as
+  older signs retire around it. Within its slot, each surface's fixed shuffle plus
+  id-seeded jitter, rotation, size variance and an occasional underline flourish keep the
+  fill organic (stable, since id and slot never change). At capacity the retiring oldest
+  sign is what frees a slot for the newcomer. Rows without a valid slot (legacy or
+  hand-tampered state) fall back to a derived `(id − 1) % 75` home with a deterministic
+  probe, so every visitor still computes the same stage.
+- **Leaving a sign:** a marker button fixed **below the HUD's right cluster** (`#sign-btn`,
+  hidden until the probe passes; a once-a-day gesture, not navigation) opens `#modal-sign`:
+  one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
+  rejected), five curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
+  live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. Success closes the modal, fades the sign in
+  (~0.9 s; instant under reduced motion) and shows a toast; failures surface as friendly
+  inline one-liners and never block the stage.
+- **Once a day, on the device only.** `localStorage` `av2.sign.v1` (`{ text, color, ts }`)
+  prefills the form and arms a rolling 24 h gate; while gated the button stays visible in
+  a dimmed done-state whose click explains itself with a toast. No IPs, no identifiers,
+  nothing personal is stored anywhere, and the site stays cookie-less — no consent banner
+  required.
+- Copy speaks of the **сцена**, never «стіна»: «Залиш свій слід», «Твій знак на сцені»,
+  «Сцена зараз недоступна».
 
 ### Instruments (procedural meshes)
 
@@ -369,7 +413,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Onboard | Second step of the first run, after mascot customization: one tip (`localStorage` `av2.onboard.v2`) dismissed only by **ЗРОЗУМІЛО**; mic pulse cue |
 | HUD | Logo (click = mascot dance), VIBE, **pricing button** (gold graduation-cap icon, **Уроки та ціни**), **mascot button**, **settings mixer** (gear) |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **GLAMOUR** defaults to `67` and **PIXEL** to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
-| Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer** |
+| Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer**, **sign form** (`#modal-sign`, § Signs — reachable from the below-HUD marker button when storage is alive) |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
 | Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від N зл» + «ЦІНИ ›»), fading in/out softly. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
@@ -446,6 +490,45 @@ changing one instrument's price is a one-place edit.
   drift — a tier added or removed changes which cells exist, which the script cannot invent —
   and names the offending key.
 
+### Signs storage (Telegram)
+
+There is no backend: the store is a Telegram channel driven straight from the browser
+(`api.telegram.org` answers with `Access-Control-Allow-Origin: *`; requests use
+form-encoded bodies so they stay preflight-free).
+
+- **The head is one pinned channel message** of compact JSON —
+  `{"v":2,"n":<next id>,"t":<tail chunk message_id>,"s":[[id,color,text,slot],…]}` — where
+  `s` is exactly what the stage displays (at most 75 rows), ids strictly
+  monotonic and never reissued, `slot` fixed at creation (§ Signs). The stage reads only
+  the head, via `getChat` → `pinned_message`, and rewrites it via `editMessageText`.
+- **History never gets discarded — it seals into a linked list of messages.** A Telegram
+  message tops out at 4096 chars, so the head holds only what the stage can show. Rows
+  drain from the oldest end for two independent reasons — more rows than the stage has
+  slots, and more characters than the `3300` budget — and each drained row must genuinely
+  leave the head, or it would be archived again on every write while the head grew past the
+  limit anyway. **The budget is counted in characters, not rows: that is the limit which
+  actually exists, and a row count drifts the moment the stage gains slots.** Drained rows
+  go into one archive message `{"p":<previous chunk message_id>,"r":[rows]}` and the head's
+  `t` points at it.
+  Chunks chain backwards through `p`, so the complete run of signs is walkable from the
+  head. Bots cannot fetch arbitrary messages, so the stage never reads chunks — they are
+  the archive, sitting visibly in the channel for the owner (or any user-account MTProto
+  tool) to walk.
+- **Every accepted sign is also sent as a plain channel post** (`✍️ text · color`) — the
+  owner's human-readable feed and audit log. (Bots cannot read channel history back, which
+  is why the aggregate lives in the pinned message rather than being summed from posts.)
+- **Concurrency:** the client re-reads the pinned head immediately before writing; the
+  residual last-writer-wins race can drop a concurrent sign from the stage, but its feed
+  post still records it. Two concurrent seals can duplicate rows across archive chunks —
+  the archive is append-only and tolerant of that. Accepted at this scale.
+- The channel write key ships in the bundle **base64-chunked** (`js/shell/signs.js`) so the
+  raw token never appears in the repo or in code search; anyone determined can extract it
+  from DevTools — an accepted trade-off for having no server (reasoning in
+  `notes/Decisions.md`). Validation is client-side only for the same reason: with a public
+  write key, server-grade enforcement is impossible by design.
+- Moderation: the owner edits or deletes entries in the pinned message from Telegram (or
+  re-pins a fresh state message via Bot API).
+
 ### `piano-notes.json`
 
 Ordered list of `{ "note", "freqHz" }` kept for possible phrases; focus / `Enter` / ГРАТИ do **not** auto-play a default melody.
@@ -508,6 +591,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 - `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
 - `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
+- `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 24 h once-a-day gate.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
 ---
@@ -615,6 +699,7 @@ lesson pages):
 | `stage-first-play` | First note on any instrument (all play routes funnel through `addVibe`) |
 | `stage-pricing-open` | Pricing overlay opened by any route |
 | `book-{instagram\|messenger}-{home\|vocal\|guitar\|piano\|drums\|stage}` | Outbound booking link clicked |
+| `stage-sign-left` | A sign was accepted onto the stage (at most once a day per device by construction) |
 
 The first three fire at most once per page load; booking clicks fire every time.
 Booking happens inside Instagram/Messenger DMs, so the click is the last thing
@@ -633,7 +718,10 @@ this site can observe — it is the conversion number.
 - With Spotify / Apple Music already playing, Enter, walking, camera controls, instrument focus, chord selection, and settings changes leave external audio uninterrupted and do not create an `AudioContext`.
 - On platforms supporting Audio Session `ambient`, the external source continues while Art Vibe instruments play over it. On unsupported platforms, external audio remains uninterrupted at least until the first real Art Vibe sound action.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
-- No secrets in repo; prices are public marketing data.
+- No secrets in repo; prices are public marketing data. **One deliberate exception:** the
+  signs feature's Telegram write key ships in the bundle base64-chunked (§7 Signs storage) —
+  extractable by anyone determined, kept out of plain-text code search, accepted in
+  `notes/Decisions.md`.
 
 ### Piano framing / pose acceptance
 

@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260807-01">
+<link rel="stylesheet" href="/css/style.css?v=20260807-04">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -178,6 +178,13 @@
   </nav>
 </header>
 
+<!-- Below the HUD, not in it: leaving a sign is a once-a-day gesture, not
+     navigation. Hidden until js/shell/signs.js confirms the storage is alive;
+     the click is wired there (gate → toast, otherwise the modal). -->
+<button class="icon-btn" id="sign-btn" type="button" title="Залиш свій слід на сцені" aria-label="Залиш свій слід на сцені" hidden>
+  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+</button>
+
 <div id="keys-hint" class="mono hidden">
   клік — рух · <b>Enter</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — гітара · <b>N M , . /</b> — вокал
 </div>
@@ -287,6 +294,32 @@
       </div>
     </div>
     <button class="panel-secondary-link" type="button" data-goto="rules">Правила студії →</button>
+  </div>
+</div>
+
+<!-- ======= MODAL: ЗНАК НА СЦЕНІ (opener stays hidden while the signs storage is down) ======= -->
+<div id="modal-sign" class="overlay" role="dialog" aria-modal="true" aria-labelledby="sign-title" aria-describedby="sign-lead" hidden>
+  <div class="panel sign-panel">
+    <button class="close-btn" data-close aria-label="Закрити">✕</button>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>ТВІЙ ЗНАК</span></div>
+    <h2 class="panel-title" id="sign-title">Залиш свій слід<span class="dot">.</span></h2>
+    <p class="panel-lead" id="sign-lead">Підпишись на сцені — один знак на день. Він залишиться тут, і його побачать усі, хто зайде після тебе.</p>
+    <form id="sign-form" novalidate>
+      <label class="sign-label mono" for="sign-text">ТВІЙ ПІДПИС</label>
+      <input id="sign-text" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Ім'я, тег чи пара слів" required>
+      <div class="sign-swatches" role="radiogroup" aria-label="Колір напису">
+        <button class="swatch" type="button" role="radio" aria-checked="false" data-color="cream" style="--sw:#FDFBF7" title="Крейда" aria-label="Крейда"></button>
+        <button class="swatch" type="button" role="radio" aria-checked="false" data-color="gold" style="--sw:#E8B54C" title="Золото" aria-label="Золото"></button>
+        <button class="swatch" type="button" role="radio" aria-checked="false" data-color="purple" style="--sw:#C87BFF" title="Пурпур" aria-label="Пурпур"></button>
+        <button class="swatch" type="button" role="radio" aria-checked="false" data-color="pink" style="--sw:#FF7CC3" title="Рожевий" aria-label="Рожевий"></button>
+        <button class="swatch" type="button" role="radio" aria-checked="false" data-color="mint" style="--sw:#6FE7C0" title="М'ята" aria-label="М'ята"></button>
+      </div>
+      <div class="sign-preview" aria-hidden="true"><span id="sign-preview-text"></span></div>
+      <p id="sign-error" class="sign-error" role="status" hidden></p>
+      <div class="panel-actions">
+        <button class="pill-btn gold big" id="sign-submit" type="submit">ЗАЛИШИТИ НА СЦЕНІ</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -614,6 +647,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260807-03"></script>
+  <script type="module" src="/js/main.js?v=20260807-04"></script>
 </body>
 </html>

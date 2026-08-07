@@ -12,6 +12,63 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## Signs live in a Telegram channel, not on a server — 2026-08-07
+
+Visitors can now sign the stage: short glowing tags, one per visitor per day, on the
+back-wall band under the screen — spilling onto the stage floor once the wall's twenty
+slots are taken. The first cut ran on the VPS (nginx + a Node file at
+`back.artvibe.com.pl`, per-IP rate limits); it was replaced the same day, and the reasons
+are worth keeping:
+
+- **No personal data beats rate-limit rigor.** Per-IP limiting means storing IPs. Dropping
+  it makes the privacy story trivial — no cookies, nothing personal, no banner needed —
+  and the once-a-day gate lives in `localStorage` on the device instead. A determined
+  visitor can clear it; the stage survives that.
+- **A Telegram channel is the whole backend.** Each accepted sign is a channel post (the
+  owner's feed), and the aggregate the stage loads is one pinned JSON message — read via
+  `getChat`, rewritten via `editMessageText`, straight from the browser
+  (`api.telegram.org` sends `Access-Control-Allow-Origin: *`). Bots cannot read channel
+  history, which is why the aggregate is a pinned message and not "sum the messages".
+  When the head nears Telegram's 4096-char ceiling, rows older than the displayed 45 seal
+  into archive messages chained by `p` pointers — a linked list hanging off the head, so
+  the ceiling caps nothing and no sign is ever discarded. Zero servers to keep alive; if
+  the token dies, the feature silently vanishes — the same absent-if-unreachable contract
+  as before.
+- **The write key ships in the bundle, and that is accepted.** It is base64-chunked so the
+  token never appears in the repo or GitHub code search as plain text, but anyone who opens
+  DevTools can extract it and spam or wipe the wall. At this scale the blast radius is one
+  pinned message the owner can restore from the feed; a real secret would require the
+  server we just deleted. This is the one deliberate exception to «no secrets in repo»
+  (SPEC §12).
+- **If storage doesn't answer — or the run is QA (`testhooks`/`headless`/`shot`) — the
+  feature doesn't exist.** One probe gates the button, modal and both surfaces; the stage's
+  core promise must not inherit a network dependency.
+- **The stage is the canvas, not just the wall.** Signs now cover three surfaces — the
+  wall band, the front strip the visitor stands on, and the mid-stage boards the drum kit
+  and piano sit on. Running tags *under* the instruments is deliberate: a kit parked over
+  old graffiti is what a real stage looks like, and that middle band is both the largest
+  bare patch of the platform and better framed than the front strip, because it sits
+  further from the camera where the frustum opens out.
+- **Budget the head in the unit the limit is actually in.** The seal rule was originally
+  written as "more than 70 rows", which was fine while the stage had 45 slots and silently
+  wrong the moment it had 75: it archived rows *without removing them*, so the same rows
+  were re-archived on every write while the head grew toward Telegram's 4096-character
+  ceiling anyway. It now drains from the oldest end until the head fits both the slot count
+  and a character budget. **A limit expressed in one unit (rows) that really exists in
+  another (characters) will drift the moment either side moves.**
+- **A sign's position is decided once, at creation, and stored with it.** The first cut
+  derived positions from ids on every render — which meant a sign could shift when an
+  older neighbour retired and the layout re-flowed around it. Now the creating client
+  picks the first free slot (wall slots before floor slots — that ordering is what makes
+  the floor open only after the wall is full) and writes it into the sign's row, so a
+  sign stays exactly where it was put for as long as it lives.
+
+Curated colors, a 24-character cap, zalgo squeeze and link rejection keep it a signature
+wall rather than a message board — the same "curated, not configurable" stance as the
+mascot editor. The copy says «сцена», never «стіна».
+
+---
+
 ## A full VIBE meter stays full — 2026-08-07
 
 The meter used to hit 100, celebrate, then drop to 55 and be re-earned, with a 4-second
