@@ -62,6 +62,10 @@ are worth keeping:
   free. The first version dimmed the button and answered a tap with a toast; a disabled-
   looking control still invites the tap, and the refusal is the reply. Absence says the
   same thing without the round trip.
+- **67 slots, and the wall gave them up.** Capacity is deliberately small enough that a
+  signature means something. The reduction came out of the wall rather than the floors: it
+  is the surface furthest from the camera, so its tags were always the smallest and hardest
+  to read, and 4×3 makes the remaining ones markedly bigger.
 - **The stage fills once and closes.** Slots are not recycled, so the wall is
   first-come-first-served rather than a rolling window — which is what makes leaving a sign
   worth anything. When it is full the owner clears it from Telegram.

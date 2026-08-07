@@ -1,0 +1,5 @@
+# Snapshot the Art Vibe signs head out of Telegram every two hours.
+# Runs at 07 past to stay off the hour, when everything else on the box fires.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+7 */2 * * * root /usr/local/bin/av2-signs-backup >> /var/log/av2-signs-backup.log 2>&1

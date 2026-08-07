@@ -31,8 +31,11 @@ const WALL = {
   pos: new THREE.Vector3(0, 1.32, -5.78),
   canvasW: 2048,
   canvasH: 492,
-  cols: 5,
-  rows: 4,
+  // 4×3 rather than a denser grid: the wall is the furthest surface from the
+  // camera, so its tags were always the smallest and hardest to read. Fewer,
+  // larger ones carry better, and 12 + 25 + 30 is the 67-slot stage.
+  cols: 4,
+  rows: 3,
   maxRot: 0.12,
   shuffleSeed: 0xa11ce,
 };

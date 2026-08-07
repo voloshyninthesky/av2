@@ -67,6 +67,11 @@ scene.add(drums.group);
 export const piano = buildPiano();
 piano.group.position.set(3.5, 0, -1.3);
 piano.group.rotation.y = -0.62;
+// Trimmed 8%: the upright stands in the middle of the sign band and its
+// cabinet was hiding the boards behind it. Uniform rather than squashed on Y
+// alone, so the keybed keeps its proportions — the focus framing and the
+// seated pose both derive from measured piano-local bounds, so they follow.
+piano.group.scale.setScalar(0.92);
 scene.add(piano.group);
 
 export const guitar = buildGuitar();

@@ -142,8 +142,9 @@ both sign surfaces together; on any failure — and in `testhooks` / `headless` 
 runs, which must not read or write the live stage — the stage looks exactly as it does
 without the feature. No retry, no error surface.
 
-- **Three surfaces, filled in order — 75 slots.** The back-wall band takes the first
-  **20** (X ±4.05, Y 0.35–2.30 at z −5.78, clear of the brand plate above, the upstage
+- **Three surfaces, filled in order — 67 slots.** The back-wall band takes the first
+  **12** (a 4×3 grid: it is the surface furthest from the camera, so its tags were always
+  the smallest — fewer and larger carry better) (X ±4.05, Y 0.35–2.30 at z −5.78, clear of the brand plate above, the upstage
   curtain legs beside, the star drop and the platform). Only once it is full do signs
   reach the **front strip** the visitor stands on (**25** — X ±4.7, Z 0.55–3.25, with the
   guitar stand and mic rising out of it), and last the **mid-stage band** (**30** — X ±5.1,
@@ -159,13 +160,13 @@ without the feature. No retry, no error surface.
   because it sits further from the camera, where the frame opens out — measured through the
   settled follow camera, it spills the frame far less than the front strip already does.
 - **A sign's position is part of the sign.** At creation the client picks the first free
-  slot — wall (`0–19`), then front strip (`20–44`), then mid band (`45–74`) — and stores it
+  slot — wall (`0–11`), then front strip (`12–36`), then mid band (`37–66`) — and stores it
   in the sign's row, so a sign stays where it was put for as long as it lives, even as
   older signs retire around it. Within its slot, each surface's fixed shuffle plus
   id-seeded jitter, rotation, size variance and an occasional underline flourish keep the
   fill organic (stable, since id and slot never change). At capacity the retiring oldest
   sign is what frees a slot for the newcomer. Rows without a valid slot (legacy or
-  hand-tampered state) fall back to a derived `(id − 1) % 75` home with a deterministic
+  hand-tampered state) fall back to a derived `(id − 1) % 67` home with a deterministic
   probe, so every visitor still computes the same stage.
 - **The stage fills once.** Slots are never recycled: when the last one goes, the stage is
   closed and the marker button is gone. A visitor who cannot sign is never shown a control
@@ -176,7 +177,8 @@ without the feature. No retry, no error surface.
   hidden until the probe passes; a once-a-day gesture, not navigation) opens `#modal-sign`:
   one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
   rejected), five curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
-  live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. Success closes the modal, fades the sign in
+  live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. The panel carries no explanatory lead — the
+  title, the field and the preview say what it is. Success closes the modal, fades the sign in
   (~0.9 s; instant under reduced motion) and shows a toast; failures surface as friendly
   inline one-liners and never block the stage.
 - **Once a day, on the device only.** `localStorage` `av2.sign.v1` (`{ text, color, ts }`)
@@ -195,6 +197,11 @@ without the feature. No retry, no error surface.
 | `guitar` | Two-hand chord + strum / pluck **only while guitar-focused**. Six **visitor-chosen** chord slots (✎ → quality × root picker) | Chord row `Q W E R T Y` = pad slots 1–6 + Space strum — works **with or without** guitar focus; focused it is select-only, see § Guitar performance mode |
 | `piano` | Mesh keys + `#piano-pad` **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. | `1–8` whites — with or without piano focus. **Piano-focused only:** `A–L` + upper row, real-keyboard shape (§ Piano interaction roadmap) |
 | `drums` | Kit parts **only while drums-focused** (multitouch) | `Z X C V B` kit — with or without drums focus |
+
+The upright piano is drawn at **0.92 scale**: it stands in the middle of the mid-stage
+sign band and its full-height cabinet hid the boards behind it. Uniform, not squashed on Y,
+so the keybed keeps its proportions — focus framing and the seated pose both derive from
+measured piano-local bounds, so they follow it.
 
 Seated focus poses (drums throne, piano bench) place the pelvis by subtracting the scaled hip height from the seat top, so the mascot rests on the seat at every saved height / build value instead of floating above it or sinking through it.
 
@@ -514,7 +521,7 @@ form-encoded bodies so they stay preflight-free).
   …
   ```
 
-  Those rows are exactly what the stage displays (at most 75). Ids are strictly monotonic
+  Those rows are exactly what the stage displays (at most 67). Ids are strictly monotonic
   and never reissued; `slot` is fixed at creation (§ Signs); the text goes last so it may
   contain `|`, and it can never contain a newline because input whitespace is collapsed.
   The stage reads only the head, via `getChat` → `pinned_message`, and rewrites it via
