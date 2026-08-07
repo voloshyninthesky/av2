@@ -9,7 +9,11 @@
 // looking exactly as it does without the feature.
 // ============================================================
 import * as THREE from 'three';
-import { registerDimmableEmissive, prefersReducedMotion } from '../core/quality.js?v=20260807-04';
+import {
+  registerDimmableEmissive,
+  prefersReducedMotion,
+  usesLowMobileSceneBudget,
+} from '../core/quality.js?v=20260807-04';
 
 // Render hexes for the curated color ids a sign may carry. Brighter than
 // the brand ink-on-cream palette on purpose: these glow against 0x15091f.
@@ -121,10 +125,17 @@ function placementForSlot(slot) {
   return null;
 }
 
+// Three sign canvases at full size are ~16 MB of VRAM once mipmapped, which
+// is real money on a phone that is already on the low budget — and the tier
+// scales pixel ratio, shadows and AA but would otherwise leave these alone.
+// Half dimensions is a quarter of the memory, and at device pixel ratio 1 the
+// tags are still sampled at roughly screen resolution.
+const TEXTURE_SCALE = usesLowMobileSceneBudget() ? 0.5 : 1;
+
 function makeSurface(spec) {
   const canvas = document.createElement('canvas');
-  canvas.width = spec.canvasW;
-  canvas.height = spec.canvasH;
+  canvas.width = Math.round(spec.canvasW * TEXTURE_SCALE);
+  canvas.height = Math.round(spec.canvasH * TEXTURE_SCALE);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
@@ -158,7 +169,11 @@ function makeSurface(spec) {
     mesh.rotation.x = -Math.PI / 2;
     mesh.renderOrder = 1; // above the contact shadows on the boards
   }
-  return { spec, mesh, tex, ctx: canvas.getContext('2d') };
+  const ctx = canvas.getContext('2d');
+  // Everything downstream lays tags out in the spec's nominal pixel space, so
+  // the tier scaling lives here and nowhere else.
+  ctx.scale(TEXTURE_SCALE, TEXTURE_SCALE);
+  return { spec, mesh, tex, ctx };
 }
 
 let surfaces = null;
@@ -255,21 +270,30 @@ function drawSign(slot, sign, alpha) {
   ctx.restore();
 }
 
-function repaint() {
+/**
+ * Redraw the sign surfaces. `onlyKey` restricts the work to one of them,
+ * which matters more than it looks: marking a texture `needsUpdate` re-uploads
+ * it, so repainting all three to animate one fading tag pushed ~16 MB per
+ * frame across the bus for no reason.
+ */
+function repaint(onlyKey = null) {
   if (!surfaces) return;
-  for (const surface of Object.values(surfaces)) {
+  const touched = onlyKey ? [surfaces[onlyKey]] : Object.values(surfaces);
+  for (const surface of touched) {
     surface.ctx.clearRect(0, 0, surface.spec.canvasW, surface.spec.canvasH);
   }
   const used = new Set();
   for (const [slot, sign] of slotAssignments()) {
+    const key = placementForSlot(slot).spec.key;
+    used.add(key);
+    if (onlyKey && key !== onlyKey) continue;
     const alpha = appearing && appearing.id === sign.id
       ? appearing.t * appearing.t * (3 - 2 * appearing.t)
       : 1;
     drawSign(slot, sign, alpha);
-    used.add(placementForSlot(slot).spec.key);
   }
-  for (const [key, surface] of Object.entries(surfaces)) {
-    surface.mesh.visible = used.has(key);
+  for (const surface of touched) {
+    surface.mesh.visible = used.has(surface.spec.key);
     surface.tex.needsUpdate = true;
   }
 }
@@ -283,12 +307,23 @@ export function setSigns(list) {
 }
 
 export function addSign(sign) {
+  const before = signs.length;
   signs.push(sign);
   signs = signs.slice(-TOTAL_SLOTS);
   if (!surfaces) return;
-  appearing = prefersReducedMotion.matches ? null : { id: sign.id, t: 0 };
+  const place = placementForSlot(
+    Number.isInteger(sign.slot) && sign.slot >= 0 && sign.slot < TOTAL_SLOTS ? sign.slot : 0,
+  );
+  const key = place?.spec.key ?? null;
+  // The fade is a flourish, and it costs a texture upload every third frame.
+  // Devices on the low budget get the sign immediately instead — the same
+  // trade reduced motion already makes.
+  appearing = prefersReducedMotion.matches || usesLowMobileSceneBudget()
+    ? null
+    : { id: sign.id, t: 0, key };
   fadeFrame = 0;
-  repaint();
+  // Nothing was pushed off the end, so no other surface can have changed.
+  repaint(signs.length > before ? key : null);
 }
 
 /** Advances the fade-in of a freshly left sign; a no-op the rest of the time. */
@@ -296,11 +331,12 @@ export function updateSigns(dt) {
   if (!appearing) return;
   appearing.t = Math.min(1, appearing.t + dt / FADE_S);
   const done = appearing.t >= 1;
+  const key = appearing.key;
   if (done) appearing = null;
-  // Repainting means re-uploading a 2048-wide texture — every third frame
-  // reads identically at this speed.
+  // Repainting means re-uploading a texture, so do it on every third frame and
+  // only for the surface the new tag landed on. At this speed it reads the same.
   fadeFrame += 1;
-  if (done || fadeFrame % FADE_REPAINT_EVERY === 0) repaint();
+  if (done || fadeFrame % FADE_REPAINT_EVERY === 0) repaint(key);
 }
 
 /** Full redraw — called once fonts settle so tags don't keep a fallback face. */

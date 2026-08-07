@@ -173,6 +173,14 @@ without the feature. No retry, no error surface.
   that refuses them — the button is present only while the storage answered, the visitor
   has not signed today, and a slot is free. (A sign draining out of the head on the
   character budget frees its slot again, which is the one way the stage reopens.)
+- **Cost.** Three extra draw calls, and three canvas textures — ~16 MB of VRAM once
+  mipmapped at full size, **quartered on the low budget** (`usesLowMobileSceneBudget()`
+  halves each dimension), since the tier scales pixel ratio, shadows and AA but would
+  otherwise leave these untouched. A redraw is ~1 ms of 2D canvas work; the real cost is
+  that marking a texture `needsUpdate` re-uploads it, so a repaint is scoped to the one
+  surface that changed — leaving a sign uploads ~3.6 MB, not 16 — and the fade-in, which
+  repaints on every third frame, is skipped entirely under reduced motion and on the low
+  budget.
 - **Leaving a sign:** a marker button fixed **below the HUD's right cluster** (`#sign-btn`,
   hidden until the probe passes; a once-a-day gesture, not navigation) opens `#modal-sign`:
   one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
