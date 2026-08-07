@@ -1,47 +1,23 @@
 ---
 tags: [status]
-updated: 2026-08-06
+updated: 2026-08-07
 ---
 
 # Current state
 
-Snapshot as of **2026-08-06**. This is the one note that goes stale by design — update it or
+Snapshot as of **2026-08-07**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**Three commits are pushed to `main` but NOT live — GitHub Pages never deployed them.**
-`00baf4a`, `314464b`, `fb68d7d`. Production still serves whatever `c69e846` left there, so
-none of the stage work below is visible to a visitor yet.
-
-The cause is entirely GitHub's, confirmed on their status page: a **major Actions + Pages
-incident that began 2026-08-06 15:22 UTC** and was still unresolved at 18:46 UTC — hosted
-runner jobs "may remain queued indefinitely", and the Pages build servers are down. Our two
-runs show both failure modes: `00baf4a` failed with *"The job was not acquired by Runner of
-type hosted"*, and `fb68d7d` sat in `waiting` for over two hours, gated on the `github-pages`
-environment with an empty reviewer list.
-
-Nothing is misconfigured on our side — checked: the environment's branch policy allows `main`,
-the run is on `main`, and Pages is workflow-sourced. **When Actions recovers, start a fresh
-run** (not `gh run rerun` — see the deploy note below):
+**Nothing. `main` is deployed and live**, tip `abae451`, verified rather than assumed:
 
 ```bash
-gh workflow run "Deploy to GitHub Pages" --ref main
+curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # 20260807-03
 ```
 
-Then verify the live HTML actually carries the new stamp, because a green run is not proof the
-CDN caught up:
-
-```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # expect 20260806-14
-```
-
-What is waiting to ship (reasoning in [[Decisions]]): the first run reversed so the mascot
-editor opens before the welcome tip, and that tip now waits for **ЗРОЗУМІЛО** alone;
-short praise cheers on each instrument's first note; a generated
-guitar chord library (60 chords) with six visitor-chosen pad slots; the piano close-up's
-real-keyboard `A–L` layout; the `+` / `−` zoom buttons removed (pinch / wheel unchanged); a
-maker's mark on the back of the LED wall; and the repo-wide cache-stamp reset under Health.
+A green Actions run is *not* proof — that curl is, because the run can succeed while the CDN
+still serves the previous build.
 
 **The one thing still outstanding — the analytics are collecting nothing.**
 `count.artvibe.com.pl` resolves (CNAME onto the GoatCounter site) but serves a certificate for
@@ -56,36 +32,68 @@ curl -sI https://count.artvibe.com.pl/   # cert error here means analytics are d
 Until that is fixed the dashboard will read zero, which is indistinguishable from having no
 visitors — do not conclude anything from an empty dashboard before this check passes.
 
-**Resolved:** the `$` HUD experiment was reverted — the control kept its Ukrainian wording, and
-it has since become the gold graduation-cap button titled **Уроки та ціни** ([[SPEC]] §6).
-The one lesson that outlived the experiment: whatever this control is, it is not a currency
-glyph. → [[Decisions]]
+**Worth doing before it bites:** every action in `deploy-pages.yml` (`checkout@v4`,
+`setup-node@v4`, `upload-artifact@v4`, `configure-pages@v5`, `deploy-pages@v4`) targets the
+deprecated Node 20 and is being force-run on Node 24. Deploys still succeed and only warn, but
+the fallback will not last.
 
-**Deploy note:** deploys have failed on GitHub's side more than once now — a timeout inside
-`actions/deploy-pages`, a runner never acquired, and a run stuck in `waiting`. Do **not** fix
-any of them with `gh run rerun` — it re-runs the upload step too and the run then holds two
-artifacts named `github-pages`, which the deploy action refuses. Start a fresh run instead:
-`gh workflow run "Deploy to GitHub Pages" --ref main`. Check
-[githubstatus.com](https://www.githubstatus.com) before assuming the workflow is at fault.
-→ [[Dev workflows]]
+**Resolved — the deploy outage of 2026-08-06.** GitHub had a major Actions + Pages incident
+from 15:22 UTC; it recovered by 00:05 UTC on the 7th. Two things it left behind, both worth
+recognising if it happens again:
+
+- **A zombie run.** One run sat `queued` for twelve hours after the incident closed, holding
+  the `pages` concurrency group. It never would have started. `gh run cancel <id>` cleared it.
+- **Dropped webhooks.** Pushes made *during* the incident never created runs at all, so five
+  commits sat on `main` with no run to wait for. `gh run list` looked idle, not broken.
+
+The fix for both is the same and is in the deploy note below: cancel the zombie, then
+`gh workflow run` a fresh one on the current tip. Pushes trigger runs normally again.
+
+**Also resolved:** the `$` HUD experiment was reverted — the control kept its Ukrainian
+wording, and it has since become the gold graduation-cap button titled **Уроки та ціни**
+([[SPEC]] §6). The one lesson that outlived the experiment: whatever this control is, it is
+not a currency glyph. → [[Decisions]]
+
+**Deploy note:** deploys have failed on GitHub's side several times now — a timeout inside
+`actions/deploy-pages`, a runner never acquired, a run stuck in `waiting`, and a run stuck in
+`queued` long after the incident ended. Do **not** fix any of them with `gh run rerun` — it
+re-runs the upload step too and the run then holds two artifacts named `github-pages`, which
+the deploy action refuses. Cancel the stuck run and start a fresh one:
+
+```bash
+gh run cancel <stuck-run-id>
+gh workflow run "Deploy to GitHub Pages" --ref main
+```
+
+Check [githubstatus.com](https://www.githubstatus.com) before assuming the workflow is at
+fault. → [[Dev workflows]]
 
 ## Recently landed
 
-Newest first (see [[Decisions]] for the reasoning). The top three are **pushed but not
-deployed** — see In flight.
+Newest first, all live (see [[Decisions]] for the reasoning).
 
-| Commit    | Change                                                     |
-| --------- | ---------------------------------------------------------- |
-| `fb68d7d` | Vault routed at the `xp` skill chain (notes only)           |
-| `314464b` | First run reversed; chord maker + slots; piano `A–L`; stamps |
-| `00baf4a` | Pricing pill → gold cap icon, **Уроки та ціни**             |
-| `daf5980` | Recorded what the deploy actually did                       |
-| `c69e846` | GoatCounter, `404.html`, funnel events, minified Three.js    |
-| `b259446` | Lesson site became the front door; stage moved to `/stage/`  |
+| Commit    | Change                                                       |
+| --------- | ------------------------------------------------------------ |
+| `abae451` | A full VIBE meter stays full; flash no longer strobes forever |
+| `ec1a9c7` | Praise on the third note; meter fills ~40% slower             |
+| `78a2a65` | **МАКСИМАЛЬНИЙ ВАЙБ** announced once, not per fill            |
+| `741bbfa` | Instrument how-to hints removed                               |
+| `ffa6f64` | **Неперевершено!** toast dropped after ГОТОВО                 |
+| `4fc010c` | Praise per instrument; vocal hint double-entrance fixed       |
+| `73722c0` | Casual hint copy + praise cheers                              |
+| `0f7c5fd` | Discovery hints wired; `+` / `−` zoom buttons removed         |
+| `314464b` | First run reversed; chord maker + slots; piano `A–L`; stamps  |
+| `00baf4a` | Pricing pill → gold cap icon, **Уроки та ціни**               |
 
-Two structural changes are recent enough to be the likely source of a fresh regression: the
-`/stage/` move (anything document-relative under `/stage/` will 404) and the cache-stamp reset
-(a module loaded twice behaves in genuinely baffling ways). → [[Gotchas]]
+**The through-line of the last day is subtraction.** Three separate discovery layers were
+built and removed within hours of each other — screen-space arrows, cloud-shaped bubbles, and
+per-instrument how-to hints — plus the `+` / `−` zoom buttons and two confirmation toasts. If
+you are about to add another layer of instruction over the scene, read [[Decisions]] first;
+this ground has been walked.
+
+Two structural changes are still recent enough to be the likely source of a fresh regression:
+the `/stage/` move (anything document-relative under `/stage/` will 404) and the cache-stamp
+reset (a module loaded twice behaves in genuinely baffling ways). → [[Gotchas]]
 
 ## Roadmap, per [[SPEC]]
 
@@ -141,7 +149,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
 - `js/audio.js` is 916 lines against the ~1000-line split rule — the next substantial audio
   change should probably split it → [[Module map]]
 - Cache stamps are **uniform again**: every `?v=` across `js/` and `stage/index.html` read
-  `20260806-14`. `css/style.css` carries its own (`20260806-04`), which is fine — it is one
+  `20260807-03`. `css/style.css` carries its own (`20260807-01`), which is fine — it is one
   file with no import graph.
 
   The old note here said mixed stamps were "expected — files are stamped as they change."
