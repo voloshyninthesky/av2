@@ -482,12 +482,24 @@ press. The number moved onto the button: «🎸 Уроки [ВІД 50 ЗЛ ›]�
 thing you press is the thing you want to know. Same rule as the HUD control — the label names
 what you get, not where you land.
 
-On desktop it also moved up under that HUD button, right edges aligned, so the teaser and the
-control it opens read as one thing. `ui._anchorChip()` measures the button on each show rather
-than hard-coding an offset: the nav grows a button when the sign form unlocks. **Phones keep
-it on the floor** — up there the HUD is a cramped strip and the bottom is where the thumb
-already is. The stylesheet owns the phone position, so the measured offsets stand down at that
-breakpoint instead of overriding it inline. → [[SPEC]] §6
+It also moved up under that HUD button, right edges aligned, so the teaser and the control it
+opens read as one thing. `ui._anchorChip()` measures the button on each show rather than
+hard-coding an offset: the nav grows a button when the sign form unlocks. (A phones-stay-on-
+the-floor carve-out was tried the same day and reversed a few hours later — the anchor holds on
+every viewport now, phones included; `_anchorChip()` just re-measures a shorter, differently
+laid-out HUD there.) → [[SPEC]] §6
+
+**The chip waits for a second look — 2026-08-08.** It used to queue on the very first instrument
+a visitor focused — reaching a close-up read as interest enough. That made the very first thing
+anyone touched double as a sales cue, before they had any sense of whether the stage was worth
+their time. `vibe.js` now counts focus events (`noteInstrumentFocused()`, called from
+`setInstrumentViewPhase` in `main.js` next to the `queuePriceChip` call it already made) and
+`queuePriceChip` no-ops below 2. One-way and sticky, the same shape as the vibe meter's fill —
+once a visitor has focused a second instrument they have shown real interest, and every chip
+from then on queues normally. The first instrument's own chip is not banked for later: if the
+gate was still shut when it tried to queue, that one is simply skipped for the session unless
+the visitor happens to focus it again — the same quiet-by-design loss the chip already accepts
+on a fall or an instrument switch.
 
 ---
 

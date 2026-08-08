@@ -7,9 +7,9 @@
 // the fade, and the respawn.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260808-06';
-import { isMobileGameMode } from '../core/quality.js?v=20260808-06';
-import { camera, controls } from './rig.js?v=20260808-06';
+import { session } from '../core/session.js?v=20260808-07';
+import { isMobileGameMode } from '../core/quality.js?v=20260808-07';
+import { camera, controls } from './rig.js?v=20260808-07';
 import {
   ui,
   stage,
@@ -19,14 +19,14 @@ import {
   applyMascotScale,
   mascotFallMeshes,
   mascotFallMaterialStates,
-} from '../core/studio.js?v=20260808-06';
-import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260808-06';
-import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260808-06';
-import { mascotMove } from '../mascot/state.js?v=20260808-06';
-import { setDancing } from '../mascot/pose.js?v=20260808-06';
-import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260808-06';
-import { resyncLoopPlayback } from '../play/loop.js?v=20260808-06';
-import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260808-06';
+} from '../core/studio.js?v=20260808-07';
+import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260808-07';
+import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260808-07';
+import { mascotMove } from '../mascot/state.js?v=20260808-07';
+import { setDancing } from '../mascot/pose.js?v=20260808-07';
+import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260808-07';
+import { resyncLoopPlayback } from '../play/loop.js?v=20260808-07';
+import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260808-07';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');

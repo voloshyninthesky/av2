@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-06';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-06';
-import { bumpHitPulse } from '../scene/effects.js?v=20260808-06';
-import { instrumentView } from '../view/instrument-presets.js?v=20260808-06';
-import { play, keyboardPianoNotes } from './state.js?v=20260808-06';
-import { trackOnce } from '../core/analytics.js?v=20260808-06';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-07';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-07';
+import { bumpHitPulse } from '../scene/effects.js?v=20260808-07';
+import { instrumentView } from '../view/instrument-presets.js?v=20260808-07';
+import { play, keyboardPianoNotes } from './state.js?v=20260808-07';
+import { trackOnce } from '../core/analytics.js?v=20260808-07';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -130,6 +130,16 @@ const shownPriceChips = new Set();
 const pendingPriceChips = new Set();
 let chipAwaitingPrices = null;
 
+// A visitor's first instrument is exploration, not a sales moment. Nothing
+// queues — not even that first instrument's own chip — until a second focus
+// event proves they are actually browsing the stage. Sticky once past 2, same
+// one-way shape as the vibe meter's fill: main.js calls this once per focus,
+// right where it already queues that instrument's chip (see setInstrumentViewPhase).
+let focusedInstrumentCount = 0;
+export function noteInstrumentFocused() {
+  focusedInstrumentCount += 1;
+}
+
 // The chip reads as one line — «🎸 Уроки [ВІД 50 ЗЛ ›]» — with the price sitting
 // on the button. «ЦІНИ ›» there only named the panel behind the press, which the
 // number does anyway; the number is also the reason to press.
@@ -170,7 +180,7 @@ export function chipFor(kind, { force = false } = {}) {
 }
 
 export function queuePriceChip(kind) {
-  if (!kind || shownPriceChips.has(kind)) return;
+  if (!kind || shownPriceChips.has(kind) || focusedInstrumentCount < 2) return;
   pendingPriceChips.add(kind);
   loadPrices();
 }

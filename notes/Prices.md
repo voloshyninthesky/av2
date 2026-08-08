@@ -84,8 +84,8 @@ price stays a one-place edit. Resist the urge to factor out the duplication — 
   the current duration is unavailable for the newly chosen format it falls back to the first
   (cheapest) duration.
 - **The price chip** — a once-per-instrument teaser pill showing that instrument's **own
-  cheapest single lesson**, queued on first play and shown after leaving focus. Details and
-  timing rules: [[SPEC]] §6.
+  cheapest single lesson**, queued on first play and shown after leaving focus — but not
+  before the visitor's second instrument focus overall. Details and timing rules: [[SPEC]] §6.
 - **The lesson pages** — generated tables, per above.
 
 ## Related

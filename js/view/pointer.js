@@ -7,17 +7,17 @@
 // rotates the stage.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260808-06';
-import { isMobileGameMode } from '../core/quality.js?v=20260808-06';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260808-06';
-import { canvas, camera, controls } from './rig.js?v=20260808-06';
-import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260808-06';
-import { instrumentView } from './instrument-presets.js?v=20260808-06';
-import { raycaster, pointer } from './pick.js?v=20260808-06';
-import { glowMesh, unglowMesh } from './emissive.js?v=20260808-06';
-import { walkMascotToInstrument } from './mobile-controls.js?v=20260808-06';
-import { resetBrowserPageZoom } from './viewport.js?v=20260808-06';
-import { activePointers } from '../play/state.js?v=20260808-06';
+import { session } from '../core/session.js?v=20260808-07';
+import { isMobileGameMode } from '../core/quality.js?v=20260808-07';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260808-07';
+import { canvas, camera, controls } from './rig.js?v=20260808-07';
+import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260808-07';
+import { instrumentView } from './instrument-presets.js?v=20260808-07';
+import { raycaster, pointer } from './pick.js?v=20260808-07';
+import { glowMesh, unglowMesh } from './emissive.js?v=20260808-07';
+import { walkMascotToInstrument } from './mobile-controls.js?v=20260808-07';
+import { resetBrowserPageZoom } from './viewport.js?v=20260808-07';
+import { activePointers } from '../play/state.js?v=20260808-07';
 import {
   currentGuitarShape,
   fireGuitarStrum,
@@ -26,13 +26,13 @@ import {
   guitarLocalPoint,
   nearestGuitarString,
   guitarFretHit,
-} from '../play/guitar.js?v=20260808-06';
+} from '../play/guitar.js?v=20260808-07';
 import {
   trigger,
   beginHeldPianoNote,
   releaseHeldPianoNote,
   handleClick,
-} from '../play/piano-notes.js?v=20260808-06';
+} from '../play/piano-notes.js?v=20260808-07';
 
 export const INSTRUMENT_STYLE = {
   drums: { glow: 0x9E33CA },
