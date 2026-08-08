@@ -6,17 +6,17 @@
 // otherwise freeze before the inspector could drive anything.
 // ============================================================
 import * as THREE from 'three';
-import { params } from '../core/quality.js?v=20260808-02';
-import { session } from '../core/session.js?v=20260808-02';
-import { renderer, scene, camera, controls } from '../view/rig.js?v=20260808-02';
-import { mascot, guitar, interactables } from '../core/studio.js?v=20260808-02';
-import { INSTRUMENT_VIEW_PRESETS, instrumentView } from '../view/instrument-presets.js?v=20260808-02';
-import { raycaster } from '../view/pick.js?v=20260808-02';
-import { mascotMove } from '../mascot/state.js?v=20260808-02';
-import { setDancing } from '../mascot/pose.js?v=20260808-02';
-import { leaveInstrumentView, requestInstrumentView } from '../view/instrument-view.js?v=20260808-02';
-import { addVibe, VIBE_NOTE_GAIN } from '../play/vibe.js?v=20260808-02';
-import { composer } from './postfx.js?v=20260808-02';
+import { params } from '../core/quality.js?v=20260808-03';
+import { session } from '../core/session.js?v=20260808-03';
+import { renderer, scene, camera, controls } from '../view/rig.js?v=20260808-03';
+import { mascot, guitar, interactables } from '../core/studio.js?v=20260808-03';
+import { INSTRUMENT_VIEW_PRESETS, instrumentView } from '../view/instrument-presets.js?v=20260808-03';
+import { raycaster } from '../view/pick.js?v=20260808-03';
+import { mascotMove } from '../mascot/state.js?v=20260808-03';
+import { setDancing } from '../mascot/pose.js?v=20260808-03';
+import { leaveInstrumentView, requestInstrumentView } from '../view/instrument-view.js?v=20260808-03';
+import { addVibe, VIBE_NOTE_GAIN } from '../play/vibe.js?v=20260808-03';
+import { composer } from './postfx.js?v=20260808-03';
 
 // ============================================================
 if (params.has('testhooks')) {

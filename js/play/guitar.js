@@ -6,9 +6,9 @@
 // live one, and fret hit-testing maps a touch on the neck back to a string.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, guitar } from '../core/studio.js?v=20260808-02';
-import { play } from './state.js?v=20260808-02';
-import { playMusicalEvent } from './loop.js?v=20260808-02';
+import { ui, audio, guitar } from '../core/studio.js?v=20260808-03';
+import { play } from './state.js?v=20260808-03';
+import { playMusicalEvent } from './loop.js?v=20260808-03';
 
 // Whether a strum should sound at all depends on the current focus view, which
 // main.js owns; the touch-chord bookkeeping lives with the chord pad.

@@ -12,6 +12,36 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The AUTO tier switch waits for the camera to land — 2026-08-08
+
+The freeze visitors hit mid-zoom on a fresh browser was never the fly-in. It was the AUTO
+probe promoting on top of it. The probe's first window closes ~1.35 s after the first
+frame; the fly-in runs 0 → 2.6 s from the same instant, so the promotion landed almost
+exactly halfway through the camera move. And promotion is not a cheap flag flip: shadow
+casting is part of the light state every lit material compiles against, so turning it back
+on **rebuilds essentially every shader program in the scene** — measured 39 → 56 programs,
+a single 1120 ms blocking frame with a *warm* driver cache. On a fresh browser the GPU
+program cache is cold too, and bloom's own passes, a 1 → 2 pixel-ratio reallocation and a
+cold fetch of the five postprocessing modules all pile onto the same frame. That is the
+2–3 s.
+
+Three changes, none of which touch the AUTO policy in [[SPEC]]:
+
+- The verdict is **held while `session.flyT >= 0`**. The probe keeps sampling — the extra
+  second only sharpens p90 — and applies once the camera is at rest.
+- The switch warms through `renderer.compileAsync()` rather than the next render.
+  `KHR_parallel_shader_compile` lets the driver link on background threads; `main.js` holds
+  the frame loop on `qualityWarmup` so no frame blocks on a half-linked program. The 1120 ms
+  block became ~990 ms of *responsive* wall-clock plus one 187 ms frame.
+- The postprocessing modules are fetched during boot instead of at promotion, so a cold
+  network round-trip never stacks on the rebuild.
+
+The alternative was holding the splash until the tier settled, which buys a perfectly smooth
+zoom for ~2.3 s of extra time-to-stage. Rejected: the whole commercial goal is feeling the
+studio inside a minute, and the residual hold is one frame on a still camera.
+
+---
+
 ## Variant quality is a rendering pass, not a new wardrobe — 2026-08-07
 
 The mascot's customization options kept their exact IDs and sets, but each variant now

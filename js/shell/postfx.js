@@ -22,10 +22,11 @@ import {
   setLowMobileQuality,
   qualityTierLabel,
   loadPostprocessingModules,
-} from '../core/quality.js?v=20260808-02';
-import { renderer, scene, camera } from '../view/rig.js?v=20260808-02';
-import { applyLowMobileSceneBudget } from '../scene/lighting.js?v=20260808-02';
-import { loadedSlideCount } from '../scene/slideshow.js?v=20260808-02';
+} from '../core/quality.js?v=20260808-03';
+import { session } from '../core/session.js?v=20260808-03';
+import { renderer, scene, camera } from '../view/rig.js?v=20260808-03';
+import { applyLowMobileSceneBudget } from '../scene/lighting.js?v=20260808-03';
+import { loadedSlideCount } from '../scene/slideshow.js?v=20260808-03';
 
 // Settling the tier resizes the renderer, which only main.js can sequence.
 let hooks = { syncRendererToWindow: () => {} };
@@ -36,9 +37,37 @@ export function initPostfx(next) {
 export let composer = null;
 export let bloomPass = null;
 let postprocessingInit = null;
+/** True while a tier switch links its new programs; main.js holds the loop. */
+export let qualityWarmup = false;
+// A driver that never reports the programs ready must not freeze the stage.
+const WARMUP_TIMEOUT_MS = 4000;
+
+// Shadow casting is part of the light state every lit material compiles
+// against, so switching tier rebuilds essentially every program in the scene —
+// ~26 of them here. Left to the next frame that is a single blocking render:
+// over a second with a warm driver cache, 2–3 s on a fresh browser. compileAsync
+// hands the link to the driver's background threads instead, and the frame loop
+// holds until they report ready so no frame blocks on a half-linked program.
+async function warmQualitySwitch(pending) {
+  qualityWarmup = true;
+  try {
+    if (pending) await pending;
+    await Promise.race([
+      renderer.compileAsync(scene, camera),
+      new Promise((resolve) => { setTimeout(resolve, WARMUP_TIMEOUT_MS); }),
+    ]);
+  } catch (_) { /* the warm-up is an optimisation, never a gate */ }
+  qualityWarmup = false;
+}
 
 export async function initPostprocessing() {
-  if (isLowEndMobileGameMode() || composer) return;
+  if (isLowEndMobileGameMode() || composer) {
+    // AUTO can still promote later. Fetching the modules now keeps a cold
+    // network round-trip out of the switch, where it would land on top of the
+    // shader rebuild.
+    if (canUpgradeMobileQuality && !composer) loadPostprocessingModules().catch(() => {});
+    return;
+  }
   if (postprocessingInit) return postprocessingInit;
   postprocessingInit = (async () => {
   let modules = null;
@@ -149,6 +178,7 @@ function settleMobileQuality(low, p90) {
   applyLowMobileSceneBudget();
   hooks.syncRendererToWindow();
   syncQualityDomState();
+  void warmQualitySwitch();
 }
 
 function promoteMobileQuality(frameTime) {
@@ -157,7 +187,9 @@ function promoteMobileQuality(frameTime) {
   hooks.syncRendererToWindow();
   syncQualityDomState();
   mobileQualityProbe.phase = 'promoting';
-  void initPostprocessing().finally(() => {
+  // The composer is built inside the warm-up so its render targets exist before
+  // the loop resumes, and its passes compile in the same first full frame.
+  void warmQualitySwitch(initPostprocessing()).then(() => {
     if (!mobileQualityProbe.active || mobileQualityProbe.phase !== 'promoting') return;
     beginMobileProbeWindow('full', performance.now());
   });
@@ -175,6 +207,10 @@ export function updateMobileQualityProbe(frameTime) {
   // Ignore shader/texture warm-up, then take one second of actual frame pacing.
   if (elapsed > 350 && delta > 0 && delta < 100) mobileQualityProbe.samples.push(delta);
   if (elapsed < 1350 || !mobileQualityProbe.samples.length) return;
+  // The probe's window ends mid-fly-in, and a tier switch there is the one place
+  // its shader rebuild is unmissable — the camera is moving through it. Hold the
+  // verdict until the camera lands; the extra samples only sharpen it.
+  if (session.flyT >= 0) return;
   const sorted = [...mobileQualityProbe.samples].sort((a, b) => a - b);
   const p90 = sorted[Math.floor((sorted.length - 1) * 0.9)];
   if (mobileQualityProbe.phase === 'medium') {
