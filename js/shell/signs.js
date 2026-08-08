@@ -5,13 +5,13 @@
 // that edit is the entire write. Probed once per load; on any failure nothing
 // at all appears, so the stage must look exactly as it does without the
 // feature. Signing opens on the first VIBE fill, with the loop pedal. One sign
-// per device per 7 days, enforced only in localStorage — no IPs, no
+// per device per day, enforced only in localStorage — no IPs, no
 // identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260808-05';
-import { params } from '../core/quality.js?v=20260808-05';
-import { track } from '../core/analytics.js?v=20260808-05';
-import { play } from '../play/state.js?v=20260808-05';
+import { ui } from '../core/studio.js?v=20260808-06';
+import { params } from '../core/quality.js?v=20260808-06';
+import { track } from '../core/analytics.js?v=20260808-06';
+import { play } from '../play/state.js?v=20260808-06';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -19,7 +19,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260808-05';
+} from '../scene/signs.js?v=20260808-06';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -196,7 +196,7 @@ async function submitSign(event) {
     return;
   }
   if (readGate()) {
-    showError('Один знак на день — повернись завтра.');
+    showError('Спробуй завтра.');
     return;
   }
   posting = true;
