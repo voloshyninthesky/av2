@@ -429,7 +429,7 @@ Rules:
 
 ### VIBE meter
 
-Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar strum `5`, piano `3.5`…) which are **relative** values; a single `VIBE_NOTE_GAIN` scales all of them, so how long a full meter takes is one number rather than eight call sites. **Reaching 100% is a one-way door**: fireworks, the loop-pedal unlock, and the announcement fire exactly once, and the meter then *stays* full for the rest of the visit — it never settles back to be re-earned, and the idle decay stands down. Because the maxed state is now permanent, its flash is a finite burst that settles into a brighter steady rail rather than an endless strobe. The maximum-vibe toast appears below the HUD, never over instrument pads, and claims its own taps so it cannot trigger browser double-tap zoom. Below 100% the meter decays when idle.
+Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar strum `5`, piano `3.5`…) which are **relative** values; a single `VIBE_NOTE_GAIN` scales all of them, so how long a full meter takes is one number rather than eight call sites. **Reaching 100% is a one-way door**: fireworks, the loop-pedal unlock, and the announcement fire exactly once, and the meter then *stays* full for the rest of the visit — it never settles back to be re-earned, and the idle decay stands down. Because the maxed state is now permanent, its flash is a finite burst that settles into a brighter steady rail rather than an endless strobe. The maximum-vibe toast appears below the HUD, never over instrument pads, and claims its own taps so it cannot trigger browser double-tap zoom. Below 100% the meter decays when idle. Passing `12%`, `40%` and `60%` cheers once each (§9 Praise).
 
 ### Loop pedal
 
@@ -678,11 +678,12 @@ That click is also what writes `av2.onboard.v2`, so the sequence is all-or-nothi
 
 ### Praise
 
-Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, never the same word twice running — on the **third live note out of each instrument**. Four times a visit at most, then silence: praise that keeps arriving stops meaning anything. Third rather than first because by then the visitor is deliberately playing, so it reads as "you've got this"; on the first note they may not be sure they caused the sound at all.
+Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, never the same word twice running — as the VIBE meter passes **12%**, **40%** and **60%**. Three cheers a visit, then silence until the fill announces itself: praise that keeps arriving stops meaning anything. Tied to the meter rather than to note counts because the meter is what the visitor is filling, so each cheer reads as progress on that bar; `12%` lands a few notes in, early enough to answer "is this worth my time", and the later two mark a bar that is visibly moving.
 
-- Praise **yields to a toast already on screen** rather than replacing it: anything else the stage chose to say carries more than a cheer does. A cheer swallowed that way is retried on the next note rather than spent, so each instrument still gets its one.
+- Each mark fires **once a visit**. The marker only moves forward, so the idle decay can walk the meter back across a threshold without buying a second cheer for the same ground; a single note crossing two marks collapses into one cheer rather than stacking.
+- Praise **yields to a toast already on screen** rather than replacing it: anything else the stage chose to say carries more than a cheer does. A cheer swallowed that way is retried on the next note rather than spent, so no mark is lost to a collision.
 - Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
-- Every live play route passes its instrument to `addVibe(n, kind)`; the vocal pad and keyboard vocal reach it directly rather than through `playMusicalEvent`.
+- Every live play route reaches `addVibe(n)`; the vocal pad and keyboard vocal call it directly rather than through `playMusicalEvent`.
 
 Filling the VIBE meter announces itself **once** — **Максимальний вайб! Тепер ти можеш більше.** on the first fill, the one that actually changes something. That fill is the stage's single unlock moment: it opens the **loop pedal** and, where the signs storage answered, the **sign button** — both appear together as the toast lands. The copy names neither, deliberately: two controls arriving on screen say it better than a list, and the wording no longer needs editing each time the fill unlocks something new. Later fills keep the fireworks and the meter flash but say nothing: by then a full meter is self-explanatory, and repeating the words would make the unlock read as routine in hindsight.
 

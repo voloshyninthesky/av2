@@ -6,28 +6,28 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260808-03';
-import { buildDrumKit } from '../instruments/drums.js?v=20260808-03';
-import { buildPiano } from '../instruments/piano.js?v=20260808-03';
-import { buildGuitar } from '../instruments/guitar.js?v=20260808-03';
-import { buildMic } from '../instruments/mic.js?v=20260808-03';
-import { UI } from '../ui.js?v=20260808-03';
-import { scene, renderer } from '../view/rig.js?v=20260808-03';
+import { AudioEngine } from '../audio.js?v=20260808-04';
+import { buildDrumKit } from '../instruments/drums.js?v=20260808-04';
+import { buildPiano } from '../instruments/piano.js?v=20260808-04';
+import { buildGuitar } from '../instruments/guitar.js?v=20260808-04';
+import { buildMic } from '../instruments/mic.js?v=20260808-04';
+import { UI } from '../ui.js?v=20260808-04';
+import { scene, renderer } from '../view/rig.js?v=20260808-04';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260808-03';
-import { buildStage } from '../scene/stage.js?v=20260808-03';
-import { buildSigns } from '../scene/signs.js?v=20260808-03';
+} from './quality.js?v=20260808-04';
+import { buildStage } from '../scene/stage.js?v=20260808-04';
+import { buildSigns } from '../scene/signs.js?v=20260808-04';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260808-03';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260808-03';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260808-03';
+} from '../scene/lighting.js?v=20260808-04';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260808-04';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260808-04';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -38,7 +38,7 @@ import {
   MASCOT_SKIN_TONES,
   MASCOT_OUTFIT_COLORS,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260808-03';
+} from '../mascot/appearance.js?v=20260808-04';
 
 export const ui = new UI();
 export const audio = new AudioEngine();

@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-03';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-03';
-import { bumpHitPulse } from '../scene/effects.js?v=20260808-03';
-import { instrumentView } from '../view/instrument-presets.js?v=20260808-03';
-import { play, keyboardPianoNotes } from './state.js?v=20260808-03';
-import { trackOnce } from '../core/analytics.js?v=20260808-03';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-04';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-04';
+import { bumpHitPulse } from '../scene/effects.js?v=20260808-04';
+import { instrumentView } from '../view/instrument-presets.js?v=20260808-04';
+import { play, keyboardPianoNotes } from './state.js?v=20260808-04';
+import { trackOnce } from '../core/analytics.js?v=20260808-04';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -53,28 +53,32 @@ function praiseWord() {
 }
 
 /**
- * Cheer once per instrument, on the third note rather than the first. By the
- * third the visitor is deliberately playing, so it reads as "you've got this";
- * on the first they may not even be sure they caused the sound. Four times a
- * visit at most, then silence — praise that keeps arriving stops meaning
- * anything.
+ * Cheer as the meter passes 12 / 40 / 60 %. The meter is the thing the visitor
+ * is actually filling, so praise tied to it lands as progress on that bar
+ * rather than as a reaction to one note. 12 comes early — a few notes in, while
+ * they are still deciding whether this is worth their time; 40 and 60 mark a
+ * bar that is visibly moving. Three cheers, then silence until the fill speaks
+ * for itself — praise that keeps arriving stops meaning anything.
+ *
+ * The marker only moves forward, so the idle decay can walk the meter back
+ * across a threshold without buying a second cheer for the same ground. When
+ * one note crosses two marks, they collapse into a single cheer rather than
+ * stacking.
  *
  * Yields to a toast already on screen rather than replacing it: anything else
  * the stage chose to say carries more than a cheer does. A cheer swallowed
- * that way is retried on the next note instead of being spent, so each
- * instrument still gets its one. (Price chips live in `#chip`, a separate
- * element, and are unaffected either way.)
+ * that way is retried on the next note instead of being spent, so no milestone
+ * is lost to a collision. (Price chips live in `#chip`, a separate element, and
+ * are unaffected either way.)
  */
-const PRAISE_AFTER_NOTES = 3;
-const notesPerKind = new Map();
-const praisedKinds = new Set();
-function praiseNthNote(kind) {
-  if (!kind || praisedKinds.has(kind)) return;
-  const played = (notesPerKind.get(kind) || 0) + 1;
-  notesPerKind.set(kind, played);
-  if (played < PRAISE_AFTER_NOTES) return;
+const PRAISE_AT = [12, 40, 60];
+let praisedThrough = -1;
+function praiseAtMilestone(vibe) {
+  let reached = praisedThrough;
+  while (reached + 1 < PRAISE_AT.length && vibe >= PRAISE_AT[reached + 1]) reached += 1;
+  if (reached === praisedThrough) return;
   if (!ui.el.toast.hidden) return;
-  praisedKinds.add(kind);
+  praisedThrough = reached;
   ui.toast(praiseWord(), 1500);
 }
 
@@ -86,9 +90,8 @@ function praiseNthNote(kind) {
  */
 export const VIBE_NOTE_GAIN = 0.7;
 
-export function addVibe(n, kind = null) {
+export function addVibe(n) {
   trackOnce('stage-first-play');
-  praiseNthNote(kind);
   // Filling is a one-way door: the meter stays at 100 for the rest of the
   // visit rather than settling back and being re-earned. So this fires exactly
   // once — no cooldown needed to throttle repeat celebrations, and the idle
@@ -97,7 +100,10 @@ export function addVibe(n, kind = null) {
   play.vibe = Math.min(100, play.vibe + n * VIBE_NOTE_GAIN);
   play.lastVibeAdd = performance.now();
   ui.setVibe(play.vibe);
-  if (play.vibe < 100) return;
+  if (play.vibe < 100) {
+    praiseAtMilestone(play.vibe);
+    return;
+  }
 
   play.vibeFull = true;
   unlockLoopPedal();

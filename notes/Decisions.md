@@ -211,6 +211,9 @@ routes get it free from `runMusicalVisual`, but the vocal pad and keyboard vocal
 Filling the meter keeps its own name, **МАКСИМАЛЬНИЙ ВАЙБ!**, announced once — a cheer there
 competed with what the meter already says.
 
+*The third-note trigger was replaced on 2026-08-08 — see below. The rules in this entry
+(never twice running, yields to a toast, retried not spent) all survived it.*
+
 ## Three discovery layers, all removed — 2026-08-06/07
 
 Worth recording as one decision because it only reads as a decision in aggregate. Within about
@@ -498,6 +501,31 @@ every editor option, recolor slot, joint pivot and hair-piece base dimension sur
 Design was iterated outside the repo in a deterministic Node harness (side-by-side
 current/elegant lineup across seven customization variants, PNG contact sheets) — the same
 before/after eye that the in-app editor cannot give.
+
+---
+
+## Praise moved onto the meter — 2026-08-08
+
+Cheers now fire as the VIBE meter passes **12 / 40 / 60 %**, not on the third note out of
+each instrument. Same three words, same rules; only the trigger changed.
+
+The meter is the thing the visitor is filling, and it is on screen the whole time. Praise
+hung off it reads as progress on that bar — the cheer and the thing that moved are the same
+object. The per-instrument version had no such anchor: four cheers arrived on a schedule the
+visitor could not see, and someone who stayed on one instrument got exactly one of them no
+matter how long they played.
+
+- **12% first, deliberately early.** A few notes in, while the visitor is still deciding
+  whether this is worth their time. 40 and 60 then mark a bar that is visibly moving.
+- **Nothing between 60 and 100.** The fill has its own announcement and its own fireworks;
+  a cheer just before it would be talking over the thing it is leading up to.
+- **The marker only moves forward.** The idle decay in `main.js` walks the meter back down,
+  so a threshold gets re-crossed routinely — tracking *marks passed*, not *the current
+  value*, is what keeps a visitor who hovers around 12% from being cheered every few notes.
+- **Two marks in one note collapse to one cheer**, rather than stacking two toasts.
+
+`addVibe` lost its `kind` argument with the note counters — nothing else read it, and the
+price chips track instruments through their own `queuePriceChip(kind)`.
 
 ---
 
