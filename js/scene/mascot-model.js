@@ -107,17 +107,17 @@ export function buildMascot() {
 
   // Recolorable outfit slots (mascot customization recolors these in place).
   const mats = {
-    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.75, envMapIntensity: 0.65, map: fabricTex }),
+    top: new THREE.MeshStandardMaterial({ color: 0xFDFBF7, roughness: 0.72, envMapIntensity: 0.65, map: fabricTex }),
     panel: new THREE.MeshStandardMaterial({ color: 0x233f9d, roughness: 0.72, map: fabricTex }),
-    stripes: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76, map: ribTex }),
+    stripes: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.68, map: ribTex }),
     sleeveL: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.76, map: fabricTex }),
     sleeveR: new THREE.MeshStandardMaterial({ color: 0x7fa1bd, roughness: 0.82, map: fabricTex }),
     shoulder: new THREE.MeshStandardMaterial({ color: 0xb93a3a, roughness: 0.76, map: fabricTex }),
-    collar: new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.7, map: ribTex }),
+    collar: new THREE.MeshStandardMaterial({ color: 0xFFD100, roughness: 0.68, map: ribTex }),
     pants: new THREE.MeshStandardMaterial({ color: 0x5B82A6, roughness: 0.82, map: fabricTex }),
-    shoes: new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.7 }),
+    shoes: new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.5, metalness: 0.05 }),
   };
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.6, envMapIntensity: 0.7, map: strandTex });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x5a2f22, roughness: 0.52, envMapIntensity: 0.85, map: strandTex });
   // Skin tones come from the customization config; keep env response low so
   // close-up palms/faces do not clip to white under stacked warm spots.
   const skin = new THREE.MeshStandardMaterial({ color: 0xf2c4a6, roughness: 0.88, envMapIntensity: 0.5 });
@@ -129,65 +129,84 @@ export function buildMascot() {
     detail: new THREE.MeshStandardMaterial({ color: 0x008542, roughness: 0.55, metalness: 0.08 }),
   };
 
-  // Varsity-jacket read: center placket, chest stripe, hem band, symmetric
-  // shoulder yokes. Same recolorable slots, calmer composition.
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.58, 14), mats.top);
-  torso.position.y = 1.08;
+  // Varsity-jacket read on a tailored body: the torso is a lathe with a
+  // shoulder roll, a waist and a hem flare instead of a straight can, and the
+  // placket / chest stripe follow that surface as thin conforming shells.
+  // The torso mesh stays pivoted at y=1.08 (profile is authored around the
+  // pivot) so the pose code's torso lean behaves exactly as it always has.
+  const TORSO_PIVOT_Y = 1.08;
+  const torsoProfile = [
+    [0.001, 0.785], [0.10, 0.785], [0.30, 0.79], [0.30, 0.815],
+    [0.278, 0.9], [0.272, 1.0], [0.293, 1.13], [0.284, 1.25],
+    [0.235, 1.342], [0.155, 1.372], [0.10, 1.378], [0.001, 1.378],
+  ].map(([r, y]) => new THREE.Vector2(r, y - TORSO_PIVOT_Y));
+  const torso = new THREE.Mesh(new THREE.LatheGeometry(torsoProfile, 26), mats.top);
+  torso.position.y = TORSO_PIVOT_Y;
   group.add(torso);
-  const placket = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.5, 0.03), mats.panel);
-  placket.position.set(0, 1.06, 0.298);
-  group.add(placket);
-  const chestStripe = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.03), mats.stripes);
-  chestStripe.position.set(0, 1.2, 0.29);
-  group.add(chestStripe);
-  const hemBand = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.317, 0.327, 0.06, 14, 1, true),
-    mats.stripes,
-  );
-  hemBand.position.y = 0.82;
-  group.add(hemBand);
+  // Trim rides the torso (as children) so a torso lean carries the placket,
+  // stripe, hem, collar and badge with it instead of leaving them behind.
+  // Lathe phi=0 faces +Z, so front arcs are centered with phiStart=-len/2.
+  const placketProfile = [
+    [0.319, 0.792], [0.319, 0.815], [0.297, 0.9], [0.291, 1.0],
+    [0.312, 1.13], [0.303, 1.25], [0.260, 1.33],
+  ].map(([r, y]) => new THREE.Vector2(r, y - TORSO_PIVOT_Y));
+  const placket = new THREE.Mesh(new THREE.LatheGeometry(placketProfile, 5, -0.12, 0.24), mats.panel);
+  torso.add(placket);
+  const stripeProfile = [[0.3055, 1.165], [0.3035, 1.235]]
+    .map(([r, y]) => new THREE.Vector2(r, y - TORSO_PIVOT_Y));
+  const chestStripe = new THREE.Mesh(new THREE.LatheGeometry(stripeProfile, 14, -0.575, 1.15), mats.stripes);
+  torso.add(chestStripe);
+  const hemBand = new THREE.Mesh(new THREE.CylinderGeometry(0.306, 0.314, 0.065, 26, 1, true), mats.stripes);
+  hemBand.position.y = 0.818 - TORSO_PIVOT_Y;
+  torso.add(hemBand);
+  // Ribbed stand collar circling the neck, parted at the front for the
+  // placket, with small V flaps where the two meet.
+  const collarRing = new THREE.Mesh(new THREE.TorusGeometry(0.148, 0.034, 8, 28, Math.PI * 1.824), mats.collar);
+  collarRing.position.y = 1.376 - TORSO_PIVOT_Y;
+  collarRing.rotation.set(Math.PI / 2, 0, Math.PI / 2 + 0.28);
+  torso.add(collarRing);
   for (const side of [-1, 1]) {
-    const yoke = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.05), mats.shoulder);
-    yoke.position.set(side * 0.21, 1.3, 0.26);
-    yoke.rotation.z = -side * 0.28;
-    group.add(yoke);
-    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), mats.collar);
-    collar.position.set(side * 0.07, 1.31, 0.3);
-    collar.rotation.z = side * 0.58;
-    group.add(collar);
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.03, 0.024), mats.collar);
+    flap.position.set(side * 0.078, 1.302 - TORSO_PIVOT_Y, 0.272);
+    flap.rotation.z = side * 0.52;
+    flap.rotation.y = -side * 0.22;
+    torso.add(flap);
   }
-  const waistband = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.028, 7, 22), mats.pants);
-  waistband.rotation.x = Math.PI / 2;
-  waistband.position.y = 0.78;
-  group.add(waistband);
-  const buckle = new THREE.Mesh(
-    new THREE.CircleGeometry(0.035, 12),
-    new THREE.MeshStandardMaterial({ color: 0xD1A13B, metalness: 0.85, roughness: 0.35 }),
-  );
-  buckle.position.set(0, 0.78, 0.315);
-  group.add(buckle);
+  // small accent pin on the chest stripe (reads as a band badge, not a blob)
+  const badge = new THREE.Mesh(new THREE.CircleGeometry(0.028, 16), mats.collar);
+  badge.position.set(-0.135, 1.2 - TORSO_PIVOT_Y, 0.301);
+  torso.add(badge);
+  // Saddle shoulder caps sit at the arm joins — they carry the palette's
+  // shoulder slot and mask the pivot seam through every arm swing, so they
+  // stay siblings of the arms (group space), not children of the torso.
+  for (const side of [-1, 1]) {
+    const shoulderCap = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 12), mats.shoulder);
+    shoulderCap.scale.set(1.15, 0.68, 0.95);
+    shoulderCap.position.set(side * 0.318, 1.312, 0);
+    group.add(shoulderCap);
+  }
   // neck fills the head/torso gap during walk and seated poses
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.1, 0.12, 10), skin);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.1, 0.12, 12), skin);
   neck.position.y = 1.4;
   group.add(neck);
 
   const head = new THREE.Group();
   head.position.y = 1.56;
-  const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 14), hairMat);
+  const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), hairMat);
   hairBack.scale.set(1.08, 1.55, 0.82);
   hairBack.position.set(0, -0.13, -0.05);
   head.add(hairBack);
-  const face = new THREE.Mesh(new THREE.SphereGeometry(0.27, 18, 14), skin);
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 18), skin);
   face.position.z = 0.035;
   head.add(face);
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.287, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.287, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
   hairCap.position.set(0, 0.04, 0.05);
   head.add(hairCap);
   // Side locks. Each style places them itself (x/y/z) — long hair must fall
   // beside and behind the jaw, never across the chin, or it reads as a beard.
   const locks = [];
   for (const side of [-1, 1]) {
-    const lock = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), hairMat);
+    const lock = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), hairMat);
     lock.userData.side = side;
     lock.scale.set(0.72, 3.3, 0.7);
     lock.position.set(side * 0.255, -0.28, 0.08);
@@ -198,7 +217,7 @@ export function buildMascot() {
   // hairline arcs over the brow instead of the hair cap's flat cut edge.
   // Styles restyle it by scale/rotation, never by new geometry.
   const fringe = new THREE.Mesh(
-    new THREE.SphereGeometry(0.305, 22, 14, Math.PI / 2 - 1.05, 2.1, 0.3, 0.98),
+    new THREE.SphereGeometry(0.305, 26, 16, Math.PI / 2 - 1.05, 2.1, 0.3, 0.98),
     hairMat,
   );
   fringe.position.set(0, 0.04, 0.045);
@@ -206,7 +225,7 @@ export function buildMascot() {
   // Back fall: the tapered mass below the skull that the back/cap spheres
   // cannot fake — long hair actually hangs down the back with it. Styles place
   // or hide it like every other piece.
-  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), hairMat);
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), hairMat);
   tail.position.set(0, -0.44, -0.17);
   head.add(tail);
   // Layered eye: sclera almond behind a large iris and pupil, so the
@@ -221,7 +240,7 @@ export function buildMascot() {
     sclera.scale.set(1.35, 0.8, 0.5);
     sclera.position.set(x, 0.025, 0.281);
     head.add(sclera);
-    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.0225, 10, 8), eyeMat);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 10), eyeMat);
     iris.scale.set(1, 1, 0.55);
     iris.position.set(x, 0.023, 0.292);
     head.add(iris);
@@ -229,7 +248,7 @@ export function buildMascot() {
     pupil.scale.set(1, 1, 0.5);
     pupil.position.set(x, 0.023, 0.301);
     head.add(pupil);
-    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 5), eyeShine);
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.0075, 6, 5), eyeShine);
     shine.position.set(x + 0.008, 0.034, 0.305);
     head.add(shine);
     const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.012), hairMat);
@@ -337,10 +356,10 @@ export function buildMascot() {
   }
   group.add(head);
 
-  const makeLimb = (x, y, material, radius, length, { hand = false } = {}) => {
+  const makeLimb = (x, y, material, radius, length, { hand = false, tipRadius = null } = {}) => {
     const pivot = new THREE.Group();
     pivot.position.set(x, y, 0);
-    const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.92, length, 9), material);
+    const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, tipRadius ?? radius * 0.92, length, 12), material);
     limb.position.y = -length / 2;
     limb.userData.majorMass = true;
     pivot.add(limb);
@@ -355,48 +374,49 @@ export function buildMascot() {
     return pivot;
   };
 
-  const armL = makeLimb(-0.34, 1.28, mats.sleeveL, 0.085, 0.5, { hand: true });
-  const armR = makeLimb(0.34, 1.28, mats.sleeveR, 0.09, 0.5, { hand: true });
+  // Limbs taper toward wrist and ankle — same pivots and lengths as ever, so
+  // every solved pose and hand anchor keeps working.
+  const armL = makeLimb(-0.34, 1.28, mats.sleeveL, 0.082, 0.5, { hand: true, tipRadius: 0.07 });
+  const armR = makeLimb(0.34, 1.28, mats.sleeveR, 0.086, 0.5, { hand: true, tipRadius: 0.073 });
   armL.rotation.z = -0.12;
   armR.rotation.z = 0.12;
   // ribbed varsity cuffs at the wrists (accent slot, rides limb poses)
-  for (const [pivot, radius] of [[armL, 0.085], [armR, 0.09]]) {
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.18, radius * 1.14, 0.06, 10), mats.stripes);
-    cuff.position.y = -0.44;
+  for (const [pivot, radius] of [[armL, 0.082], [armR, 0.086]]) {
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.16, radius * 1.1, 0.055, 12), mats.stripes);
+    cuff.position.y = -0.445;
     pivot.add(cuff);
   }
-  const legL = makeLimb(-0.15, 0.76, mats.pants, 0.145, 0.64);
-  const legR = makeLimb(0.15, 0.76, mats.pants, 0.145, 0.64);
+  const legL = makeLimb(-0.15, 0.76, mats.pants, 0.14, 0.64, { tipRadius: 0.112 });
+  const legR = makeLimb(0.15, 0.76, mats.pants, 0.14, 0.64, { tipRadius: 0.112 });
 
-  const soleMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.6 });
-  const sneakerStripeGeometry = new THREE.BoxGeometry(0.025, 0.06, 0.012);
+  const soleMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.65 });
+  const sneakerStripeGeometry = new THREE.BoxGeometry(0.022, 0.052, 0.012);
   for (const leg of [legL, legR]) {
-    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 0.38), mats.shoes);
-    sneaker.position.set(0, -0.64, 0.08);
+    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.135, 0.375), mats.shoes);
+    sneaker.position.set(0, -0.645, 0.075);
     sneaker.userData.majorMass = true;
     leg.add(sneaker);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.045, 0.4), soleMat);
-    sole.position.set(0, -0.7, 0.08);
+    const heel = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), mats.shoes);
+    heel.scale.set(1.1, 0.75, 0.7);
+    heel.position.set(0, -0.647, -0.078);
+    leg.add(heel);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.245, 0.05, 0.41), soleMat);
+    sole.position.set(0, -0.705, 0.08);
     leg.add(sole);
-    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.115, 10, 8), mats.shoes);
-    toe.scale.set(1.05, 0.62, 0.62);
-    toe.position.set(0, -0.655, 0.24);
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.105, 12, 9), mats.shoes);
+    toe.scale.set(1.08, 0.58, 0.66);
+    toe.position.set(0, -0.664, 0.235);
     leg.add(toe);
     // three identical toe stripes per shoe — one instanced draw instead of three
     const stripes = new THREE.InstancedMesh(sneakerStripeGeometry, mats.top, 3);
     const stripeMatrix = new THREE.Matrix4();
-    [-0.07, 0, 0.07].forEach((x, i) => {
-      stripes.setMatrixAt(i, stripeMatrix.makeTranslation(x, -0.64, 0.276));
+    [-0.062, 0, 0.062].forEach((x, i) => {
+      stripes.setMatrixAt(i, stripeMatrix.makeTranslation(x, -0.648, 0.266));
     });
     stripes.instanceMatrix.setUsage(THREE.StaticDrawUsage);
     stripes.computeBoundingSphere();
     leg.add(stripes);
   }
-
-  // small accent pin on the chest stripe (reads as a band badge, not a blob)
-  const badge = new THREE.Mesh(new THREE.CircleGeometry(0.028, 14), mats.collar);
-  badge.position.set(-0.135, 1.2, 0.303);
-  group.add(badge);
 
   // Only the major masses cast shadows. Trim, stripes, eyes, collar and pins
   // are too small to read in the shadow map and would roughly double the

@@ -19,6 +19,17 @@ consequences:
 worker interval (~31 ms). Write in-page waits as `requestAnimationFrame` loops, never
 `setTimeout`. → [[Dev workflows]]
 
+## The pane viewport can collapse to 0×0 and NaN the camera
+
+A backgrounded in-app Browser pane can report `window.innerWidth === 0` and
+`innerHeight === 0` (`visualViewport` too). The resize handler then computes
+`camera.aspect = 0/0 = NaN`, and anything that does math with the camera afterwards — the
+mascot-editor fit, `lookAt` — silently propagates NaN until the canvas is black with **no
+console error**. The scene state, bounds and DOM all measure finite, which makes it look
+like a geometry bug; it never is. Check `window.innerWidth` first. Front the pane (take a
+screenshot / `resize_window`), then reload so the load-time layout runs at a real size.
+Not a site bug: a real browser window never reports 0×0.
+
 ## WebGL can die mid-session and never come back
 
 The in-app browser pane's GPU process can start failing with

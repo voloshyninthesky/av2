@@ -443,6 +443,34 @@ and went with the pill.
 
 ---
 
+## The mascot got tailoring, not new options — 2026-08-08
+
+An elegance pass on `js/scene/mascot-model.js` that changes construction, not vocabulary:
+every editor option, recolor slot, joint pivot and hair-piece base dimension survives, so
+`applyMascotConfig`, the style tables and every solved pose keep working unchanged.
+
+- **The torso is a lathe, not a can.** Shoulder roll, waist, hem flare — profile authored
+  around the old y=1.08 pivot so torso-lean poses behave identically.
+- **Trim conforms and rides the torso.** Placket and chest stripe are lathe arcs following
+  the body surface (phi 0 faces +Z, so a front arc is `phiStart = -len/2`), parented to the
+  torso mesh so a lean carries them — the old box trim silently stayed behind.
+- **The belt is gone.** Hem rib + waistband torus + gold buckle was three stacked belts of
+  visual noise; a varsity jacket ends at its hem band. The freed meshes paid for the ribbed
+  stand collar and sneaker heel counters.
+- **Shoulder yokes became saddle caps at the arm joins.** They keep carrying the palette's
+  `shoulder` slot, and they mask the arm-pivot seam through every swing — which is why they
+  stay group-space siblings of the arms, not torso children.
+- **The long style's back fall moved from z −0.17 to −0.205** (`appearance.js`): the
+  tailored chest bulge (max r 0.293) swallowed it at the old depth.
+- Arched torus brows were tried and rejected: at stage distance, under every fringe tilt,
+  they read worse than the proven box brows. The elegance lives in silhouette and cloth.
+
+Design was iterated outside the repo in a deterministic Node harness (side-by-side
+current/elegant lineup across seven customization variants, PNG contact sheets) — the same
+before/after eye that the in-app editor cannot give.
+
+---
+
 ## Standing decisions (not from one commit)
 
 - **No build step.** Vendored Three.js, import maps, manual `?v=` cache stamps. What is in

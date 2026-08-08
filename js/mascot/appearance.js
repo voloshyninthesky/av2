@@ -40,7 +40,9 @@ export const MASCOT_HAIR_STYLES = {
     // The fall down the back, tilted in so the tip hugs the shoulder blades.
     // Length is capped so the face-category frame (head bounds) stays a
     // portrait — the tail is part of the head group and counts toward it.
-    tail: { s: [1.12, 1.9, 0.72], p: [0, -0.41, -0.17], rx: 0.14 },
+    // Z sits behind the tailored torso's chest curve (max r 0.293) so the
+    // fall stays visible from behind instead of sinking into the jacket.
+    tail: { s: [1.12, 1.9, 0.72], p: [0, -0.41, -0.205], rx: 0.14 },
   },
   bob: {
     back: { s: [1.16, 1.05, 0.95], p: [0, -0.03, -0.055] },
