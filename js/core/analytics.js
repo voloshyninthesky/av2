@@ -7,7 +7,7 @@
 // into `window.__av2Events` but never send them, so headless checks can assert
 // the funnel without writing to the dashboard.
 // ============================================================
-import { params } from './quality.js?v=20260808-07';
+import { params } from './quality.js?v=20260808-08';
 
 const QA_RUN = ['testhooks', 'headless', 'shot'].some((flag) => params.has(flag));
 

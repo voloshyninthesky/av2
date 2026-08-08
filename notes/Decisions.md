@@ -482,24 +482,24 @@ press. The number moved onto the button: «🎸 Уроки [ВІД 50 ЗЛ ›]�
 thing you press is the thing you want to know. Same rule as the HUD control — the label names
 what you get, not where you land.
 
-It also moved up under that HUD button, right edges aligned, so the teaser and the control it
-opens read as one thing. `ui._anchorChip()` measures the button on each show rather than
-hard-coding an offset: the nav grows a button when the sign form unlocks. (A phones-stay-on-
-the-floor carve-out was tried the same day and reversed a few hours later — the anchor holds on
-every viewport now, phones included; `_anchorChip()` just re-measures a shorter, differently
-laid-out HUD there.) → [[SPEC]] §6
+On desktop it also moved up under that HUD button, right edges aligned, so the teaser and the
+control it opens read as one thing. `ui._anchorChip()` measures the button on each show rather
+than hard-coding an offset: the nav grows a button when the sign form unlocks. **Phones keep
+it on the floor** — up there the HUD is a cramped strip and the bottom is where the thumb
+already is; the stylesheet owns the phone position and the measured offsets stand down at that
+breakpoint. (A same-day detour had the anchor hold on phones too — reverted a few hours later:
+the floor position tests better for a control that far up a small screen.) → [[SPEC]] §6
 
-**The chip waits for a second look — 2026-08-08.** It used to queue on the very first instrument
-a visitor focused — reaching a close-up read as interest enough. That made the very first thing
-anyone touched double as a sales cue, before they had any sense of whether the stage was worth
-their time. `vibe.js` now counts focus events (`noteInstrumentFocused()`, called from
-`setInstrumentViewPhase` in `main.js` next to the `queuePriceChip` call it already made) and
-`queuePriceChip` no-ops below 2. One-way and sticky, the same shape as the vibe meter's fill —
-once a visitor has focused a second instrument they have shown real interest, and every chip
-from then on queues normally. The first instrument's own chip is not banked for later: if the
-gate was still shut when it tried to queue, that one is simply skipped for the session unless
-the visitor happens to focus it again — the same quiet-by-design loss the chip already accepts
-on a fall or an instrument switch.
+**The chip earns quiet, not a bigger bar to clear — 2026-08-08.** A same-day detour tried
+gating the chip behind the visitor's *second* instrument focus — nothing would queue on the
+first thing anyone touched. Reverted a few hours later in favor of a simpler rule that does not
+change *when* a chip becomes eligible, only how often one actually lands: any shown chip —
+however it ended, read, dismissed, or left to time out on its own — buys a 3-minute quiet
+period before the next one, of any instrument, is allowed to show (`CHIP_COOLDOWN_MS` in
+`vibe.js`, checked in `chipFor` and skipped for forced calls — carousel prev/next, the
+`shot=chip` QA hook — since those are a deliberate ask to show one right now). A visitor who
+quickly samples several instruments gets one nudge at a time instead of a chip on every focus,
+without making the first instrument they ever touch feel unrewarded. → [[SPEC]] §6
 
 ---
 

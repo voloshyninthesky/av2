@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-07';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-07';
-import { bumpHitPulse } from '../scene/effects.js?v=20260808-07';
-import { instrumentView } from '../view/instrument-presets.js?v=20260808-07';
-import { play, keyboardPianoNotes } from './state.js?v=20260808-07';
-import { trackOnce } from '../core/analytics.js?v=20260808-07';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-08';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-08';
+import { bumpHitPulse } from '../scene/effects.js?v=20260808-08';
+import { instrumentView } from '../view/instrument-presets.js?v=20260808-08';
+import { play, keyboardPianoNotes } from './state.js?v=20260808-08';
+import { trackOnce } from '../core/analytics.js?v=20260808-08';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -130,15 +130,12 @@ const shownPriceChips = new Set();
 const pendingPriceChips = new Set();
 let chipAwaitingPrices = null;
 
-// A visitor's first instrument is exploration, not a sales moment. Nothing
-// queues — not even that first instrument's own chip — until a second focus
-// event proves they are actually browsing the stage. Sticky once past 2, same
-// one-way shape as the vibe meter's fill: main.js calls this once per focus,
-// right where it already queues that instrument's chip (see setInstrumentViewPhase).
-let focusedInstrumentCount = 0;
-export function noteInstrumentFocused() {
-  focusedInstrumentCount += 1;
-}
+// However a shown chip ends — read, ignored, swiped away, or timed out on its
+// own 8 s — it bought the visitor's attention once already. Nothing else
+// queues on top of it for a while, so a visitor who quickly samples several
+// instruments gets one nudge at a time rather than a chip every focus.
+const CHIP_COOLDOWN_MS = 3 * 60_000;
+let lastChipShownAt = -Infinity;
 
 // The chip reads as one line — «🎸 Уроки [ВІД 50 ЗЛ ›]» — with the price sitting
 // on the button. «ЦІНИ ›» there only named the panel behind the press, which the
@@ -156,6 +153,10 @@ function priceChipCta(slide) {
 export function chipFor(kind, { force = false } = {}) {
   if (ui.modalOpen) return;
   if (!force && shownPriceChips.has(kind)) return;
+  // The cooldown only throttles the organic flush path. A forced call —
+  // carousel prev/next on a chip already open, or the `shot=chip` QA hook —
+  // is a deliberate ask to show one right now, not a competing focus event.
+  if (!force && performance.now() - lastChipShownAt < CHIP_COOLDOWN_MS) return;
   shownPriceChips.add(kind);
   pendingPriceChips.delete(kind);
   const index = Math.max(0, PRICE_SLIDES.findIndex((slide) => slide.kind === kind));
@@ -168,6 +169,7 @@ export function chipFor(kind, { force = false } = {}) {
     () => ui.open('pricing', slide.anchor),
     { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
   );
+  lastChipShownAt = performance.now();
   // Queueing normally loads the prices long before this, but a chip forced
   // straight up (carousel, screenshot hooks) can beat them here: show it now
   // and fill the number in the moment the file lands.
@@ -180,7 +182,7 @@ export function chipFor(kind, { force = false } = {}) {
 }
 
 export function queuePriceChip(kind) {
-  if (!kind || shownPriceChips.has(kind) || focusedInstrumentCount < 2) return;
+  if (!kind || shownPriceChips.has(kind)) return;
   pendingPriceChips.add(kind);
   loadPrices();
 }

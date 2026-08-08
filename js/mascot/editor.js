@@ -6,13 +6,13 @@
 // exactly the look the visitor arrived with.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260808-07';
-import { camera, controls } from '../view/rig.js?v=20260808-07';
-import { ui, mascot, mascotLabel, instruments, applyMascotConfig } from '../core/studio.js?v=20260808-07';
-import { instrumentView } from '../view/instrument-presets.js?v=20260808-07';
-import { leaveInstrumentView } from '../view/instrument-view.js?v=20260808-07';
-import { resetMascotPose, setDancing } from './pose.js?v=20260808-07';
-import { mascotMove } from './state.js?v=20260808-07';
+import { session } from '../core/session.js?v=20260808-08';
+import { camera, controls } from '../view/rig.js?v=20260808-08';
+import { ui, mascot, mascotLabel, instruments, applyMascotConfig } from '../core/studio.js?v=20260808-08';
+import { instrumentView } from '../view/instrument-presets.js?v=20260808-08';
+import { leaveInstrumentView } from '../view/instrument-view.js?v=20260808-08';
+import { resetMascotPose, setDancing } from './pose.js?v=20260808-08';
+import { mascotMove } from './state.js?v=20260808-08';
 import {
   MASCOT_DEFAULTS,
   MASCOT_HEIGHT_RANGE,
@@ -31,7 +31,7 @@ import {
   mascotAppearanceSnapshot,
   mascotCfg,
   saveMascotConfig,
-} from './appearance.js?v=20260808-07';
+} from './appearance.js?v=20260808-08';
 
 // Opening the wardrobe borrows the camera and has to quiet whatever else was
 // using it; main.js supplies those so this module stays a leaf.
