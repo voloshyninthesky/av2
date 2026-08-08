@@ -6,7 +6,7 @@
 // render probe pulls when the device cannot keep up.
 // ============================================================
 import * as THREE from 'three';
-import { softDiscTexture } from './textures.js?v=20260808-04';
+import { softDiscTexture } from './textures.js?v=20260808-05';
 import {
   adaptiveQualityScene,
   registerDimmableLight,
@@ -15,7 +15,7 @@ import {
   isLowEndMobileGameMode,
   usesLowMobileSceneBudget,
   canUpgradeMobileQuality,
-} from '../core/quality.js?v=20260808-04';
+} from '../core/quality.js?v=20260808-05';
 
 // ---- truss + spotlights + visible cones ----
 export const spotHeads = [];

@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-04';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-04';
-import { bumpHitPulse } from '../scene/effects.js?v=20260808-04';
-import { instrumentView } from '../view/instrument-presets.js?v=20260808-04';
-import { play, keyboardPianoNotes } from './state.js?v=20260808-04';
-import { trackOnce } from '../core/analytics.js?v=20260808-04';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260808-05';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260808-05';
+import { bumpHitPulse } from '../scene/effects.js?v=20260808-05';
+import { instrumentView } from '../view/instrument-presets.js?v=20260808-05';
+import { play, keyboardPianoNotes } from './state.js?v=20260808-05';
+import { trackOnce } from '../core/analytics.js?v=20260808-05';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');
@@ -130,12 +130,17 @@ const shownPriceChips = new Set();
 const pendingPriceChips = new Set();
 let chipAwaitingPrices = null;
 
+// The chip reads as one line — «🎸 Уроки [ВІД 50 ЗЛ ›]» — with the price sitting
+// on the button. «ЦІНИ ›» there only named the panel behind the press, which the
+// number does anyway; the number is also the reason to press.
 function priceChipTitle(slide) {
+  return `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>Уроки`;
+}
+
+function priceChipCta(slide) {
   const from = lowestSinglePrice(slide.anchor);
-  const teaser = from === null
-    ? 'в Art Vibe'
-    : `від ${from} ${pricesNow().currency.display}`;
-  return `<span class="chip-icon" aria-hidden="true">${slide.icon}</span>Уроки <span class="accent">${teaser}</span>`;
+  if (from === null) return 'в Art Vibe ›';
+  return `від ${from} ${pricesNow().currency.display} ›`;
 }
 
 export function chipFor(kind, { force = false } = {}) {
@@ -149,7 +154,7 @@ export function chipFor(kind, { force = false } = {}) {
   ui.showChip(
     priceChipTitle(slide),
     '',
-    'ЦІНИ ›',
+    priceChipCta(slide),
     () => ui.open('pricing', slide.anchor),
     { onPrev: () => showAt(index - 1), onNext: () => showAt(index + 1) },
   );
@@ -159,7 +164,7 @@ export function chipFor(kind, { force = false } = {}) {
   chipAwaitingPrices = pricesNow() ? null : kind;
   if (chipAwaitingPrices) {
     loadPrices().then(() => {
-      if (chipAwaitingPrices === kind) ui.setChipTitle(priceChipTitle(slide));
+      if (chipAwaitingPrices === kind) ui.setChipCta(priceChipCta(slide));
     });
   }
 }

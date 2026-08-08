@@ -90,8 +90,10 @@ are worth keeping:
 
 - **No personal data beats rate-limit rigor.** Per-IP limiting means storing IPs. Dropping
   it makes the privacy story trivial — no cookies, nothing personal, no banner needed —
-  and the 7-day gate lives in `localStorage` on the device instead. A determined
-  visitor can clear it; the stage survives that.
+  and the gate lives in `localStorage` on the device instead. A determined
+  visitor can clear it; the stage survives that. (**2026-08-08:** the gate was a week at
+  first and is now 24 hours. A week is a punishment on a stage nobody visits daily, and the
+  real ceiling was never the gate — it is the slot count and Telegram's 4096-char head.)
 - **A Telegram channel is the whole backend.** The aggregate the stage loads is one pinned
   message — read via `getChat`, rewritten via `editMessageText`, straight from the browser
   (`api.telegram.org` sends `Access-Control-Allow-Origin: *`). Bots cannot read channel
@@ -473,6 +475,19 @@ back. `.icon-btn.gold` mirrors `.pill-btn.gold` exactly — same fill, same purp
 there is one gold-CTA treatment in the stylesheet rather than two. A glow was tried and
 removed: a gold disc is already the brightest thing in the nav. `.nav-btn` had no other user
 and went with the pill.
+
+**The price chip lost the word too — 2026-08-08.** Its button said «ЦІНИ ›» beside a title
+already reading «Уроки від 50 зл», so the chip spent its gold on naming the panel behind the
+press. The number moved onto the button: «🎸 Уроки [ВІД 50 ЗЛ ›]» reads as one line, and the
+thing you press is the thing you want to know. Same rule as the HUD control — the label names
+what you get, not where you land.
+
+On desktop it also moved up under that HUD button, right edges aligned, so the teaser and the
+control it opens read as one thing. `ui._anchorChip()` measures the button on each show rather
+than hard-coding an offset: the nav grows a button when the sign form unlocks. **Phones keep
+it on the floor** — up there the HUD is a cramped strip and the bottom is where the thumb
+already is. The stylesheet owns the phone position, so the measured offsets stand down at that
+breakpoint instead of overriding it inline. → [[SPEC]] §6
 
 ---
 

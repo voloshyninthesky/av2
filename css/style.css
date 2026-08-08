@@ -564,27 +564,36 @@ html.stage-live .icon-btn {
 }
 #tooltip em { font-style: normal; color: var(--gold); }
 
+/* On desktop the chip hangs from the lessons-and-prices control it opens, right
+   edges aligned: it reads as that button speaking rather than as a banner that
+   happens to be on screen. `ui._anchorChip()` measures the button and writes
+   `top`/`right` — the nav grows a button when the sign form unlocks, so neither
+   offset can be hard-coded. The values here are the fallback for a chip shown
+   while the HUD is away; the phone breakpoint below puts it back on the floor. */
 #chip {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 68px; right: 18px;
   z-index: 45; display: inline-flex; align-items: center; gap: 10px;
   background: rgba(23, 18, 28, .78); color: var(--cream); backdrop-filter: blur(12px);
   border: 1px solid rgba(209, 161, 59, .3); border-radius: 999px;
   width: max-content; max-width: calc(100vw - 28px); padding: 5px 5px 5px 15px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, .32);
-  animation: chipIn .45s cubic-bezier(.22, 1, .36, 1);
+  animation: chipDrop .45s cubic-bezier(.22, 1, .36, 1);
   transition: opacity .24s ease, transform .24s ease;
   touch-action: pan-y;
 }
-#chip.leaving { opacity: 0; transform: translate(-50%, 10px); pointer-events: none; }
+#chip.leaving { opacity: 0; transform: translateY(-8px); pointer-events: none; }
 #chip[data-actionable="true"] { cursor: pointer; }
 #chip[data-actionable="true"]:hover { border-color: rgba(209, 161, 59, .55); }
+/* Drops out of the button rather than rising off the floor. `chipIn` stays for
+   everything that is centred and needs its -50% kept — the toast, and the chip
+   itself at the phone breakpoint. */
+@keyframes chipDrop { from { transform: translateY(-12px); opacity: 0; } }
 @keyframes chipIn { from { transform: translate(-50%, 14px); opacity: 0; } }
 #chip-title {
   font-family: 'Unbounded'; font-weight: 600; font-size: 10px; line-height: 1.3; letter-spacing: .02em;
   color: rgba(253, 251, 247, .88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #chip-title .chip-icon { font-size: 14px; margin-right: 7px; vertical-align: -2px; }
-#chip-title .accent { display: inline; margin-left: 4px; color: var(--gold-light); white-space: nowrap; font-weight: 500; }
 #chip-desc { display: none; }
 /* Carousel arrows stay in the DOM (touch swipe drives them programmatically)
    but are no longer visible chrome — the chip reads as one quiet tag. */
@@ -1627,10 +1636,15 @@ html.mascot-editor-open #toast {
   .price-signup-cta span { padding: 8px 9px; font-size: 8px; }
   .board-amount { font-size: clamp(48px, 16vw, 64px); }
   .promo-grid p { padding: 11px 12px; font-size: 12px; }
+  /* Phones keep the chip on the floor. The HUD up there is a cramped strip, and
+     the bottom is where the thumb already is — only desktop hangs it off the
+     lessons-and-prices button (`ui._anchorChip`, which stands down here). */
   #chip {
-    top: auto; bottom: calc(112px + env(safe-area-inset-bottom));
+    top: auto; right: auto; bottom: calc(112px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%); animation-name: chipIn;
     gap: 8px; max-width: calc(100vw - 32px); padding: 4px 4px 4px 12px;
   }
+  #chip.leaving { transform: translate(-50%, 10px); }
   #chip-title { font-size: 9px; }
   #chip-title .chip-icon { font-size: 12px; margin-right: 6px; }
   #chip .pill-btn { padding: 7px 11px; font-size: 7px; }

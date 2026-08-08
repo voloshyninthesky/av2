@@ -8,10 +8,10 @@
 // per device per 7 days, enforced only in localStorage — no IPs, no
 // identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260808-04';
-import { params } from '../core/quality.js?v=20260808-04';
-import { track } from '../core/analytics.js?v=20260808-04';
-import { play } from '../play/state.js?v=20260808-04';
+import { ui } from '../core/studio.js?v=20260808-05';
+import { params } from '../core/quality.js?v=20260808-05';
+import { track } from '../core/analytics.js?v=20260808-05';
+import { play } from '../play/state.js?v=20260808-05';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -19,7 +19,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260808-04';
+} from '../scene/signs.js?v=20260808-05';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -36,7 +36,7 @@ const API = `https://api.telegram.org/bot${BOT}`;
 
 const STORE_KEY = 'av2.sign.v1';
 const MAX_LEN = 24;
-const GATE_MS = 7 * 86_400_000;
+const GATE_MS = 86_400_000;
 // A Telegram message tops out at 4096 UTF-16 units, and that ceiling — not
 // the slot count — is what really limits how many signs the stage can show.
 // So the head is a terse line format rather than JSON (roughly 40% smaller,
@@ -120,7 +120,7 @@ function readGate() {
 /**
  * The button exists only while a visitor can actually use it: they have filled
  * the vibe meter once, the storage answered, they have not signed in the last
- * 7 days, and the stage still has a free slot. A control that is visible but
+ * day, and the stage still has a free slot. A control that is visible but
  * cannot do anything is worse than no control — it invites a tap and answers
  * with a refusal.
  *
@@ -168,7 +168,7 @@ function syncPreview() {
 function rememberSign(text, color) {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({ text, color, ts: Date.now() }));
-  } catch { /* storage may be unavailable; the 7-day gate just relaxes */ }
+  } catch { /* storage may be unavailable; the daily gate just relaxes */ }
 }
 
 function recallSign() {
@@ -196,7 +196,7 @@ async function submitSign(event) {
     return;
   }
   if (readGate()) {
-    showError('Один знак на тиждень — повернись за кілька днів.');
+    showError('Один знак на день — повернись завтра.');
     return;
   }
   posting = true;

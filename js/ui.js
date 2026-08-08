@@ -2,6 +2,13 @@
 // ART VIBE — HUD & overlay UI manager
 // ============================================================
 
+// The stylesheet's phone breakpoint, verbatim. The chip's position is CSS on
+// phones and measured here on desktop, so the two have to agree on which is
+// which — a mismatch leaves an inline offset overriding the phone rule.
+const PHONE_LAYOUT = window.matchMedia(
+  '(max-width: 720px), (hover: none) and (pointer: coarse) and (max-height: 900px)',
+);
+
 export class UI {
   constructor() {
     this.el = {
@@ -16,6 +23,7 @@ export class UI {
       chipClose: document.getElementById('chip-close'),
       chipPrev: document.getElementById('chip-prev'),
       chipNext: document.getElementById('chip-next'),
+      pricingBtn: document.getElementById('pricing-btn'),
       toast: document.getElementById('toast'),
       vibe: document.getElementById('vibe'),
       vibeFill: document.getElementById('vibe-fill'),
@@ -47,7 +55,7 @@ export class UI {
 
   async _ensurePricing() {
     if (!this._pricingPromise) {
-      this._pricingPromise = import('./pricing.js?v=20260808-04')
+      this._pricingPromise = import('./pricing.js?v=20260808-05')
         .then(({ PricingPicker }) => {
           this.pricing = new PricingPicker(this.modals.pricing);
           return this.pricing.init().then(() => this.pricing);
@@ -98,6 +106,10 @@ export class UI {
       (dx < 0 ? this.el.chipNext : this.el.chipPrev).click();
     });
     this.el.chip.addEventListener('pointercancel', () => { swipeStart = null; });
+    // A rotate or a resized window moves the button the chip hangs from.
+    window.addEventListener('resize', () => {
+      if (!this.el.chip.hidden) this._anchorChip();
+    });
 
     // Status toasts are display-only chrome. Claim their gestures so a rapid
     // pad tap followed by a toast tap cannot become browser double-tap zoom.
@@ -263,13 +275,38 @@ export class UI {
     this.el.chipPrev.onclick = () => navigation?.onPrev?.();
     this.el.chipNext.onclick = () => navigation?.onNext?.();
     this.el.chip.hidden = false;
+    this._anchorChip();
     clearTimeout(this._chipTimer);
     this._chipTimer = setTimeout(() => this.hideChip(), 8000);
   }
-  /** Rewrite the title of a chip that is already up (prices arriving late). */
-  setChipTitle(titleHtml) {
+
+  /**
+   * On desktop, hang the chip under the lessons-and-prices button with their
+   * right edges aligned, so it points at the control it opens. Measured on
+   * every show rather than fixed in CSS, because the nav gains a button when
+   * the sign form unlocks. If the HUD is away — hidden during the intro, or the
+   * button missing entirely — the CSS fallback stands.
+   *
+   * Phones keep the chip at the bottom of the screen, where the stylesheet puts
+   * it: up there it would sit under a cramped strip and far from the thumb.
+   */
+  _anchorChip() {
+    const chip = this.el.chip;
+    if (PHONE_LAYOUT.matches) {
+      // An inline offset written on a wider viewport would outrank the phone rule.
+      chip.style.top = '';
+      chip.style.right = '';
+      return;
+    }
+    const rect = this.el.pricingBtn?.getBoundingClientRect();
+    if (!rect?.width || rect.bottom <= 0) return;
+    chip.style.top = `${Math.round(rect.bottom + 10)}px`;
+    chip.style.right = `${Math.round(Math.max(8, window.innerWidth - rect.right))}px`;
+  }
+  /** Rewrite the CTA of a chip that is already up (prices arriving late). */
+  setChipCta(text) {
     if (this.el.chip.hidden || this.el.chip.classList.contains('leaving')) return;
-    this.el.chipTitle.innerHTML = titleHtml;
+    this.el.chipCta.textContent = text;
   }
   _activateChip() {
     const action = this._chipAction;

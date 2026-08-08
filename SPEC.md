@@ -136,7 +136,7 @@ Mute chosen before the context exists is honored when `init` runs.
 
 ### Signs («знаки на сцені»)
 
-Visitors can leave one short glowing sign per 7 days and see everyone else's. The feature is
+Visitors can leave one short glowing sign per day and see everyone else's. The feature is
 **absent unless its storage answers**: one boot-time probe gates the button, the modal and
 both sign surfaces together; on any failure — and in `testhooks` / `headless` / `shot` QA
 runs, which must not read or write the live stage — the stage looks exactly as it does
@@ -175,7 +175,7 @@ without the feature. No retry, no error surface.
 - **The stage fills once.** Slots are never recycled: when the last one goes, the stage is
   closed and the marker button is gone. A visitor who cannot sign is never shown a control
   that refuses them — the button is present only once the meter has been filled, the
-  storage answered, the visitor has not signed in the last 7 days, and a slot is free.
+  storage answered, the visitor has not signed in the last day, and a slot is free.
   (A sign draining out of the head on the character budget frees its slot again, which is
   the one way the stage reopens.) The meter can fill before or after the storage probe
   resolves, so availability is recomputed rather than revealed once — either order has to
@@ -198,7 +198,7 @@ without the feature. No retry, no error surface.
   (~0.9 s; instant under reduced motion) and shows a toast; failures surface as friendly
   inline one-liners and never block the stage.
 - **Once a day, on the device only.** `localStorage` `av2.sign.v1` (`{ text, color, ts }`)
-  prefills the form and arms a rolling 7-day gate; while gated the button carries
+  prefills the form and arms a rolling 24-hour gate; while gated the button carries
   no state at all — it is simply absent until tomorrow. No IPs, no identifiers,
   nothing personal is stored anywhere, and the site stays cookie-less — no consent banner
   required.
@@ -447,7 +447,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **GLAMOUR** defaults to `67` and **PIXEL** to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the minimal **Графіка** selector |
 | Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer**, **sign form** (`#modal-sign`, § Signs — reachable from the below-HUD marker button when storage is alive) |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
-| Chip | Once-per-instrument price teaser: a compact tag-style pill (instrument emoji + name + «уроки від N зл» + «ЦІНИ ›»), fading in/out softly. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
+| Chip | Once-per-instrument price teaser: a compact tag-style pill reading as one line — instrument emoji + «Уроки» + a CTA button carrying the price, «від N зл ›» — fading in/out softly. The price is the CTA label; there is no separate «ЦІНИ» word. Before `prices.json` lands (or when an instrument has no single lesson) the button reads «в Art Vibe ›» and is rewritten in place the moment the file arrives. **Placement:** on desktop it hangs under the HUD's lessons-and-prices button, their right edges aligned (measured on each show, so it follows the nav when the sign button appears); at the phone breakpoint it stays bottom-centre, above the pads. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument’s focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. Skipped on fall, instrument switch, and mascot-editor leave. |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
@@ -637,7 +637,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 - `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
 - `av2.guitar-chords.v2` holds the six chosen chord-pad slots (§ Chord slots and the chord maker); unknown names fall back per slot.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
-- `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 7-day gate.
+- `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 24-hour gate.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
 
 ---
@@ -746,7 +746,7 @@ lesson pages):
 | `stage-first-play` | First note on any instrument (all play routes funnel through `addVibe`) |
 | `stage-pricing-open` | Pricing overlay opened by any route |
 | `book-{instagram\|messenger}-{home\|vocal\|guitar\|piano\|drums\|stage}` | Outbound booking link clicked |
-| `stage-sign-left` | A sign was accepted onto the stage (at most once per 7 days per device by construction) |
+| `stage-sign-left` | A sign was accepted onto the stage (at most once a day per device by construction) |
 
 The first three fire at most once per page load; booking clicks fire every time.
 Booking happens inside Instagram/Messenger DMs, so the click is the last thing
