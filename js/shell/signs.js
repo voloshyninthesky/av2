@@ -8,10 +8,10 @@
 // per device per day, enforced only in localStorage — no IPs, no
 // identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260808-08';
-import { params } from '../core/quality.js?v=20260808-08';
-import { track } from '../core/analytics.js?v=20260808-08';
-import { play } from '../play/state.js?v=20260808-08';
+import { ui } from '../core/studio.js?v=20260809-04';
+import { params } from '../core/quality.js?v=20260809-04';
+import { track } from '../core/analytics.js?v=20260809-04';
+import { play } from '../play/state.js?v=20260809-04';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -19,7 +19,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260808-08';
+} from '../scene/signs.js?v=20260809-04';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -234,13 +234,18 @@ async function submitSign(event) {
     // arbitrary messages back anyway); they are the record, sitting visibly
     // in the channel.
     const head = () => encodeHead(nextN, tail, hot);
-    // Drain from the oldest end until the head both fits the stage and fits
-    // a Telegram message. Each row must genuinely leave `hot`, or it would
-    // be archived again on every write while the head grew past the limit
-    // anyway — the failure mode a fixed row budget invites.
+    // Sorted by id so the drain does not depend on the order rows happen to
+    // sit in — a hand-edited head seals the right end either way.
+    hot.sort((a, b) => (decodeRow(a)?.id ?? 0) - (decodeRow(b)?.id ?? 0));
+    // Drain from the NEWEST end until the head both fits the stage and fits a
+    // Telegram message. The stage is first-come-first-served, so the rows that
+    // do not fit are the most recent ones — the first signature must never be
+    // the row that leaves. Each row must genuinely leave `hot`, or it would be
+    // archived again on every write while the head grew past the limit anyway
+    // — the failure mode a fixed row budget invites.
     const sealed = [];
-    while (hot.length > TOTAL_SLOTS) sealed.push(hot.shift());
-    while (hot.length > 1 && head().length > HOT_MAX_CHARS) sealed.push(hot.shift());
+    while (hot.length > TOTAL_SLOTS) sealed.push(hot.pop());
+    while (hot.length > 1 && head().length > HOT_MAX_CHARS) sealed.push(hot.pop());
     if (sealed.length) {
       const node = await tg('sendMessage', {
         chat_id: CHAT,

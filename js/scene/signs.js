@@ -13,7 +13,7 @@ import {
   registerDimmableEmissive,
   prefersReducedMotion,
   usesLowMobileSceneBudget,
-} from '../core/quality.js?v=20260808-08';
+} from '../core/quality.js?v=20260809-04';
 
 // Render hexes for the curated color ids a sign may carry. Brighter than
 // the brand ink-on-cream palette on purpose: these glow against 0x15091f.
@@ -194,8 +194,9 @@ export function buildSigns() {
 }
 
 /** The slot a new sign takes: the lowest free one, so the surfaces fill in
- *  the declared order. Returns null only if the stage is full, which the
- *  caller prevents by retiring the oldest sign first. */
+ *  the declared order. Returns null once the stage is full — nothing is
+ *  retired to make room, the write is simply refused, which is what makes a
+ *  signature worth leaving. */
 export function chooseSlot(usedSlots) {
   for (let slot = 0; slot < TOTAL_SLOTS; slot++) {
     if (!usedSlots.has(slot)) return slot;
@@ -209,12 +210,27 @@ export function chooseSlot(usedSlots) {
 // never collides, and the probe keeps even dishonest data deterministic.
 function slotAssignments() {
   const taken = new Map();
+  const derived = [];
+  // Pass 1: a stored slot belongs to the sign that stored it. `signs` is in id
+  // order, so the earliest claim wins a collision — and nothing computed in
+  // pass 2 can displace it. Doing this first is the whole point: a row whose
+  // slot no longer exists used to be able to probe its way onto slot 0 and
+  // take the first signature's place on the stage.
   for (const sign of signs) {
-    let slot = Number.isInteger(sign.slot) && sign.slot >= 0 && sign.slot < TOTAL_SLOTS
-      ? sign.slot
-      : (((sign.id - 1) % TOTAL_SLOTS) + TOTAL_SLOTS) % TOTAL_SLOTS;
+    const slot = sign.slot;
+    if (Number.isInteger(slot) && slot >= 0 && slot < TOTAL_SLOTS && !taken.has(slot)) {
+      taken.set(slot, sign);
+    } else {
+      derived.push(sign);
+    }
+  }
+  // Pass 2: legacy or hand-tampered rows with no usable slot fall back to a
+  // derived home and probe forward, but only into what the honest rows left
+  // free — never over one of them.
+  for (const sign of derived) {
+    let slot = (((sign.id - 1) % TOTAL_SLOTS) + TOTAL_SLOTS) % TOTAL_SLOTS;
     for (let i = 0; i < TOTAL_SLOTS && taken.has(slot); i++) slot = (slot + 1) % TOTAL_SLOTS;
-    taken.set(slot, sign);
+    if (!taken.has(slot)) taken.set(slot, sign);
   }
   return taken;
 }
@@ -299,17 +315,27 @@ function repaint(onlyKey = null) {
 }
 
 export function setSigns(list) {
+  // Sorting by id is what makes the stage independent of the order the rows
+  // happen to sit in inside the Telegram message — a hand-edited or
+  // out-of-order head still renders identically.
+  //
+  // Then keep the EARLIEST, not the latest. The stage is first-come-first-
+  // served and fills once, so if a head ever carries more rows than there are
+  // slots it is the newest that do not fit — never the first signature.
+  // Taking the tail instead used to drop sign 0 off the stage entirely.
   signs = [...list]
     .filter((s) => s && typeof s.text === 'string' && Number.isInteger(s.id))
     .sort((a, b) => a.id - b.id)
-    .slice(-TOTAL_SLOTS);
+    .slice(0, TOTAL_SLOTS);
   if (surfaces) repaint();
 }
 
 export function addSign(sign) {
   const before = signs.length;
   signs.push(sign);
-  signs = signs.slice(-TOTAL_SLOTS);
+  // Same rule as setSigns: id order, earliest kept. Defensive only — the write
+  // path refuses once every slot is taken, so this never trims in practice.
+  signs = signs.sort((a, b) => a.id - b.id).slice(0, TOTAL_SLOTS);
   if (!surfaces) return;
   const place = placementForSlot(
     Number.isInteger(sign.slot) && sign.slot >= 0 && sign.slot < TOTAL_SLOTS ? sign.slot : 0,

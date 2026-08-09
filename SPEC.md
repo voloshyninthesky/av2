@@ -161,13 +161,24 @@ without the feature. No retry, no error surface.
   settled follow camera, it spills the frame far less than the front strip already does.
 - **A sign's position is part of the sign.** At creation the client picks the first free
   slot — wall (`0–11`), then front strip (`12–36`), then mid band (`37–66`) — and stores it
-  in the sign's row, so a sign stays where it was put for as long as it lives, even as
-  older signs retire around it. Within its slot, each surface's fixed shuffle plus
-  id-seeded jitter, rotation, size variance and an occasional underline flourish keep the
-  fill organic (stable, since id and slot never change). At capacity the retiring oldest
-  sign is what frees a slot for the newcomer. Rows without a valid slot (legacy or
-  hand-tampered state) fall back to a derived `(id − 1) % 67` home with a deterministic
-  probe, so every visitor still computes the same stage.
+  in the sign's row, so a sign stays where it was put for as long as it lives. Within its
+  slot, each surface's fixed shuffle plus id-seeded jitter, rotation, size variance and an
+  occasional underline flourish keep the fill organic (stable, since id and slot never
+  change).
+- **The stage is first-come-first-served, and the first signature outlives everything.**
+  Slots are never recycled: at capacity the write is refused rather than displacing anyone
+  (§ Signs storage). Every read path follows from that. Signs are ordered **by id, not by
+  the order rows sit in the stored head**, so a hand-edited or out-of-order message renders
+  identically; and where a head somehow carries more rows than the stage has slots, it is
+  the **newest** that do not fit — the head keeps the earliest, and the write path seals
+  the newest end into the archive. Taking the other end would drop sign `0` off the stage.
+- **A stored slot belongs to the sign that stored it.** Placement runs in two passes: rows
+  with a valid, unclaimed slot take it first (earliest id wins a collision), and only then
+  do rows without a usable slot (legacy or hand-tampered state) fall back to a derived
+  `(id − 1) % 67` home with a deterministic probe — filling what is left free, never
+  displacing an honest row. One pass let a row whose slot no longer existed probe its way
+  onto slot `0` and stand where the first signature belongs. Every visitor still computes
+  the same stage.
 - **Signing is earned, not offered.** The button stays hidden until the visitor fills the
   VIBE meter for the first time — the same moment that opens the loop pedal (§9 Praise), so
   the stage has exactly one unlock beat rather than two. Playing comes first; the stage is
