@@ -20,19 +20,22 @@ Read-modify-write from N browsers has no serialisation point. Now slot allocatio
 happen in one synchronous SQLite transaction in a single process, verified with 100
 concurrent writes against a 67-slot stage (exactly 67 accepted, 67 distinct slots).
 
-Three things that fell out and are easy to forget:
+Things that fell out and are easy to forget:
 
-- **The Telegram write key no longer ships in the bundle.** [[SPEC]] §12's "one deliberate
-  exception: no secrets in repo" is retired. The credential lives in `/etc/av2-signs.env`
-  (mode 600) on the VPS only.
-- **Telegram is now a mirror, not the store.** The backend rewrites the pinned message from
-  the database after each accepted sign, and seeds itself *from* the pin only when the
-  database is empty. So **owner edits in Telegram do not flow back** — the pin and the DB
-  drift until someone reconciles them. A reconcile-on-boot or `POST /reseed` was discussed
-  and not built.
+- **No write key ships in the bundle, and there is no credential anywhere any more.**
+  [[SPEC]] §12's "one deliberate exception: no secrets in repo" is retired outright.
+- **Telegram is gone from the feature entirely** (later the same day). The mirror, seed,
+  bot token and `/etc/av2-signs.env` are all removed; the backend makes no outbound calls
+  and holds no credentials. `signs.db` is the only copy of the wall, so
+  `deploy/signs-backup/` is now load-bearing — it snapshots the database every two hours
+  with sqlite3 `.backup` into `/var/backups/av2-signs/`. **A lost VPS disk now costs the
+  signatures**, where before the pinned message survived. Moderation is SQL over SSH.
 - **The VPS answers SSH again.** The "host stopped answering" note from 2026-08-07 was
   stale — the old `av2-signs` unit had in fact been running the whole time, serving the
   first-cut JSON backend. Pre-migration backups are in `/root/av2-signs-*.bak-*`.
+- **`js/core/telegram.js` is a different feature and is untouched** — in-app browser /
+  Mini App guards for visitors arriving from a Telegram link ([[SPEC]] §10), nothing to do
+  with storage.
 
 **Careful testing against the live endpoint:** the in-memory rate limit is 30 s per IP / 10
 per day and nginx overwrites `X-Real-IP`, so it cannot be spoofed. A burst test from one

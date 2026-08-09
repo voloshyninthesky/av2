@@ -5,26 +5,26 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260809-09';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260809-09';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260809-09';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260809-09';
-import { instrumentView } from '../view/instrument-presets.js?v=20260809-09';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260809-09';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260809-09';
-import { mascotMove } from '../mascot/state.js?v=20260809-09';
-import { play } from '../play/state.js?v=20260809-09';
+import { session, easeInOut } from '../core/session.js?v=20260809-10';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260809-10';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260809-10';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260809-10';
+import { instrumentView } from '../view/instrument-presets.js?v=20260809-10';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260809-10';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260809-10';
+import { mascotMove } from '../mascot/state.js?v=20260809-10';
+import { play } from '../play/state.js?v=20260809-10';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260809-09';
-import { clearGuitarInteractionState } from '../play/pads.js?v=20260809-09';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260809-09';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260809-09';
-import { trackOnce } from '../core/analytics.js?v=20260809-09';
+} from '../play/loop.js?v=20260809-10';
+import { clearGuitarInteractionState } from '../play/pads.js?v=20260809-10';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260809-10';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260809-10';
+import { trackOnce } from '../core/analytics.js?v=20260809-10';
 
 const mobileControls = document.getElementById('mobile-controls');
 

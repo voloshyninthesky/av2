@@ -12,6 +12,47 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## Telegram is gone from the signs feature entirely — 2026-08-09
+
+The mirror, the seed, the bot token and the credentials file are all removed. The backend
+now makes **no outbound calls at all** and holds no secrets; `signs.db` is the whole store.
+
+The mirror had been kept on the theory that the channel was still "the record a human
+reads". In practice it was a write-only copy nobody read: the stage stopped reading it the
+moment the backend landed, and the seed only ran when the database was empty — so owner
+edits in Telegram never flowed back anyway (recorded as a known drift the same day). It was
+paying a per-write API call, a rate-limit exposure and a stored credential for a copy that
+was already advisory.
+
+**The part that actually mattered was the backup, and that is now explicit rather than
+incidental.** The pinned message doubled as the off-server copy of the wall; deleting the
+mirror would have left `signs.db` as the only artefact anywhere, with nothing snapshotting
+it. So `deploy/signs-backup/` was repurposed rather than deleted — same two-hourly cron,
+now snapshotting the database instead of the channel. **Two things it must do that a naive
+version gets wrong:**
+
+- **`sqlite3 .backup`, never `cp`.** The database runs in WAL mode and is written live, so
+  copying the file can catch a torn page and strand the `-wal`. `.backup` takes a
+  consistent snapshot of a running database.
+- **Write to a temp file and promote only after the snapshot opens.** A failed backup must
+  never overwrite a good one — the same rule the Telegram-era script had, for the same
+  reason.
+
+Verified end to end: the snapshot restores and reads back its rows, a second run correctly
+skips because nothing changed, and a write to the live API now leaves the pinned message
+untouched — which is the proof the mirror is really gone.
+
+**What this costs.** The VPS disk is now genuinely the single point of failure for the
+signature wall, mitigated only by that cron. Before, a lost disk still left the pin. Judged
+worth it: a backup that is designed as a backup beats a side-effect that happened to serve
+as one.
+
+**Not touched:** `js/core/telegram.js` and [[SPEC]] §10. Those are the in-app browser /
+Mini App guards for visitors who open the site *from* a Telegram link — swipe-dismiss
+protection and touch claiming. Unrelated to storage, and user-facing.
+
+---
+
 ## Links are allowed on the stage again — 2026-08-09
 
 The signature wall rejected anything matching `https?:`, `://` or `www.`, client-side and

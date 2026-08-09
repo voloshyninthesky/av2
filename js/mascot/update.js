@@ -5,10 +5,10 @@
 // slow turntable spin used while the wardrobe is open.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260809-09';
-import { prefersReducedMotion } from '../core/quality.js?v=20260809-09';
-import { camera, controls } from '../view/rig.js?v=20260809-09';
-import { ui, mascot, mascotLabel, mascotLabelY, applyMascotScale, mascotFallMaterialStates } from '../core/studio.js?v=20260809-09';
+import { session } from '../core/session.js?v=20260809-10';
+import { prefersReducedMotion } from '../core/quality.js?v=20260809-10';
+import { camera, controls } from '../view/rig.js?v=20260809-10';
+import { ui, mascot, mascotLabel, mascotLabelY, applyMascotScale, mascotFallMaterialStates } from '../core/studio.js?v=20260809-10';
 import {
   joystickInput,
   cameraForwardXZ,
@@ -16,14 +16,14 @@ import {
   updateMobileFollowCamera,
   beginMascotFall,
   respawnMascot,
-} from '../view/mobile-controls.js?v=20260809-09';
-import { instrumentView } from '../view/instrument-presets.js?v=20260809-09';
-import { activateInstrumentView } from '../view/instrument-view.js?v=20260809-09';
-import { moveMascotWithColliders } from './walk.js?v=20260809-09';
-import { mascotMove, dance } from './state.js?v=20260809-09';
-import { mascotEditor } from './editor.js?v=20260809-09';
-import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260809-09';
-import { play } from '../play/state.js?v=20260809-09';
+} from '../view/mobile-controls.js?v=20260809-10';
+import { instrumentView } from '../view/instrument-presets.js?v=20260809-10';
+import { activateInstrumentView } from '../view/instrument-view.js?v=20260809-10';
+import { moveMascotWithColliders } from './walk.js?v=20260809-10';
+import { mascotMove, dance } from './state.js?v=20260809-10';
+import { mascotEditor } from './editor.js?v=20260809-10';
+import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260809-10';
+import { play } from '../play/state.js?v=20260809-10';
 
 export function updateMascotEditorPreview(dt) {
   const relax = Math.min(1, dt * 10);

@@ -3,29 +3,28 @@
 // Storage is a small service of our own: deploy/av2-signs/server.js, SQLite
 // behind nginx at back.artvibe.com.pl. GET /signs to read, POST /signs to
 // leave one — the server picks the slot inside a transaction, so two visitors
-// signing at once can no longer overwrite each other. That race is why this
-// stopped being a browser-writes-Telegram feature; the channel is still the
-// record a human reads, mirrored from the database by the backend.
+// signing at once can no longer overwrite each other. That race is why the
+// stage stopped writing its store straight from the browser.
 //
-// No write key ships here any more: the browser holds nothing but a URL, and
-// validation is enforced server-side rather than merely encouraged.
+// No write key ships here: the browser holds nothing but a URL, and validation
+// is enforced server-side rather than merely encouraged.
 //
 // Probed once per load; on any failure nothing at all appears, so the stage
 // must look exactly as it does without the feature. Signing opens on the first
 // VIBE fill, with the loop pedal. One sign per device per day, enforced in
 // localStorage — no identifiers, nothing personal stored in the browser.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260809-09';
-import { params } from '../core/quality.js?v=20260809-09';
-import { track } from '../core/analytics.js?v=20260809-09';
-import { play } from '../play/state.js?v=20260809-09';
+import { ui } from '../core/studio.js?v=20260809-10';
+import { params } from '../core/quality.js?v=20260809-10';
+import { track } from '../core/analytics.js?v=20260809-10';
+import { play } from '../play/state.js?v=20260809-10';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260809-09';
+} from '../scene/signs.js?v=20260809-10';
 
 const API = 'https://back.artvibe.com.pl';
 
@@ -63,8 +62,8 @@ async function readSigns() {
 
 /**
  * Leave a sign. The server assigns the slot inside a transaction, so this can
- * no longer lose a race with a concurrent visitor — the reason the whole
- * feature moved off browser-writes-Telegram.
+ * no longer lose a race with a concurrent visitor — the reason storage stopped
+ * being written from the browser at all.
  *
  * Form-encoded keeps it a "simple" CORS request, so there is no preflight.
  * Returns the stored sign, or a reason string the caller turns into copy.

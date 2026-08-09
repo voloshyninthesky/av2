@@ -7,20 +7,19 @@
 //   POST /signs   -> { text, color } -> 201 { sign } | 400 | 409 full | 429
 //   GET  /healthz -> ok
 //
-// WHY THIS EXISTS AT ALL: the stage used to write the Telegram pinned message
-// straight from the browser. Every client rewrote the whole message, so two
-// visitors signing at once silently overwrote one another — the "Хтось
-// підписався одночасно" case. No amount of client retrying fixes that, because
-// read-modify-write from N browsers has no serialisation point.
+// WHY THIS EXISTS AT ALL: the stage used to write a shared document straight
+// from the browser. Every client rewrote the whole thing, so two visitors
+// signing at once silently overwrote one another. No amount of client retrying
+// fixes that, because read-modify-write from N browsers has no serialisation
+// point.
 //
 // Here it does. Slot allocation and insert happen inside ONE synchronous
 // SQLite transaction in a single-process server, so nothing can interleave —
 // and `slot INTEGER UNIQUE` means even a second process could not double-book.
-// That race is now impossible rather than merely unlikely.
+// That race is impossible rather than merely unlikely.
 //
-// The Telegram channel stays the human-readable record: after every accepted
-// sign the pinned message is rewritten to match the database, best-effort. The
-// DB is the authority; the pin is the mirror the owner reads and moderates.
+// This database is the only copy of the wall. deploy/signs-backup/ snapshots
+// it on a timer; there is no second store behind it.
 // ============================================================
 import http from 'node:http';
 import path from 'node:path';
@@ -42,8 +41,7 @@ const MAX_BODY = 4096;
 // In-memory only, never written to disk: a transient throttle is not stored
 // personal data, so the no-cookie-banner story in notes/Decisions.md survives.
 // Resets on restart, which is fine — this stops a script, not a determined
-// person, and a determined person is what the owner's Telegram moderation is
-// for.
+// person, and a determined person is what SQL against the database is for.
 const MIN_INTERVAL_MS = 30_000;
 const DAY_MAX = 10;
 
@@ -138,77 +136,6 @@ function claimSlot(text, color) {
 }
 
 const allSigns = () => qAll.all();
-
-// ---- Telegram mirror ---------------------------------------------------
-// The channel remains the record a human reads. Rewritten from the DB after
-// every accepted sign, so the pin always reflects the authority rather than
-// racing it. Entirely best-effort: the stage never reads it, so a failure here
-// must not fail a visitor's sign.
-
-const BOT = process.env.BOT_TOKEN || '';
-const CHAT = process.env.CHAT_ID || '';
-let pinnedMessageId = null;
-
-const COLOR_IDS = COLORS;
-const encodeRow = (s) => `${s.id}|${COLOR_IDS.indexOf(s.color)}|${s.slot}|${s.text}`;
-
-async function tg(method, body) {
-  const res = await fetch(`https://api.telegram.org/bot${BOT}/${method}`, {
-    method: 'POST',
-    body: new URLSearchParams(body),
-    signal: AbortSignal.timeout(8000),
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error(`${method}: ${data.description || res.status}`);
-  return data.result;
-}
-
-async function mirrorToTelegram() {
-  if (!BOT || !CHAT) return;
-  const rows = allSigns();
-  // `t=0` because the archive chain is gone: SQLite is the history now, and
-  // the pin is only ever a snapshot of it.
-  const text = [`AV2 n=${rows.length + 1} t=0`, ...rows.map(encodeRow)].join('\n');
-  if (!pinnedMessageId) {
-    const chat = await tg('getChat', { chat_id: CHAT });
-    pinnedMessageId = chat?.pinned_message?.message_id || null;
-  }
-  if (!pinnedMessageId) return;
-  await tg('editMessageText', { chat_id: CHAT, message_id: pinnedMessageId, text });
-}
-
-const mirror = () => {
-  mirrorToTelegram().catch((err) => console.error('mirror failed:', err.message));
-};
-
-/** First boot adopts whatever the channel already holds, so the signatures
- *  left under the browser-only design carry over with their slots intact. */
-async function seedFromTelegram() {
-  if (!BOT || !CHAT) return;
-  if (allSigns().length) return;
-  const chat = await tg('getChat', { chat_id: CHAT });
-  pinnedMessageId = chat?.pinned_message?.message_id || null;
-  const lines = String(chat?.pinned_message?.text || '').split('\n');
-  if (!/^AV2 /.test(lines[0] || '')) return;
-  let imported = 0;
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    for (const line of lines.slice(1).filter(Boolean)) {
-      const parts = line.split('|');
-      const slot = Number(parts[2]);
-      const color = COLOR_IDS[Number(parts[1])];
-      const text = parts.slice(3).join('|');
-      if (!Number.isInteger(slot) || slot < 0 || slot >= TOTAL_SLOTS || !color || !text) continue;
-      qInsert.run(slot, color, text, Date.now());
-      imported += 1;
-    }
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
-  console.log(`seeded ${imported} sign(s) from the channel`);
-}
 
 // ---- rate limiting -----------------------------------------------------
 
@@ -336,15 +263,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Answer the visitor first; the channel catches up on its own.
   send(res, 201, { ok: true, sign, total: TOTAL_SLOTS }, origin);
-  mirror();
 });
 
-seedFromTelegram()
-  .catch((err) => console.error('seed failed:', err.message))
-  .finally(() => {
-    server.listen(PORT, '127.0.0.1', () => {
-      console.log(`av2-signs listening on 127.0.0.1:${PORT} (${allSigns().length} signs, cap ${TOTAL_SLOTS})`);
-    });
-  });
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`av2-signs listening on 127.0.0.1:${PORT} (${allSigns().length} signs, cap ${TOTAL_SLOTS})`);
+});

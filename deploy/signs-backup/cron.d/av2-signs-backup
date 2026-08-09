@@ -1,4 +1,5 @@
-# Snapshot the Art Vibe signs head out of Telegram every two hours.
+# Snapshot the Art Vibe signs database every two hours. It is the only copy of
+# the wall — nothing else stores the signatures.
 # Runs at 07 past to stay off the hour, when everything else on the box fires.
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

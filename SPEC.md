@@ -550,9 +550,9 @@ unit. The browser holds a URL and nothing else.
   **single-process** server, so the event loop cannot interleave two writers between
   choosing a slot and taking it; `slot INTEGER UNIQUE` holds the line even if it were ever
   run as more than one process. This is the whole reason storage moved off the browser:
-  every client used to rewrite the entire pinned message, so two visitors signing at once
-  silently overwrote one another while Telegram reported success to both. Read-modify-write
-  from N browsers has no serialisation point; this does. Measured: 100 concurrent writes
+  every client used to rewrite one shared document wholesale, so two visitors signing at
+  once silently overwrote one another and the store reported success to both.
+  Read-modify-write from N browsers has no serialisation point; this does. Measured: 100 concurrent writes
   against a 67-slot stage yield exactly 67 accepted with 67 distinct slots.
 - **Validation is enforced, not encouraged.** 24 code points after whitespace collapse,
   curated colours only, control / zero-width / bidi characters and zalgo stacks stripped —
@@ -561,22 +561,18 @@ unit. The browser holds a URL and nothing else.
   `js/scene/signs.js`; `GET /signs` reports it so the "N / 67 вільних місць" badge always
   quotes the number that will actually be enforced. The stage fills once and closes: a full
   stage answers `409`, and nothing is retired to make room.
-- **The channel is still the record a human reads.** After every accepted sign the backend
-  rewrites the pinned message from the database, best-effort — the pin mirrors the authority
-  instead of racing it, and doubles as the off-server copy that `deploy/signs-backup/`
-  snapshots. On first boot with an empty database the server seeds itself *from* that pin,
-  which is how signatures written under the old design carried over with their slots intact.
-  A mirror failure never fails a sign.
+- **The database is the only copy of the wall.** Nothing mirrors it and nothing stands
+  behind it, so `deploy/signs-backup/` is load-bearing rather than a convenience: it
+  snapshots `signs.db` every two hours via sqlite3 `.backup` (a live WAL database cannot
+  be safely `cp`-ed), keeps ~20 days, and skips runs where nothing changed.
 - **Rate limiting is in memory and never written to disk**, so it stays transient rather than
   stored personal data and the no-cookie-banner position in `notes/Decisions.md` survives.
   nginx overwrites `X-Real-IP`, so a client cannot spoof it.
 - **If the backend does not answer, the feature does not exist** — one boot probe gates the
   button, the modal and every surface, exactly as before. QA runs
   (`testhooks` / `headless` / `shot`) never touch it.
-- Credentials for the mirror live in `/etc/av2-signs.env` on the server (mode 600), never in
-  the repo. Moderation is the owner editing the pinned message, or SQL against
-  `/var/lib/av2-signs/signs.db`; a hand-edited pin is only re-read when the database is
-  empty, so the two can drift until then.
+- **The backend makes no outbound calls at all** and holds no credentials. Moderation is
+  SQL against `/var/lib/av2-signs/signs.db` over SSH; `sqlite3` is installed on the box.
 
 ### `piano-notes.json`
 
@@ -769,9 +765,9 @@ this site can observe — it is the conversion number.
 - On platforms supporting Audio Session `ambient`, the external source continues while Art Vibe instruments play over it. On unsupported platforms, external audio remains uninterrupted at least until the first real Art Vibe sound action.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
 - No secrets in repo, and **no exceptions**: prices are public marketing data, and the
-  browser holds nothing but the backend's URL. The signs feature used to ship a Telegram
+  browser holds nothing but the backend's URL. The signs feature used to ship a third-party
   write key in the bundle; moving storage behind `back.artvibe.com.pl` (§7 Signs storage)
-  retired that, and the credential now lives only in `/etc/av2-signs.env` on the server.
+  retired it, and the backend itself now holds no credentials and makes no outbound calls.
 
 ### Piano framing / pose acceptance
 

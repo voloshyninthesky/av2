@@ -1,71 +1,51 @@
 #!/bin/sh
 # ============================================================
 # Art Vibe — signs backup
-# Snapshots the pinned "head" message (the live stage: every sign, its colour
-# and its slot) out of the Telegram channel. Nothing else in the channel
-# records it — each sign is written straight into the head with no separate
-# feed post — so a wiped or hand-mangled pin is unrecoverable without this.
+# Snapshots /var/lib/av2-signs/signs.db, which since 2026-08-09 is the ONLY
+# copy of the wall. The Telegram channel used to double as the off-site record;
+# that mirror is gone, so if this does not run there is no backup at all.
 #
-# Credentials come from /etc/av2-signs-backup.env so they never live in the
-# repo:
-#     BOT_TOKEN=123456:AA...
-#     CHAT_ID=-1001234567890
+# Uses sqlite3's `.backup`, not `cp`: the database runs in WAL mode and is
+# written live, so copying the file alone can capture a torn page and leave the
+# -wal behind. `.backup` takes a consistent snapshot of a live database.
 #
 # Install (see cron.d/av2-signs-backup beside this file):
 #     install -m 755 backup-signs.sh /usr/local/bin/av2-signs-backup
-#     install -m 600 /dev/stdin /etc/av2-signs-backup.env   # then paste the two lines
 #     install -m 644 cron.d/av2-signs-backup /etc/cron.d/av2-signs-backup
 # ============================================================
 set -eu
 
-ENV_FILE=${AV2_SIGNS_ENV:-/etc/av2-signs-backup.env}
+DB=${AV2_SIGNS_DB:-/var/lib/av2-signs/signs.db}
 DIR=${AV2_SIGNS_BACKUP_DIR:-/var/backups/av2-signs}
 KEEP=${AV2_SIGNS_KEEP:-240}   # 240 snapshots at one per 2h ≈ 20 days
 
-[ -r "$ENV_FILE" ] || { echo "av2-signs-backup: cannot read $ENV_FILE" >&2; exit 1; }
-# shellcheck disable=SC1090
-. "$ENV_FILE"
-: "${BOT_TOKEN:?av2-signs-backup: BOT_TOKEN missing}"
-: "${CHAT_ID:?av2-signs-backup: CHAT_ID missing}"
+[ -r "$DB" ] || { echo "av2-signs-backup: cannot read $DB" >&2; exit 1; }
+command -v sqlite3 >/dev/null 2>&1 || { echo "av2-signs-backup: sqlite3 missing" >&2; exit 1; }
 
 mkdir -p "$DIR"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-TMP=$(mktemp)
+TMP=$(mktemp "$DIR/.snap-XXXXXX")
 trap 'rm -f "$TMP"' EXIT
 
-# Pull the pinned message and unwrap it. Anything unexpected — API error, no
-# pin, empty text — fails loudly and writes nothing, so a bad response can
-# never overwrite a good backup with an error page.
-curl -fsS --max-time 30 \
-  "https://api.telegram.org/bot${BOT_TOKEN}/getChat?chat_id=${CHAT_ID}" \
-  | python3 -c '
-import json, sys
-raw = sys.stdin.read()
-try:
-    d = json.loads(raw)
-except ValueError:
-    sys.exit("av2-signs-backup: telegram returned no JSON (%r)" % raw[:120])
-if not d.get("ok"):
-    sys.exit("av2-signs-backup: api error: %s" % d.get("description"))
-text = (d.get("result") or {}).get("pinned_message", {}).get("text") or ""
-if not text.startswith("AV2 "):
-    sys.exit("no signs head pinned (got %r)" % text[:40])
-sys.stdout.write(text)
-' > "$TMP"
+# A failed .backup must never overwrite a good snapshot, so it lands on a temp
+# file first and is only promoted once sqlite3 reports success AND the result
+# actually opens.
+sqlite3 "$DB" ".backup '$TMP'"
+COUNT=$(sqlite3 "$TMP" 'SELECT COUNT(*) FROM signs;')
 
-# The head only changes when somebody signs, so most runs would write a
+# The wall only changes when somebody signs, so most runs would write a
 # byte-identical file. Keep the snapshot only when something actually moved.
-LATEST="$DIR/latest.txt"
+LATEST="$DIR/latest.db"
 if [ -f "$LATEST" ] && cmp -s "$TMP" "$LATEST"; then
   exit 0
 fi
 
-cp "$TMP" "$DIR/signs-$STAMP.txt"
+cp "$TMP" "$DIR/signs-$STAMP.db"
 cp "$TMP" "$LATEST"
 
 # Prune oldest snapshots past the retention count.
-ls -1t "$DIR"/signs-*.txt 2>/dev/null | tail -n "+$((KEEP + 1))" | while read -r old; do
+ls -1t "$DIR"/signs-*.db 2>/dev/null | tail -n "+$((KEEP + 1))" | while read -r old; do
   rm -f "$old"
 done
 
-echo "av2-signs-backup: saved signs-$STAMP.txt ($(wc -c < "$TMP") bytes, $(( $(wc -l < "$TMP") - 1 )) signs)"
+echo "av2-signs-backup: saved signs-$STAMP.db ($COUNT signs, $(wc -c < "$TMP") bytes)"

@@ -13,7 +13,7 @@ import {
   registerDimmableEmissive,
   prefersReducedMotion,
   usesLowMobileSceneBudget,
-} from '../core/quality.js?v=20260809-09';
+} from '../core/quality.js?v=20260809-10';
 
 // Render hexes for the curated color ids a sign may carry. Brighter than
 // the brand ink-on-cream palette on purpose: these glow against 0x15091f.
@@ -310,9 +310,9 @@ function repaint(onlyKey = null) {
 }
 
 export function setSigns(list) {
-  // Sorting by id is what makes the stage independent of the order the rows
-  // happen to sit in inside the Telegram message — a hand-edited or
-  // out-of-order head still renders identically.
+  // Sorting by id is what makes the stage independent of the order the store
+  // happens to return rows in — a hand-edited or out-of-order set still
+  // renders identically.
   //
   // Then keep the EARLIEST, not the latest. The stage is first-come-first-
   // served and fills once, so if a head ever carries more rows than there are
