@@ -1425,6 +1425,10 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
    [hidden] rule, so be explicit rather than relying on it. */
 #sign-btn[hidden] { display: none; }
 .sign-panel { width: min(560px, 100%); }
+.sign-availability {
+  margin: 0 0 4px; font-size: 11px; letter-spacing: .1em;
+  color: rgba(23, 18, 28, .55);
+}
 .sign-label {
   display: block; margin: 16px 0 8px; font-size: 12px;
   letter-spacing: .14em; color: rgba(23, 18, 28, .65);

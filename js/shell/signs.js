@@ -8,10 +8,10 @@
 // per device per day, enforced only in localStorage — no IPs, no
 // identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260809-04';
-import { params } from '../core/quality.js?v=20260809-04';
-import { track } from '../core/analytics.js?v=20260809-04';
-import { play } from '../play/state.js?v=20260809-04';
+import { ui } from '../core/studio.js?v=20260809-05';
+import { params } from '../core/quality.js?v=20260809-05';
+import { track } from '../core/analytics.js?v=20260809-05';
+import { play } from '../play/state.js?v=20260809-05';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -19,7 +19,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260809-04';
+} from '../scene/signs.js?v=20260809-05';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -130,8 +130,13 @@ function readGate() {
  */
 function syncSignAvailability() {
   if (!btn) return;
-  const free = chooseSlot(new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger)));
+  const used = new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger));
+  const free = chooseSlot(used);
   btn.hidden = !play.vibeFull || Boolean(readGate()) || free === null;
+  // Lives inside the modal rather than gated with the button: if the stage
+  // fills while the modal is already open, this is what tells the visitor why
+  // their tap just got refused, alongside the error text.
+  els.availability.textContent = `Доступно ${Math.max(0, TOTAL_SLOTS - used.size)} / ${TOTAL_SLOTS} місць`;
 }
 
 /** Called when the vibe meter first fills — signing opens with the loop pedal. */
@@ -320,6 +325,7 @@ function enable(signs) {
     preview: modal.querySelector('#sign-preview-text'),
     error: modal.querySelector('#sign-error'),
     submit: modal.querySelector('#sign-submit'),
+    availability: modal.querySelector('#sign-availability'),
     swatchRow: modal.querySelector('.sign-swatches'),
     swatches: [...modal.querySelectorAll('.sign-swatches .swatch')],
   };
