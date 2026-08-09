@@ -12,6 +12,63 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The signs race needed a server, so it got the smallest one — 2026-08-09
+
+«Хтось підписався одночасно — спробуй ще раз.» was an honest report of a design that could
+not do better, and it is now deleted because the case cannot arise.
+
+The browser-writes-Telegram design had every client rewrite the **whole** pinned message.
+Two visitors signing at once overwrote one another and the Bot API reported success to
+both. A read-back check added earlier could *detect* the loss after the fact; nothing
+client-side could prevent it, because **read-modify-write from N browsers has no
+serialisation point**. That is the entire argument for a backend here — not scale, not
+features.
+
+`deploy/av2-signs/server.js` is the smallest thing that provides one: a single Node file,
+no dependencies, the built-in `node:sqlite`, behind the nginx + Let's Encrypt setup that
+was already sitting on the VPS from the first-cut backend. Slot allocation and insert
+happen in **one synchronous transaction in a single process**, so the event loop cannot
+interleave two writers; `slot INTEGER UNIQUE` is the backstop if that ever stops being
+true. 100 concurrent writes against a 67-slot stage: exactly 67 accepted, 67 distinct
+slots, 33 refused as full, zero duplicates.
+
+What fell out of it, none of which was the goal:
+
+- **The write key stopped shipping.** [[SPEC]] §12's «one deliberate exception: no secrets
+  in repo» is retired outright — the browser now holds a URL. The credential lives in
+  `/etc/av2-signs.env`, mode 600.
+- **Validation became enforcement.** The 24-character cap, curated colours, link rejection
+  and the zalgo/invisibles strip all ran client-side, where DevTools walks past them. They
+  now run where they cannot be bypassed. The client keeps its copies purely so the visitor
+  gets an answer without a round trip.
+- **`chooseSlot()` disappeared from `js/scene/signs.js`.** Slot allocation *was* the
+  read-modify-write; moving it server-side left the function with no callers. That module
+  now renders the slot a sign already carries and nothing more.
+
+**The channel keeps its job.** The backend rewrites the pinned message from the database
+after every accepted sign, so the pin mirrors the authority rather than racing it — the
+owner still reads and moderates in Telegram, and `deploy/signs-backup/` still snapshots
+that pin as the copy held off the server. On first boot with an empty database the server
+seeds itself *from* the pin, which is how «Це що, стіна????» carried across with its slot
+intact and why the migration needed no import step.
+
+**Rate limiting came back, in memory only.** Per-IP throttling was dropped in the original
+move to Telegram because storing IPs is what forces a cookie banner. A throttle that is
+never written to disk is transient rather than stored, so the no-banner position holds, and
+it is the difference between "one script fills the wall in a minute" and "it cannot".
+nginx overwrites `X-Real-IP`, so it cannot be spoofed.
+
+**The honest limits.** The VPS is now a single point of failure the stage did not have when
+Telegram was the store — if it goes down the feature vanishes, which the absent-if-
+unreachable contract already covers, but a *lost disk* would cost every sign not in the
+last pin mirror. And a hand-edited pin is only re-read when the database is empty, so owner
+moderation in Telegram and the database can drift until someone reconciles them.
+
+`git show` on this commit has the full reasoning; the unit, nginx conf and install steps
+live in `deploy/av2-signs/`.
+
+---
+
 ## The AUTO tier switch waits for the camera to land — 2026-08-08
 
 The freeze visitors hit mid-zoom on a fresh browser was never the fly-in. It was the AUTO

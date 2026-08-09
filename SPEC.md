@@ -534,57 +534,49 @@ changing one instrument's price is a one-place edit.
   drift — a tier added or removed changes which cells exist, which the script cannot invent —
   and names the offending key.
 
-### Signs storage (Telegram)
+### Signs storage (SQLite backend)
 
-There is no backend: the store is a Telegram channel driven straight from the browser
-(`api.telegram.org` answers with `Access-Control-Allow-Origin: *`; requests use
-form-encoded bodies so they stay preflight-free).
+The store is `deploy/av2-signs/server.js`: one dependency-free Node file using the built-in
+`node:sqlite`, behind nginx at `https://back.artvibe.com.pl`, run by the `av2-signs` systemd
+unit. The browser holds a URL and nothing else.
 
-- **The head is one pinned channel message**, a terse line format rather than JSON —
-  about 25% smaller, and legible to the owner scrolling the channel:
-
-  ```
-  AV2 n=<next id> t=<tail chunk message_id>
-  <id>|<colour index>|<slot>|<text>
-  …
-  ```
-
-  Those rows are exactly what the stage displays (at most 67). Ids are strictly monotonic
-  and never reissued; `slot` is fixed at creation (§ Signs); the text goes last so it may
-  contain `|`, and it can never contain a newline because input whitespace is collapsed.
-  The stage reads only the head, via `getChat` → `pinned_message`, and rewrites it via
-  `editMessageText`. Archive chunks use the same shape, headed `P=<previous chunk id>`.
-- **History never gets discarded — it seals into a linked list of messages.** A Telegram
-  message tops out at 4096 chars, so the head holds only what the stage can show. Rows
-  drain from the oldest end for two independent reasons — more rows than the stage has
-  slots, and more characters than the `3300` budget — and each drained row must genuinely
-  leave the head, or it would be archived again on every write while the head grew past the
-  limit anyway. **The budget is counted in characters, not rows: that is the limit which
-  actually exists, and a row count drifts the moment the stage gains slots.** Drained rows
-  go into one archive message headed `P=<previous chunk message_id>`, and the head's `t`
-  points at it.
-  Chunks chain backwards through `p`, so the complete run of signs is walkable from the
-  head. Bots cannot fetch arbitrary messages, so the stage never reads chunks — they are
-  the archive, sitting visibly in the channel for the owner (or any user-account MTProto
-  tool) to walk.
-- **The write is exactly one message edit, nothing more.** An earlier version also sent a
-  plain channel post per sign as a human-readable feed; that was a second Telegram message
-  for no functional reason — the head is the whole record — so it was removed. Bots cannot
-  read channel history back regardless, which is why the aggregate lives in the pinned
-  head rather than being summed from any posts, feed or otherwise.
-- **Concurrency:** the client re-reads the pinned head immediately before writing; the
-  residual last-writer-wins race can drop a concurrent sign from the stage **with nothing
-  else recording it** — there is no feed post as a backstop. Accepted at this scale, and it
-  is the reason `deploy/signs-backup/` snapshots the head every 2 hours rather than being
-  purely a convenience. Two concurrent seals can duplicate rows across archive chunks —
-  the archive is append-only and tolerant of that.
-- The channel write key ships in the bundle **base64-chunked** (`js/shell/signs.js`) so the
-  raw token never appears in the repo or in code search; anyone determined can extract it
-  from DevTools — an accepted trade-off for having no server (reasoning in
-  `notes/Decisions.md`). Validation is client-side only for the same reason: with a public
-  write key, server-grade enforcement is impossible by design.
-- Moderation: the owner edits or deletes entries in the pinned message from Telegram (or
-  re-pins a fresh state message via Bot API).
+- **The API is two calls.** `GET /signs` → `{ total, signs: [{ id, slot, color, text }] }`,
+  and `POST /signs` with a form-encoded `text` + `color` → `201 { sign }`, or `409 full`,
+  `400 invalid`, `429 rate`. Form-encoding keeps the POST a "simple" CORS request, so there
+  is no preflight round trip. Origins are allowlisted (the live hosts plus any localhost
+  port, because dev serves the repo on 8000–8040).
+- **The concurrency race is structurally impossible, not merely unlikely.** The server picks
+  the lowest free slot and inserts it inside **one synchronous SQLite transaction** in a
+  **single-process** server, so the event loop cannot interleave two writers between
+  choosing a slot and taking it; `slot INTEGER UNIQUE` holds the line even if it were ever
+  run as more than one process. This is the whole reason storage moved off the browser:
+  every client used to rewrite the entire pinned message, so two visitors signing at once
+  silently overwrote one another while Telegram reported success to both. Read-modify-write
+  from N browsers has no serialisation point; this does. Measured: 100 concurrent writes
+  against a 67-slot stage yield exactly 67 accepted with 67 distinct slots.
+- **Validation is enforced, not encouraged.** 24 code points after whitespace collapse,
+  curated colours only, no links, and control / zero-width / bidi characters and zalgo
+  stacks stripped — server-side, where DevTools cannot reach it.
+- **Capacity lives in the backend.** Its `TOTAL_SLOTS` must match the layout constant in
+  `js/scene/signs.js`; `GET /signs` reports it so the "N / 67 вільних місць" badge always
+  quotes the number that will actually be enforced. The stage fills once and closes: a full
+  stage answers `409`, and nothing is retired to make room.
+- **The channel is still the record a human reads.** After every accepted sign the backend
+  rewrites the pinned message from the database, best-effort — the pin mirrors the authority
+  instead of racing it, and doubles as the off-server copy that `deploy/signs-backup/`
+  snapshots. On first boot with an empty database the server seeds itself *from* that pin,
+  which is how signatures written under the old design carried over with their slots intact.
+  A mirror failure never fails a sign.
+- **Rate limiting is in memory and never written to disk**, so it stays transient rather than
+  stored personal data and the no-cookie-banner position in `notes/Decisions.md` survives.
+  nginx overwrites `X-Real-IP`, so a client cannot spoof it.
+- **If the backend does not answer, the feature does not exist** — one boot probe gates the
+  button, the modal and every surface, exactly as before. QA runs
+  (`testhooks` / `headless` / `shot`) never touch it.
+- Credentials for the mirror live in `/etc/av2-signs.env` on the server (mode 600), never in
+  the repo. Moderation is the owner editing the pinned message, or SQL against
+  `/var/lib/av2-signs/signs.db`; a hand-edited pin is only re-read when the database is
+  empty, so the two can drift until then.
 
 ### `piano-notes.json`
 
@@ -776,10 +768,10 @@ this site can observe — it is the conversion number.
 - With Spotify / Apple Music already playing, Enter, walking, camera controls, instrument focus, chord selection, and settings changes leave external audio uninterrupted and do not create an `AudioContext`.
 - On platforms supporting Audio Session `ambient`, the external source continues while Art Vibe instruments play over it. On unsupported platforms, external audio remains uninterrupted at least until the first real Art Vibe sound action.
 - No stuck-silent sessions after backgrounding or a mobile audio-route interruption: the next user gesture can rebuild and unlock the graph without a page refresh.
-- No secrets in repo; prices are public marketing data. **One deliberate exception:** the
-  signs feature's Telegram write key ships in the bundle base64-chunked (§7 Signs storage) —
-  extractable by anyone determined, kept out of plain-text code search, accepted in
-  `notes/Decisions.md`.
+- No secrets in repo, and **no exceptions**: prices are public marketing data, and the
+  browser holds nothing but the backend's URL. The signs feature used to ship a Telegram
+  write key in the bundle; moving storage behind `back.artvibe.com.pl` (§7 Signs storage)
+  retired that, and the credential now lives only in `/etc/av2-signs.env` on the server.
 
 ### Piano framing / pose acceptance
 
