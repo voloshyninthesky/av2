@@ -138,7 +138,7 @@ function syncSignAvailability() {
   // their tap just got refused, alongside the error text. Two nodes rather
   // than one string so the count can carry its own weight in the badge.
   els.freeCount.textContent = String(Math.max(0, TOTAL_SLOTS - used.size));
-  els.freeTotal.textContent = `/ ${TOTAL_SLOTS} вільно`;
+  els.freeTotal.textContent = `/ ${TOTAL_SLOTS} вільних місць`;
 }
 
 /** Called when the vibe meter first fills — signing opens with the loop pedal. */
