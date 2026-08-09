@@ -12,6 +12,28 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## Links are allowed on the stage again — 2026-08-09
+
+The signature wall rejected anything matching `https?:`, `://` or `www.`, client-side and
+then server-side. Both checks are gone, by owner decision.
+
+Worth recording because the original reasoning was sound and is now simply outranked: the
+rule existed to keep the wall "a signature, not a link board". What it actually did at 24
+characters was reject strings that were never a viable link anyway — `www.a.co` fits, a
+real URL does not — while catching honest signatures that happened to contain `://` or a
+domain-shaped fragment. **The character cap was always doing the work the link rule was
+credited with.**
+
+What still holds the line: 24 code points, five curated colours, whitespace collapse, and
+the invisibles / zalgo strip. All server-side since the backend landed, so none of it is
+bypassable. Nothing about moderation changed either — the owner still edits the pinned
+message or the database directly.
+
+The client-side pre-check went with it, so a link no longer produces «Сцена — для підписів,
+не для посилань.» There is no replacement message: the input is simply accepted.
+
+---
+
 ## The signs race needed a server, so it got the smallest one — 2026-08-09
 
 «Хтось підписався одночасно — спробуй ще раз.» was an honest report of a design that could
@@ -37,8 +59,8 @@ What fell out of it, none of which was the goal:
 - **The write key stopped shipping.** [[SPEC]] §12's «one deliberate exception: no secrets
   in repo» is retired outright — the browser now holds a URL. The credential lives in
   `/etc/av2-signs.env`, mode 600.
-- **Validation became enforcement.** The 24-character cap, curated colours, link rejection
-  and the zalgo/invisibles strip all ran client-side, where DevTools walks past them. They
+- **Validation became enforcement.** The 24-character cap, curated colours and the
+  zalgo/invisibles strip all ran client-side, where DevTools walks past them. They
   now run where they cannot be bypassed. The client keeps its copies purely so the visitor
   gets an answer without a round trip.
 - **`chooseSlot()` disappeared from `js/scene/signs.js`.** Slot allocation *was* the
@@ -217,6 +239,10 @@ are worth keeping:
 Curated colors, a 24-character cap, zalgo squeeze and link rejection keep it a signature
 wall rather than a message board — the same "curated, not configurable" stance as the
 mascot editor. The copy says «сцена», never «стіна».
+
+*(Link rejection was dropped on 2026-08-09 — see the entry at the top of this file. The
+other three still stand; 24 characters is what actually keeps this a signature rather than
+a message board, and a URL does not fit in 24 characters anyway.)*
 
 ---
 

@@ -75,8 +75,6 @@ export function sanitizeSignText(raw) {
     .trim();
   if (!cleaned) return null;
   if ([...cleaned].length > MAX_TEXT) return null;
-  // The wall is a signature, not a link board.
-  if (/https?:|:\/\/|www\./i.test(cleaned)) return null;
   return cleaned;
 }
 

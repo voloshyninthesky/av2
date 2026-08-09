@@ -202,8 +202,8 @@ without the feature. No retry, no error surface.
 - **Leaving a sign:** a marker button in the **HUD's right nav** (`#sign-btn`, after
   **Твій образ**, hidden until the meter has been filled and the probe passes) opens
   `#modal-sign`:
-  one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed, links
-  rejected), five curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
+  one text input (≤ 24 code points; whitespace collapsed, zalgo stacks squeezed), five
+  curated color swatches (крейда / золото / пурпур / рожевий / м'ята), a
   live glowing preview, **ЗАЛИШИТИ НА СЦЕНІ**. The panel carries no explanatory lead — the
   title, the field and the preview say what it is. Success closes the modal, fades the sign in
   (~0.9 s; instant under reduced motion) and shows a toast; failures surface as friendly
@@ -555,8 +555,8 @@ unit. The browser holds a URL and nothing else.
   from N browsers has no serialisation point; this does. Measured: 100 concurrent writes
   against a 67-slot stage yield exactly 67 accepted with 67 distinct slots.
 - **Validation is enforced, not encouraged.** 24 code points after whitespace collapse,
-  curated colours only, no links, and control / zero-width / bidi characters and zalgo
-  stacks stripped — server-side, where DevTools cannot reach it.
+  curated colours only, control / zero-width / bidi characters and zalgo stacks stripped —
+  server-side, where DevTools cannot reach it.
 - **Capacity lives in the backend.** Its `TOTAL_SLOTS` must match the layout constant in
   `js/scene/signs.js`; `GET /signs` reports it so the "N / 67 вільних місць" badge always
   quotes the number that will actually be enforced. The stage fills once and closes: a full

@@ -1,26 +1,66 @@
 ---
 tags: [status]
-updated: 2026-08-07
+updated: 2026-08-09
 ---
 
 # Current state
 
-Snapshot as of **2026-08-07**. This is the one note that goes stale by design — update it or
+Snapshot as of **2026-08-09**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**Mascot variant-quality pass, uncommitted in the working tree** (stamp `20260807-08`):
-layered eyes, long-hair back fall, cloth/hair micro-textures, glasses lens fills — same
-option IDs throughout, see [[Decisions]]. Verified by Node math against the vendored
-three.js (15 assertions) plus the full test suite, because the agent browser pane hit the
-wedged-GPU failure in [[Gotchas]] — **a human eyeball of the live stage is pending**,
-especially the face close-up in the dressing room.
+**The signs wall now runs on a backend of ours, and that is the big change of 2026-08-09.**
+Storage moved off the Telegram pinned message and into SQLite on the VPS —
+`deploy/av2-signs/server.js`, one dependency-free Node file behind nginx at
+`https://back.artvibe.com.pl`, `av2-signs.service`, enabled and surviving `SIGKILL`. Why it
+exists at all is in [[Decisions]]: every browser used to rewrite the whole pinned message,
+so two visitors signing at once overwrote each other and Telegram reported success to both.
+Read-modify-write from N browsers has no serialisation point. Now slot allocation and insert
+happen in one synchronous SQLite transaction in a single process, verified with 100
+concurrent writes against a 67-slot stage (exactly 67 accepted, 67 distinct slots).
 
-Otherwise **`main` is deployed and live**, tip `abae451`, verified rather than assumed:
+Three things that fell out and are easy to forget:
+
+- **The Telegram write key no longer ships in the bundle.** [[SPEC]] §12's "one deliberate
+  exception: no secrets in repo" is retired. The credential lives in `/etc/av2-signs.env`
+  (mode 600) on the VPS only.
+- **Telegram is now a mirror, not the store.** The backend rewrites the pinned message from
+  the database after each accepted sign, and seeds itself *from* the pin only when the
+  database is empty. So **owner edits in Telegram do not flow back** — the pin and the DB
+  drift until someone reconciles them. A reconcile-on-boot or `POST /reseed` was discussed
+  and not built.
+- **The VPS answers SSH again.** The "host stopped answering" note from 2026-08-07 was
+  stale — the old `av2-signs` unit had in fact been running the whole time, serving the
+  first-cut JSON backend. Pre-migration backups are in `/root/av2-signs-*.bak-*`.
+
+**Careful testing against the live endpoint:** the in-memory rate limit is 30 s per IP / 10
+per day and nginx overwrites `X-Real-IP`, so it cannot be spoofed. A burst test from one
+machine just collects `429`s.
+
+Same day, smaller signs changes: the **first signature can no longer be pushed off the
+stage** (`setSigns` kept the newest rows, so a head larger than the slot count discarded
+sign `0`; and a row whose slot no longer existed could probe onto slot `0`) — both fixed,
+reads now order by id rather than trusting stored row order. The modal gained a **scarcity
+badge** («66 / 67 вільних місць», ink pill, gold count). And **link rejection was removed**
+from both client and server by owner decision — the 24-character cap was always doing that
+work anyway.
+
+**A gear-surface experiment was built and reverted.** Sign tags on the kick drum head and
+the piano's front panels shipped, then were rolled back the same day; the work survives on
+the `todays-work-backup` branch if it is ever wanted. `signs-snapshot-and-pin` also carries
+an unmerged send-and-pin storage design that the SQLite migration superseded.
+
+**Not verified in a browser.** The agent pane hit the wedged-GPU failure in [[Gotchas]] for
+this entire session, so every signs change was verified by running the shipped functions
+directly against the live backend and by Node tests — **a human eyeball of the live stage is
+pending**, particularly the sign modal and the new badge.
+
+Otherwise **`main` is deployed and live**, verified rather than assumed:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # 20260807-03
+curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'
+curl -s https://back.artvibe.com.pl/healthz   # {"ok":true,...} — signs are alive
 ```
 
 A green Actions run is *not* proof — that curl is, because the run can succeed while the CDN
