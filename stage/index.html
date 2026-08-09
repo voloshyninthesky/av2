@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260809-05">
+<link rel="stylesheet" href="/css/style.css?v=20260809-06">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -300,9 +300,11 @@
 <div id="modal-sign" class="overlay" role="dialog" aria-modal="true" aria-labelledby="sign-title" hidden>
   <div class="panel sign-panel">
     <button class="close-btn" data-close aria-label="Закрити">✕</button>
-    <div class="panel-meta mono"><span>ART VIBE STUDIO</span><span>ТВІЙ ЗНАК</span></div>
+    <div class="panel-meta mono"><span>ART VIBE STUDIO</span></div>
     <h2 class="panel-title" id="sign-title">Залиш свій слід<span class="dot">.</span></h2>
-    <p id="sign-availability" class="sign-availability mono" role="status"></p>
+    <p class="sign-availability" role="status">
+      <span class="sign-availability-pill mono"><b id="sign-free-count"></b><span id="sign-free-total"></span></span>
+    </p>
     <form id="sign-form" novalidate>
       <label class="sign-label mono" for="sign-text">ТВІЙ ПІДПИС</label>
       <input id="sign-text" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Ім'я, тег чи пара слів" required>
@@ -646,6 +648,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260809-05"></script>
+  <script type="module" src="/js/main.js?v=20260809-06"></script>
 </body>
 </html>

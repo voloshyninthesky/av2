@@ -1425,9 +1425,21 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
    [hidden] rule, so be explicit rather than relying on it. */
 #sign-btn[hidden] { display: none; }
 .sign-panel { width: min(560px, 100%); }
-.sign-availability {
-  margin: 0 0 4px; font-size: 11px; letter-spacing: .1em;
-  color: rgba(23, 18, 28, .55);
+/* Scarcity badge, read as a price sticker rather than a caption: the count is
+   the point, so it carries the size and the gold. Ink fill, not gold — the
+   submit button below is the panel's gold CTA and this must not compete with
+   it, and red would read as an error beside .sign-error. The tilt echoes the
+   preview tag, which already speaks sticker in this panel. */
+.sign-availability { margin: 0 0 2px; display: flex; }
+.sign-availability-pill {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 3px 10px 4px; border-radius: 999px;
+  background: var(--ink); color: var(--cream);
+  font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  transform: rotate(-1.2deg);
+}
+.sign-availability-pill b {
+  font-size: 14px; line-height: 1; letter-spacing: .02em; color: var(--gold-light);
 }
 .sign-label {
   display: block; margin: 16px 0 8px; font-size: 12px;
