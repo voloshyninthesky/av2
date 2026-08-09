@@ -8,10 +8,10 @@
 // per device per day, enforced only in localStorage — no IPs, no
 // identifiers, nothing personal stored anywhere.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260809-06';
-import { params } from '../core/quality.js?v=20260809-06';
-import { track } from '../core/analytics.js?v=20260809-06';
-import { play } from '../play/state.js?v=20260809-06';
+import { ui } from '../core/studio.js?v=20260809-07';
+import { params } from '../core/quality.js?v=20260809-07';
+import { track } from '../core/analytics.js?v=20260809-07';
+import { play } from '../play/state.js?v=20260809-07';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
@@ -19,7 +19,7 @@ import {
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260809-06';
+} from '../scene/signs.js?v=20260809-07';
 
 // The channel write key, base64-chunked so the raw value never appears in
 // the repo or in code search. Anyone can still extract it from the bundle —
@@ -186,6 +186,30 @@ function recallSign() {
   } catch { /* corrupt or absent — start blank */ }
 }
 
+/**
+ * Did the sign actually make it onto the stage? Re-reads the pin and looks for
+ * the row we just wrote.
+ *
+ * Matched on id **and** text, never id alone: two visitors racing both read the
+ * same `n`, so they mint the *same* id for different signs — an id-only match
+ * would happily find a stranger's row and call it ours.
+ *
+ * Whatever comes back is adopted as the live state, so a retry builds on the
+ * head that really exists rather than the one we assumed we wrote.
+ *
+ * This narrows the window rather than closing it: someone can still overwrite
+ * us a moment after this read, and nothing here can tell that *we* were the one
+ * who overwrote *them*. Both of those need a server to fix properly.
+ */
+async function landed(sign) {
+  const chat = await tg('getChat', { chat_id: CHAT }).catch(() => null);
+  const fresh = parseHead(chat?.pinned_message?.text);
+  if (!fresh) return false;
+  state = { n: fresh.n, s: fresh.rows, t: fresh.t };
+  pinnedMessageId = chat.pinned_message.message_id;
+  return fromRows(fresh.rows).some((s) => s.id === sign.id && s.text === sign.text);
+}
+
 async function submitSign(event) {
   event.preventDefault();
   if (posting) return;
@@ -271,6 +295,21 @@ async function submitSign(event) {
       message_id: pinnedMessageId,
       text: head(),
     });
+    // An `ok` edit is not proof the sign is on the stage. Everyone writes the
+    // whole head, so a visitor who read the same head a moment before us
+    // overwrites our version wholesale — Telegram reports success to both of
+    // us and has no way to mention it. Read the pin back and look for the row.
+    if (!(await landed(sign))) {
+      // Deliberately not remembered: the gate must not burn a visitor's day
+      // for a sign that is not there. The modal stays open with their text,
+      // so the retry is one more press.
+      showError('Хтось підписався одночасно — спробуй ще раз.');
+      // Repaint from the head that actually won, so the stage behind the modal
+      // stops showing a version of itself that no longer exists.
+      setSigns(fromRows(state.s));
+      syncSignAvailability();
+      return;
+    }
     rememberSign(text, selectedColor);
     syncSignAvailability();
     showError('');
