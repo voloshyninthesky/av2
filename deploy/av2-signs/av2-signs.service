@@ -1,0 +1,33 @@
+# Art Vibe signs wall backend (back.artvibe.com.pl)
+#
+# Install:
+#   install -m 644 server.js package.json /opt/av2-signs/
+#   install -m 600 /dev/stdin /etc/av2-signs.env   # BOT_TOKEN=… / CHAT_ID=…
+#   install -m 644 av2-signs.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now av2-signs
+#
+# DynamicUser gives the unit a throwaway account and StateDirectory hands it
+# /var/lib/av2-signs, which is where signs.db (plus its WAL) lives — the only
+# path the service can write.
+[Unit]
+Description=Art Vibe signs wall backend (back.artvibe.com.pl)
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/node /opt/av2-signs/server.js
+DynamicUser=yes
+StateDirectory=av2-signs
+Environment=PORT=8787
+# Telegram credentials for the pinned-message mirror. Absent → the backend
+# still serves the stage, it just stops mirroring, which is why this is not
+# fatal-if-missing.
+EnvironmentFile=-/etc/av2-signs.env
+Restart=always
+RestartSec=2
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

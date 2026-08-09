@@ -1,88 +1,44 @@
 // ============================================================
 // SIGNS — «знаки на сцені» controller
-// Storage is a Telegram channel, no server of our own: the whole stage lives
-// in one pinned message — read via getChat, rewritten via editMessageText, and
-// that edit is the entire write. Probed once per load; on any failure nothing
-// at all appears, so the stage must look exactly as it does without the
-// feature. Signing opens on the first VIBE fill, with the loop pedal. One sign
-// per device per day, enforced only in localStorage — no IPs, no
-// identifiers, nothing personal stored anywhere.
+// Storage is a small service of our own: deploy/av2-signs/server.js, SQLite
+// behind nginx at back.artvibe.com.pl. GET /signs to read, POST /signs to
+// leave one — the server picks the slot inside a transaction, so two visitors
+// signing at once can no longer overwrite each other. That race is why this
+// stopped being a browser-writes-Telegram feature; the channel is still the
+// record a human reads, mirrored from the database by the backend.
+//
+// No write key ships here any more: the browser holds nothing but a URL, and
+// validation is enforced server-side rather than merely encouraged.
+//
+// Probed once per load; on any failure nothing at all appears, so the stage
+// must look exactly as it does without the feature. Signing opens on the first
+// VIBE fill, with the loop pedal. One sign per device per day, enforced in
+// localStorage — no identifiers, nothing personal stored in the browser.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260809-07';
-import { params } from '../core/quality.js?v=20260809-07';
-import { track } from '../core/analytics.js?v=20260809-07';
-import { play } from '../play/state.js?v=20260809-07';
+import { ui } from '../core/studio.js?v=20260809-08';
+import { params } from '../core/quality.js?v=20260809-08';
+import { track } from '../core/analytics.js?v=20260809-08';
+import { play } from '../play/state.js?v=20260809-08';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
-  chooseSlot,
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260809-07';
+} from '../scene/signs.js?v=20260809-08';
 
-// The channel write key, base64-chunked so the raw value never appears in
-// the repo or in code search. Anyone can still extract it from the bundle —
-// an accepted trade-off for having no backend (see notes/Decisions.md).
-const SCENE_KEY = atob([
-  'ODk1NjI3MTc0MDpBQ',
-  'UVkYnRTM09sc0hfbG',
-  'N5eDFlcTBuNjkta19',
-  'IblJQMmpOOHwtMTAw',
-  'NDQzNjcwODE2Mw==',
-].join(''));
-const [BOT, CHAT] = SCENE_KEY.split('|');
-const API = `https://api.telegram.org/bot${BOT}`;
+const API = 'https://back.artvibe.com.pl';
 
 const STORE_KEY = 'av2.sign.v1';
 const MAX_LEN = 24;
 const GATE_MS = 86_400_000;
-// A Telegram message tops out at 4096 UTF-16 units, and that ceiling — not
-// the slot count — is what really limits how many signs the stage can show.
-// So the head is a terse line format rather than JSON (roughly 40% smaller,
-// and legible to the owner scrolling the channel), and the writer drains to
-// a character budget rather than a row count.
-const HOT_MAX_CHARS = 3300;
-const COLOR_IDS = ['cream', 'gold', 'purple', 'pink', 'mint'];
-
-/** One sign as `id|colourIndex|slot|text`. Text goes last so it may contain
- *  the separator; input whitespace is collapsed, so it has no newline. */
-function encodeRow(sign) {
-  return `${sign.id}|${COLOR_IDS.indexOf(sign.color)}|${sign.slot}|${sign.text}`;
-}
-
-function decodeRow(row) {
-  const parts = String(row).split('|');
-  if (parts.length < 4) return null;
-  const id = Number(parts[0]);
-  const color = COLOR_IDS[Number(parts[1])];
-  const slot = Number(parts[2]);
-  const text = parts.slice(3).join('|');
-  if (!Number.isInteger(id) || !color || !Number.isInteger(slot) || !text) return null;
-  return { id, color, slot, text };
-}
-
-function encodeHead(n, tail, rows) {
-  return [`AV2 n=${n} t=${tail}`, ...rows].join('\n');
-}
-
-function parseHead(text) {
-  const lines = String(text || '').split('\n');
-  const header = /^AV2 n=(\d+) t=(\d+)/.exec(lines[0] || '');
-  if (!header) return null;
-  return {
-    n: Number(header[1]),
-    t: Number(header[2]),
-    rows: lines.slice(1).filter(Boolean),
-  };
-}
 
 let els = null;
 let btn = null;
 let selectedColor = 'gold';
 let posting = false;
-let pinnedMessageId = null;
-let state = { n: 1, s: [], t: 0 };
+/** Last state read from the backend: the signs on the stage and its capacity. */
+let state = { signs: [], total: TOTAL_SLOTS };
 
 function sanitize(raw) {
   return String(raw || '')
@@ -92,20 +48,36 @@ function sanitize(raw) {
     .trim();
 }
 
-function fromRows(rows) {
-  return rows.map(decodeRow).filter(Boolean);
+/** Everything currently on the stage. Rejects a malformed row rather than
+ *  letting it reach the renderer, the same as the line format used to. */
+async function readSigns() {
+  const res = await fetch(`${API}/signs`, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`GET /signs: ${res.status}`);
+  const data = await res.json();
+  const signs = (Array.isArray(data?.signs) ? data.signs : []).filter((s) => (
+    Number.isInteger(s?.id) && Number.isInteger(s?.slot)
+    && typeof s?.text === 'string' && s.text && SIGN_COLORS[s?.color]
+  ));
+  return { signs, total: Number(data?.total) || TOTAL_SLOTS };
 }
 
-async function tg(method, body) {
-  const res = await fetch(`${API}/${method}`, {
+/**
+ * Leave a sign. The server assigns the slot inside a transaction, so this can
+ * no longer lose a race with a concurrent visitor — the reason the whole
+ * feature moved off browser-writes-Telegram.
+ *
+ * Form-encoded keeps it a "simple" CORS request, so there is no preflight.
+ * Returns the stored sign, or a reason string the caller turns into copy.
+ */
+async function postSign(text, color) {
+  const res = await fetch(`${API}/signs`, {
     method: 'POST',
-    // URLSearchParams keeps this a "simple" CORS request — no preflight
-    body: new URLSearchParams(body),
+    body: new URLSearchParams({ text, color }),
     signal: AbortSignal.timeout(8000),
   });
-  const data = await res.json();
-  if (!data.ok) throw new Error(`${method}: ${data.description || res.status}`);
-  return data.result;
+  const data = await res.json().catch(() => null);
+  if (res.ok && data?.sign) return { sign: data.sign };
+  return { reason: data?.reason || String(res.status) };
 }
 
 function readGate() {
@@ -130,15 +102,17 @@ function readGate() {
  */
 function syncSignAvailability() {
   if (!btn) return;
-  const used = new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger));
-  const free = chooseSlot(used);
-  btn.hidden = !play.vibeFull || Boolean(readGate()) || free === null;
+  // The backend owns capacity, so its `total` is what the badge quotes and
+  // what decides whether the stage is full — the client's TOTAL_SLOTS is a
+  // layout constant and only a fallback here.
+  const free = Math.max(0, state.total - state.signs.length);
+  btn.hidden = !play.vibeFull || Boolean(readGate()) || free === 0;
   // Lives inside the modal rather than gated with the button: if the stage
   // fills while the modal is already open, this is what tells the visitor why
   // their tap just got refused, alongside the error text. Two nodes rather
   // than one string so the count can carry its own weight in the badge.
-  els.freeCount.textContent = String(Math.max(0, TOTAL_SLOTS - used.size));
-  els.freeTotal.textContent = `/ ${TOTAL_SLOTS} вільних місць`;
+  els.freeCount.textContent = String(free);
+  els.freeTotal.textContent = `/ ${state.total} вільних місць`;
 }
 
 /** Called when the vibe meter first fills — signing opens with the loop pedal. */
@@ -186,29 +160,13 @@ function recallSign() {
   } catch { /* corrupt or absent — start blank */ }
 }
 
-/**
- * Did the sign actually make it onto the stage? Re-reads the pin and looks for
- * the row we just wrote.
- *
- * Matched on id **and** text, never id alone: two visitors racing both read the
- * same `n`, so they mint the *same* id for different signs — an id-only match
- * would happily find a stranger's row and call it ours.
- *
- * Whatever comes back is adopted as the live state, so a retry builds on the
- * head that really exists rather than the one we assumed we wrote.
- *
- * This narrows the window rather than closing it: someone can still overwrite
- * us a moment after this read, and nothing here can tell that *we* were the one
- * who overwrote *them*. Both of those need a server to fix properly.
- */
-async function landed(sign) {
-  const chat = await tg('getChat', { chat_id: CHAT }).catch(() => null);
-  const fresh = parseHead(chat?.pinned_message?.text);
-  if (!fresh) return false;
-  state = { n: fresh.n, s: fresh.rows, t: fresh.t };
-  pinnedMessageId = chat.pinned_message.message_id;
-  return fromRows(fresh.rows).some((s) => s.id === sign.id && s.text === sign.text);
-}
+/** What each server refusal means to a visitor. `full` is the only one they
+ *  can do anything about, and even then only by giving up. */
+const REFUSALS = {
+  full: 'Сцена вже заповнена — вільних місць більше немає.',
+  rate: 'Трохи зачекай — і спробуй ще раз.',
+  invalid: 'Такий підпис не підходить — спробуй інший.',
+};
 
 async function submitSign(event) {
   event.preventDefault();
@@ -234,82 +192,23 @@ async function submitSign(event) {
   els.submit.disabled = true;
   els.submit.textContent = 'ЛИШАЄМО…';
   try {
-    // Re-read the pinned state so a concurrent visitor's sign survives. The
-    // residual last-writer-wins race can still drop one, and with no per-sign
-    // channel post there is nothing else recording it — the two-hourly backup
-    // in deploy/signs-backup/ is the only net under that.
-    const chat = await tg('getChat', { chat_id: CHAT }).catch(() => null);
-    const fresh = parseHead(chat?.pinned_message?.text);
-    if (fresh) {
-      state = { n: fresh.n, s: fresh.rows, t: fresh.t };
-      pinnedMessageId = chat.pinned_message.message_id;
-    }
-    // The position is decided here, once, and travels with the sign, so it
-    // stays where it was put. Surfaces fill in their declared order, and the
-    // stage closes when the last slot goes.
-    const used = new Set(fromRows(state.s).map((s) => s.slot).filter(Number.isInteger));
-    const slot = chooseSlot(used);
-    if (slot === null) {
-      // Someone took the last slot while this modal sat open.
-      showError('Сцена вже заповнена — вільних місць більше немає.');
-      syncSignAvailability();
+    // One request, and the server decides everything that used to be decided
+    // here: which slot, whether there is one left, whether the text passes.
+    // There is no read-modify-write from the browser any more, so there is no
+    // race to lose and nothing to verify afterwards — the response either
+    // carries the stored sign or says why not.
+    const { sign, reason } = await postSign(text, selectedColor);
+    if (!sign) {
+      // Deliberately not remembered on a refusal: the daily gate must not burn
+      // a visitor's day for a sign that was never stored. The modal stays open
+      // with their text, so a retry is one more press.
+      showError(REFUSALS[reason] || 'ой, не сьогодні :(');
+      // A refusal usually means our picture of the stage is stale — reread it,
+      // so the badge and the button agree with the server.
+      await refresh().catch(() => {});
       return;
     }
-    const sign = { id: state.n, text, color: selectedColor, slot };
-    const nextN = state.n + 1;
-    let hot = [...state.s, encodeRow(sign)];
-    let tail = state.t;
-    // Nothing is ever discarded: rows that no longer fit seal into an archive
-    // message whose `P=` points at the previous chunk — a linked list hanging
-    // off the head's `t`. The stage never reads them (a bot cannot fetch
-    // arbitrary messages back anyway); they are the record, sitting visibly
-    // in the channel.
-    const head = () => encodeHead(nextN, tail, hot);
-    // Sorted by id so the drain does not depend on the order rows happen to
-    // sit in — a hand-edited head seals the right end either way.
-    hot.sort((a, b) => (decodeRow(a)?.id ?? 0) - (decodeRow(b)?.id ?? 0));
-    // Drain from the NEWEST end until the head both fits the stage and fits a
-    // Telegram message. The stage is first-come-first-served, so the rows that
-    // do not fit are the most recent ones — the first signature must never be
-    // the row that leaves. Each row must genuinely leave `hot`, or it would be
-    // archived again on every write while the head grew past the limit anyway
-    // — the failure mode a fixed row budget invites.
-    const sealed = [];
-    while (hot.length > TOTAL_SLOTS) sealed.push(hot.pop());
-    while (hot.length > 1 && head().length > HOT_MAX_CHARS) sealed.push(hot.pop());
-    if (sealed.length) {
-      const node = await tg('sendMessage', {
-        chat_id: CHAT,
-        text: [`P=${tail}`, ...sealed].join('\n'),
-        disable_notification: 'true',
-      });
-      tail = node.message_id;
-    }
-    state = { n: nextN, s: hot, t: tail };
-    // The pinned head is the whole write: one edit, nothing else. An earlier
-    // version also posted "✍️ text · colour" to the channel as a feed, but
-    // that is a second message per sign for no functional reason — the head
-    // (plus the archive chunks a drain produces) already is the record.
-    await tg('editMessageText', {
-      chat_id: CHAT,
-      message_id: pinnedMessageId,
-      text: head(),
-    });
-    // An `ok` edit is not proof the sign is on the stage. Everyone writes the
-    // whole head, so a visitor who read the same head a moment before us
-    // overwrites our version wholesale — Telegram reports success to both of
-    // us and has no way to mention it. Read the pin back and look for the row.
-    if (!(await landed(sign))) {
-      // Deliberately not remembered: the gate must not burn a visitor's day
-      // for a sign that is not there. The modal stays open with their text,
-      // so the retry is one more press.
-      showError('Хтось підписався одночасно — спробуй ще раз.');
-      // Repaint from the head that actually won, so the stage behind the modal
-      // stops showing a version of itself that no longer exists.
-      setSigns(fromRows(state.s));
-      syncSignAvailability();
-      return;
-    }
+    state.signs = [...state.signs, sign];
     rememberSign(text, selectedColor);
     syncSignAvailability();
     showError('');
@@ -382,23 +281,28 @@ function enable(signs) {
   syncSignAvailability();
 }
 
+/** Re-read the stage and repaint from it. Used after a refusal, when what the
+ *  server knows and what this tab believes have visibly diverged. */
+async function refresh() {
+  state = await readSigns();
+  setSigns(state.signs);
+  syncSignAvailability();
+}
+
 export function initSigns() {
   // QA runs must not depend on the network or write to the live stage —
   // same stance as analytics: the stage keeps its no-feature baseline.
   if (['testhooks', 'headless', 'shot'].some((flag) => params.has(flag))) return;
   let probe;
   try {
-    probe = tg('getChat', { chat_id: CHAT });
+    probe = readSigns();
   } catch {
     return; // no fetch/AbortSignal.timeout → treat as unreachable
   }
   probe
-    .then((chat) => {
-      const parsed = parseHead(chat?.pinned_message?.text);
-      if (!parsed) return; // no readable head → nothing to show, nowhere to write
-      pinnedMessageId = chat.pinned_message.message_id;
-      state = { n: parsed.n, s: parsed.rows, t: parsed.t };
-      enable(fromRows(parsed.rows));
+    .then((fresh) => {
+      state = fresh;
+      enable(fresh.signs);
     })
     .catch(() => { /* storage unreachable: the feature stays invisible */ });
 }

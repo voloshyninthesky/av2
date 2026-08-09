@@ -13,7 +13,7 @@ import {
   registerDimmableEmissive,
   prefersReducedMotion,
   usesLowMobileSceneBudget,
-} from '../core/quality.js?v=20260809-07';
+} from '../core/quality.js?v=20260809-08';
 
 // Render hexes for the curated color ids a sign may carry. Brighter than
 // the brand ink-on-cream palette on purpose: these glow against 0x15091f.
@@ -193,16 +193,11 @@ export function buildSigns() {
   return group;
 }
 
-/** The slot a new sign takes: the lowest free one, so the surfaces fill in
- *  the declared order. Returns null once the stage is full — nothing is
- *  retired to make room, the write is simply refused, which is what makes a
- *  signature worth leaving. */
-export function chooseSlot(usedSlots) {
-  for (let slot = 0; slot < TOTAL_SLOTS; slot++) {
-    if (!usedSlots.has(slot)) return slot;
-  }
-  return null;
-}
+// Slot allocation used to live here, picking the lowest free slot from what
+// the browser had just read. That is exactly the read-modify-write two
+// visitors could interleave, so it moved into the backend where it happens
+// inside a transaction (deploy/av2-signs/server.js). This module now only
+// renders the slot a sign already carries.
 
 // A sign's slot is chosen once, at creation, and stored with it, so it
 // stays where it was put. The derived fallback plus probe below only
