@@ -12,6 +12,49 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The site speaks Polish too, and the Polish half stays out of search — 2026-08-11
+
+`/pl/` mirrors the hub and the four lesson pages on Polish slugs, plus one page the
+Ukrainian side does not have: `/pl/polityka-prywatnosci/`, a RODO notice. The studio is in
+Łódź; half the people who walk past it read Polish.
+
+- **Root stays Ukrainian.** The indexed URLs and every bookmark keep working, and the new
+  language is added rather than negotiated — no redirect, no `Accept-Language` guessing.
+  A visitor who wanted Ukrainian and got Polish because of a browser setting is a bug that
+  is invisible to whoever shipped it.
+- **`noindex`, deliberately.** The Ukrainian slugs carry the search intent this studio is
+  found by ("уроки гітари Лодзь"), and a second set of pages for the same four lessons in
+  the same city would compete with them rather than add reach. So: `noindex`, no canonical,
+  no `hreflang`, no JSON-LD, out of `sitemap.xml` — but **`robots.txt` still allows
+  crawling**, because a crawler that is blocked never gets to read the `noindex`. Every one
+  of those is asserted in `tests/site-meta.test.mjs`; none of them shows on the page, so
+  none of them fails visibly.
+- **The switch is pairwise and is a link.** Guitar-UA goes to guitar-PL, not to the home
+  page. A switch that dumps everyone on the hub still "works" — nothing errors, so nothing
+  complains — which is exactly why the test names all twelve pairs. The current language is
+  a `<span>`, not a self-link: it is not a destination.
+- **Prices stayed one file.** `prices.json` gained `displayPl` / `descriptionPl` /
+  `paymentNotePl` beside the Ukrainian originals rather than a Polish string table inside
+  `tools/sync-prices.mjs`. The studio owner edits one file to change a price; adding a
+  promotion without its Polish line fails the sync script **by name** instead of shipping a
+  half-translated page. → [[Prices]]
+- **The RODO page is a notice, not a banner.** The site sets no cookies, which is the whole
+  reason it needs no consent gate (see the GoatCounter entry below) — so the notice opens by
+  saying so and then describes, honestly, what actually happens: cookieless statistics, the
+  Open-Meteo request the visitor's own browser makes, Meta as a separate administrator once
+  a booking button is pressed, and the stage's `localStorage` and public signs. Administrator
+  contact is the Instagram / Messenger DM, because that is the only contact the studio
+  publishes and inventing an e-mail would be worse than naming the real channel.
+- **Words in CSS were the one thing HTML review could not catch.** `.lesson-card::after`
+  printed «детальніше »» from `content:`, so the Polish cards spoke Ukrainian while every
+  page looked correct in the diff. Fixed with `:lang(pl)`, and `tests/site-meta.test.mjs`
+  now fails on any Cyrillic `content:` that has no `:lang(pl)` counterpart.
+
+The 3D stage stays Ukrainian. Translating ~12k lines of stage UI is a different project, and
+both languages link to it as it is.
+
+---
+
 ## Telegram is gone from the signs feature entirely — 2026-08-09
 
 The mirror, the seed, the bot token and the credentials file are all removed. The backend

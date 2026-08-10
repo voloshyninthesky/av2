@@ -1,4 +1,4 @@
-/* Sidebar weather widget for the /uk pages.
+/* Sidebar weather widget for the lesson pages.
    Open-Meteo is used rather than an embedded third-party widget: it needs no API
    key, sets CORS headers, and returns plain JSON, so the pages stay free of
    trackers and iframes. The markup ships with a placeholder and this script only
@@ -14,28 +14,40 @@ const ENDPOINT =
   '&timezone=Europe%2FWarsaw';
 
 /* WMO weather interpretation codes, grouped — the API returns one integer and
-   the neighbouring codes in each band differ only by intensity. */
+   the neighbouring codes in each band differ only by intensity. Both languages
+   share the same bands, so a code that reads as one word in Ukrainian reads as
+   one word in Polish; only the words differ. */
 const CONDITIONS = [
-  [[0], 'ясно'],
-  [[1], 'переважно ясно'],
-  [[2], 'мінлива хмарність'],
-  [[3], 'хмарно'],
-  [[45, 48], 'туман'],
-  [[51, 53, 55], 'мряка'],
-  [[56, 57], 'крижана мряка'],
-  [[61, 63, 65], 'дощ'],
-  [[66, 67], 'крижаний дощ'],
-  [[71, 73, 75], 'сніг'],
-  [[77], 'снігова крупа'],
-  [[80, 81, 82], 'зливи'],
-  [[85, 86], 'снігові зливи'],
-  [[95], 'гроза'],
-  [[96, 99], 'гроза з градом'],
+  [[0], 'ясно', 'bezchmurnie'],
+  [[1], 'переважно ясно', 'przeważnie bezchmurnie'],
+  [[2], 'мінлива хмарність', 'częściowe zachmurzenie'],
+  [[3], 'хмарно', 'pochmurno'],
+  [[45, 48], 'туман', 'mgła'],
+  [[51, 53, 55], 'мряка', 'mżawka'],
+  [[56, 57], 'крижана мряка', 'marznąca mżawka'],
+  [[61, 63, 65], 'дощ', 'deszcz'],
+  [[66, 67], 'крижаний дощ', 'marznący deszcz'],
+  [[71, 73, 75], 'сніг', 'śnieg'],
+  [[77], 'снігова крупа', 'krupa śnieżna'],
+  [[80, 81, 82], 'зливи', 'przelotny deszcz'],
+  [[85, 86], 'снігові зливи', 'przelotny śnieg'],
+  [[95], 'гроза', 'burza'],
+  [[96, 99], 'гроза з градом', 'burza z gradem'],
 ];
+
+/* The page's own lang attribute picks the words, so a new page needs no wiring
+   here beyond <html lang>; anything unrecognised falls back to Ukrainian, which
+   is what every page was before the Polish ones existed. */
+const LOCALES = {
+  uk: { column: 1, fallback: 'без опадів', feelsLike: (t) => `відчувається як ${t}` },
+  pl: { column: 2, fallback: 'bez opadów', feelsLike: (t) => `odczuwalna ${t}` },
+};
+
+const locale = LOCALES[document.documentElement.lang] || LOCALES.uk;
 
 function describe(code) {
   const hit = CONDITIONS.find(([codes]) => codes.includes(code));
-  return hit ? hit[1] : 'без опадів';
+  return hit ? hit[locale.column] : locale.fallback;
 }
 
 /* Math.round rather than toFixed: the sidebar is 214px wide and a decimal place
@@ -54,7 +66,7 @@ async function render(box) {
   box.querySelector('.weather-temp').textContent = formatTemp(current.temperature_2m);
   box.querySelector('.weather-desc').textContent = describe(current.weather_code);
   box.querySelector('.weather-meta').textContent =
-    `відчувається як ${formatTemp(current.apparent_temperature)}`;
+    locale.feelsLike(formatTemp(current.apparent_temperature));
   box.dataset.state = 'ready';
 }
 

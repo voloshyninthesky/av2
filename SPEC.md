@@ -4,7 +4,7 @@ Interactive marketing experience for **Art Vibe Studio**, a cultural and educati
 
 - **Live:** https://artvibe.com.pl
 - **Repo / release:** https://github.com/voloshyninthesky/av2 → GitHub Pages (`artvibe.com.pl`) + versioned Nginx preview (`vibe2.ton.zone`)
-- **Locale:** Ukrainian (`lang="uk"`)  
+- **Locale:** Ukrainian (`lang="uk"`) at the root, with a Polish mirror of the lesson pages under `/pl/` (§3 Polish pages)  
 - **Location:** Łódź, Poland
 - **Currency:** PLN (displayed as «зл»)  
 - **Contact CTAs:** Instagram [@artvibe.pl](https://www.instagram.com/artvibe.pl/) and [Messenger](https://m.me/61564874125852?text=%D0%9F%D1%80%D0%B8%D0%B2%D1%96%D1%82%2C%20%D1%85%D0%BE%D1%87%D1%83%20%D0%BD%D0%B0%20%D1%83%D1%80%D0%BE%D0%BA%21)
@@ -64,6 +64,7 @@ Static site, no build step. ES modules + import map for Three.js.
 index.html          # lesson hub — the site's front door (static, no stage JS)
 404.html            # branded not-found page (GitHub Pages serves it automatically)
 uroky-*-lodz/       # instrument-specific SEO lesson pages
+pl/                 # Polish mirror: hub, four lesson pages, RODO notice (§ Polish pages)
 stage/index.html    # 3D stage: shell, modals, HUD, pads, settings mixer; loads telegram-web-app.js
 uk/                 # redirect stubs for the pre-2026-08-06 /uk/* URLs
 css/style.css       # design system + overlays
@@ -97,6 +98,47 @@ deploy/nginx/       # live VPS nginx release target
 ```
 
 **Stack:** Three.js (WebGL), OrbitControls, EffectComposer + UnrealBloomPass, Web Audio API.
+
+### Polish pages (`/pl/`)
+
+The lesson site is served twice: Ukrainian at the root, Polish under `/pl/`. Same offer, same
+prices, same 2007 skin — the studio is in Łódź and half the people who walk past it read Polish.
+
+- **Five pages plus a privacy notice**, on Polish slugs: `/pl/`, `/pl/lekcje-spiewu-lodz/`,
+  `/pl/lekcje-gitary-lodz/`, `/pl/lekcje-pianina-lodz/`, `/pl/lekcje-perkusji-lodz/`, and
+  `/pl/polityka-prywatnosci/`.
+- **They are deliberately outside the SEO surface.** Every Polish page carries
+  `<meta name="robots" content="noindex, follow">`, no `canonical`, no `hreflang` annotation
+  and **no JSON-LD**, and none of them is in `sitemap.xml`. The Ukrainian slugs carry the search
+  intent this studio is found by, and a second set of pages for the same four lessons in the same
+  city would only compete with them. `robots.txt` still **allows** crawling: a crawler has to
+  fetch the page to read the `noindex`, and a `Disallow` would leave it guessing instead.
+  `tests/site-meta.test.mjs` pins each of those, since nothing renders when one slips.
+- **The switch is pairwise.** Both languages carry a `.lang-switch` in the banner — one link
+  and one `<span class="is-current" aria-current="true">` for the language already showing — and
+  the link names **the same page** in the other language, not the home page. The one exception
+  is the RODO notice, which has no Ukrainian twin and so points at the hub. No JavaScript, no
+  `Accept-Language` redirect: the visitor chooses, and the choice is a plain link.
+  Desktop places it last in the banner, after **3D-сцена**; at the phone breakpoint the header
+  actions become `display: contents` so it takes the banner's first row on its own, top-right —
+  first thing on the page rather than buried under the full-width stage button.
+- **Analytics keeps them separate:** `pl-home`, `pl-vocal`, `pl-guitar`, `pl-piano`, `pl-drums`,
+  `pl-privacy` (§11 Analytics). Whether Polish earns bookings is the whole question about it.
+- **The 3D stage stays Ukrainian.** Both languages link to `/stage/` as it is.
+
+#### RODO notice
+
+`/pl/polityka-prywatnosci/`, linked from every Polish page's footer. It names Art Vibe Studio,
+Łódź as administrator with the Instagram / Messenger DM as the contact route — the same channel
+the studio books through, and the only contact the site has — and covers, honestly, everything
+the pages actually do: cookieless GoatCounter statistics, the Open-Meteo request the visitor's
+own browser makes, Meta as a separate administrator once a booking button is clicked, the
+stage's `localStorage` and its public signs, the visitor's rights and the PUODO complaint route.
+
+**It is not a cookie banner and must not become one.** The site sets no cookies at all
+(§11 Analytics), which is why no consent is required — the notice says so in its first
+paragraph. Swapping in a cookie-based tool would change that and would change what this page
+owes its visitors.
 
 **Audio buses:** `drums` | `piano` | `guitar` | `mic` → master. Default guitar level **0.6** (40% quieter than the others). Every mixer fader displays **0–100%** and reaches a gain of 2.0 at 100%; defaults remain at 50% for drums, piano, and vocals, and 30% for guitar.
 
@@ -524,6 +566,13 @@ changing one instrument's price is a one-place edit.
   is a complete price change** — no HTML edit, no red build. Run it locally (`node
   tools/sync-prices.mjs`, or `--check` to only report drift) after touching this file so the
   committed pages match too.
+- **The Polish pages are the same contract in another language**, so the words a page prints
+  around the numbers live here too, beside their Ukrainian originals: `currency.displayPl`
+  (`zł`), `promotions[].descriptionPl`, and `paymentNotePl`. Each page is generated and checked
+  against its own locale, and the plural in a bonus badge follows it (`+1 урок` / `+1 lekcja`).
+  Adding a promotion without its `descriptionPl` **fails the sync script by name** rather than
+  shipping a half-translated page. The Polish pages carry no JSON-LD, so nothing of that layer
+  applies to them.
 - What it writes: each price cell (`data-price="single:<id>:<minutes>"` /
   `data-price="pack:<id>:<minutes>:<lessons>"`), the payment note (`data-payment-note`), the
   promotions list (`data-promotions`, badge and Ukrainian plural derived from the promotion),
@@ -703,7 +752,7 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 **Primary:** GitHub Pages (Actions).
 
 - Workflow: `.github/workflows/deploy-pages.yml` on push to `main`.
-- Artifact: `css fonts img js stage uk uroky-*-lodz vendor index.html 404.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`. The list is hand-written, so a new top-level file that is not added here simply never ships — `tests/site-meta.test.mjs` guards `404.html` specifically.
+- Artifact: `css fonts img js pl stage uk uroky-*-lodz vendor index.html 404.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`. The list is hand-written, so a new top-level file that is not added here simply never ships — `tests/site-meta.test.mjs` guards `404.html` and `pl` specifically.
 - **Paths are site-absolute** (`/js/…`, `/prices.json`, `/img/…`). The stage is served from
   `/stage/`, so a document-relative path resolves under that directory instead of the root.
 - Custom domain: `artvibe.com.pl` → GitHub Pages (`voloshyninthesky.github.io`).
@@ -745,6 +794,7 @@ lesson pages):
 | `stage-first-play` | First note on any instrument (all play routes funnel through `addVibe`) |
 | `stage-pricing-open` | Pricing overlay opened by any route |
 | `book-{instagram\|messenger}-{home\|vocal\|guitar\|piano\|drums\|stage}` | Outbound booking link clicked |
+| `book-{instagram\|messenger}-pl-{home\|vocal\|guitar\|piano\|drums\|privacy}` | The same, from a Polish page (§3 Polish pages) |
 | `stage-sign-left` | A sign was accepted onto the stage (at most once a day per device by construction) |
 
 The first three fire at most once per page load; booking clicks fire every time.

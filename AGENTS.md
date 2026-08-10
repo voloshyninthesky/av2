@@ -10,7 +10,8 @@ full product/architecture spec.
 ### Code layout
 
 The site root (`index.html` plus the `uroky-*-lodz/` pages) is the static lesson site — plain HTML,
-no stage code. The 3D stage lives at `stage/index.html` and loads exactly one module, `js/main.js`,
+no stage code — and `pl/` is its Polish mirror plus a RODO notice, `noindex` on purpose (`SPEC.md`
+§3 *Polish pages*). The 3D stage lives at `stage/index.html` and loads exactly one module, `js/main.js`,
 which owns boot order, cross-module wiring and the frame loop. Because the stage is served from
 `/stage/`, every asset path it reaches for — in HTML, in the import map, and in `fetch()` calls from
 JS — is site-absolute (`/js/…`, `/prices.json`, `/img/…`); a document-relative one would look inside

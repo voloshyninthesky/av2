@@ -9,12 +9,21 @@
    visitors, and an ad-blocker must never cost anyone a booking link. Events
    are mirrored into window.__av2Events for headless checks. */
 
+/* The Polish pages carry their own slugs rather than folding into the Ukrainian
+   ones: they are the same offer in another language, and whether that language
+   earns bookings is the whole question worth asking about them. */
 const SLUGS = {
   '/': 'home',
   '/uroky-vokalu-lodz/': 'vocal',
   '/uroky-hitary-lodz/': 'guitar',
   '/uroky-fortepiano-lodz/': 'piano',
   '/uroky-barabaniv-lodz/': 'drums',
+  '/pl/': 'pl-home',
+  '/pl/lekcje-spiewu-lodz/': 'pl-vocal',
+  '/pl/lekcje-gitary-lodz/': 'pl-guitar',
+  '/pl/lekcje-pianina-lodz/': 'pl-piano',
+  '/pl/lekcje-perkusji-lodz/': 'pl-drums',
+  '/pl/polityka-prywatnosci/': 'pl-privacy',
 };
 
 const page = SLUGS[location.pathname] || location.pathname;

@@ -21,15 +21,67 @@ const ROOT = new URL('../', import.meta.url);
 const CHECK = process.argv.includes('--check');
 
 const prices = JSON.parse(await readFile(new URL('prices.json', ROOT), 'utf8'));
-const currency = prices.currency.display;
+
+// Each locale prints the same numbers in its own words: the currency symbol, the
+// promotion copy, the payment note, and the plural of "lesson" in a bonus badge.
+// Those live in prices.json beside the Ukrainian originals rather than in this
+// script, so adding a promotion is still a one-file edit for the studio — and a
+// missing Polish string fails here instead of shipping a half-translated page.
+const LOCALES = {
+  uk: {
+    currency: prices.currency.display,
+    promotion: (p) => p.description,
+    paymentNote: prices.paymentNote,
+    /** 1 урок · 2 уроки · 5 уроків */
+    lessonWord(n) {
+      const tens = n % 100;
+      const ones = n % 10;
+      if (ones === 1 && tens !== 11) return 'урок';
+      if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return 'уроки';
+      return 'уроків';
+    },
+  },
+  pl: {
+    currency: prices.currency.displayPl,
+    promotion: (p) => p.descriptionPl,
+    paymentNote: prices.paymentNotePl,
+    /** 1 lekcja · 2 lekcje · 5 lekcji */
+    lessonWord(n) {
+      const tens = n % 100;
+      const ones = n % 10;
+      if (ones === 1 && tens !== 11) return 'lekcja';
+      if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return 'lekcje';
+      return 'lekcji';
+    },
+  },
+};
 
 const PAGES = [
-  { file: 'index.html', instrument: null },
-  { file: 'uroky-vokalu-lodz/index.html', instrument: 'vocal' },
-  { file: 'uroky-hitary-lodz/index.html', instrument: 'guitar' },
-  { file: 'uroky-fortepiano-lodz/index.html', instrument: 'piano' },
-  { file: 'uroky-barabaniv-lodz/index.html', instrument: 'drums' },
+  { file: 'index.html', instrument: null, lang: 'uk' },
+  { file: 'uroky-vokalu-lodz/index.html', instrument: 'vocal', lang: 'uk' },
+  { file: 'uroky-hitary-lodz/index.html', instrument: 'guitar', lang: 'uk' },
+  { file: 'uroky-fortepiano-lodz/index.html', instrument: 'piano', lang: 'uk' },
+  { file: 'uroky-barabaniv-lodz/index.html', instrument: 'drums', lang: 'uk' },
+  // The Polish pages carry no JSON-LD (they are noindex), so only their cells,
+  // note and promotions get written; the JSON-LD replaces below miss harmlessly.
+  { file: 'pl/index.html', instrument: null, lang: 'pl' },
+  { file: 'pl/lekcje-spiewu-lodz/index.html', instrument: 'vocal', lang: 'pl' },
+  { file: 'pl/lekcje-gitary-lodz/index.html', instrument: 'guitar', lang: 'pl' },
+  { file: 'pl/lekcje-pianina-lodz/index.html', instrument: 'piano', lang: 'pl' },
+  { file: 'pl/lekcje-perkusji-lodz/index.html', instrument: 'drums', lang: 'pl' },
 ];
+
+for (const [lang, locale] of Object.entries(LOCALES)) {
+  const missing = [
+    !locale.currency && 'currency display',
+    !locale.paymentNote && 'payment note',
+    ...prices.promotions.map((p, i) => !locale.promotion(p) && `promotions[${i}]`),
+  ].filter(Boolean);
+  if (missing.length) {
+    console.error(`prices.json has no ${lang} text for: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
 
 const priceOf = (id) => prices.instruments.find((i) => i.id === id);
 const everyPrice = (i) => [
@@ -50,40 +102,31 @@ for (const instrument of prices.instruments) {
   }
 }
 
-const render = (key) => `${amounts.get(key)} ${currency}`;
-
-/** Ukrainian plural for a lesson count: 1 урок · 2 уроки · 5 уроків. */
-function lessonWord(n) {
-  const tens = n % 100;
-  const ones = n % 10;
-  if (ones === 1 && tens !== 11) return 'урок';
-  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return 'уроки';
-  return 'уроків';
-}
+const render = (key, locale) => `${amounts.get(key)} ${locale.currency}`;
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-function promotionBadge(promotion) {
+function promotionBadge(promotion, locale) {
   if (typeof promotion.valuePercent === 'number') return `−${promotion.valuePercent}%`;
   if (typeof promotion.freeLessons === 'number') {
-    return `+${promotion.freeLessons} ${lessonWord(promotion.freeLessons)}`;
+    return `+${promotion.freeLessons} ${locale.lessonWord(promotion.freeLessons)}`;
   }
   return '★';
 }
 
 const unknownKeys = [];
 
-function syncPage(html, instrument) {
+function syncPage(html, instrument, locale) {
   // Price cells in the tables.
   html = html.replace(/(<td data-price=")([^"]+)(">)([^<]*)(<\/td>)/g, (all, a, key, b, _v, c) => {
     if (!amounts.has(key)) return unknownKeys.push(key), all;
-    return `${a}${key}${b}${render(key)}${c}`;
+    return `${a}${key}${b}${render(key, locale)}${c}`;
   });
 
   // The note explaining what a package price covers.
   html = html.replace(
     /(<p class="price-note" data-payment-note>)[^<]*(<\/p>)/,
-    `$1${escape(prices.paymentNote)}$2`,
+    `$1${escape(locale.paymentNote)}$2`,
   );
 
   // The discounts / bonuses list.
@@ -93,8 +136,8 @@ function syncPage(html, instrument) {
       const items = prices.promotions
         .map(
           (p) =>
-            `${indent}  <li><b class="perk-badge">${escape(promotionBadge(p))}</b> ` +
-            `${escape(p.description)}</li>`,
+            `${indent}  <li><b class="perk-badge">${escape(promotionBadge(p, locale))}</b> ` +
+            `${escape(locale.promotion(p))}</li>`,
         )
         .join('\n');
       return `${indent}${open}\n${items}\n${indent}${close}`;
@@ -118,10 +161,10 @@ function syncPage(html, instrument) {
 }
 
 let drifted = 0;
-for (const { file, instrument } of PAGES) {
+for (const { file, instrument, lang } of PAGES) {
   const url = new URL(file, ROOT);
   const before = await readFile(url, 'utf8');
-  const after = syncPage(before, instrument);
+  const after = syncPage(before, instrument, LOCALES[lang]);
   if (before === after) continue;
   drifted++;
   if (CHECK) console.error(`stale: ${file}`);

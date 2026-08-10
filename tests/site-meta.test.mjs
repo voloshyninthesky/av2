@@ -15,14 +15,40 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const GOATCOUNTER = 'https://count.artvibe.com.pl/count';
 
-const LESSON_PAGES = [
+const UK_PAGES = [
   'index.html',
   'uroky-vokalu-lodz/index.html',
   'uroky-hitary-lodz/index.html',
   'uroky-fortepiano-lodz/index.html',
   'uroky-barabaniv-lodz/index.html',
 ];
+const PL_PAGES = [
+  'pl/index.html',
+  'pl/lekcje-spiewu-lodz/index.html',
+  'pl/lekcje-gitary-lodz/index.html',
+  'pl/lekcje-pianina-lodz/index.html',
+  'pl/lekcje-perkusji-lodz/index.html',
+  'pl/polityka-prywatnosci/index.html',
+];
+const LESSON_PAGES = [...UK_PAGES, ...PL_PAGES];
 const ALL_PAGES = [...LESSON_PAGES, 'stage/index.html'];
+
+/** Every page, and the page the other language serves it from. */
+const COUNTERPARTS = [
+  ['index.html', '/pl/'],
+  ['404.html', '/pl/'],
+  ['uroky-vokalu-lodz/index.html', '/pl/lekcje-spiewu-lodz/'],
+  ['uroky-hitary-lodz/index.html', '/pl/lekcje-gitary-lodz/'],
+  ['uroky-fortepiano-lodz/index.html', '/pl/lekcje-pianina-lodz/'],
+  ['uroky-barabaniv-lodz/index.html', '/pl/lekcje-perkusji-lodz/'],
+  ['pl/index.html', '/'],
+  ['pl/lekcje-spiewu-lodz/index.html', '/uroky-vokalu-lodz/'],
+  ['pl/lekcje-gitary-lodz/index.html', '/uroky-hitary-lodz/'],
+  ['pl/lekcje-pianina-lodz/index.html', '/uroky-fortepiano-lodz/'],
+  ['pl/lekcje-perkusji-lodz/index.html', '/uroky-barabaniv-lodz/'],
+  // No Ukrainian privacy notice exists, so this one switch lands on the hub.
+  ['pl/polityka-prywatnosci/index.html', '/'],
+];
 
 test('every page carries the analytics tag', async () => {
   for (const page of ALL_PAGES) {
@@ -37,6 +63,83 @@ test('lesson pages load the booking-click module', async () => {
     const html = await read(page);
     assert.match(html, /src="\/js\/lessons-analytics\.js\?v=/, `${page} does not load lessons-analytics.js`);
   }
+});
+
+// The Polish pages are deliberately outside the SEO surface: the Ukrainian
+// slugs carry the search intent this studio is found by, and a second set of
+// pages for the same four lessons in the same city would only compete with
+// them. Nothing renders when that slips — a page just quietly starts ranking —
+// so each of the ways back into the index is pinned here. Crawling stays
+// allowed in robots.txt on purpose: a crawler has to fetch the page to read the
+// noindex, and a Disallow would leave it guessing instead.
+test('the Polish pages stay out of search', async () => {
+  for (const page of PL_PAGES) {
+    const html = await read(page);
+    assert.match(html, /<html lang="pl">/, `${page} is not marked as Polish`);
+    assert.match(html, /<meta name="robots" content="noindex/, `${page} must be noindex`);
+    assert.doesNotMatch(html, /rel="canonical"/, `${page} must not claim a canonical URL`);
+    assert.doesNotMatch(html, /rel="alternate"/, `${page} must not annotate a language alternate`);
+    assert.doesNotMatch(html, /application\/ld\+json/, `${page} must carry no structured data`);
+  }
+});
+
+test('the sitemap submits only the Ukrainian pages', async () => {
+  const sitemap = await read('sitemap.xml');
+  assert.doesNotMatch(sitemap, /\/pl\//, 'the Polish pages must not be submitted for indexing');
+});
+
+test('the deploy workflow actually ships the Polish pages', async () => {
+  const workflow = await read('.github/workflows/deploy-pages.yml');
+  const copyLine = workflow.split('\n').find((line) => line.trim().startsWith('cp -R '));
+  assert.ok(copyLine, 'no cp -R line found in the deploy workflow');
+  assert.match(copyLine, /\spl\s/, 'pl is not copied into _site, so the Polish pages never ship');
+});
+
+// A switch that drops everyone on the home page is the usual way a two-language
+// site rots: it still "works", so nothing complains, and the visitor loses their
+// place every time they use it. Each page names its own counterpart instead.
+test('every page offers the same page in the other language', async () => {
+  for (const [page, counterpart] of COUNTERPARTS) {
+    const html = await read(page);
+    // The label is UA, the language code is uk — the country and the language
+    // do not share an abbreviation, and the visitor is looking for the flag-ish
+    // one while the markup owes browsers the correct one.
+    const other = page.startsWith('pl/') ? 'uk' : 'pl';
+    const label = other === 'uk' ? 'UA' : 'PL';
+    assert.ok(
+      html.includes(`<a href="${counterpart}" lang="${other}" hreflang="${other}">${label}</a>`),
+      `${page} does not offer ${counterpart} as its ${label} counterpart`,
+    );
+    assert.match(
+      html,
+      /<span class="is-current" aria-current="true">(UA|PL)<\/span>/,
+      `${page} does not mark which language is showing`,
+    );
+  }
+});
+
+// Words in a stylesheet are invisible to every check that reads the HTML, and
+// one stylesheet now dresses two languages: the lesson cards' «детальніше »»
+// shipped on the Polish pages for exactly that reason. Any Cyrillic `content:`
+// needs a :lang(pl) counterpart, or the Polish pages quietly speak Ukrainian.
+test('every Cyrillic label generated by CSS has a Polish counterpart', async () => {
+  const css = await read('css/lessons.css');
+  const cyrillic = /[Ѐ-ӿ]/;
+  let checked = 0;
+  for (const [, block, body] of css.matchAll(/([^{}]+)\{([^{}]*content:[^{}]*)\}/g)) {
+    const label = body.match(/content:\s*'([^']*)'/)?.[1];
+    if (!label || !cyrillic.test(label)) continue;
+    // The capture runs back to the previous brace, so it carries the rule's
+    // comment and blank lines with it; the selector is its last line.
+    const selector = block.trim().split('\n').pop().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(
+      css,
+      new RegExp(`:lang\\(pl\\)\\s*${selector}\\s*\\{`),
+      `${selector} prints "${label}" on the Polish pages too — it needs a :lang(pl) rule`,
+    );
+    checked++;
+  }
+  assert.ok(checked > 0, 'found no CSS-generated labels at all — has the regex stopped matching?');
 });
 
 test('404 page recovers the visitor', async () => {

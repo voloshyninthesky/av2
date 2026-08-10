@@ -5,23 +5,26 @@ tags: [moc, home]
 # Art Vibe Studio
 
 Interactive marketing site for a cultural / educational space in Łódź teaching **vocal,
-guitar, piano and drums**. Ukrainian-language, PLN prices, booking happens in Instagram
-or Messenger DMs. There are no accounts, no payments, no CMS, no sample libraries and no
-native apps — those are explicit non-goals.
+guitar, piano and drums**. Ukrainian at the root with a Polish mirror of the lesson pages
+under `/pl/`, PLN prices, booking happens in Instagram or Messenger DMs. There are no
+accounts, no payments, no CMS, no sample libraries and no native apps — those are explicit
+non-goals.
 
 |          |                                                        |
 | -------- | ------------------------------------------------------ |
 | Live     | https://artvibe.com.pl (GitHub Pages, `CNAME`)         |
 | Repo     | https://github.com/voloshyninthesky/av2                |
 | Preview  | https://vibe2.ton.zone — versioned nginx releases      |
-| Locale   | `lang="uk"`; currency PLN, displayed as «зл»           |
+| Locale   | `lang="uk"`, plus `lang="pl"` under `/pl/`; PLN as «зл» / «zł» |
 | Slogan   | *Вчись творити і твори навчаючись.*                    |
 
 ## The site is two things
 
-1. **The lesson site** — `index.html` plus four `uroky-*-lodz/` pages. Plain static HTML,
-   no JavaScript beyond two tiny progressive enhancements, a deliberate 2007-era skin.
-   This is the front door and the whole SEO surface. → [[Lesson site]]
+1. **The lesson site** — `index.html` plus four `uroky-*-lodz/` pages, and the same five in
+   Polish under `pl/` (plus a RODO notice). Plain static HTML, no JavaScript beyond two tiny
+   progressive enhancements, a deliberate 2007-era skin. The Ukrainian pages are the front
+   door and the **whole** SEO surface — the Polish ones are deliberately `noindex`.
+   → [[Lesson site]]
 2. **The 3D stage** — `stage/index.html`. A WebGL scene where a visitor walks a mascot
    around a stage and plays procedural instruments. ~12k lines of ES modules under `js/`.
    → [[Architecture]]

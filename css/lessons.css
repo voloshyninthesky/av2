@@ -201,6 +201,47 @@ h1, h2, h3, p, ul { margin-top: 0; }
   50% { transform: rotate(-6deg) scale(1.05); }
 }
 
+/* ------------------------------------------------------- language switch */
+
+/* Two words in the banner, not a control: there are exactly two languages, so
+   the whole switch is one link and one label. It borrows the slogan's size and
+   gold — the quietest thing the banner already says — because next to a NEW!
+   starburst and a purple button, anything with its own chrome would read as a
+   third thing to act on. The current language ships as a <span>, not a link:
+   it is where the visitor already is, so it is not a destination. */
+.lang-switch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font: 9px var(--sans);
+  letter-spacing: .1em;
+}
+
+.lang-switch > * + * {
+  padding-left: 6px;
+  border-left: 1px solid rgba(255, 255, 255, .2);
+}
+
+/* The half you are *not* reading is the only actionable one, so it keeps enough
+   contrast to be read and clicked; the half naming the language already on
+   screen is the redundant one, and dims. aria-current carries that state for
+   anyone who cannot see the difference. Colour arrives on hover, not at rest —
+   this sits after the 3D button, last in the banner, and should be found rather
+   than noticed. */
+.lang-switch a {
+  color: rgba(255, 255, 255, .82);
+  text-decoration: none;
+}
+
+.lang-switch a:hover {
+  background: none;
+  color: var(--gold-light);
+  text-decoration: underline;
+}
+
+.lang-switch .is-current { color: rgba(255, 255, 255, .42); }
+
 /* ------------------------------------------------------------ tab strip */
 
 .tabs {
@@ -706,6 +747,37 @@ h2 {
 
 .price-actions { margin: 18px 0 0; }
 
+/* ------------------------------------------------------------ legal page */
+
+/* The privacy notice is the one page here that is a document rather than a
+   poster: this skin's windows were built for a paragraph and two buttons, so
+   long prose needs a readable measure and real air between its parts. */
+.legal-body { max-width: 640px; }
+
+.legal-body h3 {
+  margin: 22px 0 8px;
+  color: var(--purple-deep);
+  font: bold 14px/1.3 var(--display);
+  text-shadow: 1px 1px 0 #fff;
+}
+
+.legal-body h3:first-child { margin-top: 0; }
+.legal-body p,
+.legal-body ul { margin-bottom: 12px; }
+.legal-body ul { padding-left: 20px; }
+.legal-body li { margin-bottom: 5px; }
+.legal-body > :last-child { margin-bottom: 0; }
+
+.legal-updated {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+  color: var(--ink-soft);
+  font: 10px var(--sans);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
 /* ---------------------------------------------------------- lesson cards */
 
 .lesson-grid {
@@ -748,6 +820,13 @@ h2 {
   content: 'детальніше »';
   font: bold 10px var(--sans);
 }
+
+/* A word in a stylesheet is a word no page can translate — and one stylesheet
+   now dresses two languages, so this label shipped in Ukrainian on the Polish
+   pages until someone read them. `:lang()` reads the <html lang> that is
+   already there; `tests/site-meta.test.mjs` fails on any Cyrillic `content:`
+   that has no counterpart here, since nothing else looks inside CSS. */
+:lang(pl) .lesson-card::after { content: 'więcej »'; }
 
 .lesson-card:hover {
   border-color: var(--gold);
@@ -948,8 +1027,20 @@ h2 {
   .brand-text { font-size: 24px; }
   .badge-new { display: none; }
   .jump-link { display: inline-block; }
-  .header-actions { width: 100%; }
+  /* The banner stacks here and the 3D button goes full width, which would bury
+     the switch underneath it — last thing in a header nobody scrolls back up
+     to. display: contents lifts the header actions into the banner's own
+     column, and the switch is then lifted out of the flow entirely: the first
+     line of the banner is the wordmark and a lot of empty purple to its right,
+     which is exactly where a language switch belongs and costs no height. */
+  .banner { position: relative; }
+  .header-actions { display: contents; }
   .header-actions .button { width: 100%; text-align: center; }
+  .lang-switch {
+    position: absolute;
+    top: 20px;
+    right: 12px;
+  }
   .tabs { padding-inline: 8px; }
   .tabs a { padding: 5px 10px 6px; font-size: 10px; }
   .lesson-grid { grid-template-columns: minmax(0, 1fr); }
@@ -964,6 +1055,13 @@ h2 {
   .price-table { min-width: 0; }
   .price-table th,
   .price-table td { padding: 6px 4px; }
+}
+
+/* Below ~380px the wordmark grows into the 40px the language switch holds on
+   the banner's first line, and they touch. The switch is the fixed thing of the
+   two, so the wordmark is what gives way. */
+@media (max-width: 380px) {
+  .brand-text { font-size: 21px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

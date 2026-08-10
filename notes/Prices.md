@@ -17,6 +17,7 @@ owner, changing a number without a developer.
 prices.json
 ├── js/core/prices.js  ── single fetch ──► pricing mixer + price chips   (runtime)
 └── tools/sync-prices.mjs ── generates ──► index.html, uroky-*-lodz/     (build-time)
+                                           pl/index.html, pl/lekcje-*/
                                           └── tests/lesson-prices.test.mjs verifies
 ```
 
@@ -44,9 +45,22 @@ them and your working tree disagrees with production.
 - each price cell — `data-price="single:<id>:<minutes>"` and
   `data-price="pack:<id>:<minutes>:<lessons>"`
 - the payment note — `data-payment-note`
-- the promotions list — `data-promotions`, with badge and Ukrainian plural derived from the
-  promotion
-- the JSON-LD `lowPrice` / `highPrice` / `priceRange`
+- the promotions list — `data-promotions`, with badge and plural derived from the promotion
+- the JSON-LD `lowPrice` / `highPrice` / `priceRange` (Ukrainian pages only — the Polish
+  ones carry no structured data)
+
+### The Polish pages are the same contract, in another language
+
+A page prints words around the numbers, so those words are data too and live in the same
+file: `currency.displayPl` (`zł`), `promotions[].descriptionPl`, `paymentNotePl`. Each page
+is generated **and checked** against its own locale, and the badge plural follows it —
+`+1 урок` / `+1 lekcja`.
+
+They are in `prices.json` rather than in a table inside `tools/sync-prices.mjs` for the same
+reason as everything else here: the studio owner edits one file. And a promotion added
+without its `descriptionPl` **fails the script by name** — a half-translated page is the
+failure mode worth being loud about, because it looks fine to anyone who does not read
+Polish. → [[Lesson site]], [[Decisions]]
 
 ## Two rules that are enforced by tests
 

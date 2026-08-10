@@ -12,6 +12,7 @@ uroky-vokalu-lodz/            вокал
 uroky-hitary-lodz/            гітара
 uroky-fortepiano-lodz/        фортепіано
 uroky-barabaniv-lodz/         ударні
+pl/…                          the same site in Polish, + the RODO notice
 uk/…                          redirect stubs for the old /uk/* URLs
 css/lessons.css               the skin
 ```
@@ -67,6 +68,29 @@ lesson-hero CTAs (on the hub, above the price-section CTAs). Because Instagram c
 prefill, the strip closes by telling visitors what to type — «Напиши в директ "Хочу на
 пробний урок"» — and the Messenger prefill beside it repeats that exact phrase. Button
 labels stay the neutral «Записатися через …» everywhere.
+
+## The Polish half
+
+`/pl/` mirrors the hub and the four lesson pages on Polish slugs (`lekcje-spiewu-lodz`,
+`lekcje-gitary-lodz`, `lekcje-pianina-lodz`, `lekcje-perkusji-lodz`) and adds one page the
+Ukrainian side does not have: `/pl/polityka-prywatnosci/`, the RODO notice. Contract:
+[[SPEC]] §3 *Polish pages*.
+
+Three things about it are easy to undo by accident:
+
+- **It is not in search, on purpose.** `noindex`, no canonical, no `hreflang`, no JSON-LD,
+  not in `sitemap.xml` — but `robots.txt` still lets crawlers in, because a crawler that is
+  blocked never reads the `noindex`. `tests/site-meta.test.mjs` asserts all of it.
+- **The switch is pairwise**, page to matching page. A switch that lands everyone on the home
+  page still "works", so nothing complains — which is why there is a test naming every pair.
+- **Prices are generated here too**, from the same `prices.json`, in `zł` and with Polish
+  promotion copy → [[Prices]]. The Polish pages are in `tools/sync-prices.mjs` and in
+  `tests/lesson-prices.test.mjs` exactly like the Ukrainian ones.
+
+The RODO page is a **privacy notice, not a cookie banner** — the site sets no cookies, which
+is precisely why it needs no banner, and the notice opens by saying so. See [[Decisions]].
+
+The 3D stage stays Ukrainian; both languages link to it as it is.
 
 ## The `/uk/` stubs
 

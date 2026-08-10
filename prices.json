@@ -1,7 +1,8 @@
 {
   "currency": {
     "code": "PLN",
-    "display": "зл"
+    "display": "зл",
+    "displayPl": "zł"
   },
   "instruments": [
     {
@@ -213,19 +214,23 @@
     {
       "type": "discount",
       "valuePercent": 15,
-      "description": "На другий напрямок у студії Art Vibe"
+      "description": "На другий напрямок у студії Art Vibe",
+      "descriptionPl": "Na drugi kierunek w studiu Art Vibe"
     },
     {
       "type": "familyDiscount",
       "valuePercent": 15,
-      "description": "Якщо декілька дітей із сімʼї відвідують Art Vibe Studio"
+      "description": "Якщо декілька дітей із сімʼї відвідують Art Vibe Studio",
+      "descriptionPl": "Gdy kilkoro dzieci z jednej rodziny chodzi do Art Vibe Studio"
     },
     {
       "type": "loyaltyBonus",
       "freeLessons": 1,
       "periodMonths": 6,
-      "description": "Безкоштовний бонусний урок за кожні пів року навчання"
+      "description": "Безкоштовний бонусний урок за кожні пів року навчання",
+      "descriptionPl": "Bezpłatna lekcja bonusowa za każde pół roku nauki"
     }
   ],
-  "paymentNote": "Ціна абонементу вказана за весь пакет уроків"
+  "paymentNote": "Ціна абонементу вказана за весь пакет уроків",
+  "paymentNotePl": "Cena karnetu dotyczy całego pakietu lekcji"
 }
