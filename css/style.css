@@ -1086,22 +1086,26 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   }
 }
 
-.quality-control {
+/* КАМЕРА and ГРАФІКА are the same control — a labelled row of exclusive
+   choices — so they share every rule. The class names stay separate because
+   quality.js reaches for `.quality-options` with querySelector to drive its
+   reload spinner, and a shared class would hand it the wrong row. */
+.quality-control, .camera-control {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding-bottom: 8px; border-bottom: 1px solid rgba(253, 251, 247, .12);
 }
-.quality-control > .mono { font-size: 10px; letter-spacing: .18em; color: rgba(253, 251, 247, .72); }
-.quality-options { display: flex; gap: 3px; }
-.quality-option {
+.quality-control > .mono, .camera-control > .mono { font-size: 10px; letter-spacing: .18em; color: rgba(253, 251, 247, .72); }
+.quality-options, .camera-options { display: flex; gap: 3px; }
+.quality-option, .camera-option {
   min-height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 5px;
   color: rgba(253, 251, 247, .55); background: transparent; cursor: pointer;
   font: 700 8px/1 'JetBrains Mono', monospace; letter-spacing: .04em;
 }
-.quality-option:focus-visible { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
+.quality-option:focus-visible, .camera-option:focus-visible { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
 @media (hover: hover) {
-  .quality-option:hover:not(:disabled) { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
+  .quality-option:hover:not(:disabled), .camera-option:hover:not(:disabled) { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
 }
-.quality-option.is-on { color: var(--ink); border-color: var(--gold); background: var(--gold); }
+.quality-option.is-on, .camera-option.is-on { color: var(--ink); border-color: var(--gold); background: var(--gold); }
 .quality-options.is-loading .quality-option:not(.is-loading) { opacity: .38; }
 .quality-option:disabled { cursor: wait; }
 .quality-option.is-loading { color: transparent; border-color: var(--gold); }

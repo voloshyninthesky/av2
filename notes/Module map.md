@@ -26,7 +26,7 @@ The last two are the **only** JS the static lesson pages load. Everything else i
 
 | Directory          | Owns                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------- |
-| `js/core/`         | Error collector, Telegram guards, quality tier + stage lighting, session flags, prices fetch, gesture guards, studio assembly |
+| `js/core/`         | Error collector, Telegram guards, quality tier + stage lighting, camera mode, session flags, prices fetch, gesture guards, studio assembly |
 | `js/view/`         | Render rig, focus framing, close-up cameras, pointer routing, viewport guards           |
 | `js/scene/`        | Procedural textures, stage geometry, lighting, backdrop screen + slideshow, particles    |
 | `js/instruments/`  | Procedural drums / piano / guitar / mic meshes and their shared materials                |
@@ -57,6 +57,7 @@ play is deliberately allowed in *every* phase ([[SPEC]] §5).
 - `js/core/prices.js` (52) — the **single** fetch of `prices.json`; mixer and chips share it
 - `js/core/gesture-guards.js` (80) — double-tap predicate + one-shot ghost-click swallower. **Imports nothing on purpose**: that is what makes it reachable from `ui.js`, `view/` and `core/` alike without an upward import, and loadable under `node --test`
 - `js/play/state.js` (47) — what is held down on every input route
+- `js/core/camera-mode.js` (62) — the Вільна / Не дуже preference (Вільна default), its storage and its mixer row. `rig.js` and the follow spring read it; `main.js` injects what to re-apply on change, since `core/` cannot import `view/`
 - `js/core/telegram.js` (45) — Telegram Mini App detection and touch claiming
 - `js/view/emissive.js` (31) — hover glow; had a bug where glow stuck to shared materials (`7949b11`)
 - `js/shell/qa-hooks.js` (112) — `__THREE_GAME_TEST_HOOKS__`, the only way to drive the stage headlessly → [[Gotchas]]

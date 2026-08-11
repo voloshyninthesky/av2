@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260812-01">
+<link rel="stylesheet" href="/css/style.css?v=20260812-04">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -165,6 +165,17 @@
           <span>Вокал</span>
           <input type="range" min="0" max="100" value="50" data-bus="mic" aria-label="Гучність вокалу">
         </label>
+        <!-- «Не дуже» reads as the answer to «Вільна?», so Вільна has to sit
+             first or the pair stops parsing as a phrase — Не дуже is the
+             default (camera-mode.js), not the button order. Applies live —
+             no reload gate, unlike ГРАФІКА below. -->
+        <div class="camera-control" role="radiogroup" aria-label="Камера">
+          <span class="mono">КАМЕРА</span>
+          <div class="camera-options">
+            <button class="camera-option" type="button" data-camera="free" role="radio" aria-checked="false" title="Крути сцену як хочеш — згори, збоку, ззаду">Вільна</button>
+            <button class="camera-option" type="button" data-camera="follow" role="radio" aria-checked="true" title="Спокійніший огляд: камера тримає звичний кадр сцени">Не дуже</button>
+          </div>
+        </div>
         <div class="quality-control" role="radiogroup" aria-label="Графіка">
           <span class="mono">ГРАФІКА</span>
           <div class="quality-options">
@@ -648,6 +659,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260812-01"></script>
+  <script type="module" src="/js/main.js?v=20260812-04"></script>
 </body>
 </html>

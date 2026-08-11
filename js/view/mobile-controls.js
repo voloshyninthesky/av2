@@ -7,10 +7,10 @@
 // the fade, and the respawn.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260812-01';
-import { isMobileGameMode } from '../core/quality.js?v=20260812-01';
-import { swallowNextClick } from '../core/gesture-guards.js?v=20260812-01';
-import { camera, controls } from './rig.js?v=20260812-01';
+import { session } from '../core/session.js?v=20260812-04';
+import { isMobileGameMode } from '../core/quality.js?v=20260812-04';
+import { swallowNextClick } from '../core/gesture-guards.js?v=20260812-04';
+import { camera, controls } from './rig.js?v=20260812-04';
 import {
   ui,
   stage,
@@ -20,14 +20,14 @@ import {
   applyMascotScale,
   mascotFallMeshes,
   mascotFallMaterialStates,
-} from '../core/studio.js?v=20260812-01';
-import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260812-01';
-import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260812-01';
-import { mascotMove } from '../mascot/state.js?v=20260812-01';
-import { setDancing } from '../mascot/pose.js?v=20260812-01';
-import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260812-01';
-import { resyncLoopPlayback } from '../play/loop.js?v=20260812-01';
-import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260812-01';
+} from '../core/studio.js?v=20260812-04';
+import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260812-04';
+import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260812-04';
+import { mascotMove } from '../mascot/state.js?v=20260812-04';
+import { setDancing } from '../mascot/pose.js?v=20260812-04';
+import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260812-04';
+import { resyncLoopPlayback } from '../play/loop.js?v=20260812-04';
+import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260812-04';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');
@@ -95,6 +95,12 @@ export function resetMobileFollowCamera({ snap = false } = {}) {
   if (snap) updateMobileFollowCamera(0, true);
 }
 
+// Runs in both camera modes, and it has to: the spring is a *rigid
+// translation* — the same delta lands on `controls.target` and on
+// `camera.position` — so azimuth, polar and distance survive it untouched. It
+// cannot fight a rotation. The only gesture it ever pulled against was the
+// mobile pan that drags the target off the mascot, which is why Не дуже
+// suspends it while scouting and Вільна (no pan at all) never needs to.
 export function updateMobileFollowCamera(dt, immediate = false) {
   if (session.flyT >= 0) {
     mobileFollow.initialized = false;
