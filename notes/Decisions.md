@@ -21,10 +21,12 @@ room* — and the stage rewards that visitor specifically, with a maker's mark o
 of the backdrop that is reachable only by orbiting behind the stage. Mobile could not reach
 it at all: one finger panned, `enableRotate` was off.
 
-Making free orbit the default was considered and rejected at first — see below for why that
-reversed. **КАМЕРА** joins the mixer beside **ГРАФІКА**: the original framed camera (one
-pointer rotates the mascot into a fixed low-centre composition; mobile pans and scouts back)
-and a second option that rotates freely on every device, pitch opening to ~25°–93°.
+**КАМЕРА** joins the mixer beside **ГРАФІКА**: the original framed camera (one pointer
+rotates the mascot into a fixed low-centre composition; mobile pans and scouts back) and a
+second option that rotates freely on every device, pitch opening to ~25°–93°. Which of the
+two ships as the default moved twice on the day this landed — see the two addenda below —
+so treat this section as describing the mechanism, not the current default; [[SPEC]] § Камера
+is the source of truth for that.
 
 **Вільна frees the angle, not the subject** — and the first cut got this wrong. It stood the
 follow spring down entirely, on the assumption that "free" and "follows" were opposed. They
@@ -73,6 +75,15 @@ first-time visitor a broken-feeling camera before they had found the setting to 
 the follow spring running underneath both modes, Вільна costs nothing a visitor would notice
 losing and gains the view this whole feature was built for, so it became the shipped default
 and Не дуже became the opt-out for whoever prefers the calmer, fixed composition.
+
+**Second addendum, same day: reverted the default back to Не дуже.** No defect drove this
+one — the follow-spring fix above stands, and Вільна remains exactly as safe to *offer* as
+it was when it briefly shipped as the default. This was a plain preference call on which
+camera a first-time visitor should land on, made after seeing Вільна live: the studio wanted
+the calmer, familiar framing as the thing nobody has to choose, with the free-orbit view kept
+one tap away for whoever goes looking for it. `av2.camera.v1` still defaults to `follow`;
+existing `free` preferences already saved in a visitor's `localStorage` are untouched — this
+only changes what a visitor with no saved preference gets.
 
 → [[SPEC]] § Камера
 

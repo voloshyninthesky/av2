@@ -1,12 +1,12 @@
 // ============================================================
 // CAMERA MODE PREFERENCE
-// Two ways to watch the stage. **Вільна** is the default: one pointer rotates
-// on every device and the pitch opens far enough to read the stage from
-// overhead and from behind the backdrop. **Не дуже** is the calmer opt-out —
-// the original framed camera, which on a phone pans on one finger and scouts
-// back to the mascot. Both keep the mascot in frame: the follow spring only
-// translates the rig, so it never disturbs an orbit, and cutting it would
-// strand a walking visitor off-camera.
+// Two ways to watch the stage. **Не дуже** is the default: the original
+// framed pursuit camera, which on a phone pans on one finger and scouts back
+// to the mascot. **Вільна** is the opt-in — one pointer rotates on every
+// device and the pitch opens far enough to read the stage from overhead and
+// from behind the backdrop. Both keep the mascot in frame: the follow spring
+// only translates the rig, so it never disturbs an orbit, and cutting it
+// would strand a walking visitor off-camera.
 //
 // This file owns only the preference, its storage and the mixer control. The
 // rig and the follow spring read the mode from here; what to re-apply when it
@@ -21,14 +21,9 @@ try { savedCameraMode = localStorage.getItem(CAMERA_MODE_KEY); } catch (_) { /* 
 const queryCameraMode = new URLSearchParams(location.search).get('camera');
 export let cameraMode = CAMERA_MODES.has(queryCameraMode)
   ? queryCameraMode
-  : (CAMERA_MODES.has(savedCameraMode) ? savedCameraMode : 'free');
+  : (CAMERA_MODES.has(savedCameraMode) ? savedCameraMode : 'follow');
 
-/**
- * Free is the default. That only became safe once the follow spring was kept
- * running underneath it — while "free" also meant "detached", defaulting to it
- * would have let a first-time visitor walk their mascot out of frame with no
- * way back. `follow` is now the calmer opt-out rather than the safe baseline.
- */
+/** The framed pursuit camera is the default; free orbit is opt-in and remembered. */
 export const isFreeCamera = () => cameraMode === 'free';
 
 const listeners = new Set();

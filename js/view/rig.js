@@ -15,8 +15,8 @@ import {
   MOBILE_MAX_PIXEL_RATIO,
   LOW_END_MOBILE_MAX_PIXEL_RATIO,
   DESKTOP_MAX_PIXEL_RATIO,
-} from '../core/quality.js?v=20260812-03';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260812-03';
+} from '../core/quality.js?v=20260812-04';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260812-04';
 
 export const canvas = document.getElementById('scene');
 export let renderer;
@@ -132,11 +132,11 @@ controls.enabled = false;
 const FREE_MIN_POLAR = 0.44;
 const FREE_MAX_POLAR = 1.62;
 
-// Three cameras, one function. Вільна (the default, any device) rotates on a
+// Three branches, one function. Вільна (opt-in, any device) rotates on a
 // single pointer and is clamped only by the stage floor. Otherwise mobile gets
-// a MOBA-style tactical camera — one-finger drag scouts, then the follow
-// spring recentres on the mascot (Не дуже) — and desktop orbits. Instrument
-// close-ups override all three and call back here on exit.
+// the default MOBA-style tactical camera (Не дуже) — one-finger drag scouts,
+// then the follow spring recentres on the mascot — and desktop orbits.
+// Instrument close-ups override all three and call back here on exit.
 //
 // What Вільна frees is the *angle*, not the subject: the follow spring keeps
 // running underneath it, because it only ever translates the rig and so cannot
