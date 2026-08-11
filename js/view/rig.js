@@ -15,7 +15,8 @@ import {
   MOBILE_MAX_PIXEL_RATIO,
   LOW_END_MOBILE_MAX_PIXEL_RATIO,
   DESKTOP_MAX_PIXEL_RATIO,
-} from '../core/quality.js?v=20260812-01';
+} from '../core/quality.js?v=20260812-03';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260812-03';
 
 export const canvas = document.getElementById('scene');
 export let renderer;
@@ -121,18 +122,54 @@ controls.maxPolarAngle = 1.47;
 controls.autoRotateSpeed = 0.55;
 controls.enabled = false;
 
-// Mobile uses a MOBA-style tactical camera: one-finger drag scouts across the
-// stage, then the follow spring recentres on the mascot. Instrument close-ups
-// temporarily restore orbiting so every play surface can still be inspected.
+// The free camera opens the pitch well past the framed range, but not so far
+// that "free" starts meaning "underneath the stage". Eye height is
+// `target.y + distance * cos(polar)`, so the 1.62 rad floor (cos ≈ -0.049)
+// bottoms out at 1.35 - 22 * 0.049 ≈ 0.27 even at the portrait maximum
+// distance — still above the platform top, so the deliberately unlit
+// under-stage venue plane never becomes the view. 0.44 rad is a true overhead
+// look-down; the framed camera only reaches 0.7.
+const FREE_MIN_POLAR = 0.44;
+const FREE_MAX_POLAR = 1.62;
+
+// Three cameras, one function. Вільна (the default, any device) rotates on a
+// single pointer and is clamped only by the stage floor. Otherwise mobile gets
+// a MOBA-style tactical camera — one-finger drag scouts, then the follow
+// spring recentres on the mascot (Не дуже) — and desktop orbits. Instrument
+// close-ups override all three and call back here on exit.
+//
+// What Вільна frees is the *angle*, not the subject: the follow spring keeps
+// running underneath it, because it only ever translates the rig and so cannot
+// disturb an orbit. Cutting it would mean walking the mascot clean out of
+// frame with no way back short of changing the setting.
+//
+// Every branch sets every property it cares about: the mode can now change at
+// runtime, so anything left unassigned would silently inherit the branch the
+// visitor happened to come from.
 export function applyMobileOrbitPolicy() {
   controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
-  if (isMobileGameMode()) {
+  if (isFreeCamera()) {
+    controls.touches.ONE = THREE.TOUCH.ROTATE;
+    controls.enableRotate = true;
+    controls.enablePan = false;
+    controls.screenSpacePanning = true;
+    controls.maxTargetRadius = Infinity;
+    controls.rotateSpeed = 0.48;
+    controls.zoomSpeed = 0.58;
+    controls.dampingFactor = 0.12;
+    controls.minPolarAngle = FREE_MIN_POLAR;
+    controls.maxPolarAngle = FREE_MAX_POLAR;
+  } else if (isMobileGameMode()) {
     controls.touches.ONE = THREE.TOUCH.PAN;
     controls.enableRotate = false;
     controls.enablePan = true;
     controls.screenSpacePanning = false;
     controls.maxTargetRadius = 2.65;
     controls.panSpeed = 0.72;
+    // Pinned to OrbitControls' own default, which this branch used to inherit
+    // by never assigning it. It reaches only instrument close-ups, where
+    // rotation is re-enabled regardless of which stage camera is active.
+    controls.rotateSpeed = 1;
     controls.zoomSpeed = 0.42;
     controls.dampingFactor = 0.16;
     controls.minPolarAngle = 0.55;

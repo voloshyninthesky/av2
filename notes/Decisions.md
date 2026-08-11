@@ -12,6 +12,72 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The free camera is a setting, not a replacement — 2026-08-12
+
+The pursuit camera is right for the visitor this site is built for: someone who lands on a
+music school's page, walks a mascot around for forty seconds, and leaves. It keeps the hero
+in frame and never lets you get lost. It is wrong for the visitor who wants to *look at the
+room* — and the stage rewards that visitor specifically, with a maker's mark on the reverse
+of the backdrop that is reachable only by orbiting behind the stage. Mobile could not reach
+it at all: one finger panned, `enableRotate` was off.
+
+Making free orbit the default was considered and rejected at first — see below for why that
+reversed. **КАМЕРА** joins the mixer beside **ГРАФІКА**: the original framed camera (one
+pointer rotates the mascot into a fixed low-centre composition; mobile pans and scouts back)
+and a second option that rotates freely on every device, pitch opening to ~25°–93°.
+
+**Вільна frees the angle, not the subject** — and the first cut got this wrong. It stood the
+follow spring down entirely, on the assumption that "free" and "follows" were opposed. They
+are not: the spring applies one delta to *both* `controls.target` and `camera.position`, so
+it is a rigid translation that leaves azimuth, polar and distance exactly as the visitor set
+them. It cannot fight an orbit. The only gesture it ever pulled against is Не дуже's
+mobile pan, which drags the target off the mascot — which is why that mode suspends the
+spring while scouting and Вільна, having no pan at all, never needs to.
+
+Cutting it cost real things and bought none: walk the mascot and they left the frame with no
+way back short of changing the setting, and the fall-respawn path restored the pre-fall
+camera while teleporting the mascot to spawn, so a visitor could fall off the lip and be left
+looking at empty stage holding a «Не втечеш ;)» toast. Nothing was gained in exchange —
+orbiting past ~8 units of distance still carries the camera behind the back wall (`z ≈ -5.85`
+against a mascot near `z ≈ 2.15`), so the maker's mark stays reachable with the subject
+locked. The honest consequence is that on desktop the two modes now differ only in pitch;
+the setting earns its keep on phones, where it is pan-across versus orbit-around.
+
+Three things this shape forced, each of which is the general rule:
+
+- **A runtime-switchable branch must be total.** `applyMobileOrbitPolicy()` had a mobile
+  branch that never assigned `rotateSpeed`, harmlessly inheriting OrbitControls' `1.0`
+  because the branch was chosen once at boot and never changed. The moment the mode became
+  a live toggle, that omission turned into hysteresis — flip to free and back and mobile
+  close-ups would silently keep desktop's `0.48`. Every branch now assigns every property
+  it cares about, including the inherited default, pinned explicitly.
+- **"Free" still has one floor.** The upper pitch bound is not taste; it is derived. Eye
+  height is `target.y + distance · cos(polar)`, so the limit sits where the camera still
+  clears the platform at the portrait maximum distance of 22. Below it you are looking up
+  at the under-stage venue plane, which is deliberately unlit and reads as a bug.
+- **Live, but not mid-focus.** Unlike ГРАФІКА there is no reload gate — the rig re-reads
+  its limits in place. But a close-up owns the rig outright, so a switch made while an
+  instrument is focused is *deferred* to the exit path, which already calls back into the
+  orbit policy. Applying it immediately would drag the measured play surface out from under
+  the visitor's fingers.
+
+**Addendum, same day: named Вільна / Не дуже, and made Вільна the default.** The labels
+ЗА ГЕРОЄМ / ВІЛЬНА described mechanism (what the camera tracks); Вільна / Не дуже reads as a
+question and its answer, which is friendlier for a settings row nobody is required to
+understand — «Вільна?» «Не дуже.» Order matters here specifically: Не дуже only parses
+following Вільна, so it has to render second or the pair stops being a phrase.
+
+The default flip only became defensible *because* of the fix above. While "free" also meant
+"the mascot can leave the frame with no way back", defaulting to it would have handed every
+first-time visitor a broken-feeling camera before they had found the setting to undo it. With
+the follow spring running underneath both modes, Вільна costs nothing a visitor would notice
+losing and gains the view this whole feature was built for, so it became the shipped default
+and Не дуже became the opt-out for whoever prefers the calmer, fixed composition.
+
+→ [[SPEC]] § Камера
+
+---
+
 ## A zoom guard that cancels `touchend` is a guard that cancels the tap — 2026-08-12
 
 Reported as "click detection is not always working, mostly the HUD, and sometimes the button
