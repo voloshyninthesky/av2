@@ -1,86 +1,112 @@
 ---
 tags: [status]
-updated: 2026-08-09
+updated: 2026-08-11
 ---
 
 # Current state
 
-Snapshot as of **2026-08-09**. This is the one note that goes stale by design — update it or
+Snapshot as of **2026-08-11**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**The signs wall now runs on a backend of ours, and that is the big change of 2026-08-09.**
-Storage moved off the Telegram pinned message and into SQLite on the VPS —
+**Touch activation was unreliable on phones, and `ee67aeb` fixes four separate causes of
+it.** Reported as "click detection is not always working, mostly the HUD, and sometimes the
+button just selects". The reasoning is in [[Decisions]]; the short version of what to
+remember:
+
+- **`preventDefault()` on a `touchend` suppresses the synthesized `click`.** The
+  double-tap-zoom blocker kept one document-wide timestamp and cancelled any touchend
+  within 320 ms of the previous one *anywhere on the page* — and the whole HUD is bound to
+  plain `click`. A tap after a joystick release or another HUD tap was simply dropped. A
+  blanket `touchend` blocker and a `click`-bound UI cannot coexist.
+- **Every `:hover` rule now lives under `@media (hover: hover)`.** iOS applies `:hover` on
+  tap and holds it until the next tap elsewhere, so a HUD icon latched gold and lifted and
+  a panel ✕ stayed rotated 90° — chosen-looking, not fired. `:focus-visible` halves stayed
+  outside the query. **A new `:hover` added without the guard is now a test failure**, which
+  is the only durable fix: nobody files a stuck highlight.
+- **`.panel *  { user-select: text }` was applying to buttons too**, so a press with a little
+  drag highlighted a control's label in purple instead of firing it. Prose stays copyable;
+  controls are excluded, and the `selectstart` guard in `pointer.js` re-claims them.
+- **The ГРАТИ guard from `4c29cc7` had a hole** — two disagreeing windows (700 ms on ГРАТИ,
+  500 ms on ✕) that never cleared once seated. Replaced by one one-shot click swallower in
+  the new `js/core/gesture-guards.js`, which self-clears on the click it ate and lets a real
+  keyboard Enter (`detail === 0`) through. The same shape replaced the price chip's flat
+  400 ms guard, which had been eating the visitor's *next* deliberate tap.
+
+`js/core/gesture-guards.js` **imports nothing on purpose** — that is what keeps it reachable
+from `ui.js`, `view/` and `core/` alike without an upward import, and loadable under
+`node --test` → [[Module map]], [[Architecture]].
+
+**Verified by tests and by reading, not on a phone.** 73 Node tests pass and the build is
+live on the VPS preview, but the agent pane has no touch input and reports
+`document.hidden` ([[Gotchas]]), so **a human thumb on a real device is pending.** The two
+cases most worth trying: release the joystick then immediately tap a HUD icon; and stand the
+mascot exactly on an instrument's walk point (so the approach seats synchronously) before
+tapping ГРАТИ and then ✕.
+
+**Also landed 2026-08-11: the Polish mirror** (`f61d9c0`). `/pl/` carries the hub, the four
+lesson pages and a RODO notice on Polish slugs, deliberately `noindex` so it cannot compete
+with the Ukrainian slugs the studio is actually found by — while `robots.txt` still allows
+crawling, because a blocked crawler never reads the `noindex`. Asserted in
+`tests/site-meta.test.mjs`. → [[Decisions]], [[Lesson site]]
+
+**Landed 2026-08-09, still the biggest structural change of the week: the signs wall runs on
+a backend of ours.** Storage moved off the Telegram pinned message into SQLite on the VPS —
 `deploy/av2-signs/server.js`, one dependency-free Node file behind nginx at
-`https://back.artvibe.com.pl`, `av2-signs.service`, enabled and surviving `SIGKILL`. Why it
-exists at all is in [[Decisions]]: every browser used to rewrite the whole pinned message,
-so two visitors signing at once overwrote each other and Telegram reported success to both.
-Read-modify-write from N browsers has no serialisation point. Now slot allocation and insert
-happen in one synchronous SQLite transaction in a single process, verified with 100
-concurrent writes against a 67-slot stage (exactly 67 accepted, 67 distinct slots).
+`https://back.artvibe.com.pl`. Every browser used to rewrite the whole pinned message, so
+two visitors signing at once overwrote each other and Telegram reported success to both;
+read-modify-write from N browsers has no serialisation point. What is easy to forget now:
 
-Things that fell out and are easy to forget:
-
-- **No write key ships in the bundle, and there is no credential anywhere any more.**
-  [[SPEC]] §12's "one deliberate exception: no secrets in repo" is retired outright.
-- **Telegram is gone from the feature entirely** (later the same day). The mirror, seed,
-  bot token and `/etc/av2-signs.env` are all removed; the backend makes no outbound calls
-  and holds no credentials. `signs.db` is the only copy of the wall, so
-  `deploy/signs-backup/` is now load-bearing — it snapshots the database every two hours
-  with sqlite3 `.backup` into `/var/backups/av2-signs/`. **A lost VPS disk now costs the
-  signatures**, where before the pinned message survived. Moderation is SQL over SSH.
-- **The VPS answers SSH again.** The "host stopped answering" note from 2026-08-07 was
-  stale — the old `av2-signs` unit had in fact been running the whole time, serving the
-  first-cut JSON backend. Pre-migration backups are in `/root/av2-signs-*.bak-*`.
+- **No credential ships anywhere any more** — [[SPEC]] §12's "one deliberate exception" is
+  retired outright, and Telegram is gone from the feature entirely.
+- **`signs.db` is the only copy of the wall**, so `deploy/signs-backup/` is load-bearing (a
+  two-hourly sqlite3 `.backup` into `/var/backups/av2-signs/`). **A lost VPS disk now costs
+  the signatures**, where the pinned message used to survive. Moderation is SQL over SSH.
 - **`js/core/telegram.js` is a different feature and is untouched** — in-app browser /
-  Mini App guards for visitors arriving from a Telegram link ([[SPEC]] §10), nothing to do
-  with storage.
+  Mini App guards for visitors arriving from a Telegram link ([[SPEC]] §10).
+- Testing against the live endpoint collects `429`s fast: 30 s per IP / 10 per day, and
+  nginx overwrites `X-Real-IP` so it cannot be spoofed.
+- A **gear-surface experiment** (sign tags on the kick drum head and piano panels) shipped
+  and was reverted the same day; it survives on `todays-work-backup`.
 
-**Careful testing against the live endpoint:** the in-memory rate limit is 30 s per IP / 10
-per day and nginx overwrites `X-Real-IP`, so it cannot be spoofed. A burst test from one
-machine just collects `429`s.
+**A human eyeball of the sign modal and its scarcity badge is also still pending**, for the
+same wedged-GPU reason.
 
-Same day, smaller signs changes: the **first signature can no longer be pushed off the
-stage** (`setSigns` kept the newest rows, so a head larger than the slot count discarded
-sign `0`; and a row whose slot no longer existed could probe onto slot `0`) — both fixed,
-reads now order by id rather than trusting stored row order. The modal gained a **scarcity
-badge** («66 / 67 вільних місць», ink pill, gold count). And **link rejection was removed**
-from both client and server by owner decision — the 24-character cap was always doing that
-work anyway.
-
-**A gear-surface experiment was built and reverted.** Sign tags on the kick drum head and
-the piano's front panels shipped, then were rolled back the same day; the work survives on
-the `todays-work-backup` branch if it is ever wanted. `signs-snapshot-and-pin` also carries
-an unmerged send-and-pin storage design that the SQLite migration superseded.
-
-**Not verified in a browser.** The agent pane hit the wedged-GPU failure in [[Gotchas]] for
-this entire session, so every signs change was verified by running the shipped functions
-directly against the live backend and by Node tests — **a human eyeball of the live stage is
-pending**, particularly the sign modal and the new badge.
-
-Otherwise **`main` is deployed and live**, verified rather than assumed:
+Deploy state, verified rather than assumed:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'
+curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # expect 20260812-01
 curl -s https://back.artvibe.com.pl/healthz   # {"ok":true,...} — signs are alive
 ```
 
 A green Actions run is *not* proof — that curl is, because the run can succeed while the CDN
 still serves the previous build.
 
-**The one thing still outstanding — the analytics are collecting nothing.**
-`count.artvibe.com.pl` resolves (CNAME onto the GoatCounter site) but serves a certificate for
-`goatcounter.com`, so browsers refuse the connection and every hit is dropped in silence while
-the pages look perfectly healthy. GoatCounter needs the **custom domain registered**, not just
-the DNS record.
+**Open at the time of writing:** the `ee67aeb` Pages run (`31489443158`) had sat `queued`
+for over five minutes against a ~24 s norm, with no runner acquired and
+[githubstatus.com](https://www.githubstatus.com) reporting all systems operational — so it
+is the recurring runner-acquisition stall, not an incident. Production was still serving
+`20260809-10`. **Check the curl above before assuming this shipped**, and if the run is
+still queued, cancel and start a fresh one per the deploy note below — not `gh run rerun`.
+
+The **VPS preview is already on the new build** — `vibe2.ton.zone` release
+`20260811T115728Z`, with the previous release recorded in
+`/var/www/vibe2.ton.zone/.previous-release-for-rollback` and the old nginx conf saved
+alongside it as `.bak.20260811T115728Z`.
+
+**Resolved — analytics are no longer dark.** `count.artvibe.com.pl` used to serve a
+certificate for `goatcounter.com`, so every hit was dropped in silence while the pages
+looked healthy; the custom domain is now registered and the endpoint answers over TLS. The
+check still belongs in any "why is the dashboard empty" investigation:
 
 ```bash
-curl -sI https://count.artvibe.com.pl/   # cert error here means analytics are dark
+curl -sI https://count.artvibe.com.pl/   # a cert error here means analytics are dark again
 ```
 
-Until that is fixed the dashboard will read zero, which is indistinguishable from having no
-visitors — do not conclude anything from an empty dashboard before this check passes.
+A `405` is the healthy answer — GoatCounter refuses `HEAD` on `/`, which means the handshake
+succeeded. Note that the dashboard only starts counting from the fix, so the early weeks are
+genuinely empty rather than broken.
 
 **Worth doing before it bites:** every action in `deploy-pages.yml` (`checkout@v4`,
 `setup-node@v4`, `upload-artifact@v4`, `configure-pages@v5`, `deploy-pages@v4`) targets the
@@ -120,26 +146,32 @@ fault. → [[Dev workflows]]
 
 ## Recently landed
 
-Newest first, all live (see [[Decisions]] for the reasoning).
+Newest first (see [[Decisions]] for the reasoning). All live on `main`; `ee67aeb` was still
+deploying to Pages when this was written, but is up on the VPS preview.
 
-| Commit    | Change                                                       |
-| --------- | ------------------------------------------------------------ |
-| `abae451` | A full VIBE meter stays full; flash no longer strobes forever |
-| `ec1a9c7` | Praise on the third note; meter fills ~40% slower             |
-| `78a2a65` | **МАКСИМАЛЬНИЙ ВАЙБ** announced once, not per fill            |
-| `741bbfa` | Instrument how-to hints removed                               |
-| `ffa6f64` | **Неперевершено!** toast dropped after ГОТОВО                 |
-| `4fc010c` | Praise per instrument; vocal hint double-entrance fixed       |
-| `73722c0` | Casual hint copy + praise cheers                              |
-| `0f7c5fd` | Discovery hints wired; `+` / `−` zoom buttons removed         |
-| `314464b` | First run reversed; chord maker + slots; piano `A–L`; stamps  |
-| `00baf4a` | Pricing pill → gold cap icon, **Уроки та ціни**               |
+| Commit    | Change                                                        |
+| --------- | ------------------------------------------------------------- |
+| `ee67aeb` | Touch activation: dropped HUD taps, latched `:hover`, ГРАТИ ghost click |
+| `f61d9c0` | Polish mirror under `/pl/`, deliberately `noindex`            |
+| `ea67b5f` | Telegram removed from the signs feature entirely              |
+| `abbc94b` | Links allowed on the signature wall                           |
+| `01f9fd1` | Signs move to a SQLite backend, so the race cannot happen     |
+| `789ce82` | Confirm the sign is really on the stage before saying Готово  |
+| `16873bc` | The first signature can never be pushed off the stage         |
+| `8508ee3` | Chip anchoring reverted; chips paced with a 3-minute cooldown |
+| `22d3f3d` | Signing gated behind the first VIBE fill                      |
+| `0edf3ab` | Let visitors sign the stage                                   |
 
-**The through-line of the last day is subtraction.** Three separate discovery layers were
-built and removed within hours of each other — screen-space arrows, cloud-shaped bubbles, and
+**The through-line of the last two weeks is the signature wall** — roughly twenty commits
+from first sketch to its own backend, including two reverts (overflow signs into the void,
+gear-surface tags). Before extending it, read [[Decisions]]: the storage design was rebuilt
+twice and the current shape exists because read-modify-write from N browsers cannot
+serialise.
+
+**Before that, the through-line was subtraction.** Three discovery layers were built and
+removed within hours of each other — screen-space arrows, cloud-shaped bubbles, and
 per-instrument how-to hints — plus the `+` / `−` zoom buttons and two confirmation toasts. If
-you are about to add another layer of instruction over the scene, read [[Decisions]] first;
-this ground has been walked.
+you are about to add another layer of instruction over the scene, this ground has been walked.
 
 Two structural changes are still recent enough to be the likely source of a fresh regression:
 the `/stage/` move (anything document-relative under `/stage/` will 404) and the cache-stamp
@@ -191,20 +223,28 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
 
 ## Health
 
-- Six test suites, all dependency-free: `node --test tests/*.test.mjs` → [[Dev workflows]].
-  The two newest both guard things that fail *silently*: `site-meta.test.mjs` covers a missing
-  analytics tag, a `404.html` the deploy workflow forgets to copy, or a funnel hook that stops
-  being called; `guitar-chords.test.mjs` covers a generated chord voicing that sounds like a
-  chord but not the one on its label — nothing in the running app would ever show you that.
+- Seven test suites, 73 tests, all dependency-free: `node --test tests/*.test.mjs` →
+  [[Dev workflows]]. Every one of them guards something that fails *silently* in a running
+  app: `site-meta.test.mjs` covers a missing analytics tag, a `404.html` the deploy workflow
+  forgets to copy, a funnel hook that stops being called, an unguarded `:hover`, and a
+  partial cache-stamp sweep; `guitar-chords.test.mjs` covers a voicing that sounds like a
+  chord but not the one on its label; `touch-guards.test.mjs` covers the two predicates
+  behind tap activation.
 - `js/audio.js` is 916 lines against the ~1000-line split rule — the next substantial audio
   change should probably split it → [[Module map]]
-- Cache stamps are **uniform again**: every `?v=` across `js/` and `stage/index.html` read
-  `20260807-03`. `css/style.css` carries its own (`20260807-01`), which is fine — it is one
-  file with no import graph.
+- Cache stamps are **uniform**: 217 occurrences of `20260812-01` across `js/` and
+  `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
+  moves with the sweep). `prices.json` keeps its own, deliberately independent stamp — it
+  changes on a different cadence and a stale one only serves stale prices, not two versions
+  of one module.
 
-  The old note here said mixed stamps were "expected — files are stamped as they change."
-  **That was wrong and it cost a real bug.** Per-module stamping leaves untouched files
-  cached, and a cached body still imports the *old* stamp of whatever you did change; twelve
-  modules were being loaded twice, including a `vibe.js` split that gave `piano-notes.js` its
-  own copy of the keyboard-jam chip timer. Stamps move together, always. The check is on the
-  live page, not in grep → [[Gotchas]], [[Decisions]].
+  An earlier version of this note said mixed stamps were "expected — files are stamped as
+  they change." **That was wrong and it cost a real bug.** Per-module stamping leaves
+  untouched files cached, and a cached body still imports the *old* stamp of whatever you did
+  change; twelve modules were being loaded twice, including a `vibe.js` split that gave
+  `piano-notes.js` its own copy of the keyboard-jam chip timer. Stamps move together, always.
+
+  **`site-meta.test.mjs` now fails on a partial sweep**, so this is a build error rather than
+  a live-page mystery — and it caught real drift the first time it ran. The live-page check
+  in [[Gotchas]] is still the last word, because a stale reference can live only inside a
+  cached response. → [[Gotchas]], [[Decisions]]
