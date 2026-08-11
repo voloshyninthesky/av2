@@ -7,17 +7,18 @@
 // rotates the stage.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260809-10';
-import { isMobileGameMode } from '../core/quality.js?v=20260809-10';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260809-10';
-import { canvas, camera, controls } from './rig.js?v=20260809-10';
-import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260809-10';
-import { instrumentView } from './instrument-presets.js?v=20260809-10';
-import { raycaster, pointer } from './pick.js?v=20260809-10';
-import { glowMesh, unglowMesh } from './emissive.js?v=20260809-10';
-import { walkMascotToInstrument } from './mobile-controls.js?v=20260809-10';
-import { resetBrowserPageZoom } from './viewport.js?v=20260809-10';
-import { activePointers } from '../play/state.js?v=20260809-10';
+import { session } from '../core/session.js?v=20260812-01';
+import { isMobileGameMode } from '../core/quality.js?v=20260812-01';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260812-01';
+import { canvas, camera, controls } from './rig.js?v=20260812-01';
+import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260812-01';
+import { instrumentView } from './instrument-presets.js?v=20260812-01';
+import { raycaster, pointer } from './pick.js?v=20260812-01';
+import { glowMesh, unglowMesh } from './emissive.js?v=20260812-01';
+import { walkMascotToInstrument } from './mobile-controls.js?v=20260812-01';
+import { resetBrowserPageZoom } from './viewport.js?v=20260812-01';
+import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260812-01';
+import { activePointers } from '../play/state.js?v=20260812-01';
 import {
   currentGuitarShape,
   fireGuitarStrum,
@@ -26,13 +27,13 @@ import {
   guitarLocalPoint,
   nearestGuitarString,
   guitarFretHit,
-} from '../play/guitar.js?v=20260809-10';
+} from '../play/guitar.js?v=20260812-01';
 import {
   trigger,
   beginHeldPianoNote,
   releaseHeldPianoNote,
   handleClick,
-} from '../play/piano-notes.js?v=20260809-10';
+} from '../play/piano-notes.js?v=20260812-01';
 
 export const INSTRUMENT_STYLE = {
   drums: { glow: 0x9E33CA },
@@ -431,25 +432,48 @@ canvas.addEventListener('pointercancel', (e) => {
 window.addEventListener('pointermove', onPointerMove, { passive: true });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Block accidental text selection / iOS callouts on game chrome (not modal panels).
-document.addEventListener('selectstart', (e) => {
-  if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
-  e.preventDefault();
-}, { capture: true });
-document.addEventListener('dragstart', (e) => {
-  if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
-  e.preventDefault();
-}, { capture: true });
+// Block accidental text selection / iOS callouts on game chrome. Panel prose is
+// deliberately copyable (rules, pricing), but a panel *control* is not: Safari
+// can still start a selection from a `user-select: none` button, and a press
+// with a little drag then highlights the label instead of firing it.
+const SELECTABLE_TARGET = '.panel, input, textarea, [contenteditable="true"]';
+const PANEL_CONTROL = 'button, a[href], label, summary, [role="button"], .swatch';
+for (const type of ['selectstart', 'dragstart']) {
+  document.addEventListener(type, (e) => {
+    if (e.target.closest?.(SELECTABLE_TARGET) && !e.target.closest?.(PANEL_CONTROL)) return;
+    e.preventDefault();
+  }, { capture: true });
+}
 
-// Block stage double-tap zoom. Play chrome (pads / toast / pedal) must ALSO
-// claim double-taps — skipping them was letting vocal-pad ↔ vibe-toast taps zoom.
+// Block stage double-tap zoom where CSS cannot reach. `touch-action` does not
+// inherit, so chrome *containers* — #mobile-controls, #mobile-actions,
+// .vibe-track, .hud-right — are still `auto` even though every control inside
+// them is `manipulation`. Two rules keep this from eating real taps:
+//
+//   * a control is never half of the pair. preventDefault on its touchend
+//     suppresses the synthesized click, and that click IS its activation;
+//   * the two taps must land near each other, the way a browser's own
+//     double-tap detector requires.
+//
+// One document-wide timestamp with neither test made every HUD tap within
+// 320 ms of any other touch — a joystick release, a canvas tap, a previous HUD
+// tap — silently dead, because the whole HUD is bound to `click`.
+//
+// The vocal pad and the toast claim their own double-taps (js/play/pads.js,
+// js/ui.js) and the live stage runs `user-scalable=no`, so exempting controls
+// cannot bring back the vocal-pad ↔ toast zoom this guard was written for.
 {
-  let lastTouchEnd = 0;
+  let previousTap = null;
   document.addEventListener('touchend', (e) => {
-    if (e.target.closest?.('.panel, input, textarea, [contenteditable="true"]')) return;
-    const now = performance.now();
-    if (now - lastTouchEnd < 320 && e.cancelable) e.preventDefault();
-    lastTouchEnd = now;
+    const touch = e.changedTouches?.length === 1 ? e.changedTouches[0] : null;
+    const { block, next } = judgeDoubleTap(previousTap, {
+      now: performance.now(),
+      x: touch?.clientX,
+      y: touch?.clientY,
+      exempt: !touch || Boolean(e.target.closest?.(DOUBLE_TAP_EXEMPT)),
+    });
+    previousTap = next;
+    if (block && e.cancelable) e.preventDefault();
   }, { passive: false, capture: true });
   document.addEventListener('touchend', () => {
     requestAnimationFrame(resetBrowserPageZoom);

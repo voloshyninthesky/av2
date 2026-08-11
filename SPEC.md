@@ -471,7 +471,7 @@ Rules:
 - Small left **move zone** + floating stick under finger.
 - Soft one-finger orbit; two-finger dolly/pan.
 - **ГРАТИ** when in reach → approach / focus. Outside reach it stays visually disabled but remains an accessible tap target: the first unavailable tap shows, once, `Підійди до інструмента ближче щоб заграти`.
-- ✕ exit when entering / focused (not during approaching — avoids the same tap that pressed **ГРАТИ** hitting ✕ after the play button hides).
+- ✕ exit when entering / focused, never during approaching. Two guards rather than a timing window: ✕ stays hidden while `approaching`, and the **ГРАТИ** press arms a **one-shot** swallower for the single click the browser synthesizes after it — otherwise that click lands on ✕, which takes the same pixels once the play button hides, and cancels the approach the same gesture just started. A keyboard activation (`detail === 0`) is never swallowed.
 - Leaving any instrument focus must reset the floating joystick, thumb, active pointer identity, and movement vector before the walk controls return. This includes a lost / cancelled iOS pointer while the joystick is hidden during guitar focus.
 - Touch instruments when focused (multitouch piano / drums; chord hold + independent strum / pluck for guitar).
 - Focused piano / drums / guitar play surfaces claim their fingers: taps and glissandi / strums play without rotating or pinching the camera. Orbit and pinch stay available from empty canvas around the instrument.
@@ -810,6 +810,9 @@ this site can observe — it is the conversion number.
 - `prefers-reduced-motion`: cut ambient / onboard pulse animations.
 - WebGL fail → `#webgl-fail` panel, with links back to `/` and to Instagram booking so an unsupported device is not a dead end.
 - Lock page-level pinch and double-tap zoom for the whole live stage. Keep initial UI control pointer dispatch intact (claim multi-touch on move / Safari `gesture*`, not a chrome `touchstart`) so two-control and pad↔canvas interaction still works. Informational overlays retain normal zoom / scroll.
+- **A control never has its `touchend` cancelled.** Cancelling it suppresses the synthesized `click`, and for every `click`-bound control — the whole HUD — that click *is* the activation. Double-tap suppression is therefore proximity-gated (two taps within `320 ms` **and** `44 px`) and skips interactive elements entirely; those carry `touch-action: manipulation`, so the compositor already refuses to zoom from them.
+- **Hover affordances are `@media (hover: hover)` only.** A touch browser applies `:hover` on tap and holds it until the next tap elsewhere, so an unguarded rule leaves a control looking chosen but not fired. `:focus-visible` styling stays unconditional.
+- **Panel body copy is selectable; panel controls are not.** A button whose label can be selected answers a press-with-a-little-drag by highlighting itself instead of activating.
 - In focused piano/drums, one-finger orbit and two-finger zoom work even when the gesture begins on playable geometry; short taps and intentional piano glissando remain playable.
 - With Spotify / Apple Music already playing, Enter, walking, camera controls, instrument focus, chord selection, and settings changes leave external audio uninterrupted and do not create an `AudioContext`.
 - On platforms supporting Audio Session `ambient`, the external source continues while Art Vibe instruments play over it. On unsupported platforms, external audio remains uninterrupted at least until the first real Art Vibe sound action.

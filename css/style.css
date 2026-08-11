@@ -46,6 +46,17 @@ html, body {
   user-select: text;
   -webkit-touch-callout: default;
 }
+/* …the prose only. A control whose label can be selected answers a press with a
+   little drag by highlighting itself (::selection, below) instead of firing —
+   that is the "the button just selects" report. input / textarea stay out: the
+   sign field needs selection. */
+.panel :is(button, a[href], label, summary, select, [role="button"]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.panel :is(button, label, summary, select, [role="button"]) {
+  -webkit-touch-callout: none;
+}
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
 #loop-pedal, #vocal-pad, #chord-pad, .overlay,
@@ -196,17 +207,19 @@ html.stage-live .icon-btn {
   font: 500 24px/1 'Manrope', system-ui, sans-serif;
   transition: transform .25s ease, background .25s ease, color .25s ease;
 }
-#enter-btn:hover {
-  background: linear-gradient(135deg, #f4db95 0%, #d9aa46 52%, #c48829 100%);
-  border-color: var(--cream); color: var(--ink);
-  transform: translateY(-4px) scale(1.012);
-  box-shadow:
-    0 25px 65px rgba(209, 161, 59, .28),
-    0 5px 0 rgba(92, 24, 118, .8),
-    inset 0 1px 0 rgba(255, 255, 255, .55);
+@media (hover: hover) {
+  #enter-btn:hover {
+    background: linear-gradient(135deg, #f4db95 0%, #d9aa46 52%, #c48829 100%);
+    border-color: var(--cream); color: var(--ink);
+    transform: translateY(-4px) scale(1.012);
+    box-shadow:
+      0 25px 65px rgba(209, 161, 59, .28),
+      0 5px 0 rgba(92, 24, 118, .8),
+      inset 0 1px 0 rgba(255, 255, 255, .55);
+  }
+  #enter-btn:hover::before { transform: translateX(120%); }
+  #enter-btn:hover::after { transform: translateX(3px); background: var(--purple-deep); color: var(--cream); }
 }
-#enter-btn:hover::before { transform: translateX(120%); }
-#enter-btn:hover::after { transform: translateX(3px); background: var(--purple-deep); color: var(--cream); }
 #enter-btn:active { transform: translateY(-1px) scale(.995); }
 #enter-btn:focus-visible {
   outline: 3px solid var(--cream); outline-offset: 6px;
@@ -223,8 +236,10 @@ html.stage-live .icon-btn {
   border: 2px solid rgba(209, 161, 59, .25); border-top-color: var(--gold-light);
   background: transparent; animation: enterSpin .8s linear infinite;
 }
-#enter-btn:disabled:hover { transform: none; border-color: rgba(209, 161, 59, .32); }
-#enter-btn:disabled:hover::before { transform: translateX(-120%); }
+@media (hover: hover) {
+  #enter-btn:disabled:hover { transform: none; border-color: rgba(209, 161, 59, .32); }
+  #enter-btn:disabled:hover::before { transform: translateX(-120%); }
+}
 #enter-btn.ready { animation: enterAura 2.8s ease-in-out infinite; }
 @keyframes enterAura {
   0%, 100% {
@@ -261,14 +276,20 @@ html.stage-live .icon-btn {
   padding: 12px 22px; cursor: pointer;
   transition: background .25s, color .25s, transform .15s, border-color .25s;
 }
-.pill-btn:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); transform: translateY(-2px); }
+@media (hover: hover) {
+  .pill-btn:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); transform: translateY(-2px); }
+}
 .pill-btn:active { transform: translateY(0); }
 .pill-btn.big { font-size: 14px; padding: 16px 34px; }
 .pill-btn.small { font-size: 11px; padding: 9px 16px; }
 .pill-btn.gold { background: var(--gold); border-color: var(--gold); color: var(--ink); }
-.pill-btn.gold:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
+@media (hover: hover) {
+  .pill-btn.gold:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
+}
 .pill-btn.outline { border-color: var(--ink); color: var(--ink); }
-.pill-btn.outline:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
+@media (hover: hover) {
+  .pill-btn.outline:hover { background: var(--purple); border-color: var(--purple); color: var(--cream); }
+}
 
 /* Drawn rather than typed: iOS renders U+2197 with the colour emoji font. */
 .ext-arrow {
@@ -285,7 +306,9 @@ html.stage-live .icon-btn {
   transition: border-color .2s, background .2s, transform .15s;
   backdrop-filter: blur(6px);
 }
-.icon-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
+@media (hover: hover) {
+  .icon-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
+}
 
 /* The one conversion control in the HUD, so it keeps the gold fill the ЦІНИ pill
    used to carry — as a plain circle it would read as chrome beside the mascot and
@@ -294,8 +317,10 @@ html.stage-live .icon-btn {
 .icon-btn.gold {
   background: var(--gold); border-color: var(--gold); color: var(--ink);
 }
-.icon-btn.gold:hover {
-  background: var(--purple); border-color: var(--purple); color: var(--cream);
+@media (hover: hover) {
+  .icon-btn.gold:hover {
+    background: var(--purple); border-color: var(--purple); color: var(--cream);
+  }
 }
 
 /* Leaves the stage rather than opening a panel, so it ranks below the controls
@@ -334,9 +359,13 @@ html.stage-live .icon-btn {
   font: 700 9px/1 'JetBrains Mono', monospace; letter-spacing: .08em;
   cursor: pointer; touch-action: manipulation;
 }
-#sound-recover-btn:hover,
 #sound-recover-btn:focus-visible {
   border-color: var(--gold); background: var(--gold); color: var(--ink); outline: none;
+}
+@media (hover: hover) {
+  #sound-recover-btn:hover {
+    border-color: var(--gold); background: var(--gold); color: var(--ink); outline: none;
+  }
 }
 #sound-recover-btn:disabled { opacity: .58; cursor: wait; }
 .sound-fader {
@@ -400,7 +429,9 @@ html.stage-live .icon-btn {
   font: inherit; color: inherit; cursor: pointer;
   transition: border-color .2s, box-shadow .2s;
 }
-.logo-chip:hover { border-color: var(--gold); }
+@media (hover: hover) {
+  .logo-chip:hover { border-color: var(--gold); }
+}
 .logo-chip.dancing { border-color: var(--purple); box-shadow: 0 0 16px rgba(158, 51, 202, .45); }
 .logo-chip.dancing .logo-av { animation: logoDanceSway .48s ease-in-out infinite alternate; }
 @keyframes logoDanceSway {
@@ -511,7 +542,10 @@ html.stage-live .icon-btn {
   -webkit-tap-highlight-color: transparent; user-select: none;
   transition: transform .14s, border-color .2s, background .2s, box-shadow .2s, opacity .2s;
 }
-#loop-toggle:hover, #loop-toggle:focus-visible { border-color: var(--gold-light); outline: 2px solid rgba(209, 161, 59, .42); outline-offset: 2px; }
+#loop-toggle:focus-visible { border-color: var(--gold-light); outline: 2px solid rgba(209, 161, 59, .42); outline-offset: 2px; }
+@media (hover: hover) {
+  #loop-toggle:hover { border-color: var(--gold-light); outline: 2px solid rgba(209, 161, 59, .42); outline-offset: 2px; }
+}
 #loop-toggle:active { transform: translateY(4px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 2px 0 rgba(59, 14, 77, .9), 0 8px 18px rgba(0, 0, 0, .38); }
 #loop-toggle:disabled { cursor: default; opacity: .62; }
 .loop-led {
@@ -530,7 +564,10 @@ html.stage-live .icon-btn {
   font: 700 11px/1 'Manrope', sans-serif; touch-action: manipulation;
   box-shadow: 0 4px 12px rgba(0, 0, 0, .3); transition: background .15s, color .15s, transform .15s;
 }
-#loop-tools button:hover, #loop-tools button:focus-visible { background: var(--gold); color: var(--ink); outline: none; transform: scale(1.05); }
+#loop-tools button:focus-visible { background: var(--gold); color: var(--ink); outline: none; transform: scale(1.05); }
+@media (hover: hover) {
+  #loop-tools button:hover { background: var(--gold); color: var(--ink); outline: none; transform: scale(1.05); }
+}
 #loop-pedal[data-state="recording"] #loop-toggle { border-color: rgba(255, 91, 117, .9); }
 #loop-pedal[data-state="recording"] .loop-led { background: #ff5b75; box-shadow: 0 0 13px rgba(255, 91, 117, .95); animation: loopPulse .62s ease-in-out infinite alternate; }
 #loop-pedal[data-state="recording"] #loop-progress-bar { background: #ff7890; }
@@ -583,7 +620,9 @@ html.stage-live .icon-btn {
 }
 #chip.leaving { opacity: 0; transform: translateY(-8px); pointer-events: none; }
 #chip[data-actionable="true"] { cursor: pointer; }
-#chip[data-actionable="true"]:hover { border-color: rgba(209, 161, 59, .55); }
+@media (hover: hover) {
+  #chip[data-actionable="true"]:hover { border-color: rgba(209, 161, 59, .55); }
+}
 /* Drops out of the button rather than rising off the floor. `chipIn` stays for
    everything that is centred and needs its -50% kept — the toast, and the chip
    itself at the phone breakpoint. */
@@ -607,8 +646,13 @@ html.stage-live .icon-btn {
   min-width: 0; padding: 8px 13px; font-size: 8px; white-space: nowrap;
   background: rgba(209, 161, 59, .14); color: var(--gold-light); border: 0; border-radius: 999px;
 }
-#chip .pill-btn:hover, #chip .pill-btn:focus-visible {
+#chip .pill-btn:focus-visible {
   background: rgba(209, 161, 59, .3); color: var(--cream);
+}
+@media (hover: hover) {
+  #chip .pill-btn:hover {
+    background: rgba(209, 161, 59, .3); color: var(--cream);
+  }
 }
 
 #toast {
@@ -703,7 +747,9 @@ html.pads-open #toast,
   font-size: 14px; line-height: 1; cursor: pointer;
   transition: border-color .15s, color .15s;
 }
-#chord-edit-btn:hover { border-color: var(--gold); color: var(--gold); }
+@media (hover: hover) {
+  #chord-edit-btn:hover { border-color: var(--gold); color: var(--gold); }
+}
 #chord-edit-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .16); }
 #chord-pad.editing [data-chord] { opacity: .82; }
 #chord-pad.editing [data-chord].editing {
@@ -727,7 +773,9 @@ html.pads-open #toast,
   font: 700 10px/1 'Unbounded', sans-serif; letter-spacing: .04em;
   cursor: pointer; transition: background .12s, border-color .12s;
 }
-#chord-picker button:hover:not(:disabled) { border-color: var(--gold); background: rgba(158, 51, 202, .6); }
+@media (hover: hover) {
+  #chord-picker button:hover:not(:disabled) { border-color: var(--gold); background: rgba(158, 51, 202, .6); }
+}
 #chord-picker button.current { background: var(--cream); color: var(--purple-deep); border-color: var(--gold); }
 #chord-picker button:disabled { opacity: .35; cursor: default; }
 .chord-picker-qualities, .chord-picker-roots {
@@ -951,7 +999,9 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   border: none; font-size: 15px; cursor: pointer;
   transition: background .2s, transform .2s;
 }
-.close-btn:hover { background: var(--purple); transform: rotate(90deg); }
+@media (hover: hover) {
+  .close-btn:hover { background: var(--purple); transform: rotate(90deg); }
+}
 
 .panel-meta {
   display: flex; justify-content: space-between;
@@ -1025,10 +1075,15 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   cursor: pointer;
   transition: color .2s, border-color .2s;
 }
-.panel-secondary-link:hover,
 .panel-secondary-link:focus-visible {
   border-color: var(--purple);
   color: var(--purple);
+}
+@media (hover: hover) {
+  .panel-secondary-link:hover {
+    border-color: var(--purple);
+    color: var(--purple);
+  }
 }
 
 .quality-control {
@@ -1042,7 +1097,10 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   color: rgba(253, 251, 247, .55); background: transparent; cursor: pointer;
   font: 700 8px/1 'JetBrains Mono', monospace; letter-spacing: .04em;
 }
-.quality-option:hover:not(:disabled), .quality-option:focus-visible { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
+.quality-option:focus-visible { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
+@media (hover: hover) {
+  .quality-option:hover:not(:disabled) { color: var(--cream); border-color: rgba(253, 251, 247, .38); outline: none; }
+}
 .quality-option.is-on { color: var(--ink); border-color: var(--gold); background: var(--gold); }
 .quality-options.is-loading .quality-option:not(.is-loading) { opacity: .38; }
 .quality-option:disabled { cursor: wait; }
@@ -1166,7 +1224,9 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   text-align: center;
   transition: border-color .2s, background .2s, color .2s, transform .2s;
 }
-.inst-btn:hover { border-color: var(--purple); transform: translateY(-2px); }
+@media (hover: hover) {
+  .inst-btn:hover { border-color: var(--purple); transform: translateY(-2px); }
+}
 .inst-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .inst-btn.is-on {
   background: var(--purple); border-color: var(--ink); color: var(--cream);
@@ -1200,7 +1260,9 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   font: 800 13px/1 'Unbounded', sans-serif;
   transition: background .2s, border-color .2s, color .2s, transform .2s;
 }
-.choice-chip:hover { border-color: var(--purple); transform: translateY(-1px); }
+@media (hover: hover) {
+  .choice-chip:hover { border-color: var(--purple); transform: translateY(-1px); }
+}
 .choice-chip:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .choice-chip.is-on {
   background: var(--purple); border-color: var(--ink); color: var(--cream);
@@ -1317,8 +1379,10 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   line-height: .7;
 }
 .price-board[data-theme="rhythm"] .price-signup-cta::before { background: var(--purple); }
-.price-signup-cta:hover {
-  transform: rotate(1deg) scale(1.05);
+@media (hover: hover) {
+  .price-signup-cta:hover {
+    transform: rotate(1deg) scale(1.05);
+  }
 }
 .price-signup-cta:active {
   transform: rotate(3deg) scale(.98);
@@ -1478,7 +1542,9 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .75));
   opacity: 0; transform: rotate(-45deg) scale(.65); transition: opacity .16s, transform .16s;
 }
-.swatch:hover { transform: translateY(-2px) scale(1.06); border-color: var(--purple); }
+@media (hover: hover) {
+  .swatch:hover { transform: translateY(-2px) scale(1.06); border-color: var(--purple); }
+}
 .swatch:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .swatch.is-on {
   border-color: var(--ink);

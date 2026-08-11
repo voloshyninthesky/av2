@@ -210,6 +210,67 @@ test('booking links never depend on analytics succeeding', async () => {
   }
 });
 
+// A latched :hover is the quietest bug the stage can ship. iOS applies :hover on
+// tap and keeps it until the next tap elsewhere, so an unguarded rule leaves the
+// control looking chosen-but-not-fired — which nobody files, because it looks
+// like a design decision. `:focus-visible` must stay outside the query (SPEC §12
+// wants keyboard focus visible), so splitting a combined rule is the trap here.
+test('every :hover on the stage is behind @media (hover: hover)', async () => {
+  const css = await read('css/style.css');
+  const open = [];
+  const unguarded = [];
+  let seen = 0;
+  css.split('\n').forEach((line, index) => {
+    let pending = null;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '@') {
+        const rest = line.slice(i);
+        const brace = rest.indexOf('{');
+        pending = (brace === -1 ? rest : rest.slice(0, brace)).trim();
+      }
+      if (line[i] === '{') { open.push(pending); pending = null; }
+      if (line[i] === '}') open.pop();
+    }
+    if (!line.includes(':hover')) return;
+    seen++;
+    if (!open.some((rule) => rule && /hover:\s*hover/.test(rule))) {
+      unguarded.push(`${index + 1}: ${line.trim()}`);
+    }
+  });
+  assert.ok(seen > 0, 'found no :hover rules at all — has the stylesheet moved?');
+  assert.deepEqual(unguarded, [], 'these latch on touch:');
+});
+
+// `.panel *` keeps rules and pricing copyable. Applied to a control it means a
+// press with a little drag highlights the label instead of firing the button.
+test('panel controls are exempt from the panel text-selection rule', async () => {
+  const css = await read('css/style.css');
+  assert.match(
+    css,
+    /\.panel\s*:is\([^)]*button[^)]*\)\s*\{[^}]*user-select:\s*none/s,
+    '.panel * makes every modal button selectable — controls need an exclusion',
+  );
+});
+
+// Two stamps in one module graph and the browser holds two copies of the same
+// module, each importing the other's ghosts. Grep cannot see it on a running
+// page — the stale reference lives only inside a cached response — but it can
+// see it here. `notes/Gotchas.md` — "The cache stamp is a find-and-replace".
+// Data files (`/prices.json`) carry their own stamp on purpose: they change on
+// a different cadence and a stale one only serves stale prices, not two
+// versions of one module.
+test('the whole module graph carries one cache stamp', async () => {
+  const stageHtml = await read('stage/index.html');
+  const stamps = new Map();
+  for (const source of [...appSources, stageHtml]) {
+    for (const [, path, value] of source.matchAll(/([\w./-]+\.(?:js|css))\?v=([0-9A-Za-z.-]+)/g)) {
+      if (!stamps.has(value)) stamps.set(value, path);
+    }
+  }
+  const found = [...stamps].map(([value, path]) => `${value} (${path})`).sort();
+  assert.equal(stamps.size, 1, `the stage must load one stamp, found: ${found.join(', ')}`);
+});
+
 test('the stage loads the minified three build', async () => {
   const html = await read('stage/index.html');
   assert.match(html, /"three":\s*"\/vendor\/three\/build\/three\.module\.min\.js"/, 'importmap does not point at the minified build');

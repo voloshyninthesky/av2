@@ -92,9 +92,10 @@ fov. → [[Focus framing]]
 
 From [[SPEC]] §14, and it is in that order for a reason:
 
-1. **Update code + the `?v=` cache query.** ~187 occurrences of the current stamp across
-   `js/`; an inconsistent bump can load two versions of one module. Bump `audio.js` whenever
-   unlock behaviour changes.
+1. **Update code + the `?v=` cache query.** ~217 occurrences of the current stamp across
+   `js/` and `stage/index.html`; an inconsistent bump can load two versions of one module.
+   `tests/site-meta.test.mjs` now fails on a partial sweep. `prices.json` keeps its own,
+   deliberately independent stamp. Bump `audio.js` whenever unlock behaviour changes.
 2. **Update [[SPEC]] if contracts or UX change.** Add a line to [[Decisions]] if the
    *reason* changed.
 3. **Push to `main`**, then verify the live HTML contains the new `?v=` and the expected

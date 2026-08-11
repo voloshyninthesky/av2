@@ -12,6 +12,49 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## A zoom guard that cancels `touchend` is a guard that cancels the tap — 2026-08-12
+
+Reported as "click detection is not always working, mostly the HUD, and sometimes the button
+just selects." Four separate defects wearing one symptom, and each is a general rule worth
+keeping:
+
+- **`preventDefault()` on `touchend` suppresses the synthesized `click`.** The double-tap-zoom
+  blocker kept one document-wide timestamp and cancelled any touchend within 320 ms of the
+  previous one, anywhere on the page. Every HUD control is bound to plain `click`, so a tap
+  that followed a joystick release, a canvas tap, or another HUD tap was silently dead. A
+  blanket `touchend` blocker and a `click`-bound UI cannot coexist. Controls are now exempt.
+- **`touch-action` does not inherit** — which is why the CSS did not already cover this, and
+  why the guard is narrowed rather than deleted. `button, a, .pill-btn, .icon-btn` carry
+  `manipulation`, but their *containers* (`#mobile-controls`, `.vibe-track`, `.hud-right`) are
+  still `auto`, and those are what the JS guard is for.
+- **A double tap is a place as well as a time.** Two taps 200 px apart are two intentions; the
+  old check only compared timestamps. 44 px of slop — the minimum touch target.
+- **An unguarded `:hover` is a touch bug.** iOS applies `:hover` on tap and holds it until the
+  next tap elsewhere, so `.icon-btn:hover` left a HUD icon latched gold and lifted and
+  `.close-btn:hover` left ✕ rotated 90°: chosen-looking, not fired. All 25 rules moved under
+  `@media (hover: hover)`; the `:focus-visible` halves stayed out of it. Wrapping beat a
+  neutralizing `(hover: none)` block because a media query changes neither specificity nor
+  source order, so no cascade could shift — and because a neutralizer would have had to
+  restate every property forever, silently repainting `.is-on` states as unselected.
+  The only durable fix is the test, because the symptom is a stuck highlight nobody files.
+- **`.panel *  { user-select: text }` applied to buttons too**, so a press with a little drag
+  highlighted the label instead of activating. Prose stays copyable; controls are excluded.
+
+The **ГРАТИ** guard from `4c29cc7` had a hole this made visible: it was two timestamps checked
+in two places, at 700 ms on ГРАТИ and 500 ms on ✕, so between the two the original bug still
+fired — and the old blocker above was accidentally acting as a fourth guard, so fixing it
+first would have widened the gap. Both windows are gone, replaced by one swallower armed by
+the press: it self-clears on the click it was armed for, so ✕ is not dead once legitimately
+seated, and `detail === 0` lets a real keyboard Enter through. `syncMobileInstrumentChrome()`
+stays as the companion guard. Same one-shot shape replaced the chip's flat 400 ms swallower,
+which had been eating the visitor's next deliberate tap.
+
+`tests/touch-guards.test.mjs` pins the two predicates; `tests/site-meta.test.mjs` gained three
+source scans — every `:hover` guarded, panel controls excluded, and one cache stamp across the
+module graph. That last one found existing drift the first time it ran.
+
+---
+
 ## The site speaks Polish too, and the Polish half stays out of search — 2026-08-11
 
 `/pl/` mirrors the hub and the four lesson pages on Polish slugs, plus one page the

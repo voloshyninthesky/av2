@@ -7,9 +7,10 @@
 // the fade, and the respawn.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260809-10';
-import { isMobileGameMode } from '../core/quality.js?v=20260809-10';
-import { camera, controls } from './rig.js?v=20260809-10';
+import { session } from '../core/session.js?v=20260812-01';
+import { isMobileGameMode } from '../core/quality.js?v=20260812-01';
+import { swallowNextClick } from '../core/gesture-guards.js?v=20260812-01';
+import { camera, controls } from './rig.js?v=20260812-01';
 import {
   ui,
   stage,
@@ -19,14 +20,14 @@ import {
   applyMascotScale,
   mascotFallMeshes,
   mascotFallMaterialStates,
-} from '../core/studio.js?v=20260809-10';
-import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260809-10';
-import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260809-10';
-import { mascotMove } from '../mascot/state.js?v=20260809-10';
-import { setDancing } from '../mascot/pose.js?v=20260809-10';
-import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260809-10';
-import { resyncLoopPlayback } from '../play/loop.js?v=20260809-10';
-import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260809-10';
+} from '../core/studio.js?v=20260812-01';
+import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260812-01';
+import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260812-01';
+import { mascotMove } from '../mascot/state.js?v=20260812-01';
+import { setDancing } from '../mascot/pose.js?v=20260812-01';
+import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260812-01';
+import { resyncLoopPlayback } from '../play/loop.js?v=20260812-01';
+import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260812-01';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');
@@ -36,7 +37,20 @@ const mobilePlay = document.getElementById('mobile-play');
 const mobileExit = document.getElementById('mobile-exit');
 const mobilePlayHint = document.getElementById('mobile-play-hint');
 const MOBILE_PLAY_HINT_KEY = 'av2.mobile-play-hint.v2';
-let lastMobilePlayPointerAt = -Infinity;
+
+// ГРАТИ acts on pointerdown, so the click a touch browser synthesizes after it
+// is pure ghost — and it lands exactly where ✕ now is. `requestInstrumentView`
+// can seat the approach synchronously when the mascot already stands on the
+// walk point, and the stylesheet then `display: none`s #mobile-play, dropping
+// the 82px ✕ onto the pixels the 78px ГРАТИ occupied. One swallower, armed by
+// the press, replaces the pair of timing windows this used to carry: those two
+// disagreed (500 vs 700 ms), never cleared once seated, and dropped a genuine
+// keyboard Enter that happened to land inside the window.
+let releaseMobilePlayClick = null;
+function claimMobilePlayGhostClick() {
+  releaseMobilePlayClick?.();
+  releaseMobilePlayClick = swallowNextClick({ within: 500 });
+}
 
 // Playing whatever is in reach runs through the stage's own trigger path.
 let hooks = { playNearestInstrument: () => {} };
@@ -210,19 +224,12 @@ moveSurface?.addEventListener('pointerup', releaseMoveJoystick);
 moveSurface?.addEventListener('pointercancel', releaseMoveJoystick);
 moveSurface?.addEventListener('lostpointercapture', releaseMoveJoystick);
 
-mobileExit?.addEventListener('pointerdown', (event) => {
-  // Ignore a ghost click-through from the ГРАТИ tap that just started approach.
-  if (performance.now() - lastMobilePlayPointerAt < 500) {
-    event.preventDefault();
-    return;
-  }
+// No guard here: a ghost click-through from the ГРАТИ tap is stopped at the
+// source by `claimMobilePlayGhostClick`, before it can reach this listener.
+mobileExit?.addEventListener('pointerdown', () => {
   mobileExit.classList.add('pressed');
 });
-mobileExit?.addEventListener('click', (event) => {
-  if (performance.now() - lastMobilePlayPointerAt < 500) {
-    event.preventDefault();
-    return;
-  }
+mobileExit?.addEventListener('click', () => {
   leaveInstrumentView();
   navigator.vibrate?.(18);
 });
@@ -418,21 +425,21 @@ export function mobilePlayIsUnavailable() {
 mobilePlay.addEventListener('pointerdown', (event) => {
   event.preventDefault();
   event.stopPropagation();
+  // Armed before the availability branch, so even a tap that only shows the
+  // hint cannot leak its click onto whatever the press revealed.
+  claimMobilePlayGhostClick();
   if (mobilePlayIsUnavailable()) {
     showMobilePlayHintOnce();
     return;
   }
   mobilePlay.classList.add('pressed');
-  lastMobilePlayPointerAt = performance.now();
   playNearestInstrument();
   navigator.vibrate?.(22);
 });
-// Keyboard / accessibility activation only — pointer path already ran on pointerdown.
-mobilePlay.addEventListener('click', (event) => {
-  if (performance.now() - lastMobilePlayPointerAt < 700) {
-    event.preventDefault();
-    return;
-  }
+// Keyboard / accessibility activation only — the pointer path already ran on
+// pointerdown, and the click it synthesizes never gets here. A keyboard
+// activation carries `detail === 0`, which the swallower lets through.
+mobilePlay.addEventListener('click', () => {
   if (mobilePlayIsUnavailable()) {
     showMobilePlayHintOnce();
     return;
@@ -440,6 +447,9 @@ mobilePlay.addEventListener('click', (event) => {
   playNearestInstrument();
   navigator.vibrate?.(22);
 });
+// Re-arm on release too: the ceiling counts from arming, so a long press would
+// otherwise outlive the guard set on pointerdown.
+mobilePlay.addEventListener('pointerup', claimMobilePlayGhostClick);
 for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
   mobilePlay.addEventListener(eventName, () => mobilePlay.classList.remove('pressed'));
 }

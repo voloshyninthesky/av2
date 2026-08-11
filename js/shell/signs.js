@@ -14,17 +14,17 @@
 // VIBE fill, with the loop pedal. One sign per device per day, enforced in
 // localStorage — no identifiers, nothing personal stored in the browser.
 // ============================================================
-import { ui } from '../core/studio.js?v=20260809-10';
-import { params } from '../core/quality.js?v=20260809-10';
-import { track } from '../core/analytics.js?v=20260809-10';
-import { play } from '../play/state.js?v=20260809-10';
+import { ui } from '../core/studio.js?v=20260812-01';
+import { params } from '../core/quality.js?v=20260812-01';
+import { track } from '../core/analytics.js?v=20260812-01';
+import { play } from '../play/state.js?v=20260812-01';
 import {
   SIGN_COLORS,
   TOTAL_SLOTS,
   setSigns,
   addSign,
   repaintSigns,
-} from '../scene/signs.js?v=20260809-10';
+} from '../scene/signs.js?v=20260812-01';
 
 const API = 'https://back.artvibe.com.pl';
 

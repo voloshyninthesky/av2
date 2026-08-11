@@ -1,6 +1,7 @@
 // ============================================================
 // ART VIBE — HUD & overlay UI manager
 // ============================================================
+import { swallowNextClick } from './core/gesture-guards.js?v=20260812-01';
 
 // The stylesheet's phone breakpoint, verbatim. The chip's position is CSS on
 // phones and measured here on desktop, so the two have to agree on which is
@@ -55,7 +56,7 @@ export class UI {
 
   async _ensurePricing() {
     if (!this._pricingPromise) {
-      this._pricingPromise = import('./pricing.js?v=20260809-10')
+      this._pricingPromise = import('./pricing.js?v=20260812-01')
         .then(({ PricingPicker }) => {
           this.pricing = new PricingPicker(this.modals.pricing);
           return this.pricing.init().then(() => this.pricing);
@@ -320,15 +321,11 @@ export class UI {
   // activates on pointerup. Without this the stray click lands on whatever the
   // freshly opened modal put under the finger — the price board's «Записатись»
   // sits right where the chip CTA was, so the chip opened «як записатися».
+  // Exactly one click, then out of the way: holding the guard for a flat 400 ms
+  // also ate the visitor's next deliberate tap.
   _swallowGhostClick() {
-    if (!this._ghostGuard) {
-      this._ghostGuard = (e) => { e.stopPropagation(); e.preventDefault(); };
-    }
-    clearTimeout(this._ghostTimer);
-    document.addEventListener('click', this._ghostGuard, true);
-    this._ghostTimer = setTimeout(() => {
-      document.removeEventListener('click', this._ghostGuard, true);
-    }, 400);
+    this._releaseGhostGuard?.();
+    this._releaseGhostGuard = swallowNextClick({ within: 400 });
   }
 
   hideChip() {
