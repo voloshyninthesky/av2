@@ -68,9 +68,30 @@ interruption, the next user gesture rebuilds and unlocks without a page refresh.
 
 `drums` | `piano` | `guitar` | `mic` → master.
 
-Every fader reads **0–100%** and reaches a gain of **2.0** at 100% — so 100% is *boosted*,
-not unity. Defaults: 50% for drums, piano and vocals, **30% for guitar** (≈0.6 gain, ~40%
-quieter than the others, because the strum stack is dense and otherwise dominates).
+Every fader reads **0–100%**, starts at **50%**, and reaches a gain of **2.0** at 100% — so
+100% is *boosted*, not unity.
+
+The four synths were written one at a time and their peaks were never comparable. Measured
+through the real chain (master → compressor, K-weighted BS.1770, one realistic phrase each)
+they came out at **−5.8 / −16.6 / −20.2 / −27.7 LUFS** for piano / guitar / drums / voice:
+the piano was 22 dB over the voice and clipped the output on a two-note chord, and the voice
+was inaudible under anything else.
+
+So the balance does **not** live in the defaults. `AudioEngine.BUS_TRIM` is a per-bus
+calibration constant applied *under* the fader — `bus.gain = trim × level` — and every
+default is now plain 50%. Trims: drums 1, piano 0.15, guitar 0.45, mic 2.8. The drums are the
+reference because their transients already sat at the ceiling, so everyone else came down to
+meet them; the four phrases now land within ~1.5 dB (momentary −15.3 … −16.6 LUFS) and the
+whole band peaks at −1.2 dBFS.
+
+Why a trim instead of just different defaults: the fader then means one thing on every bus —
+50% is *balanced*, 100% is +6 dB on it — instead of the visitor having to know that 30% on
+one instrument equals 50% on another. If a synth's own peak is retuned, re-measure and change
+its trim, not its default.
+
+Re-measuring is an offline render, not a listening test: build the engine against an
+`OfflineAudioContext` (stub `window.AudioContext` around `init()`), play a phrase per bus,
+and K-weight the result. [[Decisions]] has the run that produced these numbers.
 
 ## No soundtrack
 

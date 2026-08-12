@@ -1,7 +1,7 @@
 // ============================================================
 // ART VIBE — HUD & overlay UI manager
 // ============================================================
-import { swallowNextClick } from './core/gesture-guards.js?v=20260813-10';
+import { swallowNextClick } from './core/gesture-guards.js?v=20260813-11';
 
 // The stylesheet's phone breakpoint, verbatim. The chip's position is CSS on
 // phones and measured here on desktop, so the two have to agree on which is
@@ -56,7 +56,7 @@ export class UI {
 
   async _ensurePricing() {
     if (!this._pricingPromise) {
-      this._pricingPromise = import('./pricing.js?v=20260813-10')
+      this._pricingPromise = import('./pricing.js?v=20260813-11')
         .then(({ PricingPicker }) => {
           this.pricing = new PricingPicker(this.modals.pricing);
           return this.pricing.init().then(() => this.pricing);

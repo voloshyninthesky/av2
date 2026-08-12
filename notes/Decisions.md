@@ -12,6 +12,33 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The mixer's balance is a measured trim, not four hand-picked defaults — 2026-08-13
+
+Rendered each instrument's own phrase offline through the real chain (master → compressor)
+and read it as K-weighted BS.1770 loudness. With the shipped defaults the four buses sat at
+**−5.8 piano / −16.6 guitar / −20.2 drums / −27.7 LUFS voice**. Nobody had tuned these against
+each other — the piano was 22 dB over the voice and peaked at **+1.3 dBFS** on a two-note
+chord, so the loudest instrument on the stage was partly clipping, and the voice was
+inaudible under any of the others.
+
+The fix is a per-bus calibration constant under the fader (`AudioEngine.BUS_TRIM`,
+`bus.gain = trim × level`), with all four defaults reset to plain 50%. The alternative —
+leaving the trims in the defaults — was rejected because the fader would keep meaning a
+different thing on each bus (30% guitar ≈ 50% drums), and because the voice needed ~2.8×
+unity, which does not fit under a 0–2 fader at all.
+
+**The drums set the reference.** Their transients already peaked at −0.8 dBFS, so they could
+not go up; everyone else came down to meet them. The result is the four phrases within
+~1.5 dB (momentary −15.3 … −16.6 LUFS) and the whole band peaking at −1.2 dBFS. The stage is
+a few dB quieter than before overall, and none of it is clipping any more.
+
+Balancing on *integrated loudness of a phrase* rather than on single hits is deliberate: a
+lone snare measures ~20 dB under a lone piano note however you weight it, because it is 200 ms
+of energy against 1.6 s. Instruments are played in grooves, strums and melodies here, so the
+phrase is the honest unit. → [[Audio]]
+
+---
+
 ## The reveal hands the stage back, not a portrait — 2026-08-13
 
 Closing the gift card used to leave the camera exactly where the ceremony had put it: a

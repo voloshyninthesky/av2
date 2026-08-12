@@ -1,0 +1,184 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>loudness probe</title>
+<!--
+  Are the four instruments the same loudness? Serve the repo and open
+  /tools/loudness-probe.html — it renders one realistic phrase per bus through
+  the real engine (an OfflineAudioContext swapped in under `init()`, so the
+  master gain and the compressor are in the path) and reads the result as
+  K-weighted BS.1770 loudness.
+
+  With no query it measures what the app ships: `AudioEngine.BUS_TRIM` at every
+  fader's default. To try other numbers before writing them into the engine,
+  pass raw bus gains — ?gains={"drums":1,"piano":0.15,"guitar":0.45,"mic":2.8} —
+  where `null` means "leave this bus at its shipped default".
+
+  The bar (SPEC §3): the four phrases within ~2 dB of each other, and `band`
+  — everyone playing at once — peaking below 0 dBFS.
+-->
+<pre id="out">rendering…</pre>
+<script type="module">
+import { AudioEngine } from '/js/audio.js?v=probe2';
+
+const SR = 48000;
+
+// --- ITU-R BS.1770-4 K-weighting (coefficients for 48 kHz) ---
+const STAGE1 = { b: [1.53512485958697, -2.69169618940638, 1.19839281085285],
+                 a: [1, -1.69065929318241, 0.73248077421585] };
+const STAGE2 = { b: [1.0, -2.0, 1.0], a: [1, -1.99004745483398, 0.99007225036621] };
+
+function biquad(x, { b, a }) {
+  const y = new Float32Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const x0 = x[i];
+    const y0 = b[0] * x0 + b[1] * x1 + b[2] * x2 - a[1] * y1 - a[2] * y2;
+    x2 = x1; x1 = x0; y2 = y1; y1 = y0;
+    y[i] = y0;
+  }
+  return y;
+}
+
+function kWeighted(buf) {
+  const chans = [];
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    chans.push(biquad(biquad(buf.getChannelData(c), STAGE1), STAGE2));
+  }
+  return chans;
+}
+
+function blockLoudness(chans, blockMs) {
+  const n = Math.round(SR * blockMs / 1000);
+  const hop = Math.round(n / 4);
+  const out = [];
+  for (let start = 0; start + n <= chans[0].length; start += hop) {
+    let sum = 0;
+    for (const ch of chans) {
+      let s = 0;
+      for (let i = start; i < start + n; i++) s += ch[i] * ch[i];
+      sum += s / n;
+    }
+    out.push(-0.691 + 10 * Math.log10(sum + 1e-12));
+  }
+  return out;
+}
+
+function integrated(chans) {
+  const blocks = blockLoudness(chans, 400);
+  const above = blocks.filter((l) => l > -70);
+  if (!above.length) return -Infinity;
+  const rel = above.map((l) => 10 ** ((l + 0.691) / 10));
+  const gate = -0.691 + 10 * Math.log10(rel.reduce((a, b) => a + b, 0) / rel.length) - 10;
+  const kept = above.filter((l) => l > gate).map((l) => 10 ** ((l + 0.691) / 10));
+  if (!kept.length) return -Infinity;
+  return -0.691 + 10 * Math.log10(kept.reduce((a, b) => a + b, 0) / kept.length);
+}
+
+function peak(buf) {
+  let p = 0;
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < d.length; i++) p = Math.max(p, Math.abs(d[i]));
+  }
+  return 20 * Math.log10(p + 1e-12);
+}
+
+/** `gains` are raw bus gains, written straight onto the bus node (no clamp). */
+async function render(seconds, gains, play) {
+  const off = new OfflineAudioContext(2, Math.round(SR * seconds), SR);
+  const RealAC = window.AudioContext;
+  const RealWebkit = window.webkitAudioContext;
+  window.AudioContext = function () { return off; };
+  window.webkitAudioContext = undefined;
+  const eng = new AudioEngine();
+  eng.init();
+  window.AudioContext = RealAC;
+  window.webkitAudioContext = RealWebkit;
+  for (const key of ['drums', 'piano', 'guitar', 'mic']) {
+    // `null` means "leave the shipped default alone" — that is the check that
+    // what the app actually boots with is what was measured here.
+    if (gains[key] === null) continue;
+    eng.buses[key].gain.value = gains[key] ?? 0;
+  }
+  play(eng);
+  return off.startRendering();
+}
+
+const BEAT = 0.5; // 120 bpm
+const VOWEL = [[800, 5, 1], [1200, 7, 0.45]];
+
+// A phrase each instrument really plays, and a single gesture of it.
+const PHRASE = {
+  drums: (e) => {
+    for (let bar = 0; bar < 2; bar++) {
+      const b0 = bar * 4 * BEAT + 0.05;
+      e.kick(1, b0);
+      e.kick(0.8, b0 + 2 * BEAT);
+      e.snare(1, b0 + BEAT);
+      e.snare(1, b0 + 3 * BEAT);
+      for (let i = 0; i < 8; i++) e.hihat(false, i % 2 ? 0.42 : 0.7, b0 + i * BEAT / 2);
+    }
+  },
+  piano: (e) => {
+    [261.63, 329.63, 392.0, 493.88, 523.25, 392.0, 329.63, 261.63]
+      .forEach((f, i) => e.piano(f, 1, 0.05 + i * BEAT / 2, 0.45));
+    e.piano(130.81, 1, 0.05, 1.9);
+    e.piano(196.0, 1, 0.05, 1.9);
+    e.piano(261.63, 1, 2.05, 1.9);
+    e.piano(392.0, 1, 2.05, 1.9);
+  },
+  guitar: (e) => {
+    const C = [130.81, 164.81, 196.0, 261.63, 329.63, 392.0];
+    const G = [98.0, 123.47, 146.83, 196.0, 246.94, 392.0];
+    [0.05, 1.05, 2.05, 3.05].forEach((t, i) => {
+      e.strum((i % 2 ? G : C).map((f, s) => ({ freqHz: f, stringIndex: s, offsetMs: s * 22 })), 0.72, t);
+    });
+  },
+  mic: (e) => {
+    e.startVocal(329.63, VOWEL, 1, 0.05)?.stop(1.85);
+    e.startVocal(392.0, VOWEL, 1, 2.05)?.stop(3.85);
+  },
+};
+
+const SINGLE = {
+  drums: (e) => { e.snare(1, 0.05); },
+  piano: (e) => { e.piano(261.63, 1, 0.05, 1.6); },
+  guitar: (e) => {
+    e.strum([130.81, 164.81, 196.0, 261.63, 329.63, 392.0]
+      .map((f, s) => ({ freqHz: f, stringIndex: s, offsetMs: s * 22 })), 0.72, 0.05);
+  },
+  mic: (e) => { e.startVocal(329.63, VOWEL, 1, 0.05)?.stop(1.65); },
+};
+
+const BUSES = ['drums', 'piano', 'guitar', 'mic'];
+const params = new URLSearchParams(location.search);
+const gains = JSON.parse(params.get('gains')
+  || '{"drums":null,"piano":null,"guitar":null,"mic":null}');
+
+const report = { gains, phrase: {}, single: {}, band: null };
+
+for (const bus of BUSES) {
+  const solo = Object.fromEntries(BUSES.map((b) => [b, b === bus ? gains[bus] : 0]));
+  for (const [label, material] of [['phrase', PHRASE], ['single', SINGLE]]) {
+    const buf = await render(label === 'phrase' ? 4.8 : 2.6, solo, material[bus]);
+    const k = kWeighted(buf);
+    report[label][bus] = {
+      lufs: +integrated(k).toFixed(2),
+      momentary: +Math.max(...blockLoudness(k, 400)).toFixed(2),
+      peak: +peak(buf).toFixed(2),
+    };
+  }
+}
+
+// Everyone at once — the headroom check.
+const bandBuf = await render(4.8, gains, (e) => { for (const bus of BUSES) PHRASE[bus](e); });
+const bandK = kWeighted(bandBuf);
+report.band = {
+  lufs: +integrated(bandK).toFixed(2),
+  momentary: +Math.max(...blockLoudness(bandK, 400)).toFixed(2),
+  peak: +peak(bandBuf).toFixed(2),
+};
+
+document.getElementById('out').textContent = JSON.stringify(report, null, 1);
+window.__loudness = report;
+</script>

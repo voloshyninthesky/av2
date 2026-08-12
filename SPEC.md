@@ -140,7 +140,7 @@ stage's `localStorage` and its public signs, the visitor's rights and the PUODO 
 paragraph. Swapping in a cookie-based tool would change that and would change what this page
 owes its visitors.
 
-**Audio buses:** `drums` | `piano` | `guitar` | `mic` → master. Default guitar level **0.6** (40% quieter than the others). Every mixer fader displays **0–100%** and reaches a gain of 2.0 at 100%; defaults remain at 50% for drums, piano, and vocals, and 30% for guitar.
+**Audio buses:** `drums` | `piano` | `guitar` | `mic` → master. Every mixer fader displays **0–100%**, starts at **50%**, and reaches a gain of 2.0 at 100% — so 100% is *boosted*, not unity. **All four instruments must sound equally loud with every fader at its default**, which the raw synths do not: the engine applies a measured per-bus loudness trim (`AudioEngine.BUS_TRIM`) under the fader, so a fader position means the same thing on every bus. Balance is verified as K-weighted loudness (BS.1770) of a realistic phrase per instrument, measured through the full chain including the master compressor: the four phrases must land within **~2 dB** of each other and the whole band playing at once must peak **below 0 dBFS**. Retuning a synth's own level means re-measuring and changing its trim, not its default.
 
 ### Audio activation and external media
 

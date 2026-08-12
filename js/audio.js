@@ -6,11 +6,35 @@ export class AudioEngine {
   static BUS_KEYS = ['drums', 'piano', 'guitar', 'mic'];
   static BUS_LEVEL_MAX = 2;
 
+  /**
+   * Per-bus loudness calibration, applied *under* the mixer fader:
+   * `bus.gain = BUS_TRIM[bus] * levels[bus]`.
+   *
+   * The synths were written one at a time and their peaks were never
+   * comparable — measured through this exact chain (master → compressor,
+   * K-weighted BS.1770, one realistic phrase per instrument), the four buses
+   * came out at −5.8 / −16.6 / −20.2 / −27.7 LUFS. The piano was 22 dB over
+   * the voice and clipped the output on a two-note chord, and the voice was
+   * inaudible under anything.
+   *
+   * With these trims the same phrases land within ~1.5 dB of each other
+   * (momentary −15.3 … −16.6 LUFS) and the whole band peaks at −0.9 dBFS,
+   * so nothing clips. The drums are the reference: their transients already
+   * sat at the ceiling, so everyone else came down to meet them.
+   *
+   * The point of doing it here rather than in the defaults is that the fader
+   * keeps meaning one thing for every instrument: 50% is the calibrated
+   * level, 100% is +6 dB on it. Retune a synth's peak → re-measure and
+   * change the trim, not the default.
+   */
+  static BUS_TRIM = { drums: 1, piano: 0.15, guitar: 0.45, mic: 2.8 };
+
   constructor() {
     this.ctx = null;
     this.master = null;
     this.buses = { drums: null, piano: null, guitar: null, mic: null };
-    this.levels = { drums: 1, piano: 1, guitar: 0.6, mic: 1 };
+    // Every fader starts at 50%; the balance between the buses is BUS_TRIM's job.
+    this.levels = { drums: 1, piano: 1, guitar: 1, mic: 1 };
     this.muted = false;
     this._noise = null;
     this._ksCache = new Map();
@@ -51,7 +75,7 @@ export class AudioEngine {
 
     for (const key of AudioEngine.BUS_KEYS) {
       const bus = this.ctx.createGain();
-      bus.gain.value = this.levels[key];
+      bus.gain.value = this._busGain(key);
       if (key === 'guitar') {
         // Compact acoustic-body colour: a low shelf into two broad resonances.
         const bodyLow = this.ctx.createBiquadFilter();
@@ -371,6 +395,11 @@ export class AudioEngine {
     return this.levels[kind] ?? 1;
   }
 
+  /** What the fader asks for, times what the instrument needs to match the rest. */
+  _busGain(kind) {
+    return (this.levels[kind] ?? 1) * (AudioEngine.BUS_TRIM[kind] ?? 1);
+  }
+
   setLevel(kind, value) {
     if (!AudioEngine.BUS_KEYS.includes(kind)) return;
     const level = Math.max(0, Math.min(AudioEngine.BUS_LEVEL_MAX, Number(value)));
@@ -378,7 +407,7 @@ export class AudioEngine {
     if (this.buses[kind] && this.ctx) {
       const t = this.ctx.currentTime;
       this.buses[kind].gain.cancelScheduledValues(t);
-      this.buses[kind].gain.setValueAtTime(this.levels[kind], t);
+      this.buses[kind].gain.setValueAtTime(this._busGain(kind), t);
     }
     if (kind === 'mic' && this.levels.mic <= 0.001) {
       for (const voice of [...this._activeVocals]) voice.cancel?.();

@@ -124,6 +124,33 @@ test('instrument bus levels support the boosted mixer ceiling', () => {
   assert.equal(engine.getLevel('piano'), 2);
 });
 
+test('every fader starts at the same place — the balance is the trim', () => {
+  const engine = new AudioEngine();
+
+  for (const key of AudioEngine.BUS_KEYS) {
+    assert.equal(engine.getLevel(key), 1, `${key} should default to the 50% fader`);
+    assert.ok(AudioEngine.BUS_TRIM[key] > 0, `${key} needs a measured loudness trim`);
+  }
+});
+
+test('the fader is scaled by the bus loudness trim', () => {
+  const engine = new AudioEngine();
+  const written = [];
+  engine.ctx = { currentTime: 0 };
+  engine.buses.mic = {
+    gain: {
+      cancelScheduledValues() {},
+      setValueAtTime: (value) => written.push(value),
+    },
+  };
+
+  engine.setLevel('mic', 1);
+  assert.equal(written.at(-1), AudioEngine.BUS_TRIM.mic);
+
+  engine.setLevel('mic', 0.5);
+  assert.equal(written.at(-1), 0.5 * AudioEngine.BUS_TRIM.mic);
+});
+
 test('an advancing context clock remains healthy', () => {
   const engine = new AudioEngine();
   engine.ctx = { state: 'running', currentTime: 5 };
