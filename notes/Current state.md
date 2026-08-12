@@ -10,13 +10,14 @@ delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-`main` is on **`20260813-07`** and 123 Node tests pass. **Neither surface is confirmed on it
-yet** — the drums work below was just pushed, so run the curls before believing anything about
-production or the VPS preview `vibe2.ton.zone` (last known release `20260812T135148Z`).
+`main` is on **`20260813-07`** and 123 Node tests pass. **Production is confirmed on it**
+(curled after the deploy run, along with `js/play/rhythm.js` and `js/play/groove.js` both
+`200`). The VPS preview `vibe2.ton.zone` is **still on `20260813-06`** — it is pinned to
+release `20260812T135148Z` and needs its own release to move, which has not been cut.
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-07
-curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # preview should match
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # 20260813-07 ✓
+curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # 20260813-06, behind
 ```
 
 A green Actions run is still not proof — the curl is, because the run can succeed while the
