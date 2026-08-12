@@ -49,6 +49,8 @@ Six suites, no dependencies:
 | `guitar-chords.test.mjs`     | Every generated chord voicing sounds its own chord tones        |
 | `chord-wheel.test.mjs`       | The circle of fifths: rotation, relative minors, diatonic degrees and sevenths, piano voicings |
 | `emissive-highlight.test.mjs`| Hover glow not leaking through shared materials                |
+| `touch-guards.test.mjs`      | The one-shot ghost-click swallower and the double-tap predicate |
+| `mascot-gift.test.mjs`       | The gift draw — tiers, pools, and the one-time gate → [[Mascot]] |
 | `site-meta.test.mjs`         | Analytics tag, `404.html` shipping, funnel hooks, minified three |
 
 `audio-lifecycle` asserts on **source text** rather than running anything: it reads across

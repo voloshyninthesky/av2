@@ -31,7 +31,7 @@ The last two are the **only** JS the static lesson pages load. Everything else i
 | `js/scene/`        | Procedural textures, stage geometry, lighting, backdrop screen + slideshow, particles    |
 | `js/instruments/`  | Procedural drums / piano / guitar / mic meshes and their shared materials                |
 | `js/mascot/`       | Appearance, poses, walk collision, gift draw + reveal, per-frame update → [[Mascot]]     |
-| `js/play/`         | Vibe meter, loop pedal, guitar play, pads, piano notes, mixer, shared performance state  |
+| `js/play/`         | Vibe meter, loop pedal, guitar play, chord wheel + harmony, vocal pad, piano notes, mixer, shared performance state |
 | `js/shell/`        | Post-processing probe, intro flow, headless QA hooks                                     |
 
 ## The heavy files worth knowing about
@@ -58,8 +58,10 @@ play is deliberately allowed in *every* phase ([[SPEC]] §5).
 
 - `js/core/prices.js` (52) — the **single** fetch of `prices.json`; mixer and chips share it
 - `js/core/gesture-guards.js` (80) — double-tap predicate + one-shot ghost-click swallower. **Imports nothing on purpose**: that is what makes it reachable from `ui.js`, `view/` and `core/` alike without an upward import, and loadable under `node --test`
-- `js/play/state.js` (47) — what is held down on every input route
-- `js/core/camera-mode.js` (62) — the Вільна / Не дуже preference (Вільна default), its storage and its mixer row. `rig.js` and the follow spring read it; `main.js` injects what to re-apply on change, since `core/` cannot import `view/`
+- `js/play/state.js` (48) — what is held down on every input route
+- `js/play/harmony.js` (295) — the chord library and the circle of fifths, as plain data: 12 roots × 7 qualities, the two modes, and the piano voicings. **Imports nothing on purpose**, which is what lets the node tests load it for real → [[Dev workflows]]
+- `js/play/chord-wheel.js` (610) — the circle-of-fifths surface both guitar and piano read chords from: SVG geometry, pointer/touch, key + mode state. A wedge *arms* on guitar and *sounds* on piano
+- `js/core/camera-mode.js` (63) — the Вільна / Не дуже preference (Не дуже default — [[SPEC]] § Камера is the source of truth), its storage and its mixer row. `rig.js` and the follow spring read it; `main.js` injects what to re-apply on change, since `core/` cannot import `view/`
 - `js/core/telegram.js` (45) — Telegram Mini App detection and touch claiming
 - `js/view/emissive.js` (31) — hover glow; had a bug where glow stuck to shared materials (`7949b11`)
 - `js/shell/qa-hooks.js` (112) — `__THREE_GAME_TEST_HOOKS__`, the only way to drive the stage headlessly → [[Gotchas]]

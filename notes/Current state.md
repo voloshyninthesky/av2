@@ -10,31 +10,51 @@ delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**The chord pad became a wheel** (`48bb64e`, [[Decisions]] "The chord pad became a wheel, and
-the wheel does not scatter"). The six-slot guitar-only pad is gone; a circle-of-fifths wheel
-now serves both guitar (arms a chord, silent) and piano (sounds the chord and depresses the
-voiced keys). New `js/play/harmony.js` (imports nothing) and `js/play/chord-wheel.js`; 84
-Node tests pass, 11 new.
-
-`45d8706` then sat the wheel in the bottom corner (almost touching ✕), shrank its hub to the
-smallest circle its controls fit in — wedge thickness ~35 px at 320×568, ~44 px on a typical
-phone — capped its width by what the right-hand control column needs rather than a flat
-`78vw`, and gave **mobile guitar focus one further zoom step** inside its measured fit.
-
-**Live on both surfaces, verified rather than assumed.** Production `artvibe.com.pl` (Pages
-run succeeded in 17 s) and VPS preview `vibe2.ton.zone` release `20260812T115855Z` — previous
-release in `/var/www/vibe2.ton.zone/.previous-release-for-rollback`, prior nginx confs saved
-as `.bak.<stamp>`. Confirmed by headless load of production: scene boots, wheel opens on
-guitar focus with 24 wedges / 6 lit, one cache stamp across every module loaded, no console
-errors beyond the ad-blocker eating GoatCounter.
+Working tree clean, `main` pushed, and **both surfaces are on `20260813-06`** — production
+`artvibe.com.pl` and the VPS preview `vibe2.ton.zone` (release `20260812T135148Z`). 98 Node
+tests pass.
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect v=20260813-02
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-06
 curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # preview should match
 ```
 
 A green Actions run is still not proof — the curl is, because the run can succeed while the
 CDN serves the previous build.
+
+**The mascot became a gift** (`3910ca2` → `685e383`, [[Decisions]] "The mascot became a gift,
+not a wardrobe", [[Mascot]]). The dressing-room editor is retired: an egg hatches on the
+fly-in and hands the visitor a drawn character with a rarity tier. Every character is a
+**Вайбер** and the tier reads as a species epithet; the reveal card absorbed the onboarding
+tip, and walking off the stage lip hatches a new one instead of scolding you. `js/mascot/
+editor.js` is gone in favour of `gift.js` + `reveal.js`.
+
+**The chord pad became a wheel** (`48bb64e` → `896c52a`, three [[Decisions]] entries). The
+six-slot guitar-only pad is gone; a circle-of-fifths wheel now serves **both** guitar (a wedge
+*arms*, silently — the neck still sounds it) and piano (a wedge *sounds* the chord and
+depresses the keys it voices). New `js/play/harmony.js`, which imports nothing so the tests can
+load it for real, and `js/play/chord-wheel.js`. What to remember:
+
+- **A close-up owns the keyboard.** Outside one the multi-instrument jam is unchanged; inside
+  one only that instrument's keys answer. This *reversed* a §12 acceptance criterion — focusing
+  the piano must now silence the drum, vocal and strum keys, where it previously must not have.
+- **The chord row is `1`–`7` in a close-up**, counting scale degrees, so `1` is the tonic in
+  either mode. Away from one it falls back to `Q W E R T Y U`, because the digits are already
+  the piano's white keys there. Strum is `↓` / `↑` (Space and Shift+Space still work).
+- **Keys can be minor**, toggled by tapping the key readout itself (`C` ↔ `Am`). A relative
+  pair shares its six wedges *and* its sevenths, so mode is one stored field rather than a
+  second set of chords.
+- The library is **84 chords** (12 roots × 7 qualities): `dim` and `m7b5` exist because degree
+  7 of a major key and degree 2 of a minor one are diminished. Neither has a wedge — a
+  diminished chord is neither a major nor a relative minor — so six of the seven degrees light
+  and the seventh is reachable only from the row.
+
+**A warning this session earned the hard way.** `3910ca2` (a parallel session) overwrote
+`notes/Decisions.md` and `notes/Module map.md` from a stale copy, deleting all three
+chord-wheel entries and both new module lines. They were restored from `f8f7fa0`. **The vault
+is edited by more than one session at a time — reread a note immediately before writing it,
+and check `git show <commit> -- notes/` after any large feature lands**, because nothing in
+the tests or the build catches a note that quietly lost a section.
 
 **Also landed 2026-08-11: the Polish mirror** (`f61d9c0`). `/pl/` carries the hub, the four
 lesson pages and a RODO notice on Polish slugs, deliberately `noindex` so it cannot compete
@@ -137,11 +157,18 @@ fault. → [[Dev workflows]]
 
 ## Recently landed
 
-Newest first (see [[Decisions]] for the reasoning). All live on `main`; `ee67aeb` was still
-deploying to Pages when this was written, but is up on the VPS preview.
+Newest first (see [[Decisions]] for the reasoning). All live on `main` and on both surfaces.
 
 | Commit    | Change                                                        |
 | --------- | ------------------------------------------------------------- |
+| `685e383` | Falling off the stage hatches a new Вайбер instead of scolding |
+| `883273c` | Every character is a Вайбер; onboarding folded into the reveal |
+| `499638f` | Camera no longer lurches when the gift card closes            |
+| `3910ca2` | Mascot wardrobe retired for a one-time gift reveal            |
+| `896c52a` | Chord row counts scale degrees `1`–`7`; keys can be minor      |
+| `0ce3cca` | A close-up owns the keyboard; piano chord row plays the piano |
+| `45d8706` | Wheel to the bottom corner, smaller hub, mobile guitar zoom   |
+| `48bb64e` | Six chord slots replaced by a shared circle-of-fifths wheel   |
 | `ee67aeb` | Touch activation: dropped HUD taps, latched `:hover`, ГРАТИ ghost click |
 | `f61d9c0` | Polish mirror under `/pl/`, deliberately `noindex`            |
 | `ea67b5f` | Telegram removed from the signs feature entirely              |
@@ -214,7 +241,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
 
 ## Health
 
-- Seven test suites, 73 tests, all dependency-free: `node --test tests/*.test.mjs` →
+- Nine test suites, 98 tests, all dependency-free: `node --test tests/*.test.mjs` →
   [[Dev workflows]]. Every one of them guards something that fails *silently* in a running
   app: `site-meta.test.mjs` covers a missing analytics tag, a `404.html` the deploy workflow
   forgets to copy, a funnel hook that stops being called, an unguarded `:hover`, and a

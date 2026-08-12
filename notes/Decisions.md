@@ -12,6 +12,139 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The chord row counts, and a key can be minor — 2026-08-13
+
+Two changes that turned out to be one.
+
+**The row is `1`–`7` in a close-up, and the number is the scale degree.** Letters were
+considered again — press `C` for the C chord — and the objection that killed them in 2026-08-06
+really had gone away: the row now holds one key's diatonic chords, so a root letter no longer
+collides with itself. What killed them the second time is the piano, whose close-up spends
+`A S D F G H J K L` on white notes and `W E T Y U O` on blacks; there is no letter left to
+name a chord with. A digit has no such problem, reads as the degree it *is*, and — because
+focus made the keyboard exclusive — is free in both close-ups. Away from a close-up the digits
+are still the piano's white keys, so the letter row keeps the chords there.
+
+That bought the seventh degree, which the six-slot row never had room for. It also cost two new
+chord qualities: **`dim` and `m7b5`**, because degree 7 of a major key and degree 2 of a minor
+one are diminished. The library is 84 chords now, and neither of those two has a wedge —
+a diminished chord is neither a major nor a relative minor, so the circle of fifths has nowhere
+to put it. Six of the seven light; the seventh is reachable only from the row.
+
+**A key can now be minor**, and it costs almost nothing, because a major key and its relative
+minor are the same seven notes. They light **the same six wedges** and take **the same
+sevenths** — asserted in the tests, not assumed. All that changes is which wedge is home
+(outer in major, inner in minor, marked with a gold outline), what the degrees are called, and
+where the row starts counting. So mode is one field, not a second set of chords.
+
+The mode control is the key readout itself: tapping `C` makes it `Am`. The hub is 79 px across
+on a 320 px phone and already holds a stepper and a 7 toggle; a third pill does not fit, and
+the readout already spells the answer. Switching moves the tonic to the *relative* key rather
+than the same letter, so the sector under your hand does not move — which is what a musician
+means by "the relative minor".
+
+One more thing the phone forced: everything in the hub is sized as a fraction of the wheel now.
+Fixed pixel controls fill the hub at exactly one wheel size and leave a hole at every other,
+and portrait has the larger wheel — which is why the core looked empty there after it had been
+tightened on desktop.
+
+---
+
+## A close-up owns the keyboard — 2026-08-13
+
+The jam surface was written for a visitor standing in the middle of the stage: every
+instrument on disjoint hotkeys, focus optional ([[SPEC]] §1 goal 2). Inside a close-up that
+same rule reads as a bug. You walk to the piano, sit down, and the drum row still fires, the
+strum keys still strum, and the piano's own chord row — this is the part that was actually
+broken — **armed a guitar chord and strummed the guitar**, because the "unfocused, so also
+strum" branch tested only whether the *guitar* was focused. Measured: `guitarStrokeMotion`
+0.85, zero piano keys moving. The instrument in front of you was the one thing the keyboard
+would not play.
+
+So focus now makes the keyboard exclusive: outside a close-up nothing changes, inside one
+only that instrument answers. The jam survives where it was designed to live, and the goal it
+serves is intact — it just stops leaking into a decision the visitor already made.
+
+What fell out of it:
+
+- **The piano's chord row plays piano chords**, routed through the wheel's own
+  `pressPianoChord` rather than around it, so a key and a wedge voice, roll, press the same
+  meshes and capture into the loop identically. Chords under the left hand on `1–6`, melody
+  under the right on `A–L`, which is the first time the close-up has been a two-handed
+  instrument.
+- **The chord row is the one map two instruments share**, because the wheel is shared. It
+  answers under guitar and piano focus and goes quiet under drums and mic. Everything else
+  is one instrument's.
+- **Strum moved to `↓` / `↑`.** Alternating strokes were `Space` and `Shift+Space`, a held
+  modifier in the middle of a rhythm. Adjacent arrows make it two fingers. The arrows were
+  free for the same reason the whole keyboard is: mascot movement has no keyboard binding.
+- **The legend follows the mode.** `#keys-hint` listed the full jam map everywhere, so in a
+  close-up it advertised keys that no longer answer. One `<span>` per mode, swapped in CSS off
+  `data-instrument` — no JS, and the Ukrainian stays in `index.html` with the rest of the copy.
+  It also stopped being hidden outright at the piano; that rule existed because the long jam
+  list crossed the keybed in short landscape windows, and a per-instrument line is a fraction
+  of its width, so it now stands down only there.
+
+The reversed acceptance criterion is worth knowing about: §12 used to require that "focusing
+piano must not silence drums / vocal / guitar keyboard routes". It now requires the opposite
+inside a close-up, and the old guarantee survives only outside one.
+
+---
+
+## The chord pad became a wheel, and the wheel does not scatter — 2026-08-13
+
+Six slots was the wrong unit. Choosing which six chords you own is a *settings* task, and it had
+grown a settings UI inside a play surface: a ✎ mode, a quality × root picker, per-slot storage.
+The ✎ mode only existed because *holding* a button was already the play gesture and could not be
+given a second meaning — so deleting the slots deleted the reason for the mode along with it.
+
+The replacement is a **circle of fifths**, and the argument for it is one geometric fact: with the
+tonic at 12 o'clock, a key's six chords are **three neighbouring positions on the outer ring with
+their relative minors directly inside** — `IV I V` over `ii vi iii`. One contiguous block, the
+same six places in all twelve keys. Which chords belong together becomes visible before it is
+nameable, which six free slots could never show however well they were chosen.
+
+Consequences worth knowing:
+
+- **The wheel turns; the block stays.** Stepping the key rotates the ring group and counter-rotates
+  the labels. Seeing the tonic travel to the top is what makes "a fifth" a distance rather than a
+  word — and it is the same step `‹ ›`, `[` and `]` take.
+- **The key is a stepper, not a drag.** Dragging the ring is the same gesture as holding a wedge to
+  play it, and a finger drifting during a hold would spin the key out from under the chord. This
+  surface has learned that lesson once already (see ✎, above).
+- **The seventh rule is one sentence and the diatonic answer falls out of it.** `maj7` on I and IV,
+  `7` on V, `m7` on the minors; outside the key a major takes `7` and a minor `m7`, which is what a
+  borrowed chord gets reached for. Nothing is special-cased, so the test asserts the general rule
+  and gets the specific one free.
+- **Degrees restored the mnemonic that generated names destroyed.** `Q W E R T Y` addressed slot
+  *positions* because `C`, `Cm`, `C7`, `Cm7` and `Cmaj7` all start with `C` (the mnemonic-key
+  attempt below, reverted the same day). A degree is a name that survives the chord changing under
+  it, so `Q` is the tonic in every key.
+- **Radial thickness, not arc, is the touch target.** A 30° wedge is ~50–60 px across its arc at
+  every size; what a fingertip misses is the band's thickness. That is why the hub is only 42 % of
+  the radius: every point it gives back goes to the rings, which come out ~35 px on a 320×568 phone
+  instead of ~27 px. The honest cost is that the wheel is roughly four times the pad's footprint,
+  and on the smallest phone it is half the screen height.
+- **The same wedge means two things, and that follows from the instruments.** On guitar it only
+  *arms* — the neck makes the sound, so holding and latching stay silent. On piano it *plays*, and
+  presses the voiced key meshes, because there is no second surface to strike; it is therefore
+  momentary and never latches, since a latched piano chord would sustain forever.
+- **The piano chord pad that was built and cut before shipping is back** (see 2026-08-06, below) —
+  but shared with the guitar rather than piano-only, and it depresses the keys instead of
+  highlighting them. A highlight was decoration; a chord that moves four keys under one finger is
+  the connection between the wheel and the instrument.
+- **`harmony.js` imports nothing on purpose.** That is what lets `node --test` load it through a
+  `data:` URL and check all 60 chords, all 24 wedges in all 12 keys, and every piano voicing for
+  real — retiring the source-slicing hack the chord tests used to need. A wrong wheel is
+  silent-but-wrong in exactly the way a wrong barre shape is.
+
+Two things moved out of the way rather than being redesigned: the onboarding tip now rides the
+existing `html.pads-open` rule to the top of the screen (the wheel is big enough to swallow it),
+and `view/mobile-controls.js` stopped importing `play/pads.js` upward — `hideChordWheel` is
+injected from `main.js` like every other back-reference.
+
+---
+
 ## The mascot became a gift, not a wardrobe — 2026-08-12
 
 The dressing-room editor asked the visitor to author a character before they had any reason
