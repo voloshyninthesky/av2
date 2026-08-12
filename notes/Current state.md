@@ -1,49 +1,35 @@
 ---
 tags: [status]
-updated: 2026-08-11
+updated: 2026-08-12
 ---
 
 # Current state
 
-Snapshot as of **2026-08-11**. This is the one note that goes stale by design — update it or
+Snapshot as of **2026-08-12**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-**Touch activation was unreliable on phones, and `ee67aeb` fixes four separate causes of
-it.** Reported as "click detection is not always working, mostly the HUD, and sometimes the
-button just selects". The reasoning is in [[Decisions]]; the short version of what to
-remember:
+**The chord pad became a wheel** (`48bb64e`, [[Decisions]] "The chord pad became a wheel, and
+the wheel does not scatter"). The six-slot guitar-only pad is gone; a circle-of-fifths wheel
+now serves both guitar (arms a chord, silent) and piano (sounds the chord and depresses the
+voiced keys). New `js/play/harmony.js` (imports nothing) and `js/play/chord-wheel.js`; 84
+Node tests pass, 11 new.
 
-- **`preventDefault()` on a `touchend` suppresses the synthesized `click`.** The
-  double-tap-zoom blocker kept one document-wide timestamp and cancelled any touchend
-  within 320 ms of the previous one *anywhere on the page* — and the whole HUD is bound to
-  plain `click`. A tap after a joystick release or another HUD tap was simply dropped. A
-  blanket `touchend` blocker and a `click`-bound UI cannot coexist.
-- **Every `:hover` rule now lives under `@media (hover: hover)`.** iOS applies `:hover` on
-  tap and holds it until the next tap elsewhere, so a HUD icon latched gold and lifted and
-  a panel ✕ stayed rotated 90° — chosen-looking, not fired. `:focus-visible` halves stayed
-  outside the query. **A new `:hover` added without the guard is now a test failure**, which
-  is the only durable fix: nobody files a stuck highlight.
-- **`.panel *  { user-select: text }` was applying to buttons too**, so a press with a little
-  drag highlighted a control's label in purple instead of firing it. Prose stays copyable;
-  controls are excluded, and the `selectstart` guard in `pointer.js` re-claims them.
-- **The ГРАТИ guard from `4c29cc7` had a hole** — two disagreeing windows (700 ms on ГРАТИ,
-  500 ms on ✕) that never cleared once seated. Replaced by one one-shot click swallower in
-  the new `js/core/gesture-guards.js`, which self-clears on the click it ate and lets a real
-  keyboard Enter (`detail === 0`) through. The same shape replaced the price chip's flat
-  400 ms guard, which had been eating the visitor's *next* deliberate tap.
+**Deployed to the VPS preview — verified live, not just green.** `vibe2.ton.zone` release
+`20260812T114213Z`, previous release recorded in
+`/var/www/vibe2.ton.zone/.previous-release-for-rollback` and the prior nginx confs saved
+alongside as `.bak.20260812T114213Z`. Confirmed via headless load of
+`https://vibe2.ton.zone/stage/?testhooks=1&headless=1`: scene boots, the wheel opens on
+guitar focus with 24 wedges / 6 lit in key, `curl` shows `stage/` serving `v=20260813-01`.
 
-`js/core/gesture-guards.js` **imports nothing on purpose** — that is what keeps it reachable
-from `ui.js`, `view/` and `core/` alike without an upward import, and loadable under
-`node --test` → [[Module map]], [[Architecture]].
+```bash
+curl -s https://vibe2.ton.zone/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect one stamp, v=20260813-01
+```
 
-**Verified by tests and by reading, not on a phone.** 73 Node tests pass and the build is
-live on the VPS preview, but the agent pane has no touch input and reports
-`document.hidden` ([[Gotchas]]), so **a human thumb on a real device is pending.** The two
-cases most worth trying: release the joystick then immediately tap a HUD icon; and stand the
-mascot exactly on an instrument's walk point (so the approach seats synchronously) before
-tapping ГРАТИ and then ✕.
+**Not pushed to `main` on GitHub, so `artvibe.com.pl` (GitHub Pages) is still on the previous
+build.** The commit exists locally only — pushing triggers `deploy-pages.yml` against the
+production custom domain, which is a separate decision from shipping the VPS preview.
 
 **Also landed 2026-08-11: the Polish mirror** (`f61d9c0`). `/pl/` carries the hub, the four
 lesson pages and a RODO notice on Polish slugs, deliberately `noindex` so it cannot compete
