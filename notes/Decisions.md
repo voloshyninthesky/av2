@@ -12,6 +12,129 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The voice stopped being five buttons — 2026-08-13
+
+Vocals was the last hard-coded instrument on the stage. Its five pitches lived as
+`data-vocal-freq` attributes in `stage/index.html`, frozen in C major, ignoring whatever key
+the chord wheel was in — and [[SPEC]] said so out loud: the two wheels "share their dock …
+mic neither". It was the position drums held before the groove wheel, except drums at least
+had the best mesh in the repo.
+
+**The axis that was left.** The chord wheel owns pitch relationships and the groove wheel owns
+time. The third is the voice's own — continuous pitch and vowel — and it is the one no other
+instrument here can claim. Every other thing on this stage is quantised by its own
+construction: frets, keys, drum heads. **The voice is the only continuous instrument on it**,
+and a grid of buttons is the wrong unit for a thing that slides between notes and changes
+shape while it holds. That is the same objection that retired the six chord slots.
+
+**A field, not a third wheel.** Pitch is linear — a voice has a top and a bottom — so wrapping
+it on a circle would claim an octave equivalence that singing a line does not have. The
+surface is a rounded square in the same dock, at the same size tokens, so `focus-frame.js`'s
+reserve covers all three without knowing which is showing.
+
+**The synth was already right and did not know it.** `startVocal()` was two oscillators
+through **two bandpass formant filters** — exactly a voice — and then froze them: three
+hard-coded vowels picked by `vowel % 3`, and `osc.frequency.value = freq` set once and never
+ramped. Both are `AudioParam`s. Ramping them *is* the feature; the whole audio change is
+`setPitch` / `setVowel` on the returned voice, plus a breath layer (the voice was the only
+instrument with no noise component) and a vibrato that arrives over 0.9 s instead of being
+switched on with the note.
+
+**The vowel table moved out of `audio.js`, and that is not tidying.** `startVocal` now takes
+the two `[frequency, Q, gain]` peaks directly; which vowel they are lives in `js/play/voice.js`,
+zero imports, for `harmony.js`'s reason — a wrong formant still makes a sound, just not the
+vowel on the label. Note the plan's other idea, splitting the vocal synth into its own module,
+is **not possible**: `tests/audio-lifecycle.test.mjs` loads `js/audio.js` through a `data:` URL,
+which only works because that file imports nothing. Moving the table out was the reduction
+actually available, and it is the better one anyway.
+
+**The detent is the whole reason a continuous axis is playable.** It bends the pitch towards
+the notes of the key without ever quantising: flat where a singer means the note, steep
+between. Three properties make it an axis rather than a filter, and all three are asserted in
+Node across twelve keys and both modes — it is **monotonic** (dragging up never lowers the
+pitch, which would read as the surface being broken), it never pushes *away* from or *past*
+the nearest note, and both an in-key note and the midpoint between two of them are **fixed
+points**, so no pitch becomes unreachable however hard it pulls. Strength itself is a feel
+number, set by ear; the test only holds it inside the window it was tuned in.
+
+**The key became the stage's.** It was private to `chord-wheel.js`, which was fine while that
+was the only surface with one. A second surface needing a tonic makes two of them able to
+disagree, and a vocal line over your own chord loop would be out of tune with nothing on
+screen saying why. `js/play/key.js` owns the value, the storage and a listener list; both
+surfaces read it and either stepper moves it. Storage keeps the wheel's original key name, so
+a visitor who already chose a key keeps it.
+
+**The instrument is the notation, again.** The mic's stand was already a pitch axis — its
+three tap zones climb it in pitch order — so the head now lifts with the note instead of only
+nodding that a note happened, and those zones carry scale *degrees* rather than frequencies
+(`instruments/` sits below `play/` and cannot know the key). The mascot's mouth opens with the
+vowel, using the three carved mouths it already has. That one is an **override**, restored to
+the gifted character's own smile on release and never persisted — and it is deliberately not
+on the 120 ms pulse timer with `mic.sing()`, because at 120 ms it visibly lagged the drag.
+
+**A sung line is a shape, so the loop event had to grow one.** `glide` is a list of
+`[t, midi, vowel]` breakpoints, decimated as they are recorded rather than afterwards. The
+decimation cursor lives on the *capture*, not the finger, because the loop pedal can open a
+take part-way through a phrase and that take's clock starts at its own first note. A steady
+note collapses to **no `glide` key at all**, which is what keeps every pre-ribbon take and
+every keyboard vocal byte-for-byte what it was.
+
+Two things that were considered and are **not** here. **Real microphone input** — the biggest
+payoff for a vocal school's site, and a separate decision: a permission prompt on a marketing
+page, iOS quirks, feedback howl, and a fallback owed to everyone who declines. The ribbon does
+not block it. And **"draw a melody, then hear it"** — that separates the gesture from the
+sound in time, which is exactly what the groove wheel's rejected silent mode did.
+
+**A drag is not a press, and the listeners have to know that.** The first cut bound
+`pointermove` / `pointerup` to the field, copying the wheels. A wedge is pressed and released
+in one place so that is correct for them; a sung line is a *drag* across a 236px square, and
+the finger leaves it constantly. Off the element the note stopped tracking, and then released
+somewhere else entirely — so `pointerup` never reached the module and the note sustained until
+the ten-second safety timer. Pointer *capture* is supposed to prevent this and is why the
+wheels get away with it, but capture is explicitly allowed to fail here, and on that path
+there was nothing underneath it. Move, up, cancel and `blur` now all bind to the **window**,
+filtered by pointer id. → [[Gotchas]]
+
+Two more from the same report. The field's `touchend` `preventDefault` was copied from the
+pad, where it suppressed a 48px button's synthesized click; on a `touch-action: none` drag
+surface it does nothing except log an intervention whenever the event is not cancelable.
+Neither wheel has one. And **Q is no longer ramped** with the rest of the vowel: re-solving a
+biquad's resonance a hundred times a second rewrites the filter's coefficients under a signal
+already ringing inside it, and it buys nothing, because what tells two vowels apart is where
+the peaks are, not how sharp they are. The breath layer went the same way: it decays to actual
+silence rather than holding at a trace, because a trace under a long note is a hiss.
+
+**A finger and a recording want opposite things from an AudioParam.** A recorded breakpoint has
+to *arrive* at an exact time, so it cancels and ramps. A finger has no arrival time — it just
+moves — and giving it the same treatment meant cancelling and re-aiming an in-flight ramp every
+frame at `currentTime`, a moment the audio thread has already rendered. `setTargetAtTime` is
+the automation built for a control that is being moved: no cancellation, starts from wherever
+the value is, continuous by construction. The live path uses it; only scheduled breakpoints
+still ramp.
+
+**Vibrato is in cents now, not hertz.** A constant ±5.5 Hz was survivable across five fixed
+notes and is not across nineteen semitones: it is ±36 cents at the bottom of the ribbon's range
+and ±12 at the top, three times as deep on a low note as a high one. Deep pitch modulation
+through a resonant formant also becomes *amplitude* modulation — measured at 19 dB of level
+wobble on a note that was not moving at all. Cents keep it even, and 18 of them is a singer's
+vibrato. Low-note wobble measured 19 dB → 16 dB and worst frame-to-frame step 7.7 dB → 3.5 dB.
+
+**Honest limit on all three.** They were reported as crackling while swiping the vowel axis,
+and that symptom **could not be reproduced in the browser pane**. What the measurements *do*
+say is that it is not what it looks like: a held note scores a slightly worse sample-to-sample
+discontinuity than a swept one (0.382 vs 0.337) and a worse level range (19 dB vs 17.4), the
+audio clock never lags the wall clock by more than 3 ms even at 120 synthetic moves per frame,
+and nothing clips. So movement is not adding discontinuity and there are no dropouts. The three
+changes above are defensible on their own terms; none is proven against the symptom.
+
+One wart fixed on the way: `releaseHeldVocal()` used to re-show the pad with a 7.6 s auto-hide,
+so the surface vanished while you were still standing at the mic. Neither wheel does that and
+the ribbon does not either.
+
+→ [[Audio]], [[Gotchas]], [[Module map]], [[Current state]]
+
+---
+
 ## The bar became a wheel, and the kit stopped playing itself — 2026-08-13
 
 Drums was the richest mesh in the repo and the thinnest instrument: no `play/` module at all,

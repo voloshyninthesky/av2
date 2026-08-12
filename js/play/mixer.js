@@ -4,16 +4,19 @@
 // fader is also the app's "sound is broken, fix it" affordance: it can rebuild
 // a stalled audio context and restore what was playing.
 // ============================================================
-import { AudioEngine } from '../audio.js?v=20260813-08';
-import { ui, audio, mic } from '../core/studio.js?v=20260813-08';
-import { play } from './state.js?v=20260813-08';
-import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260813-08';
+import { AudioEngine } from '../audio.js?v=20260813-09';
+import { ui, audio, mic } from '../core/studio.js?v=20260813-09';
+import { play } from './state.js?v=20260813-09';
+import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260813-09';
 import {
   stampHeldLoopCaptureDuration,
   beginHeldLoopCapture,
   finishHeldLoopCapture,
-} from './pads.js?v=20260813-08';
-import { VOCAL_KEYS } from './piano-notes.js?v=20260813-08';
+} from './pads.js?v=20260813-09';
+import { degreeMidi, freqFromMidi } from './harmony.js?v=20260813-09';
+import { stageKey } from './key.js?v=20260813-09';
+import { VOICE_LOW_MIDI, axisAtPitch, vowelAt } from './voice.js?v=20260813-09';
+import { VOCAL_KEYS } from './piano-notes.js?v=20260813-09';
 
 // Recovering audio has to re-arm whatever the visit had going; the intro flow
 // owns those snapshots and main.js owns the jam gate.
@@ -37,9 +40,8 @@ function silenceHeldVocal() {
   play.heldVocalPulseTimer = null;
   finishHeldLoopCapture();
   audio.stopVocal(play.heldVocal);
-  play.heldVocalButton?.classList.remove('playing');
   play.heldVocal = null;
-  play.heldVocalButton = null;
+  play.heldVocalNote = null;
   play.heldVocalPointer = null;
   releaseKeyboardVocal();
 }
@@ -57,29 +59,35 @@ export function releaseKeyboardVocal() {
 }
 
 export function beginKeyboardVocal(code) {
-  const note = VOCAL_KEYS[code];
-  if (!note || !hooks.canKeyboardJamPlay()) return false;
+  const slot = VOCAL_KEYS[code];
+  if (slot === undefined || !hooks.canKeyboardJamPlay()) return false;
+  // `N M , . /` are ДО РЕ МІ ФА СОЛЬ, and always were — but they now count
+  // *degrees* of the stage key rather than five frozen frequencies, so the jam
+  // row sings in whatever key the chord wheel is in. Away from a close-up this
+  // is the only vocal surface there is, which is why it keeps its five keys
+  // instead of moving to the seven the mic close-up gets.
+  const midi = degreeMidi(slot.degree, stageKey.tonicPc, stageKey.mode, VOICE_LOW_MIDI);
+  const freq = freqFromMidi(midi);
   clearInterval(play.heldVocalPulseTimer);
   play.heldVocalPulseTimer = null;
   if (play.heldVocal) {
     finishHeldLoopCapture();
     audio.stopVocal(play.heldVocal);
-    play.heldVocalButton?.classList.remove('playing');
     play.heldVocal = null;
-    play.heldVocalButton = null;
+    play.heldVocalNote = null;
     play.heldVocalPointer = null;
   }
   releaseKeyboardVocal();
   hooks.activateAudioForSound();
-  mic.sing();
-  const voice = audio.startVocal(note.freq, note.vowel);
-  play.heldLoopCapture = beginHeldLoopCapture(note.freq, note.vowel);
-  play.keyboardVocal = { code, freq: note.freq, vowel: note.vowel, voice };
+  mic.sing(axisAtPitch(midi));
+  const voice = audio.startVocal(freq, vowelAt(slot.vowel));
+  play.heldLoopCapture = beginHeldLoopCapture(freq, slot.vowel);
+  play.keyboardVocal = { code, freq, vowel: slot.vowel, voice };
   addVibe(3);
   queuePriceChip('mic');
   noteKeyboardJamActivity('mic');
   play.keyboardVocalPulseTimer = setInterval(() => {
-    mic.sing();
+    mic.sing(axisAtPitch(midi));
     stampHeldLoopCaptureDuration();
   }, 120);
   return true;

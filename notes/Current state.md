@@ -10,13 +10,90 @@ delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-`main` is on **`20260813-07`** and 123 Node tests pass. **Production is confirmed on it**
-(curled after the deploy run, along with `js/play/rhythm.js` and `js/play/groove.js` both
-`200`). The VPS preview `vibe2.ton.zone` is **still on `20260813-06`** — it is pinned to
-release `20260812T135148Z` and needs its own release to move, which has not been cut.
+**The voice got its axis** ([[Decisions]] "The voice stopped being five buttons"). Vocals was
+the last hard-coded instrument on the stage — five `data-vocal-freq` attributes in
+`stage/index.html`, frozen in C major — and now it has `#voice-ribbon`: one continuous field,
+pitch up and vowel across, in the same dock the two wheels share. **One dock, three surfaces,
+exactly one shown**, asserted by `__ribbonDebug().docked`. New `js/play/voice.js` (the vowel
+table, zero imports) and `js/play/key.js` (the stage key, lifted out of `chord-wheel.js` so the
+ribbon and the wheel cannot disagree); `js/play/pads.js` keeps only the held-note capture the
+piano shares. 140 Node tests pass, 17 of them new.
+
+What to remember:
+
+- **The detent is the feature.** The pitch axis bends towards the key's notes without
+  quantising, and it is monotonic with in-key notes *and* their midpoints as fixed points —
+  all three checked in Node across 12 keys × 2 modes. Its strength is a feel number set by ear.
+- **The key is the stage's now**, not the wheel's. Same `av2.chord-key.v1` storage, so an
+  existing visitor keeps their key; either surface's stepper moves it.
+- **A steady note records no `glide` key at all**, which is what keeps every pre-ribbon loop
+  take and every keyboard vocal byte-for-byte what they were.
+- **`js/audio.js` cannot be split.** `tests/audio-lifecycle.test.mjs` loads it through a
+  `data:` URL, which only works because it imports nothing — so the ~1000-line split rule has
+  no move available here. Moving the vowel table *out* (into `voice.js`, caller-supplied) was
+  the reduction actually available; the file is now ~1000 lines and this is a known standoff.
+- **`js/play/pads.js` has no pads.** The name is stale on purpose: renaming touches six
+  importers and there is no bundler to catch a missed one.
+
+Verified in the pane at 1280×720, 844×390, 430×932, 390×844 and 320×568: silent-on-focus, the
+one-dock invariant across all four instruments, press-glide-release, the detent landing on
+scale notes, glide capture and the steady-note exemption, the `1`–`7` degree row with `↓ ↑`
+gliding, and the mascot mouth following the vowel and restoring. **Not** verified: a real touch
+device, and audible judgement of the synth — the pane gives no way to hear it.
+
+### What the pane missed and a user caught
+
+Five defects the pane's synthetic drags never surfaced, all fixed, all in [[Gotchas]]:
+
+1. **A stuck droning note.** Move and up were bound to the field, copying the wheels. A wedge is
+   pressed and released in one place; a sung line is a drag and the finger leaves a 236px square
+   constantly, so the release never reached the module and the note ran to the ten-second safety
+   timer. Now window-bound and filtered by pointer id, plus `blur`.
+2. **`lostpointercapture` was still in the release set.** Valid while the drag was element-bound,
+   a second way to cut a phrase short once it was not.
+3. **A long press became a context menu.** A sung note *is* a long press — that is the
+   instrument — and the browser turns one into a callout and takes the gesture with it. Every
+   other surface here is tapped, so none of them had to care.
+4. **The degree row released the wrong note.** Hold `1`, press `3`, let go of `1`, and `3` died.
+   It cannot match on the degree either, because the arrow glide moves the degree out from under
+   the key that started it — it matches the owning `code`.
+5. **Two code paths owned one voice.** Under mic focus both `1`–`7` and `N M , . /` were live,
+   and `beginKeyboardVocal` silences `play.heldVocal` *directly* — killing the ribbon's note
+   without the ribbon hearing about it. The jam row now routes through the ribbon in the close-up.
+
+### Open: the vowel-axis crackle
+
+**Still unresolved, and worth knowing before touching the synth.** A crackle while swiping the
+vowel axis, on a desktop mouse — the note keeps tracking, the sound breaks up. It **could not be
+reproduced in the pane**, and the measurements say it is not what it looks like:
+
+| Measured | Result | Rules out |
+| --- | --- | --- |
+| Held vs swept, sample-to-sample discontinuity | 0.382 held vs 0.337 swept | Movement adding glitches — a *still* note is worse |
+| Audio clock vs wall clock, to 120 moves/frame | 1–3 ms | Dropouts / main-thread starvation |
+| RMS envelope, held vs swept | 19 dB vs 17.4 dB | Resonances sweeping across harmonics |
+| Offline render of the same graph | peak 0.066, 0 clipped | Clipping, and any automation step |
+
+An earlier "3× worse than offline" reading was **wrong** — it was measuring the breath noise, not
+glitches. Correcting that is what killed the theory. Three changes went in anyway, each
+defensible on its own terms and **none proven against the symptom**: the live automation path
+moved to `setTargetAtTime`, vibrato moved from hertz to cents (a real defect: ±36 cents at C4
+against ±12 at G5, and 19 dB → 16 dB of wobble at the bottom once fixed), and the breath was
+dialled back. → [[Decisions]]
+
+The untried lever is a three-line A/B in the running app — mute the breath, then the vibrato,
+then the vowel morph, and see which one takes the crackle with it. The breath is the first
+suspect: it is a looping white-noise buffer and the one thing added to a synth that was fine
+without it.
+
+The working tree is on **`20260813-09`** and 140 Node tests pass. **Nothing is deployed** —
+the ribbon has not been committed, let alone shipped, so production is still on the previous
+stamp and the curls below will disagree with the tree until a deploy runs. The VPS preview
+`vibe2.ton.zone` is further behind again: it is pinned to release `20260812T135148Z` and needs
+its own release cut.
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # 20260813-07 ✓
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-07 until deployed
 curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # 20260813-06, behind
 ```
 
@@ -199,6 +276,7 @@ Newest first (see [[Decisions]] for the reasoning). All live on `main` and on bo
 
 | Commit    | Change                                                        |
 | --------- | ------------------------------------------------------------- |
+| *(this)*  | The vocal pad becomes a continuous pitch × vowel ribbon        |
 | `a3a8b50` | Drums get a groove wheel, dynamics, a hi-hat pedal and the kit row |
 | `685e383` | Falling off the stage hatches a new Вайбер instead of scolding |
 | `883273c` | Every character is a Вайбер; onboarding folded into the reveal |
@@ -296,16 +374,18 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
 
 ## Health
 
-- Nine test suites, 98 tests, all dependency-free: `node --test tests/*.test.mjs` →
+- Eleven test suites, 140 tests, all dependency-free: `node --test tests/*.test.mjs` →
   [[Dev workflows]]. Every one of them guards something that fails *silently* in a running
   app: `site-meta.test.mjs` covers a missing analytics tag, a `404.html` the deploy workflow
   forgets to copy, a funnel hook that stops being called, an unguarded `:hover`, and a
   partial cache-stamp sweep; `guitar-chords.test.mjs` covers a voicing that sounds like a
   chord but not the one on its label; `touch-guards.test.mjs` covers the two predicates
   behind tap activation.
-- `js/audio.js` is 916 lines against the ~1000-line split rule — the next substantial audio
-  change should probably split it → [[Module map]]
-- Cache stamps are **uniform**: 233 occurrences of `20260813-06` across `js/` and
+- `js/audio.js` is ~1000 lines against the ~1000-line split rule, and **the split is blocked**:
+  `tests/audio-lifecycle.test.mjs` imports it through a `data:` URL, which works only while the
+  file imports nothing. Any reduction has to move data *out* to a caller, the way the vowel
+  table went to `js/play/voice.js` → [[Module map]]
+- Cache stamps are **uniform**: 260 occurrences of `20260813-09` across `js/` and
   `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
   moves with the sweep). `prices.json` keeps its own, deliberately independent stamp — it
   changes on a different cadence and a stale one only serves stale prices, not two versions

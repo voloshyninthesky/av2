@@ -4,14 +4,16 @@
 // pass sets the loop length; later passes are quantised against the same epoch
 // and scheduled a beat ahead on the audio clock, so playback stays in time
 // even while the main thread is busy rendering.
-// `playMusicalEvent` is the one road every note takes — pointer, pad, keyboard
-// and loop playback alike — which is what makes recording transparent.
+// `playMusicalEvent` is the one road every note takes — pointer, ribbon,
+// keyboard and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260813-08';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-08';
-import { mascotMove } from '../mascot/state.js?v=20260813-08';
-import { play, heldPianoNotes } from './state.js?v=20260813-08';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260813-08';
+import { session } from '../core/session.js?v=20260813-09';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-09';
+import { mascotMove } from '../mascot/state.js?v=20260813-09';
+import { play, heldPianoNotes } from './state.js?v=20260813-09';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260813-09';
+import { freqFromMidi } from './harmony.js?v=20260813-09';
+import { vowelAt } from './voice.js?v=20260813-09';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');
@@ -28,8 +30,6 @@ const loopStatus = document.getElementById('loop-status');
 let hooks = {
   activateAudioForSound: () => {},
   allGuitarPitches: () => [],
-  showVocalPad: () => {},
-  hideVocalPad: () => {},
   captureHeldVocalIntoLoop: () => {},
   finishHeldLoopCapture: () => {},
   captureHeldPianoIntoLoop: () => {},
@@ -137,8 +137,9 @@ export function runMusicalVisual(event, feedback) {
   }
 
   if (!feedback || !kind) return;
-  if (kind !== 'mic') hooks.hideVocalPad();
-  if (kind === 'mic' && event.showPad !== false) hooks.showVocalPad();
+  // A replayed vocal used to pop the pad open, back when the pad was also the
+  // only thing that advertised the instrument. The ribbon is focus-gated like
+  // both wheels, and opening it from a loop would put two surfaces in one dock.
   addVibe(event.vibe ?? ({ drums: 4, piano: 3.5, guitar: 5, mic: 4 }[kind] || 3));
   if (event.showPrice !== false) queuePriceChip(kind);
 }
@@ -184,7 +185,15 @@ export function playMusicalEvent(event, { record = true, at = null, feedback = t
     audio.strum(event.strings ?? event.freqs, velocity, startAt, { track: record });
     audio.prewarmGuitar(hooks.allGuitarPitches());
   } else if (event.type === 'vocal') {
-    voice = audio.vocalTone(event.freq, event.vowel, velocity, startAt, event.duration ?? 0.68);
+    // A sung line is a shape, not a pitch. `glide` is optional and absent on
+    // every steady note — a held keyboard vowel records exactly what it always
+    // did — so only a phrase that actually moved pays for the conversion here.
+    const glide = event.glide?.map(([offset, midi, vowelX]) => (
+      [offset, freqFromMidi(midi), vowelAt(vowelX)]
+    ));
+    voice = audio.vocalTone(
+      event.freq, vowelAt(event.vowel), velocity, startAt, event.duration ?? 0.68, glide,
+    );
     if (!record && voice) {
       loop.activeVoices.add(voice);
       const cleanupDelay = Math.max(0, (((startAt ?? audio.ctx.currentTime) - audio.ctx.currentTime) + (event.duration ?? 0.68) + 0.36) * 1000);

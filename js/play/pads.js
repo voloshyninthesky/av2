@@ -1,34 +1,31 @@
 // ============================================================
-// VOCAL PAD
-// The on-screen note strip that appears in the microphone close-up. It is a
-// held-note surface: sound starts on press and its real duration is only known
-// on release, so loop capture opens an entry on press and stamps it on
-// release. Those capture helpers are shared — the piano's held keys work the
-// same way and import them from here.
+// HELD NOTES
+// A note whose length nobody knows until it ends. Sound starts on press and
+// its real duration only exists on release, so loop capture opens an entry on
+// press and stamps it on the way out — and has to keep stamping while the note
+// is held, or a pointer the browser cancels loses the length it actually had.
 //
-// The guitar's chord surface used to live in this file too; it is now the
-// circle of fifths in chord-wheel.js, which serves the piano as well.
+// Two surfaces work this way and share these helpers: the piano's held keys
+// and the voice ribbon's sung line.
+//
+// Both of the surfaces this file used to *own* have moved out. The guitar's
+// chord pad became the circle of fifths in chord-wheel.js, which serves the
+// piano as well; the five-button vocal pad became the field in ribbon.js. What
+// is left is the capture lifecycle they all still run on, plus the one class
+// that says something is docked at the bottom of the screen.
 // ============================================================
-import { audio, mic } from '../core/studio.js?v=20260813-08';
-import { play } from './state.js?v=20260813-08';
-import { addVibe } from './vibe.js?v=20260813-08';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260813-08';
+import { audio } from '../core/studio.js?v=20260813-09';
+import { play } from './state.js?v=20260813-09';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent } from './loop.js?v=20260813-09';
 
-// Pad gestures compete with the stage's own pointer handling; main.js supplies
-// the predicates and teardown that only it can answer.
+// The zoom guard below has to know whether the stage is live; only main.js can
+// answer that, so it arrives as a hook like every other back-reference.
 let hooks = {
-  activateAudioForSound: () => {},
   isLiveStageZoomLocked: () => false,
-  releaseKeyboardVocal: () => {},
 };
 export function initPads(next) {
   hooks = { ...hooks, ...next };
 }
-
-const vocalPad = document.getElementById('vocal-pad');
-const vocalButtons = [...vocalPad.querySelectorAll('[data-vocal-freq]')];
-let vocalPadTimer = null;
-const chordWheel = document.getElementById('chord-wheel');
 
 export function stampHeldLoopCaptureDuration() {
   if (!play.heldLoopCapture || play.heldLoopCapture.finished || !audio.ctx) return;
@@ -41,23 +38,22 @@ export function beginHeldLoopCapture(freq, vowel) {
   const startedAt = audio.ctx?.currentTime;
   const event = captureLoopEvent({ type: 'vocal', freq, vowel, vel: 1, duration: 0.12 }, startedAt);
   if (event) event.durationPending = true;
-  return event ? { event, startedAt, finished: false } : null;
+  // `lastGlide` is the ribbon's decimation cursor and belongs to the capture,
+  // not to the finger: a take opened *mid-phrase* by the loop pedal starts its
+  // own clock, and a cursor kept on the finger would still be measuring
+  // against the previous one's.
+  return event ? { event, startedAt, finished: false, lastGlide: null } : null;
 }
 
+/** The loop pedal, starting a take while a note is already being sung. */
 export function captureHeldVocalIntoLoop() {
   if (play.heldLoopCapture) return;
-  if (play.heldVocal && play.heldVocalButton && play.heldVocalPointer !== null) {
-    play.heldLoopCapture = beginHeldLoopCapture(
-      Number(play.heldVocalButton.dataset.vocalFreq),
-      Number(play.heldVocalButton.dataset.vocalVowel),
-    );
-    stampHeldLoopCaptureDuration();
-    return;
-  }
-  if (play.keyboardVocal) {
-    play.heldLoopCapture = beginHeldLoopCapture(play.keyboardVocal.freq, play.keyboardVocal.vowel);
-    stampHeldLoopCaptureDuration();
-  }
+  // Where the voice is *now*, not where the phrase began — the take starts
+  // here, so this is its first note.
+  const note = (play.heldVocal && play.heldVocalNote) || play.keyboardVocal;
+  if (!note) return;
+  play.heldLoopCapture = beginHeldLoopCapture(note.freq, note.vowel);
+  stampHeldLoopCaptureDuration();
 }
 
 export function deferHeldLoopEventPlayback(event) {
@@ -83,87 +79,18 @@ export function finishHeldLoopCapture() {
 }
 
 // Every docked play surface shares one "something is at the bottom" class, so
-// the toast knows to move. The wheels live in other modules; reading their
+// the toast knows to move. All three live in other modules; reading their
 // hidden state off the DOM keeps that a one-way call rather than a cycle.
 export function syncPadsOpenClass() {
-  const padsOpen = Boolean(
-    (vocalPad && !vocalPad.hidden)
-    || (chordWheel && !chordWheel.hidden)
-    || !document.getElementById('groove-wheel')?.hidden,
-  );
+  const padsOpen = ['chord-wheel', 'groove-wheel', 'voice-ribbon']
+    .some((id) => document.getElementById(id) && !document.getElementById(id).hidden);
   document.documentElement.classList.toggle('pads-open', padsOpen);
-}
-
-export function showVocalPad(autoHide = true) {
-  vocalPad.hidden = false;
-  syncPadsOpenClass();
-  clearTimeout(vocalPadTimer);
-  if (autoHide) vocalPadTimer = setTimeout(() => { vocalPad.hidden = true; syncPadsOpenClass(); }, 7600);
-}
-
-export function hideVocalPad() {
-  clearTimeout(vocalPadTimer);
-  clearInterval(play.heldVocalPulseTimer);
-  finishHeldLoopCapture();
-  audio.stopVocal(play.heldVocal);
-  play.heldVocalButton?.classList.remove('playing');
-  play.heldVocal = null;
-  play.heldVocalButton = null;
-  play.heldVocalPointer = null;
-  vocalPad.hidden = true;
-  syncPadsOpenClass();
 }
 
 // Prevent rapid cross-control taps from being promoted to page zoom by mobile
 // browsers. Informational panels remain zoomable / scrollable.
 document.addEventListener('dblclick', (event) => {
-  if (hooks.isLiveStageZoomLocked() || event.target.closest?.('#vocal-pad, #chord-wheel, #groove-wheel, #toast')) {
+  if (hooks.isLiveStageZoomLocked() || event.target.closest?.('#voice-ribbon, #chord-wheel, #groove-wheel, #toast')) {
     event.preventDefault();
   }
 }, { passive: false, capture: true });
-
-export function playVocalNote(freq, vowel, showPrice = false) {
-  playMusicalEvent({ type: 'vocal', freq, vowel, duration: 0.68, vibe: 4, showPrice });
-}
-
-function releaseHeldVocal(event) {
-  if (event && play.heldVocalPointer !== null && event.pointerId !== play.heldVocalPointer) return;
-  clearInterval(play.heldVocalPulseTimer);
-  finishHeldLoopCapture();
-  audio.stopVocal(play.heldVocal);
-  play.heldVocalButton?.classList.remove('playing');
-  play.heldVocal = null;
-  play.heldVocalButton = null;
-  play.heldVocalPointer = null;
-  showVocalPad();
-}
-
-for (const button of vocalButtons) {
-  button.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    releaseHeldVocal();
-    hooks.releaseKeyboardVocal();
-    const freq = Number(button.dataset.vocalFreq);
-    const vowel = Number(button.dataset.vocalVowel);
-    hooks.activateAudioForSound();
-    mic.sing();
-    play.heldVocal = audio.startVocal(freq, vowel);
-    play.heldLoopCapture = beginHeldLoopCapture(freq, vowel);
-    play.heldVocalButton = button;
-    play.heldVocalPointer = event.pointerId;
-    button.setPointerCapture?.(event.pointerId);
-    button.classList.add('playing');
-    addVibe(3);
-    showVocalPad(false);
-    play.heldVocalPulseTimer = setInterval(() => {
-      mic.sing();
-      // Stamp sustain while held so a cancelled pointer still keeps the length.
-      stampHeldLoopCaptureDuration();
-    }, 120);
-    navigator.vibrate?.(16);
-  });
-  button.addEventListener('pointerup', releaseHeldVocal);
-  button.addEventListener('pointercancel', releaseHeldVocal);
-  button.addEventListener('lostpointercapture', releaseHeldVocal);
-  button.addEventListener('touchend', (event) => event.preventDefault(), { passive: false });
-}

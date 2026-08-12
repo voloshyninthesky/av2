@@ -5,29 +5,30 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260813-08';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-08';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260813-08';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-08';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-08';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-08';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-08';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260813-08';
-import { mascotMove } from '../mascot/state.js?v=20260813-08';
-import { giftPending } from '../mascot/reveal.js?v=20260813-08';
-import { play } from '../play/state.js?v=20260813-08';
+import { session, easeInOut } from '../core/session.js?v=20260813-09';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-09';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260813-09';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-09';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-09';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-09';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-09';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260813-09';
+import { mascotMove } from '../mascot/state.js?v=20260813-09';
+import { giftPending } from '../mascot/reveal.js?v=20260813-09';
+import { play } from '../play/state.js?v=20260813-09';
+import { vowelAt } from '../play/voice.js?v=20260813-09';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260813-08';
-import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-08';
-import { resyncGroove } from '../play/groove.js?v=20260813-08';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-08';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-08';
-import { trackOnce } from '../core/analytics.js?v=20260813-08';
+} from '../play/loop.js?v=20260813-09';
+import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-09';
+import { resyncGroove } from '../play/groove.js?v=20260813-09';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-09';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-09';
+import { trackOnce } from '../core/analytics.js?v=20260813-09';
 
 const mobileControls = document.getElementById('mobile-controls');
 
@@ -205,13 +206,17 @@ export function restoreAfterAudioContextRebuild(snapshot) {
   if (play.heldLoopCapture && snapshot.heldCaptureElapsed !== null) {
     play.heldLoopCapture.startedAt = now - snapshot.heldCaptureElapsed;
   }
-  if (play.heldVocalButton && play.heldVocalPointer !== null) {
+  // A rebuild has to hand back the note that was sounding, and for the ribbon
+  // that means where the glide had reached — not where the phrase started.
+  // `heldVocalNote` is kept live for exactly this.
+  if (play.heldVocal && play.heldVocalNote) {
     play.heldVocal = audio.startVocal(
-      Number(play.heldVocalButton.dataset.vocalFreq),
-      Number(play.heldVocalButton.dataset.vocalVowel),
+      play.heldVocalNote.freq, vowelAt(play.heldVocalNote.vowel),
     );
   } else if (play.keyboardVocal) {
-    play.keyboardVocal.voice = audio.startVocal(play.keyboardVocal.freq, play.keyboardVocal.vowel);
+    play.keyboardVocal.voice = audio.startVocal(
+      play.keyboardVocal.freq, vowelAt(play.keyboardVocal.vowel),
+    );
   }
   resyncLoopPlayback();
 }

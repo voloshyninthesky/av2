@@ -7,18 +7,18 @@
 // rotates the stage.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-08';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-08';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-08';
-import { canvas, camera, controls } from './rig.js?v=20260813-08';
-import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260813-08';
-import { instrumentView } from './instrument-presets.js?v=20260813-08';
-import { raycaster, pointer } from './pick.js?v=20260813-08';
-import { glowMesh, unglowMesh } from './emissive.js?v=20260813-08';
-import { walkMascotToInstrument } from './mobile-controls.js?v=20260813-08';
-import { resetBrowserPageZoom } from './viewport.js?v=20260813-08';
-import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260813-08';
-import { activePointers } from '../play/state.js?v=20260813-08';
+import { session } from '../core/session.js?v=20260813-09';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-09';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-09';
+import { canvas, camera, controls } from './rig.js?v=20260813-09';
+import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260813-09';
+import { instrumentView } from './instrument-presets.js?v=20260813-09';
+import { raycaster, pointer } from './pick.js?v=20260813-09';
+import { glowMesh, unglowMesh } from './emissive.js?v=20260813-09';
+import { walkMascotToInstrument } from './mobile-controls.js?v=20260813-09';
+import { resetBrowserPageZoom } from './viewport.js?v=20260813-09';
+import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260813-09';
+import { activePointers } from '../play/state.js?v=20260813-09';
 import {
   currentGuitarShape,
   fireGuitarStrum,
@@ -27,13 +27,13 @@ import {
   guitarLocalPoint,
   nearestGuitarString,
   guitarFretHit,
-} from '../play/guitar.js?v=20260813-08';
+} from '../play/guitar.js?v=20260813-09';
 import {
   trigger,
   beginHeldPianoNote,
   releaseHeldPianoNote,
   handleClick,
-} from '../play/piano-notes.js?v=20260813-08';
+} from '../play/piano-notes.js?v=20260813-09';
 
 export const INSTRUMENT_STYLE = {
   drums: { glow: 0x9E33CA },
@@ -475,9 +475,10 @@ for (const type of ['selectstart', 'dragstart']) {
 // 320 ms of any other touch — a joystick release, a canvas tap, a previous HUD
 // tap — silently dead, because the whole HUD is bound to `click`.
 //
-// The vocal pad and the toast claim their own double-taps (js/play/pads.js,
-// js/ui.js) and the live stage runs `user-scalable=no`, so exempting controls
-// cannot bring back the vocal-pad ↔ toast zoom this guard was written for.
+// The docked play surfaces and the toast claim their own double-taps
+// (js/play/pads.js, js/ui.js) and the live stage runs `user-scalable=no`, so
+// exempting controls cannot bring back the surface ↔ toast zoom this guard was
+// written for.
 {
   let previousTap = null;
   document.addEventListener('touchend', (e) => {

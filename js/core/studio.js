@@ -6,29 +6,29 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260813-08';
-import { buildDrumKit } from '../instruments/drums.js?v=20260813-08';
-import { buildPiano } from '../instruments/piano.js?v=20260813-08';
-import { buildGuitar } from '../instruments/guitar.js?v=20260813-08';
-import { buildMic } from '../instruments/mic.js?v=20260813-08';
-import { UI } from '../ui.js?v=20260813-08';
-import { scene, renderer } from '../view/rig.js?v=20260813-08';
+import { AudioEngine } from '../audio.js?v=20260813-09';
+import { buildDrumKit } from '../instruments/drums.js?v=20260813-09';
+import { buildPiano } from '../instruments/piano.js?v=20260813-09';
+import { buildGuitar } from '../instruments/guitar.js?v=20260813-09';
+import { buildMic } from '../instruments/mic.js?v=20260813-09';
+import { UI } from '../ui.js?v=20260813-09';
+import { scene, renderer } from '../view/rig.js?v=20260813-09';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260813-08';
-import { buildStage } from '../scene/stage.js?v=20260813-08';
-import { buildSigns } from '../scene/signs.js?v=20260813-08';
+} from './quality.js?v=20260813-09';
+import { buildStage } from '../scene/stage.js?v=20260813-09';
+import { buildSigns } from '../scene/signs.js?v=20260813-09';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260813-08';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-08';
-import { buildGiftEgg } from '../scene/gift-egg.js?v=20260813-08';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-08';
+} from '../scene/lighting.js?v=20260813-09';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-09';
+import { buildGiftEgg } from '../scene/gift-egg.js?v=20260813-09';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-09';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -38,8 +38,9 @@ import {
   MASCOT_SHOE_COLORS,
   MASCOT_SKIN_TONES,
   MASCOT_OUTFIT_COLORS,
+  MASCOT_SMILES,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260813-08';
+} from '../mascot/appearance.js?v=20260813-09';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
@@ -118,6 +119,18 @@ export function applyMascotScale(fallFactor = 1) {
   mascot.group.scale.set(w, MASCOT_BASE_SCALE * (mascotCfg.height / 100) * fallFactor, w);
 }
 
+// A sung vowel opens the mascot's mouth — the voice ribbon's notation surface,
+// the way the kit is the groove wheel's. It is deliberately an *override* and
+// not a config change: the gifted character's own smile is what it must return
+// to, and `null` is what puts it back. Nothing here is persisted.
+let mouthOverride = null;
+export function setMascotMouth(name) {
+  if (name === mouthOverride) return;
+  mouthOverride = MASCOT_SMILES.has(name) ? name : null;
+  const shown = mouthOverride || mascotCfg.smile;
+  for (const [smile, mouth] of Object.entries(mascot.custom.mouths)) mouth.visible = smile === shown;
+}
+
 export function applyMascotConfig() {
   const cu = mascot.custom;
   const style = MASCOT_HAIR_STYLES[mascotCfg.hair] || MASCOT_HAIR_STYLES.long;
@@ -152,7 +165,10 @@ export function applyMascotConfig() {
   }
   cu.hairMat.color.setHex(parseInt(mascotCfg.hairColor, 16));
   cu.skinMat.color.setHex(MASCOT_SKIN_TONES[mascotCfg.skinTone] ?? MASCOT_SKIN_TONES[MASCOT_DEFAULTS.skinTone]);
-  for (const [smile, mouth] of Object.entries(cu.mouths)) mouth.visible = smile === mascotCfg.smile;
+  // A sung vowel wins while it lasts, so a config repaint mid-note (a gift
+  // reveal, a tier change) does not snap the mouth shut under the voice.
+  const shownMouth = mouthOverride || mascotCfg.smile;
+  for (const [smile, mouth] of Object.entries(cu.mouths)) mouth.visible = smile === shownMouth;
   cu.eyeMat.color.setHex(MASCOT_EYE_COLORS[mascotCfg.eyeColor] ?? MASCOT_EYE_COLORS.dark);
   const outfit = MASCOT_OUTFITS[mascotCfg.outfit] || MASCOT_OUTFITS.stage;
   for (const slot in outfit) cu.mats[slot].color.setHex(outfit[slot]);

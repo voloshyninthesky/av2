@@ -8,7 +8,7 @@ import {
   markInteract,
   metal,
   std,
-} from './shared.js?v=20260813-08';
+} from './shared.js?v=20260813-09';
 
 export function buildMic() {
   const mic = new THREE.Group();
@@ -130,30 +130,48 @@ export function buildMic() {
   highHit.visible = false;
   mic.add(highHit);
 
-  markInteract(headGroup, { instrument: 'mic', vocalFreq: 392.0, vocalVowel: 2 });
-  markInteract(pole, { instrument: 'mic', vocalFreq: 329.63, vocalVowel: 1 });
-  markInteract(base, { instrument: 'mic', vocalFreq: 261.63, vocalVowel: 0 });
-  markInteract(highHit, { instrument: 'mic', vocalFreq: 392.0, vocalVowel: 2 });
-  markInteract(midHit, { instrument: 'mic', vocalFreq: 329.63, vocalVowel: 1 });
-  markInteract(lowHit, { instrument: 'mic', vocalFreq: 261.63, vocalVowel: 0 });
+  // The stand is a pitch axis and always was: three zones climbing it, low to
+  // high. What changed is that they carry a scale *degree* rather than a fixed
+  // frequency — this layer sits below play/ and cannot know what key the stage
+  // is in, so it names the degree and lets the router resolve it. Reaching
+  // higher also brightens the vowel, which is what a voice does anyway.
+  markInteract(headGroup, { instrument: 'mic', vocalDegree: 5, vocalVowel: 0.15 });
+  markInteract(pole, { instrument: 'mic', vocalDegree: 3, vocalVowel: 0.5 });
+  markInteract(base, { instrument: 'mic', vocalDegree: 1, vocalVowel: 0.85 });
+  markInteract(highHit, { instrument: 'mic', vocalDegree: 5, vocalVowel: 0.15 });
+  markInteract(midHit, { instrument: 'mic', vocalDegree: 3, vocalVowel: 0.5 });
+  markInteract(lowHit, { instrument: 'mic', vocalDegree: 1, vocalVowel: 0.85 });
   // Same rule as the guitar: base, pole and head capsule define the shadow;
   // grille rings, ribs, bands and the XLR do not.
   const micShadowCasters = new Set([base, pole, capsule]);
   mic.traverse((o) => { if (o.isMesh) o.castShadow = micShadowCasters.has(o); });
 
   let bob = 0, pulseT = 0, time = 0;
+  // Where the sung note sits in the voice's range, 0 low to 1 high, eased
+  // towards rather than snapped so a glide reads as one movement. The mic is
+  // the ribbon's other notation surface: the stand already says "up is
+  // higher" — the three hit zones climb it in pitch order — so the head lifts
+  // with the note instead of only nodding that a note happened.
+  let reach = 0.5, reachTarget = 0.5;
 
   return {
     group: mic,
     label: 'Вокал',
     labelAnchor: new THREE.Vector3(0, 2.2, 0),
-    sing() { bob = 1; pulseT = 1; pulse.visible = true; },
+    sing(pitch = null) {
+      bob = 1;
+      pulseT = 1;
+      pulse.visible = true;
+      if (Number.isFinite(pitch)) reachTarget = Math.max(0, Math.min(1, pitch));
+    },
     update(dt) {
       time += dt;
       bob *= Math.pow(0.02, dt);
+      reach += (reachTarget - reach) * Math.min(1, dt * 9);
+      const lift = (reach - 0.5) * 0.34;
       const idleNod = Math.sin(time * 0.85) * 0.02;
       const idleRoll = Math.sin(time * 0.6) * 0.012;
-      headGroup.rotation.x = -0.18 + Math.sin(time * 18) * bob * 0.16 + idleNod;
+      headGroup.rotation.x = -0.18 - lift + Math.sin(time * 18) * bob * 0.16 + idleNod;
       headGroup.rotation.z = Math.sin(time * 14) * bob * 0.1 + idleRoll;
       if (pulseT > 0) {
         pulseT = Math.max(0, pulseT - dt * 1.4);

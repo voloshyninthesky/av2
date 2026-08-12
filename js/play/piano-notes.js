@@ -16,12 +16,12 @@
 // digits, where they play *piano* chords through the wheel's own route.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-08';
-import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-08';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-08';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-08';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-08';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-08';
+import { session } from '../core/session.js?v=20260813-09';
+import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-09';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-09';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-09';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-09';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-09';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -30,15 +30,24 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-08';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-08';
+} from './loop.js?v=20260813-09';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-09';
 import {
   syncChordWheelHeld,
   pressPianoChordFromKeyboard,
   releasePianoChordFromKeyboard,
-} from './chord-wheel.js?v=20260813-08';
-import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-08';
-import { drumHitVelocity } from './rhythm.js?v=20260813-08';
+} from './chord-wheel.js?v=20260813-09';
+import { deferHeldLoopEventPlayback } from './pads.js?v=20260813-09';
+import { degreeMidi, freqFromMidi } from './harmony.js?v=20260813-09';
+import { stageKey } from './key.js?v=20260813-09';
+import { VOICE_LOW_MIDI } from './voice.js?v=20260813-09';
+import {
+  glideRibbonDegree,
+  pressRibbonDegree,
+  releaseRibbonDegree,
+  ribbonHasKeyboardNote,
+} from './ribbon.js?v=20260813-09';
+import { drumHitVelocity } from './rhythm.js?v=20260813-09';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.
@@ -111,7 +120,18 @@ export function trigger(mesh, options = {}) {
       break;
     }
     case 'mic': {
-      playVocalNote(u.vocalFreq ?? 329.63, u.vocalVowel ?? 1, true);
+      // The stand's three zones carry a scale degree, not a frequency —
+      // instruments/ sits below play/ and cannot know the key, so resolving it
+      // is this layer's job. Base, pole and head are 1, 3 and 5 of it.
+      const midi = degreeMidi(u.vocalDegree ?? 1, stageKey.tonicPc, stageKey.mode, VOICE_LOW_MIDI);
+      playMusicalEvent({
+        type: 'vocal',
+        freq: freqFromMidi(midi),
+        vowel: u.vocalVowel ?? 0.5,
+        duration: 0.68,
+        vibe: 4,
+        showPrice: true,
+      });
       break;
     }
   }
@@ -242,12 +262,16 @@ function playDrumFromKeyboard(part) {
   playMusicalEvent({ type: 'drum', part: sounded, vel: 1, vibe: 4 });
   noteKeyboardJamActivity('drums');
 }
+// ДО РЕ МІ ФА СОЛЬ, unchanged as keys and as names — but they count scale
+// degrees now instead of holding five frozen frequencies, so the jam row sings
+// in whatever key the stage is in. The vowels walk the axis rather than cycling
+// three presets, so five consecutive notes are five different mouths.
 export const VOCAL_KEYS = {
-  KeyN: { freq: 261.63, vowel: 0 },
-  KeyM: { freq: 293.66, vowel: 1 },
-  Comma: { freq: 329.63, vowel: 2 },
-  Period: { freq: 349.23, vowel: 0 },
-  Slash: { freq: 392.00, vowel: 1 },
+  KeyN: { degree: 1, vowel: 0.85 },
+  KeyM: { degree: 2, vowel: 0.65 },
+  Comma: { degree: 3, vowel: 0.5 },
+  Period: { degree: 4, vowel: 0.3 },
+  Slash: { degree: 5, vowel: 0.15 },
 };
 
 // Real-keyboard-shaped piano jam, active only in focused close-up
@@ -391,6 +415,42 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // The mic close-up brings its own row too: seven scale degrees, sung. The
+  // arrows are its glide — the one piece of portamento a keyboard can honestly
+  // express, and the reason this is not the five buttons again with more of
+  // them. Held, so the row sustains the way the field does.
+  if (hooks.canPlayInstrument('mic')) {
+    const degree = FOCUS_CHORD_DIGITS.indexOf(e.code) + 1;
+    if (degree > 0) {
+      e.preventDefault();
+      if (!e.repeat) {
+        pressRibbonDegree(degree, e.code);
+        noteKeyboardJamActivity('mic');
+      }
+      return;
+    }
+    // The jam row keeps its five keys inside the close-up — the same courtesy
+    // drums gives `Z X C V B` — but it goes through the ribbon here rather than
+    // through beginKeyboardVocal. Two code paths owning one voice is what made
+    // a second key cut the first one off: `beginKeyboardVocal` silences
+    // `play.heldVocal` directly, which stopped the ribbon's note without the
+    // ribbon ever hearing about it, leaving it pulsing a note that had gone.
+    const jam = VOCAL_KEYS[e.code];
+    if (jam) {
+      e.preventDefault();
+      if (!e.repeat) {
+        pressRibbonDegree(jam.degree, e.code, jam.vowel);
+        noteKeyboardJamActivity('mic');
+      }
+      return;
+    }
+    if ((e.code === 'ArrowUp' || e.code === 'ArrowDown') && ribbonHasKeyboardNote()) {
+      e.preventDefault();
+      glideRibbonDegree(e.code === 'ArrowUp' ? 1 : -1);
+      return;
+    }
+  }
+
   // The drums close-up brings its own row, the way the piano close-up does.
   if (hooks.canPlayInstrument('drums')) {
     const focusPart = FOCUS_DRUM_DIGITS[e.code];
@@ -479,6 +539,13 @@ window.addEventListener('keyup', (e) => {
   }
   if (play.keyboardVocal?.code === e.code) {
     hooks.releaseKeyboardVocal();
+  }
+  // Same rule for the mic close-up's degree row, and the release carries its
+  // own code. The glide means the degree that ends a note is not always the one
+  // that started it, so the ribbon matches on the *key* that owns the note —
+  // otherwise letting go of `1` stopped whatever `3` was singing.
+  if ((FOCUS_CHORD_DIGITS.includes(e.code) || e.code in VOCAL_KEYS) && ribbonHasKeyboardNote()) {
+    releaseRibbonDegree(e.code);
   }
   // Unconditional like every release above: focus can change between the press
   // and the release, and a foot that went down still has to come back up.

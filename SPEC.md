@@ -262,7 +262,7 @@ without the feature. No retry, no error surface.
 
 | Kind | Pointer / touch play | Desktop keyboard play |
 |------|----------------------|------------------------|
-| `mic` / vocal | Vocal pad / mesh hits **only while mic-focused** | `N M , . /` → ДО РЕ МІ ФА СОЛЬ (hold to sustain; see §5 Desktop keyboard jam) |
+| `mic` / vocal | The **voice ribbon** — one continuous field, pitch up, vowel across — plus the stand's three zones, **only while mic-focused** (§ Vocal performance mode) | `1`–`7` in a close-up are the key's seven degrees, sung, with `↓ ↑` gliding a step. `N M , . /` → ДО РЕ МІ ФА СОЛЬ are degrees 1–5 of the stage key and answer **with or without mic focus**, the same courtesy `Z X C V B` gets at the drums — inside the close-up they route through the ribbon, so one thing owns the voice (hold to sustain; see §5 Desktop keyboard jam) |
 | `guitar` | Two-hand chord + strum / pluck **only while guitar-focused**. Chords come from the shared circle-of-fifths wheel | Chord row = the key's seven degrees — `1`–`7` in a close-up, `Q W E R T Y U` outside one — strum on `↓ ↑ / Space`. Live while idle or guitar-focused, silent inside another instrument's close-up; focused the chord row is select-only, see § Guitar performance mode |
 | `piano` | Mesh keys **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. Plus the shared chord wheel, which sounds whole chords (§ The chord wheel at the piano) | `1–8` whites while idle. **Piano-focused:** `A–L` + upper row, real-keyboard shape, and `1–6` become a chord row that **sounds piano chords** (§ Piano-focused keyboard layout) |
 | `drums` | Kit parts **only while drums-focused** (multitouch). A strike is louder at the centre of a head than at its rim, and the hi-hat pedal opens the cymbals. Plus the shared groove wheel (§ Drums performance mode) | `1`–`7` in a close-up are the seven kit pieces low to high, `Space` the hi-hat pedal; `Z X C V B` five of them with or without drums focus |
@@ -361,7 +361,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - **Display spelling and identity are separate.** The circle prints flats where a printed chart does (`Gb Db Ab Eb Bb`, and `Ebm Bbm` inside), while the chord's internal name stays sharp-spelled so the library lookup is unchanged.
 - **The key is a stepper, not a drag.** `‹ ›` in the hub move it one fifth at a time — the step the layout is *made of* — and `[` / `]` do the same from the keyboard. Dragging the ring is deliberately not a gesture: on guitar, holding a wedge already **is** the play gesture, and a finger drifting during a hold would spin the key out from under the chord.
 - **One `7` toggle** in the hub, also `\` on the keyboard, adds the **diatonic** seventh: `maj7` on I and IV, dominant `7` on V, `m7` on ii / iii / vi. Outside the key a major wedge takes a plain `7` and a minor `m7`, which is what a borrowed chord is reached for.
-- The key, its mode and the seventh toggle persist together in `localStorage` `av2.chord-key.v1`, defaulting to C major with sevenths off.
+- The key, its mode and the seventh toggle persist together in `localStorage` `av2.chord-key.v1`, defaulting to C major with sevenths off. The key is the **stage's**, not the wheel's — the voice ribbon reads and sets the same value, so a vocal line over a chord loop is in tune.
 - Changing either clears any held / latched / key-armed chord, so what is lit, what is armed and what would sound never disagree — and rewrites the QWERTY row in place, so every module reads the same object.
 - Global instrument shortcuts ignore key events originating from buttons, links, form fields, or editable content; the focused control handles those events itself.
 - **Mobile focus opens one further zoom step** than the shared two, because a phone carries the strings much smaller than a desktop does and the wheel now takes a corner of the screen. Cropping the outer edges is the same trade the zoom control makes, and pinch still reaches the full fitted frame.
@@ -414,7 +414,7 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 
 #### Focus framing — current
 
-- Drums keeps the **raw camera preset**: `instrumentViewFrame()` returns a measured fit for the piano and guitar only, so `chordWheelReservedRects()` is never consulted here and there is nothing for the groove wheel to reserve into. This is a deliberate scope line, not an oversight — the drums close-up is the over-the-shoulder framing the piano's was copied *from*, and it works.
+- Drums keeps the **raw camera preset**: `instrumentViewFrame()` returns a measured fit for the piano and guitar only, so `playSurfaceReservedRects()` is never consulted here and there is nothing for the groove wheel to reserve into. This is a deliberate scope line, not an oversight — the drums close-up is the over-the-shoulder framing the piano's was copied *from*, and it works.
 - The consequence is that the wheel's footprint is **verified rather than derived**. It docks bottom-left at a cap of its own (`220px`, against the chord wheel's `300px`), because the kit is centred and runs to the bottom of a portrait frame where the guitar stands to the right and the keybed is a mid-screen strip. If it ever collides, the fix is a nudge to the drums camera preset or that cap — not a new fitter.
 
 #### The kit
@@ -447,7 +447,7 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 - **Nothing sounds until a wedge is tapped**, and until then no `AudioContext` exists. Which groove and which tempo were last chosen persist; **whether it was playing does not** — a remembered playing state would start drums at a returning stranger, which is what "focus never starts a melody" exists to prevent.
 - **Tempo is a stepper, not a drag**, `60`–`160` in steps of `4`, and its readout is plain text rather than a button because — unlike the chord wheel's key readout, which doubles as the mode control — it has no second meaning.
 - Wedges are `role="button"` with visible focus, `aria-pressed`, and an `aria-label` naming the groove **and its family**. Colour is never the only signal.
-- The groove wheel and the chord wheel share their dock, their size tokens and their corner, and exactly one is ever shown — drums gets this one, guitar and piano the other, mic neither.
+- The groove wheel, the chord wheel and the voice ribbon share their dock, their size tokens and their corner. **One dock, three surfaces, exactly one shown**: drums gets this one, guitar and piano the chord wheel, the mic the ribbon. `window.__ribbonDebug().docked` asserts it rather than trusting it.
 
 #### The groove and the loop pedal
 
@@ -465,6 +465,98 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 3. **The groove as a stage-wide backbone**, available under the guitar and piano close-ups too — both roadmaps already ask for a metronome and a backing groove.
 4. **More of the kit's voice:** ride, rimshot, choke, flam, and a second hi-hat degree between open and closed.
 5. **A measured `drumsFocusSafeRect()`** if the framing ever needs to reserve rather than cap.
+
+### Vocal performance mode
+
+**Current milestone:** the mic close-up docks the **voice ribbon** (`#voice-ribbon`) — one
+continuous field where the finger's height is the pitch and its side-to-side is the vowel.
+It replaces the five-button vocal pad, whose notes were hard-coded in `stage/index.html` and
+fixed in C major.
+
+The argument for a field is the instrument. Every other thing on this stage is quantised by
+its own construction — frets, keys, drum heads — and the voice is the only one that is not:
+it slides between notes and changes shape while it holds. A grid of buttons can express
+neither, which is the same objection that retired the six chord slots.
+
+#### The ribbon
+
+- **Pitch is the vertical axis, high up, continuous over C4–G5.** An octave and a half, not
+  the piano's two: past G5 a formant voice reads as a siren, because the harmonics a vowel is
+  *made of* climb above its own second formant and the filter has nothing left to shape.
+- **The vowel is the horizontal axis** — А О Е І У as one continuous tongue movement, F2
+  descending, so dragging across never doubles back through a vowel it already passed.
+  Formant frequency interpolates in **log** space; linear spends almost all its travel in the
+  top vowel.
+- **Not a wheel, because pitch is not a circle.** A voice has a top and a bottom, and wrapping
+  the axis would claim an octave equivalence that singing a line does not have.
+- **The detent.** The pitch axis bends towards the notes of the **stage key** without ever
+  quantising: flat where a singer means the note, steep between. It is monotonic (dragging up
+  never lowers the pitch) and both an in-key note and the midpoint between two of them are
+  fixed points, so no pitch becomes unreachable however hard it pulls. Strength is a *feel*
+  number, set by ear and asserted only to stay inside the window it was tuned in.
+- **Press starts a note where the finger lands** — never sliding in from a default, so the
+  first touch is never wrong on its way somewhere right. Drag glides pitch and morphs vowel
+  live; release stops. **One voice at a time**: a second finger is ignored, because a second
+  throat is not a thing a singer has.
+- **The key is shared with the chord wheel** (§ The chord wheel), so a vocal line over a chord
+  loop you just recorded is in tune. The two surfaces are never visible together, so the
+  ribbon carries its own `‹ key ›` readout — which doubles as the major/minor control exactly
+  as the wheel's does. It docks in the **top-right corner** of the field, the highest note of
+  the most closed vowel: the corner a sung line reaches for least.
+- **The instrument is the notation.** The mic's head lifts with the pitch — its three tap
+  zones already climb the stand in pitch order — and the **mascot's mouth opens with the
+  vowel**, using the three carved mouths it already has. The mouth is an override and is
+  restored to the gifted character's own smile the moment the note ends; nothing is persisted.
+- **The line you sang stays on the field** for a moment after the finger leaves. It is the
+  only notation the surface has.
+- **Nothing sounds until the field is pressed**, and until then no `AudioContext` exists.
+  Reaching the mic opens a silent field, exactly as reaching the kit opens a stopped wheel.
+- The field is `role="application"` with a live `aria-label` naming the key. The **32px touch
+  floor** that governs the two wheels' rings does not apply here and must not be read across:
+  a ring is a set of discrete targets a fingertip can miss between, and a continuous field has
+  nothing to miss — the detent, not the target size, is what makes a press land on a note.
+- **A held note belongs to the key that started it.** The row is seven keys that can overlap,
+  and the arrow glide moves the sounding degree away from the key that pressed it, so a release
+  matches the originating `code` — never "something is held". Inside the close-up the jam row
+  (`N M , . /`) routes through the ribbon as well, so exactly one thing owns the voice.
+- **A drag binds to the window, not to the field.** Move, up, cancel and window `blur` are all
+  window-level and filtered by pointer id, because the finger leaves a 236px square constantly:
+  bound to the element, a wandering drag stops tracking and its release never arrives, and the
+  note sustains to the engine's safety timer. `setPointerCapture` is attempted and allowed to
+  fail, so it can never be the only mechanism. A finger past an edge **clamps** to it rather
+  than doing nothing. A long press is the *instrument* here, so `contextmenu` is suppressed
+  over the ribbon and every child of the field refuses selection and the iOS callout —
+  otherwise the browser turns a sustained note into a context menu and takes the gesture with
+  it. → [[Gotchas]]
+- The mic's three tap zones (base, pole, head) carry **scale degrees 1, 3 and 5** rather than
+  fixed frequencies, and brighten the vowel as they climb. `js/instruments/` sits below
+  `js/play/` and cannot know the key, so the degree is resolved one layer up.
+
+#### The voice and the loop pedal
+
+- **A sung line is a shape, not a pitch.** A vocal loop event carries an optional `glide` of
+  `[secondsFromStart, midi, vowel]` breakpoints, sampled while held and decimated as it goes.
+- **A steady note records no `glide` key at all**, so a held keyboard vowel and every take
+  that predates the ribbon keep exactly the event shape they had.
+- Playback ramps between breakpoints so the curve arrives where it was drawn rather than
+  stepping. The conversion out of scale degrees happens in `js/play/`; the engine knows hertz.
+- A take opened **mid-phrase** by the loop pedal starts its own clock at the note the voice is
+  on right now, not the one the phrase began on.
+- An audio-context rebuild restores the pitch and vowel the glide had **reached**, not the
+  ones it started from (§3 Audio activation).
+
+#### Vocal interaction roadmap
+
+1. **A breath control** — the one expressive axis a finger has left, once pitch and vowel are
+   spent. Pressure or contact size where the browser reports it.
+2. **A choir**: stacking the key's diatonic third and fifth under the sung line, so one finger
+   is three voices. It reads the same key the ribbon already does.
+3. **Consonants** — the ribbon sings vowels only, and a phrase is not made of vowels.
+4. **A metronome and the groove as a backing** — the same item the guitar, piano and drums
+   roadmaps all carry.
+5. **Real microphone input** (`getUserMedia` + pitch detection) is *not* on this roadmap and
+   is a separate decision: a permission prompt on a marketing page, and a fallback owed to
+   everyone who declines. The ribbon does not block it later.
 
 ### Mascot
 
@@ -514,7 +606,7 @@ On desktop (fine pointer / hover-capable, not the mobile game shell), the comput
 | Groove wheel | `;` `'` `` ` `` | Drums close-up only; previous / next groove (plays it), and start / stop |
 | Guitar chords | `Q` `W` `E` `R` `T` `Y` | Em / Am / C / D / G / F — press strums the chord immediately and holds it; release → open strings |
 | Guitar strum | Space / Shift+Space | Downstroke / upstroke using the active keyboard (or pad) chord |
-| Vocal | `N` `M` `,` `.` `/` | ДО / РЕ / МІ / ФА / СОЛЬ; hold sustains like the vocal pad |
+| Vocal | `N` `M` `,` `.` `/` | ДО / РЕ / МІ / ФА / СОЛЬ — degrees 1–5 of the stage key; hold sustains like the ribbon. Live in the mic close-up too, routed through the ribbon |
 
 Rules:
 
@@ -538,7 +630,7 @@ Rules:
 | `1`–`8` | Piano whites (jam — hold sustains) |
 | `Q` `W` `E` `R` `T` `Y` | Guitar chord strum + hold (jam) |
 | Space / Shift+Space | Guitar downstroke / upstroke (jam) |
-| `N` `M` `,` `.` `/` | Vocal notes (jam — hold sustains) |
+| `N` `M` `,` `.` `/` | Vocal notes (jam — hold sustains), counting degrees of the stage key |
 | Drag across strings while guitar-focused | Directional guitar strum (pointer) |
 | `L` | Loop pedal (after first VIBE fill unlock) |
 | HUD logo click | Toggle mascot tektonik dance |
@@ -554,8 +646,8 @@ Rules:
 - Leaving any instrument focus must reset the floating joystick, thumb, active pointer identity, and movement vector before the walk controls return. This includes a lost / cancelled iOS pointer while the joystick is hidden during guitar focus.
 - Touch instruments when focused (multitouch piano / drums; chord hold + independent strum / pluck for guitar).
 - Focused piano / drums / guitar play surfaces claim their fingers: taps and glissandi / strums play without rotating or pinching the camera. Orbit and pinch stay available from empty canvas around the instrument.
-- **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord wheel, vocal pad, or other HUD chrome and another on the kit/keys/strings must both work. Wedge presses also claim their finger so they cannot drive orbit. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
-- Chord wheel while guitar- **or piano**-focused; vocal pad while mic-focused.
+- **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord wheel, voice ribbon, or other HUD chrome and another on the kit/keys/strings must both work. Wedge presses also claim their finger so they cannot drive orbit. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
+- Chord wheel while guitar- **or piano**-focused; voice ribbon while mic-focused.
 - HUD collapses to menu drawer on small screens.
 - Keyboard key legend (`#keys-hint`) and drag hint are **desktop-only** — hidden on phones and tablets (`max-width: 720px` or coarse pointer / no hover).
 
@@ -565,7 +657,7 @@ Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar s
 
 ### Loop pedal
 
-Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop. Must remain usable while another finger is playing an instrument. A vocal-pad hold records its actual sustained duration; if recording or overdubbing begins while a vocal is already held, capture starts at the pedal press and continues until release or loop closure.
+Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop. Must remain usable while another finger is playing an instrument. A ribbon hold records its actual sustained duration, and its glide (§ The voice and the loop pedal); if recording or overdubbing begins while a vocal is already held, capture starts at the pedal press — from the note the voice is on at that instant — and continues until release or loop closure.
 
 ---
 
@@ -578,7 +670,7 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | HUD | Logo (click = mascot dance), VIBE, **pricing button** (gold graduation-cap icon, **Уроки та ціни**), **settings mixer** (gear). No gift control — the gift is a first-run event, not a feature to revisit |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **GLAMOUR** defaults to `67` and **PIXEL** to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the **Камера** selector and the minimal **Графіка** selector |
 | Modals | **Mascot gift** (`#modal-gift`), graphics-reload confirmation, steps, rules, **interactive pricing mixer**, **sign form** (`#modal-sign`, § Signs — reachable from the below-HUD marker button when storage is alive) |
-| Chord / strum / vocal pads | Instrument play helpers while focused |
+| Chord wheel / groove wheel / voice ribbon | The one docked play surface, per instrument, while focused |
 | Chip | Once-per-instrument price teaser: a compact tag-style pill reading as one line — instrument emoji + «Уроки» + a CTA button carrying the price, «від N зл ›» — fading in/out softly. The price is the CTA label; there is no separate «ЦІНИ» word. Before `prices.json` lands (or when an instrument has no single lesson) the button reads «в Art Vibe ›» and is rewritten in place the moment the file arrives. **Placement:** on desktop it hangs under the HUD's lessons-and-prices button, their right edges aligned (measured on each show, so it follows the nav when the sign button appears); at the phone breakpoint it stays bottom-centre, above the pads. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument's focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. **A shown chip buys a 3-minute global quiet period** — however it ended (read, dismissed, or timed out on its own) — before the next one, of any instrument, is allowed to show; a visitor who quickly samples several instruments gets one nudge at a time. Skipped on fall, instrument switch, and leaving the gift reveal. |
 | Toast / tooltip | Short feedback |
 
@@ -776,8 +868,9 @@ The character the visitor was given, written on the reveal frame, merged over de
 ### First-run UI state (localStorage / sessionStorage)
 
 - `av2.onboard.v2` gates the whole first-run sequence (the first gift, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
-- `av2.chord-key.v1` holds the chord wheel's key as `{ tonic, mode, sevenths }` — `tonic` a pitch class `0–11`, `mode` `major` | `minor` (§ The chord wheel). Each field falls back on its own, so an out-of-range or corrupt one lands on C major with sevenths off without discarding the rest.
+- `av2.chord-key.v1` holds the **stage key** as `{ tonic, mode, sevenths }` — `tonic` a pitch class `0–11`, `mode` `major` | `minor` (§ The chord wheel). Each field falls back on its own, so an out-of-range or corrupt one lands on C major with sevenths off without discarding the rest. The name is the chord wheel's, kept so an existing visitor keeps the key they chose, but the value is now the whole stage's: the voice ribbon sings in it too, and either surface's stepper moves it (§ Vocal performance mode).
 - `av2.groove.v1` holds the groove wheel's choice as `{ groove, bpm }` — `groove` an index `0–11`, `bpm` `60–160` (§ The groove wheel). Each field falls back on its own, to ПУЛЬС at 92. **The sound state is deliberately absent**: it resets to silence on every load, because a remembered unmute would start drums at a returning visitor who has not asked for any.
+- A vocal event's `vowel` is a position on the ribbon's axis, `0` (І) to `1` (У) — not an index into a preset list. An optional `glide` carries `[secondsFromStart, midi, vowel]` breakpoints and is **absent entirely** on a steady note.
 - A drum event's `part` is one of `kick`, `snare`, `hihat`, `hihatOpen`, `tom1`, `tom2`, `floor`, `crash`. Every one is named explicitly on the audio path — an unhandled name must not fall through to whatever branch happens to be last.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 24-hour gate.
@@ -829,7 +922,7 @@ Short spoken-aloud cheers — **Супер! / Потужно! / Клас!**, nev
 - Each mark fires **once a visit**. The marker only moves forward, so the idle decay can walk the meter back across a threshold without buying a second cheer for the same ground; a single note crossing two marks collapses into one cheer rather than stacking.
 - Praise **yields to a toast already on screen** rather than replacing it: anything else the stage chose to say carries more than a cheer does. A cheer swallowed that way is retried on the next note rather than spent, so no mark is lost to a collision.
 - Loop playback never counts — replayed notes pass `feedback: false` and so never reach `addVibe()`, so a loop cannot congratulate you on itself.
-- Every live play route reaches `addVibe(n)`; the vocal pad and keyboard vocal call it directly rather than through `playMusicalEvent`.
+- Every live play route reaches `addVibe(n)`; the voice ribbon and keyboard vocal call it directly rather than through `playMusicalEvent`. The ribbon awards **per press, never per glide sample** — otherwise a wiggling finger farms the meter.
 
 Filling the VIBE meter announces itself **once** — **Максимальний вайб! Тепер ти можеш більше.** on the first fill, the one that actually changes something. That fill is the stage's single unlock moment: it opens the **loop pedal** and, where the signs storage answered, the **sign button** — both appear together as the toast lands. The copy names neither, deliberately: two controls arriving on screen say it better than a list, and the wording no longer needs editing each time the fill unlocks something new. Later fills keep the fireworks and the meter flash but say nothing: by then a full meter is self-explanatory, and repeating the words would make the unlock read as routine in hindsight.
 
@@ -959,7 +1052,10 @@ this site can observe — it is the conversion number.
 - **A take over a groove contains it.** Record four bars of РОК and the loop holds its kicks, snares and hats at the right offsets; the groove stops itself as the take closes, and the loop plays the beat from then on.
 - The groove ring — the only touch target on the wheel — is at least `32 px` thick radially at `320×568` and `844×390`. The bar ring inside it is read-only and may be thinner.
 - The wheel does not cover the kit, the mascot's hands or the ✕ exit at `320×568`, `390×844`, `430×932`, `844×390` and `1280×720`. Verified by eye at the drums preset, since drums has no measured fitter to derive it from.
-- The groove wheel and the chord wheel are never both visible; drums shows one, guitar and piano the other, mic neither.
+- The three docked surfaces are never two: drums shows the groove wheel, guitar and piano the chord wheel, the mic the voice ribbon, and idle shows none. `__ribbonDebug().docked` names what is open.
+- The ribbon's pitch axis is monotonic and its in-key notes and midpoints are fixed points, checked in Node across all 12 keys in both modes; a wrong detent is silent-but-wrong the way a wrong voicing is.
+- A sung glide records breakpoints and replays as a curve; **a steady note records no `glide` key at all**, so pre-ribbon takes keep their event shape byte for byte.
+- The mascot's mouth follows the vowel while a note sounds and returns to the gifted character's own smile on release.
 - Recording four bars over a sounding groove yields a loop whose duration is a whole number of bars and whose downbeat coincides with 12 o'clock. Three minutes later they still coincide. `clearRecordedLoop()` does not stop the groove or swallow its pending animation.
 - `1`–`7` play all seven kit pieces in a close-up, including the floor tom and the rack tom that `Z X C V B` cannot reach. `Space` opens the hi-hat while held and closes it on release; outside the drums close-up the same key is the guitar's downstroke and touches no cymbal. `;` `'` `` ` `` are inert outside the close-up.
 - A snare struck at its centre and at its rim are clearly different in level without clipping, and a drag across the kit is a roll with dynamics. A rim strike is quiet, never silent.

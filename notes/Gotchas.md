@@ -6,6 +6,53 @@ tags: [gotchas, debugging]
 
 Traps that have actually cost time. Read this before debugging anything visual.
 
+## A drag surface binds its pointer to the window, not to itself
+
+The two wheels bind `pointermove` / `pointerup` to their own SVG, and that is correct for
+them: a wedge is pressed and let go in one place. Copying it onto the voice ribbon
+(`js/play/ribbon.js`) shipped a **stuck droning note**. A sung line is a drag across a 236px
+square and the finger leaves it constantly; off the element there were no more moves, so the
+note froze mid-phrase, and the release happened somewhere else entirely, so `pointerup` never
+reached the module and the voice sustained until `startVocal`'s ten-second safety timer.
+
+`setPointerCapture` is what is supposed to make element-bound listeners safe, and it is why
+the wheels get away with it — but every call site here wraps it in `try`/`catch` on purpose,
+because a pointer the browser has stopped tracking must not take an already-sounding note
+down with it. **That means capture is a best case, never the mechanism.** Anything held across
+a drag binds move / up / cancel to the window, filters by `pointerId`, and treats `blur` as a
+release too.
+
+## A held note is owned by the key that started it, not by the note it is on
+
+Two bugs in the mic close-up's row, both reported as "it cuts out, especially on other keys",
+and both the same mistake: the release asked *"is anything held?"* instead of *"is this mine?"*
+
+- **The row released the wrong note.** `releaseRibbonDegree()` matched on nothing, so holding
+  `1`, pressing `3`, then letting go of `1` stopped the note `3` was singing. It cannot match on
+  the *degree* either, because the arrow-key glide moves the degree out from under the key that
+  started it. It matches on the **`KeyboardEvent.code`** that owns the note.
+- **Two code paths owned one voice.** Under mic focus both the close-up row (`1`–`7`, through
+  `ribbon.js`) and the jam row (`N M , . /`, through `mixer.js`'s `beginKeyboardVocal`) were
+  live, and `beginKeyboardVocal` silences `play.heldVocal` **directly** — stopping the ribbon's
+  note without the ribbon ever hearing about it, which left it pulsing `mic.sing()` and stamping
+  loop duration for a note that had gone. The jam row now routes through the ribbon inside the
+  close-up, so there is one owner. Drums gets away with keeping both of its rows because both
+  end in the same `playDrumFromKeyboard`.
+
+Note `canKeyboardJamPlay()` is false in mobile game mode, so *no* keyboard test reproduces
+anything below ~900px wide — a keyboard bug that "will not reproduce" may just be the viewport.
+
+The same report produced two smaller ones worth recognising:
+
+- **`preventDefault` on a `touchend` you did not check is cancelable** logs
+  `[Intervention] Ignored attempt to cancel a touchend event with cancelable=false`. On a
+  `touch-action: none` drag surface that handler has no job at all — it was copied from the
+  vocal pad, where it suppressed a 48px button's synthesized click. Neither wheel has one.
+- **Ramping a `BiquadFilterNode`'s `Q` at pointer rate is a zipper generator.** Frequency and
+  gain ramp cleanly; `Q` re-solves the filter's coefficients under a signal already ringing
+  inside it. The vowel morph now moves the peaks and leaves their sharpness where the note
+  started, which is inaudible as a difference and removes the artefact entirely.
+
 ## A "when did X last happen" flag needs a home outside the thing it watches
 
 `syncLoopHandover()` in `js/play/groove.js` compares the loop's recording state against the last

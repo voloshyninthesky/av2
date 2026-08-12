@@ -7,11 +7,11 @@
 // any aspect ratio, notch or browser chrome height.
 // ============================================================
 import * as THREE from 'three';
-import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260813-08';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-08';
-import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-08';
-import { instrumentView } from './instrument-presets.js?v=20260813-08';
-import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-08';
+import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260813-09';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-09';
+import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-09';
+import { instrumentView } from './instrument-presets.js?v=20260813-09';
+import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-09';
 
 const loopPedal = document.getElementById('loop-pedal');
 const mobileExit = document.getElementById('mobile-exit');
@@ -137,17 +137,23 @@ function focusSafeRect(reservedRects = []) {
   return candidates[0] || viewport;
 }
 
-// The chord wheel appears only after the entry fit has already run, so its
-// footprint is reserved from the layout constants that style.css sizes it by
-// instead of a DOM measurement — entry fit and later refits then agree on the
-// same play area. THE NUMBERS BELOW ARE THE TWIN OF `--wheel-size` /
+// A docked play surface appears only after the entry fit has already run, so
+// its footprint is reserved from the layout constants that style.css sizes it
+// by instead of a DOM measurement — entry fit and later refits then agree on
+// the same play area. THE NUMBERS BELOW ARE THE TWIN OF `--wheel-size` /
 // `--wheel-gap` in style.css; change one and you must change the other.
+//
+// One reserve serves all three surfaces, because all three share one dock and
+// one size formula: the chord wheel (guitar, piano), the groove wheel (drums)
+// and the voice ribbon (mic). Only the two fitted instruments actually consult
+// it — drums and the mic use raw presets — but the reserve does not need to
+// know which surface is showing, and that is the point of sharing the tokens.
 const WHEEL_GAP = 12;
 const wheelSize = (portrait, width, height) => (portrait
   ? Math.min(width - 100, 0.44 * height, 300)
   : Math.min(0.3 * height + 120, 236));
 
-function chordWheelReservedRects() {
+function playSurfaceReservedRects() {
   const vv = window.visualViewport;
   const left = vv?.offsetLeft || 0;
   const top = vv?.offsetTop || 0;
@@ -170,11 +176,11 @@ function chordWheelReservedRects() {
 }
 
 export function pianoFocusSafeRect() {
-  return focusSafeRect(chordWheelReservedRects());
+  return focusSafeRect(playSurfaceReservedRects());
 }
 
 function guitarFocusSafeRect() {
-  return focusSafeRect(chordWheelReservedRects());
+  return focusSafeRect(playSurfaceReservedRects());
 }
 
 export function projectedBounds(points, projectionCamera) {

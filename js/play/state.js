@@ -29,9 +29,12 @@ export const play = {
   guitarStrokeMotion: 0,
   guitarStrokeDirection: 1,
 
-  /** Vocal note held on the pad: the voice, its button, and its pointer. */
+  /** Vocal note held on the ribbon: the voice, its pointer, and *what* it is
+   *  singing right now. The note is a live value, not a starting one — the
+   *  ribbon glides, so the loop pedal opening a capture mid-phrase has to be
+   *  able to ask where the voice is rather than where it began. */
   heldVocal: null,
-  heldVocalButton: null,
+  heldVocalNote: null,
   heldVocalPointer: null,
   heldVocalPulseTimer: null,
   /** Open loop-pedal capture for a held note, stamped with its real duration

@@ -772,7 +772,17 @@ export class AudioEngine {
 
   // ---------------- MIC / VOCAL ----------------
 
-  startVocal(freq = 329.63, vowel = 1, vel = 1, at = null) {
+  /**
+   * A sung note. `formants` is a pair of `[frequency, Q, gain]` bandpass peaks
+   * — the engine executes a vowel, it does not know which vowel it is. The
+   * table lives in js/play/voice.js, where the Node tests can reach it and
+   * where a wrong peak is a caught mistake rather than a silent one.
+   *
+   * The returned voice can be re-pitched and re-shaped while it sounds. That
+   * is the whole difference between this and every other instrument here: a
+   * key, a string and a drum head are all done deciding once they are struck.
+   */
+  startVocal(freq = 329.63, formants = [[800, 5, 1], [1200, 7, 0.45]], vel = 1, at = null) {
     if (this._silent()) return null;
     const t = this._at(at);
     const peak = Math.max(0.0001, 0.26 * vel);
@@ -781,11 +791,6 @@ export class AudioEngine {
     out.gain.exponentialRampToValueAtTime(peak, t + 0.035);
     out.connect(this._bus('mic'));
 
-    const formants = [
-      [[800, 5, 1], [1200, 7, 0.45]],
-      [[500, 6, 1], [1750, 8, 0.45]],
-      [[350, 7, 1], [2100, 9, 0.4]],
-    ][Math.abs(vowel) % 3];
     const filters = formants.map(([frequency, q, gain]) => {
       const filter = this.ctx.createBiquadFilter();
       const formantGain = this.ctx.createGain();
@@ -794,16 +799,29 @@ export class AudioEngine {
       filter.Q.value = q;
       formantGain.gain.value = gain;
       filter.connect(formantGain).connect(out);
-      return filter;
+      return { filter, formantGain };
     });
 
+    // Vibrato modulates `detune`, in CENTS, not `frequency` in hertz.
+    //
+    // Hertz was the old shape and it was survivable while the voice had five
+    // fixed notes; the ribbon spans nineteen semitones and glides through all
+    // of them, and a constant ±5.5 Hz is ±36 cents at the bottom of that range
+    // and ±12 at the top — three times as deep on a low note as a high one.
+    // Worse, deep pitch modulation through a resonant formant turns into
+    // *amplitude* modulation: measured at 19 dB of level wobble on a note that
+    // was not even moving, which is the roughness under a held tone.
+    // Cents keep it even across the range, and 18 is a singer's vibrato rather
+    // than a siren's.
     const vibrato = this.ctx.createOscillator();
     const vibratoGain = this.ctx.createGain();
     vibrato.frequency.value = 5.5;
-    vibratoGain.gain.value = 5.5;
+    vibratoGain.gain.setValueAtTime(4, t);
+    vibratoGain.gain.linearRampToValueAtTime(18, t + 0.9);
     vibrato.connect(vibratoGain);
 
     const sources = [];
+    const tones = [];
     for (const [type, level, detune] of [['sawtooth', 0.55, -4], ['triangle', 0.42, 4]]) {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -811,17 +829,116 @@ export class AudioEngine {
       osc.frequency.value = freq;
       osc.detune.value = detune;
       gain.gain.value = level;
-      vibratoGain.connect(osc.frequency);
+      // Into `detune`, which is cents and sums with the static value above.
+      vibratoGain.connect(osc.detune);
       osc.connect(gain);
-      for (const filter of filters) gain.connect(filter);
+      for (const { filter } of filters) gain.connect(filter);
       osc.start(t);
       sources.push(osc);
+      tones.push(osc);
     }
     vibrato.start(t);
     sources.push(vibrato);
 
+    // Breath, and only at the onset. A sung note starts with air moving before
+    // it starts with a pitch, which is the one thing the voice was missing next
+    // to the drums and the guitar — but it has to go to **silence**, not to a
+    // trace. Held at a trace it is a hiss under every note, and a long note
+    // then sounds like a fault rather than like breath.
+    const breath = this.ctx.createBufferSource();
+    breath.buffer = this._noise;
+    breath.loop = true;
+    const breathFilter = this.ctx.createBiquadFilter();
+    breathFilter.type = 'highpass';
+    breathFilter.frequency.value = 1800;
+    const breathGain = this.ctx.createGain();
+    breathGain.gain.setValueAtTime(0.0001, t);
+    breathGain.gain.linearRampToValueAtTime(0.035 * vel, t + 0.03);
+    breathGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    breath.connect(breathFilter).connect(breathGain).connect(out);
+    breath.start(t);
+    sources.push(breath);
+
+    // What has been *scheduled*, which is not what the params read: a ramp
+    // aimed into the future leaves `.value` on the old number until it gets
+    // there. Glides chain off each other, so they have to chain off this.
+    let scheduledFreq = freq;
+    let scheduledFormants = formants;
+
+    // A finger and a recording want opposite things from an AudioParam, and
+    // using one mechanism for both is what made the ribbon crackle.
+    //
+    // A *recorded* breakpoint has to ARRIVE at an exact time, so it cancels
+    // what was scheduled and ramps to land on the beat. A *finger* has no
+    // arrival time at all — it just moves, sixty times a second — and doing
+    // the same thing for it meant cancelling and re-aiming an in-flight ramp
+    // on every frame, at `currentTime`, which is a moment the audio thread has
+    // already rendered. Automation written into the past gets clamped, and the
+    // clamp is a step in the parameter: a click. Measured at ~3x the
+    // sample-to-sample discontinuity of the same sweep rendered offline, on
+    // the pitch axis as well as the vowel one.
+    //
+    // `setTargetAtTime` is the automation built for a control that is being
+    // moved: it never cancels anything, it starts from wherever the value
+    // actually is, and it is continuous by construction. Re-aiming it is just
+    // moving the target.
+    const LIVE_LOOKAHEAD = 0.012;
+
+    /** A finger moved. Continuous, no cancellation, no arrival time. */
+    const followParam = (param, target, glide) => {
+      param.setTargetAtTime(target, this.ctx.currentTime + LIVE_LOOKAHEAD, Math.max(0.004, glide / 3));
+    };
+
+    /** A recorded breakpoint. Must land exactly on `when`. */
+    const rampParam = (param, previous, target, when, glide, exponential) => {
+      param.cancelScheduledValues(when);
+      param.setValueAtTime(previous, when);
+      const until = when + Math.max(0.005, glide);
+      if (exponential) param.exponentialRampToValueAtTime(Math.max(1, target), until);
+      else param.linearRampToValueAtTime(target, until);
+    };
+
     const voice = {
       stopped: false,
+      get freq() { return scheduledFreq; },
+      /** Glide to a new pitch. Exponential, because that is what "in tune" is. */
+      setPitch: (nextFreq, glide = 0.05, atTime = null) => {
+        if (voice.stopped || !Number.isFinite(nextFreq) || nextFreq <= 0) return;
+        if (atTime === null) {
+          for (const osc of tones) followParam(osc.frequency, nextFreq, glide);
+        } else {
+          const when = this._at(atTime);
+          for (const osc of tones) rampParam(osc.frequency, scheduledFreq, nextFreq, when, glide, true);
+        }
+        scheduledFreq = nextFreq;
+      },
+      /**
+       * Morph the mouth. Same pair shape `startVocal` took.
+       *
+       * Q is deliberately **not** ramped, only the peak frequency and its
+       * level. Re-solving a biquad's resonance a hundred times a second is
+       * where the zipper comes from — the filter's own coefficients are being
+       * rewritten under a signal already ringing inside it — and it buys
+       * nothing audible, because what tells two vowels apart is where the
+       * peaks are, not how sharp they are. Q is set once, at the vowel the
+       * note started on.
+       */
+      setVowel: (nextFormants, glide = 0.09, atTime = null) => {
+        if (voice.stopped || !Array.isArray(nextFormants)) return;
+        const when = atTime === null ? null : this._at(atTime);
+        filters.forEach(({ filter, formantGain }, index) => {
+          const [frequency, , gain] = nextFormants[index] || scheduledFormants[index];
+          const [wasFrequency, , wasGain] = scheduledFormants[index];
+          if (when === null) {
+            followParam(filter.frequency, frequency, glide);
+            followParam(formantGain.gain, gain, glide);
+          } else {
+            rampParam(filter.frequency, wasFrequency, frequency, when, glide, true);
+            rampParam(formantGain.gain, wasGain, gain, when, glide, false);
+          }
+        });
+        scheduledFormants = nextFormants;
+      },
       safetyTimer: null,
       cleanupTimer: null,
       stopAt: null,
@@ -877,10 +994,26 @@ export class AudioEngine {
     voice?.stop?.();
   }
 
-  vocalTone(freq = 329.63, vowel = 1, vel = 1, at = null, duration = 0.68) {
+  /**
+   * A sung note of known length. `glide` replays a recorded line: breakpoints
+   * of `[secondsFromStart, freq, formants]`, each ramping from the one before
+   * it so the curve arrives where it was drawn rather than stepping. Already
+   * converted out of scale degrees by the caller — this layer knows about
+   * hertz, not about keys.
+   */
+  vocalTone(freq = 329.63, formants = [[800, 5, 1], [1200, 7, 0.45]], vel = 1, at = null, duration = 0.68, glide = null) {
     const startAt = this.ctx ? this._at(at) : null;
-    const voice = this.startVocal(freq, vowel, vel, startAt);
-    if (voice) voice.stop(startAt + duration);
+    const voice = this.startVocal(freq, formants, vel, startAt);
+    if (!voice) return null;
+    let previous = 0;
+    for (const [offset, breakFreq, breakFormants] of glide || []) {
+      if (!(offset > previous) || offset >= duration) continue;
+      const span = offset - previous;
+      voice.setPitch(breakFreq, span, startAt + previous);
+      if (breakFormants) voice.setVowel(breakFormants, span, startAt + previous);
+      previous = offset;
+    }
+    voice.stop(startAt + duration);
     return voice;
   }
 

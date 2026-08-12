@@ -59,7 +59,7 @@ html, body {
 }
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
-#loop-pedal, #vocal-pad, #chord-wheel, #groove-wheel, .overlay,
+#loop-pedal, #voice-ribbon, #chord-wheel, #groove-wheel, .overlay,
 button, a, .pill-btn, .icon-btn {
   touch-action: manipulation;
 }
@@ -72,7 +72,7 @@ html.stage-live #chip,
 html.stage-live #keys-hint,
 html.stage-live #drag-hint,
 html.stage-live #loop-pedal,
-html.stage-live #vocal-pad,
+html.stage-live #voice-ribbon,
 html.stage-live #chord-wheel,
 html.stage-live #groove-wheel,
 html.stage-live .overlay,
@@ -672,34 +672,6 @@ html.pads-open #onboard,
 }
 @keyframes toastInTop { from { transform: translate(-50%, -14px); opacity: 0; } }
 
-/* ============ PLAYABLE VOCAL PAD ============ */
-#vocal-pad {
-  position: fixed; left: 50%; bottom: 122px; z-index: 46;
-  transform: translateX(-50%);
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px; border: 1px solid rgba(209, 161, 59, .72); border-radius: 999px;
-  background: rgba(23, 18, 28, .82); backdrop-filter: blur(12px);
-  box-shadow: 0 10px 34px rgba(0, 0, 0, .42), 0 0 22px rgba(158, 51, 202, .25);
-  animation: vocalPadIn .24s cubic-bezier(.2, 1.3, .35, 1);
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-}
-@keyframes vocalPadIn { from { opacity: 0; transform: translate(-50%, 18px) scale(.88); } }
-#vocal-pad button {
-  width: 48px; height: 48px; border: 1px solid rgba(253, 251, 247, .28); border-radius: 50%;
-  background: linear-gradient(145deg, rgba(158, 51, 202, .95), rgba(92, 24, 118, .92));
-  color: var(--cream); font: 700 9px/1 'Unbounded', sans-serif; letter-spacing: .02em;
-  cursor: pointer; touch-action: none;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 4px 12px rgba(0, 0, 0, .3);
-  transition: transform .12s, background .12s, box-shadow .12s;
-}
-#vocal-pad button:nth-child(even) { background: linear-gradient(145deg, var(--gold), #9d6f14); color: var(--ink); }
-#vocal-pad button.playing {
-  transform: translateY(-5px) scale(1.08);
-  background: var(--cream); color: var(--purple-deep);
-  box-shadow: 0 0 0 3px var(--gold), 0 0 24px rgba(209, 161, 59, .85);
-}
-
 /* ============ CHORD WHEEL (circle of fifths) ============ */
 /* Deliberately quiet next to the pads it replaces: two fill opacities, one
    gold hairline around the chords that belong to the current key, and the
@@ -707,15 +679,16 @@ html.pads-open #onboard,
    gradients, because 24 gradients read as noise where six read as buttons.
 
    --wheel-size / --wheel-gap / --wheel-bottom ARE THE TWIN of the constants in
-   chordWheelReservedRects() (js/view/focus-frame.js). The fitter has to reserve
+   playSurfaceReservedRects() (js/view/focus-frame.js). The fitter has to reserve
    this footprint before the wheel exists, so it cannot measure it — change one
    and you must change the other.
 
-   The groove wheel (drums) shares this dock rather than copying it, and that is
-   not a tidiness preference: a forked size formula would silently invalidate the
-   guitar and piano reserves the first time either was tuned. The two are never
-   visible together — setInstrumentViewPhase shows one per instrument. */
-#chord-wheel, #groove-wheel {
+   The groove wheel (drums) and the voice ribbon (mic) share this dock rather
+   than copying it, and that is not a tidiness preference: a forked size formula
+   would silently invalidate the guitar and piano reserves the first time either
+   was tuned. All three are never visible together — setInstrumentViewPhase
+   shows exactly one per instrument, and __ribbonDebug().docked asserts it. */
+#chord-wheel, #groove-wheel, #voice-ribbon {
   /* Width is capped by what the right-hand control column needs, not by a flat
      vw fraction: the ✕ and the loop pedal live there, and on a 320px phone a
      78vw wheel reaches far enough across to collide with both. The vh cap is
@@ -742,16 +715,25 @@ html.pads-open #onboard,
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: none;
 }
-#chord-wheel[hidden], #groove-wheel[hidden] { display: none !important; }
+#chord-wheel[hidden], #groove-wheel[hidden], #voice-ribbon[hidden] { display: none !important; }
 @keyframes chordWheelIn { 0% { opacity: 0; transform: scale(.9); } }
 
-#chord-wheel-rings, #groove-wheel-rings { display: block; width: 100%; height: 100%; touch-action: none; }
+/* The ribbon is the one surface in this dock that is not a wheel, because
+   pitch is not a circle: a voice has a top and a bottom, and wrapping the axis
+   would claim an octave equivalence that singing a line does not have. It
+   still takes the same square footprint, so the reserve in focus-frame.js
+   covers all three without knowing which is showing. */
+#voice-ribbon { border-radius: 22px; }
+
+#chord-wheel-rings, #groove-wheel-rings, #voice-ribbon-field {
+  display: block; width: 100%; height: 100%; touch-action: none;
+}
 /* Stepping the key turns the wheel. Seeing the tonic travel to the top is the
    only thing that makes "a fifth" feel like a distance rather than a word. */
 .wheel-rings { transition: transform .3s cubic-bezier(.3, .9, .3, 1); }
 @media (prefers-reduced-motion: reduce) {
   .wheel-rings { transition: none; }
-  #chord-wheel, #groove-wheel { animation: none; }
+  #chord-wheel, #groove-wheel, #voice-ribbon { animation: none; }
 }
 
 #chord-wheel .wedge { cursor: pointer; touch-action: none; }
@@ -803,9 +785,18 @@ html.pads-open #onboard,
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: calc(var(--wheel-size) * .012);
 }
-.chord-key-step, .groove-tempo-step { display: flex; align-items: center; gap: calc(var(--wheel-size) * .005); }
+/* The ribbon's hub is the one that does not sit in the middle: the middle of a
+   field is where the singing happens. It docks in the top-right corner — the
+   highest note of the most closed vowel, the corner a sung line reaches for
+   least — and ribbon.js keeps presses on it from reaching the field. */
+#voice-ribbon-hub {
+  position: absolute; right: calc(var(--wheel-size) * .045); top: calc(var(--wheel-size) * .035);
+  display: flex; align-items: center;
+}
+.chord-key-step, .groove-tempo-step, .voice-key-step { display: flex; align-items: center; gap: calc(var(--wheel-size) * .005); }
 .chord-key-step button, #chord-sevenths,
-.groove-tempo-step button {
+.groove-tempo-step button,
+.voice-key-step button {
   display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(253, 251, 247, .22); border-radius: 999px;
   background: rgba(23, 18, 28, .5); color: rgba(253, 251, 247, .72);
@@ -817,7 +808,7 @@ html.pads-open #onboard,
    The hub hole is proportional, so fixed controls fill it at exactly one wheel
    size and leave a hole at every other — which is what portrait did, its wheel
    being the larger of the two. */
-.chord-key-step button, .groove-tempo-step button {
+.chord-key-step button, .groove-tempo-step button, .voice-key-step button {
   width: calc(var(--wheel-size) * .1); height: calc(var(--wheel-size) * .1);
   font-size: calc(var(--wheel-size) * .055);
 }
@@ -825,7 +816,7 @@ html.pads-open #onboard,
    relative minor and back, which is why it reads "C" one moment and "Am" the
    next. It carries at most three characters, so it is what gives way on a
    narrow phone; the chevrons stay tappable. */
-#chord-key-label {
+#chord-key-label, #voice-key-label {
   min-width: calc(var(--wheel-size) * .095); padding: 3px 2px; text-align: center;
   border: none; border-bottom: 1px dashed rgba(209, 161, 59, .5);
   background: none; cursor: pointer;
@@ -833,9 +824,9 @@ html.pads-open #onboard,
   font: 700 calc(var(--wheel-size) * .058)/1 'Unbounded', sans-serif;
   touch-action: manipulation;
 }
-#chord-key-label[data-mode="minor"] { color: var(--gold-light); }
+#chord-key-label[data-mode="minor"], #voice-key-label[data-mode="minor"] { color: var(--gold-light); }
 @media (hover: hover) {
-  #chord-key-label:hover { border-bottom-color: var(--gold); }
+  #chord-key-label:hover, #voice-key-label:hover { border-bottom-color: var(--gold); }
 }
 #chord-sevenths {
   width: calc(var(--wheel-size) * .11); height: calc(var(--wheel-size) * .08);
@@ -852,7 +843,7 @@ html.pads-open #onboard,
    the right. On piano a full-height rail would eat a quarter of the keybed's
    width, which the fitter punishes cubically, so a corner it is. */
 @media (orientation: landscape) {
-  #chord-wheel, #groove-wheel {
+  #chord-wheel, #groove-wheel, #voice-ribbon {
     --wheel-size: min(calc(30vh + 120px), 236px);
     --wheel-bottom: 12px;
   }
@@ -869,7 +860,7 @@ html.pads-open #onboard,
    pedal.
 
    Drums has no measured fitter — instrumentViewFrame() returns a raw preset for
-   it, so chordWheelReservedRects() is never consulted and there is nothing to
+   it, so playSurfaceReservedRects() is never consulted and there is nothing to
    reserve into. This cap is therefore the whole answer, and 220px is its floor
    as well as its ceiling: the groove ring is 31 of the 200 viewBox units, so
    any smaller and the one touch target drops under the 32px thickness §12
@@ -949,6 +940,59 @@ html.pads-open #onboard,
    how you start. */
 #groove-wheel[data-playing="false"] .playhead { opacity: 0; }
 #groove-wheel[data-playing="false"] .bar-tick { stroke: rgba(253, 251, 247, .12); stroke-width: 1; }
+
+/* ============ VOICE RIBBON (pitch × vowel) ============ */
+/* As quiet as the two wheels, and for the same reason: everything drawn on
+   this field is about to be under a fingertip, so it has to survive being half
+   covered. Two line weights — the key's notes, and the tonic among them — plus
+   the cream and gold the rest of the stage already spends on what is sounding.
+   FIELD in js/play/ribbon.js is the twin of nothing here: the geometry is all
+   in the viewBox, so the field scales with --wheel-size for free. */
+/* Belt and braces against the long-press callout, which the wheels never had
+   to think about because a wedge is tapped. Here the long press *is* the note,
+   so every child of the field has to refuse selection and the iOS callout —
+   inheritance through SVG is not something to rely on. ribbon.js also cancels
+   `contextmenu`, because on Android that is what actually fires. */
+#voice-ribbon-field, #voice-ribbon-field * {
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+#voice-ribbon-field .field-plate {
+  fill: rgba(253, 251, 247, .045);
+  stroke: rgba(23, 18, 28, .5); stroke-width: 1.1;
+}
+/* The notes of the key, drawn across the field. A player reads the spacing —
+   two wide gaps and a narrow one, then three and a narrow one — as the scale
+   it is, without anything having to say so. */
+#voice-ribbon-field .degree line {
+  stroke: rgba(253, 251, 247, .16); stroke-width: .8;
+}
+#voice-ribbon-field .degree text {
+  fill: rgba(253, 251, 247, .34); text-anchor: end;
+  font: 600 7px/1 'Unbounded', sans-serif;
+}
+#voice-ribbon-field .degree.tonic line { stroke: rgba(209, 161, 59, .58); stroke-width: 1.4; }
+#voice-ribbon-field .degree.tonic text { fill: var(--gold-light); }
+#voice-ribbon-field .vowel-guide { stroke: rgba(253, 251, 247, .08); stroke-width: .7; }
+#voice-ribbon-field .vowel-label {
+  fill: rgba(253, 251, 247, .5); text-anchor: middle;
+  font: 700 9px/1 'Unbounded', sans-serif;
+}
+/* The line you just sang, kept on the field for a moment after the finger
+   leaves. It is the only notation this surface has, and it is worth seeing for
+   longer than it took to sing. */
+#voice-ribbon-field .voice-trail {
+  fill: none; stroke: var(--gold); stroke-width: 2.2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0; transition: opacity .9s ease;
+}
+#voice-ribbon-field .voice-head {
+  fill: var(--cream); stroke: var(--gold); stroke-width: 2;
+  opacity: 0; transition: opacity .12s;
+  filter: drop-shadow(0 0 6px rgba(209, 161, 59, .8));
+}
+@media (prefers-reduced-motion: reduce) {
+  #voice-ribbon-field .voice-trail, #voice-ribbon-field .voice-head { transition: none; }
+}
 
 /* Guitar play claims the canvas, while panels and controls keep normal zoom. */
 html.guitar-focused #scene,
@@ -1684,7 +1728,7 @@ html.gift-open #keys-hint,
 html.gift-open #drag-hint,
 html.gift-open #mobile-controls,
 html.gift-open #loop-pedal,
-html.gift-open #vocal-pad,
+html.gift-open #voice-ribbon,
 html.gift-open #chord-wheel,
 html.gift-open #chip,
 html.gift-open #toast {
@@ -1755,15 +1799,12 @@ html.gift-open #toast {
     padding: 0 max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     pointer-events: none;
   }
-  #vocal-pad {
-    bottom: calc(168px + env(safe-area-inset-bottom));
-    max-width: calc(100vw - 22px); padding: 7px;
-  }
-  /* Game mode parks the joystick and ГРАТИ along the bottom, so the wheel sits
-     a little higher here than on desktop. The twin of the 48 in
-     focus-frame.js. */
-  #chord-wheel { --wheel-bottom: 16px; }
-  #vocal-pad button { width: clamp(42px, 12vw, 50px); height: clamp(42px, 12vw, 50px); font-size: 8px; }
+  /* Game mode parks the joystick and ГРАТИ along the bottom, so the surface
+     sits a little higher here than on desktop. The twin of the 48 in
+     focus-frame.js — and the ribbon shares that reserve, so it takes the same
+     offset. The groove wheel deliberately does not: drums reserves nothing,
+     because it has no measured fitter to reserve against. */
+  #chord-wheel, #voice-ribbon { --wheel-bottom: 16px; }
   .overlay { padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); align-items: flex-end; }
   .panel {
     width: 100%; max-height: min(92vh, 100%);

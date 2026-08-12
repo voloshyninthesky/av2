@@ -265,6 +265,117 @@ export const keyLabel = (tonicPc, mode = 'major') => (
 export const stepKey = (tonicPc, direction) => (tonicPc + direction * 7 + 84) % 12;
 
 // ============================================================
+// THE SCALE, AS A CONTINUOUS AXIS
+// Everything above answers "which chords belong to this key". The voice needs
+// the other question — "which *notes* do, and where is the nearest one from
+// here" — because a sung line slides between them instead of landing on keys.
+//
+// A minor key is the same seven notes as its relative major, exactly as the
+// wedges are the same six chords, so this needs one array per mode and no
+// second table.
+// ============================================================
+export const SCALE_SEMITONES = {
+  major: [0, 2, 4, 5, 7, 9, 11],
+  minor: [0, 2, 3, 5, 7, 8, 10],
+};
+
+/** The seven pitch classes of a key, ascending from the tonic. */
+export const scalePitchClasses = (tonicPc, mode = 'major') => (
+  SCALE_SEMITONES[mode].map((semitones) => (tonicPc + semitones) % 12)
+);
+
+/** True when this MIDI note belongs to the key. */
+export function isInScale(midi, tonicPc, mode = 'major') {
+  const offset = ((Math.round(midi) - tonicPc) % 12 + 12) % 12;
+  return SCALE_SEMITONES[mode].includes(offset);
+}
+
+/**
+ * The in-key MIDI note nearest a (possibly fractional) pitch. Ties round down,
+ * which only happens exactly halfway through a whole step and has to resolve
+ * *somewhere* — down keeps it deterministic and matches `snapToScale`'s split
+ * of that interval.
+ */
+export function nearestScaleMidi(midi, tonicPc, mode = 'major') {
+  const floor = Math.floor(midi);
+  // A scale note is never more than two semitones away in either direction, so
+  // this window always contains one.
+  let best = null;
+  let bestDistance = Infinity;
+  for (let candidate = floor - 2; candidate <= floor + 3; candidate++) {
+    if (!isInScale(candidate, tonicPc, mode)) continue;
+    const distance = Math.abs(midi - candidate);
+    if (distance < bestDistance - 1e-9) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/** The in-key note below and above a pitch, used to size the detent's pull. */
+function scaleNeighbours(midi, tonicPc, mode) {
+  const nearest = nearestScaleMidi(midi, tonicPc, mode);
+  let below = nearest - 1;
+  while (!isInScale(below, tonicPc, mode)) below--;
+  let above = nearest + 1;
+  while (!isInScale(above, tonicPc, mode)) above++;
+  return { nearest, below, above };
+}
+
+/**
+ * The detent. Bends a continuous pitch towards the nearest note of the key
+ * without ever quantising it: the curve is flat where a singer means the note
+ * and steep between, so a slide lands in tune while a deliberate bend still
+ * bends.
+ *
+ * `pull` is 0 (untouched) to 1 (as magnetic as this gets). It is a *feel*
+ * number and cannot be derived — it was set by ear.
+ *
+ * The mapping stays onto its own interval — halfway between two notes still
+ * maps to halfway — so the axis never grows a dead zone, and it is monotonic,
+ * so dragging up never lowers the pitch.
+ */
+export function snapToScale(midi, tonicPc, mode = 'major', pull = 0.6) {
+  if (pull <= 0) return midi;
+  const { nearest, below, above } = scaleNeighbours(midi, tonicPc, mode);
+  const delta = midi - nearest;
+  if (delta === 0) return midi;
+  // Half the gap on the side we are actually on — a whole step above and a
+  // half step below is the normal case, not the exception.
+  const half = (delta > 0 ? above - nearest : nearest - below) / 2;
+  const u = Math.max(-1, Math.min(1, delta / half));
+  const curved = Math.sign(u) * (Math.abs(u) ** (1 + 3 * Math.min(1, pull)));
+  return nearest + curved * half;
+}
+
+/**
+ * Every in-key note in a range, with the scale degree each one is — what the
+ * ribbon draws its ticks and numbers from.
+ */
+export function scaleDegreeMidis(lowMidi, highMidi, tonicPc, mode = 'major') {
+  const notes = [];
+  for (let midi = Math.ceil(lowMidi); midi <= Math.floor(highMidi); midi++) {
+    const offset = ((midi - tonicPc) % 12 + 12) % 12;
+    const index = SCALE_SEMITONES[mode].indexOf(offset);
+    if (index !== -1) notes.push({ midi, degree: index + 1 });
+  }
+  return notes;
+}
+
+/**
+ * The MIDI note for a scale degree (1-7), at or above `lowMidi`. This is what
+ * the number row presses: `1` is the tonic in either mode, the same promise
+ * the chord row makes.
+ */
+export function degreeMidi(degree, tonicPc, mode = 'major', lowMidi = 60) {
+  const semitones = SCALE_SEMITONES[mode][(degree - 1) % 7];
+  const pc = (tonicPc + semitones) % 12;
+  const base = Math.ceil(lowMidi);
+  return base + (((pc - base) % 12) + 12) % 12;
+}
+
+// ============================================================
 // PIANO VOICING
 // The keybed is two octaves, C4..C6 — MIDI 60..84, exactly 25 semitones for
 // exactly 25 keys, so "inside the range" and "a key exists for it" are the

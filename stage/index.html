@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260813-08">
+<link rel="stylesheet" href="/css/style.css?v=20260813-09">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -250,12 +250,21 @@
   <button type="button" id="onboard-ok" class="pill-btn gold small">ЗРОЗУМІЛО</button>
 </div>
 
-<div id="vocal-pad" hidden aria-label="Ноти вокалу">
-  <button type="button" data-vocal-freq="261.63" data-vocal-vowel="0" aria-label="Нота До">ДО</button>
-  <button type="button" data-vocal-freq="293.66" data-vocal-vowel="1" aria-label="Нота Ре">РЕ</button>
-  <button type="button" data-vocal-freq="329.63" data-vocal-vowel="2" aria-label="Нота Мі">МІ</button>
-  <button type="button" data-vocal-freq="349.23" data-vocal-vowel="0" aria-label="Нота Фа">ФА</button>
-  <button type="button" data-vocal-freq="392.00" data-vocal-vowel="1" aria-label="Нота Соль">СОЛЬ</button>
+<!-- The voice ribbon. The field's contents are generated in js/play/ribbon.js —
+     the degree lines move with the key, so there is nothing here to hand-write
+     that would still be true a moment later. The hub sits over the top-right
+     corner, which is the highest note of the most closed vowel: the corner a
+     sung line reaches for least. -->
+<div id="voice-ribbon" hidden role="group" aria-label="Голос">
+  <svg id="voice-ribbon-field" viewBox="-100 -100 200 200" focusable="false" role="application"
+       aria-label="Голос"></svg>
+  <div id="voice-ribbon-hub">
+    <div class="voice-key-step">
+      <button type="button" data-key-step="-1" aria-label="Тональність на квінту вниз">‹</button>
+      <button type="button" id="voice-key-label" data-mode="major" title="Мажор або мінор">C</button>
+      <button type="button" data-key-step="1" aria-label="Тональність на квінту вгору">›</button>
+    </div>
+  </div>
 </div>
 
 <!-- Circle of fifths. The 24 wedges are generated in js/play/chord-wheel.js —
@@ -553,6 +562,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260813-08"></script>
+  <script type="module" src="/js/main.js?v=20260813-09"></script>
 </body>
 </html>
