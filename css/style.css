@@ -1562,34 +1562,18 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 }
 .gift-card[hidden] { display: none; }
 .gift-card .close-btn { top: 14px; right: 14px; width: 44px; height: 44px; }
-/* The tier is the one place colour carries meaning here, so it is the only
-   thing on the card that is not ink. */
-.gift-tier {
-  margin: 6px 0 2px; font-size: 10px; font-weight: 800;
-  letter-spacing: .22em; text-transform: uppercase; color: var(--purple);
-}
+/* The tier now sits inside the sentence («це Вайбер Звичайний»), so it inherits
+   the title's type and only takes the colour — the one place on the card where
+   colour carries meaning. */
+.gift-tier { color: var(--purple); }
 .gift-card[data-tier="common"] .gift-tier { color: rgba(23, 18, 28, .55); }
 .gift-card[data-tier="rare"] .gift-tier { color: #3f6ea6; }
 .gift-card[data-tier="epic"] .gift-tier { color: var(--purple); }
 .gift-card[data-tier="legendary"] .gift-tier { color: #96700f; }
 .gift-card .panel-title { margin-bottom: 6px; font-size: clamp(26px, 4vw, 36px); }
-.gift-name-label {
-  display: block; margin: 0 0 6px;
-  font-size: 9px; letter-spacing: .18em; color: rgba(23, 18, 28, .55);
-}
-.gift-name-input {
-  width: 100%; box-sizing: border-box; min-height: 48px;
-  padding: 10px 14px; border: 3px solid var(--ink); border-radius: 12px;
-  background: #fff; color: var(--ink);
-  font: 800 18px/1.2 'Unbounded', sans-serif; letter-spacing: .04em;
-}
-.gift-name-input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-/* The placeholder is the name they were given — readable, but clearly not typed
-   yet, so an empty field does not look like a filled one. */
-.gift-name-input::placeholder { color: rgba(23, 18, 28, .38); opacity: 1; }
-.gift-name-hint {
-  margin: 6px 0 18px; font-size: 8px; letter-spacing: .1em;
-  color: rgba(23, 18, 28, .5);
+.gift-lead {
+  margin: 0 0 20px; font-size: 13px; line-height: 1.5;
+  color: rgba(23, 18, 28, .78);
 }
 .gift-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .gift-actions .pill-btn { min-width: 132px; min-height: 48px; padding: 12px 18px; }

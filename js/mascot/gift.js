@@ -20,25 +20,17 @@
 // visitor gets exactly one gift in their life, so scaling the spectacle to the
 // roll would mean most people never see the good version of the only reveal
 // they will ever get.
+// `name` is sentence-case because it is read inside a sentence — «це Вайбер
+// Звичайний» — rather than shouted as a label. It parses as a species epithet,
+// which is the joke: every character is a Вайбер, and the tier says which kind.
 export const GIFT_TIERS = [
-  { id: 'common', name: 'ЗВИЧАЙНИЙ', weight: 0.58, accent: 0xFDFBF7 },
-  { id: 'rare', name: 'РІДКІСНИЙ', weight: 0.27, accent: 0x5B82A6 },
-  { id: 'epic', name: 'ЕПІЧНИЙ', weight: 0.11, accent: 0x9E33CA },
-  { id: 'legendary', name: 'ЛЕГЕНДАРНИЙ', weight: 0.04, accent: 0xD1A13B },
+  { id: 'common', name: 'Звичайний', weight: 0.58, accent: 0xFDFBF7 },
+  { id: 'rare', name: 'Рідкісний', weight: 0.27, accent: 0x5B82A6 },
+  { id: 'epic', name: 'Епічний', weight: 0.11, accent: 0x9E33CA },
+  { id: 'legendary', name: 'Легендарний', weight: 0.04, accent: 0xD1A13B },
 ];
 
 export const GIFT_TIERS_BY_ID = Object.fromEntries(GIFT_TIERS.map((tier) => [tier.id, tier]));
-
-// Every character has a name — it is the only thing the card says about them
-// besides the tier, and a named character is one you can talk about. Pools are
-// flavoured by tier so a common draw never lands a name that oversells it, and
-// they are deliberately not gendered: the look varies, the name should not
-// contradict it.
-const NAME_POOLS = {
-  common: ['СТРУНА', 'НОТКА', 'РИТМ', 'ЕХО', 'АКОРД', 'ІСКРА', 'ПРОМІНЬ', 'БРИЗ', 'ЛАД', 'КЛАВІШ'],
-  rare: ['ВІХОР', 'ГРОЗА', 'КОМЕТА', 'САТИН', 'НЕОН', 'ВІРАЖ', 'МІРАЖ', 'ПУЛЬС'],
-  epic: ['ФЕНІКС', 'ВУЛКАН', 'ЕЛЕКТРА', 'ОРБІТА', 'ЗЕНІТ', 'ХАОС', 'ПРИЗМА', 'ТАЙФУН'],
-};
 
 // Every tier draws from all four skin tones with equal weight. A skin tone is
 // not a rarity signal and must never become one; the tiers are told apart by
@@ -96,16 +88,22 @@ const TIER_POOLS = {
 };
 
 // Legendary is not a weighted draw. Six authored looks, picked uniformly, so
-// the rarest result is always unmistakable and the card has a real name to
-// print. skinTone is deliberately absent — it is drawn evenly like every other
-// tier, which keeps the authored identity in the hair, stagewear and silhouette.
+// the rarest result is always unmistakable. skinTone is deliberately absent — it
+// is drawn evenly like every other tier, which keeps the authored identity in
+// the hair, stagewear and silhouette. The comments name them only for us.
 export const LEGENDARY_LOOKS = [
-  { name: 'ЗОЛОТИЙ СОЛІСТ', hair: 'long', hairColor: 'c9a35f', smile: 'wide', eyeColor: 'blue', outfit: 'night', outfitPrimary: 'gold', outfitAccent: 'gold', shoeColor: 'cream', accessory: 'headphones', height: 118, width: 104 },
-  { name: 'ПАНК', hair: 'bald', hairColor: '241a14', smile: 'wide', eyeColor: 'green', outfit: 'vibe', outfitPrimary: 'purple', outfitAccent: 'gold', shoeColor: 'red', accessory: 'hoops', height: 96, width: 126 },
-  { name: 'НІЧНИЙ ДІДЖЕЙ', hair: 'short', hairColor: '241a14', smile: 'neutral', eyeColor: 'dark', outfit: 'night', outfitPrimary: 'purple', outfitAccent: 'cream', shoeColor: 'ink', accessory: 'headphones', height: 108, width: 98 },
-  { name: 'РОЖЕВА ЗІРКА', hair: 'bob', hairColor: 'b04a68', smile: 'wide', eyeColor: 'blue', outfit: 'vibe', outfitPrimary: 'purple', outfitAccent: 'cream', shoeColor: 'red', accessory: 'glasses', height: 92, width: 92 },
-  { name: 'ВЕЛЕТЕНЬ', hair: 'long', hairColor: 'a14d2d', smile: 'soft', eyeColor: 'dark', outfit: 'stage', outfitPrimary: 'gold', outfitAccent: 'gold', shoeColor: 'ink', accessory: 'glasses', height: 145, width: 138 },
-  { name: 'ТІНЬ', hair: 'bald', hairColor: '241a14', smile: 'neutral', eyeColor: 'green', outfit: 'night', outfitPrimary: 'default', outfitAccent: 'purple', shoeColor: 'ink', accessory: 'none', height: 134, width: 78 },
+  // золотий соліст
+  { hair: 'long', hairColor: 'c9a35f', smile: 'wide', eyeColor: 'blue', outfit: 'night', outfitPrimary: 'gold', outfitAccent: 'gold', shoeColor: 'cream', accessory: 'headphones', height: 118, width: 104 },
+  // панк
+  { hair: 'bald', hairColor: '241a14', smile: 'wide', eyeColor: 'green', outfit: 'vibe', outfitPrimary: 'purple', outfitAccent: 'gold', shoeColor: 'red', accessory: 'hoops', height: 96, width: 126 },
+  // нічний діджей
+  { hair: 'short', hairColor: '241a14', smile: 'neutral', eyeColor: 'dark', outfit: 'night', outfitPrimary: 'purple', outfitAccent: 'cream', shoeColor: 'ink', accessory: 'headphones', height: 108, width: 98 },
+  // рожева зірка
+  { hair: 'bob', hairColor: 'b04a68', smile: 'wide', eyeColor: 'blue', outfit: 'vibe', outfitPrimary: 'purple', outfitAccent: 'cream', shoeColor: 'red', accessory: 'glasses', height: 92, width: 92 },
+  // велетень
+  { hair: 'long', hairColor: 'a14d2d', smile: 'soft', eyeColor: 'dark', outfit: 'stage', outfitPrimary: 'gold', outfitAccent: 'gold', shoeColor: 'ink', accessory: 'glasses', height: 145, width: 138 },
+  // тінь
+  { hair: 'bald', hairColor: '241a14', smile: 'neutral', eyeColor: 'green', outfit: 'night', outfitPrimary: 'default', outfitAccent: 'purple', shoeColor: 'ink', accessory: 'none', height: 134, width: 78 },
 ];
 
 // The traits that read as "not an ordinary person" at stage distance. Used by
@@ -158,12 +156,10 @@ function pickTier(rng) {
 function drawLook(tier, rng) {
   if (tier.id === 'legendary') {
     const look = pickFrom(LEGENDARY_LOOKS, rng);
-    const { name, ...cfg } = look;
-    return { name, cfg: { ...cfg, skinTone: pickWeighted(SKIN_TONES_EVEN, rng) } };
+    return { cfg: { ...look, skinTone: pickWeighted(SKIN_TONES_EVEN, rng) } };
   }
   const pool = TIER_POOLS[tier.id];
   return {
-    name: pickFrom(NAME_POOLS[tier.id], rng),
     cfg: {
       hair: pickWeighted(pool.hair, rng),
       hairColor: pickWeighted(pool.hairColor, rng),
@@ -181,11 +177,9 @@ function drawLook(tier, rng) {
   };
 }
 
-// Returns { tier, cfg, name }. Every character is named, at every tier.
+// Returns { tier, cfg }. Characters are not named individually — every one of
+// them is a Вайбер, and the tier is the only thing that distinguishes them.
 export function drawMascotGift(rng = Math.random) {
   const tier = pickTier(rng);
-  const drawn = drawLook(tier, rng);
-  return { tier, cfg: { ...drawn.cfg, tier: tier.id }, name: drawn.name };
+  return { tier, cfg: { ...drawLook(tier, rng).cfg, tier: tier.id } };
 }
-
-export const GIFT_NAMES = NAME_POOLS;

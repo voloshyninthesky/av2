@@ -65,6 +65,7 @@ import {
   FLY_DUR,
   shouldSkipIntro,
   startOnboard,
+  markOnboardSeen,
   updateOnboardPulse,
   startExperience,
   startWithoutIntro,
@@ -175,7 +176,7 @@ import {
   updateMobilePlayAvailability,
   initMobileControls,
 } from './view/mobile-controls.js?v=20260813-05';
-import { updateMascot, updateMascotEditorPreview } from './mascot/update.js?v=20260813-05';
+import { updateMascot } from './mascot/update.js?v=20260813-05';
 import { initSigns, revealSigns } from './shell/signs.js?v=20260813-05';
 import { updateSigns } from './scene/signs.js?v=20260813-05';
 
@@ -254,6 +255,7 @@ initIntro({
 initMascotGift({
   respawnMascot,
   syncInstrumentExposure,
+  markOnboardSeen,
   bloomBaseStrength: () => (bloomPass ? bloomPass.strength : null),
   setBloomStrength: (value) => { if (bloomPass) bloomPass.strength = value; },
 });

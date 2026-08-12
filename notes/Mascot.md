@@ -55,7 +55,12 @@ and hands you someone — with a rarity tier attached — in about four seconds.
 keep them. There is no reroll and no HUD button to reopen it — the tier you were given only
 means something because you cannot roll it away.
 
-Exact tier weights, pools, names and the beat-by-beat timeline: [[SPEC]] §13. They change
+Every character is a **Вайбер** — none of them is named individually, and the tier reads as a
+species epithet («це Вайбер Звичайний»). The card is also the whole of the first run: it says
+what the stage affords, and its ЗРОЗУМІЛО closes onboarding. The standalone tip is now only a
+fallback for someone who got a character but dismissed the card with ✕.
+
+Exact tier weights, pools and the beat-by-beat timeline: [[SPEC]] §13. They change
 more often than this note will.
 
 **The ceremony does not vary by tier.** Everyone gets the full ~7 s version — the one that

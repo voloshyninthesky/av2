@@ -84,9 +84,15 @@ function clearOnboardPulse() {
 function finishOnboard() {
   if (!onboard.active) return;
   onboard.active = false;
-  try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* ignore */ }
+  markOnboardSeen();
   if (onboardEl) onboardEl.hidden = true;
   clearOnboardPulse();
+}
+
+// The gift card says what the tip used to say, so its ЗРОЗУМІЛО closes the first
+// run just as the tip's does. Shared so there is one definition of "seen".
+export function markOnboardSeen() {
+  try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* ignore */ }
 }
 
 function showOnboardTip() {
@@ -95,38 +101,22 @@ function showOnboardTip() {
   onboardEl.hidden = false;
 }
 
-// First run is two steps in this order: receive a character, then read what the
-// stage lets you do with it. The gift hands the visitor someone of their own
-// before the tip tells them to walk it around — and it asks nothing of them,
-// which the wardrobe it replaced could not say.
+// First run is one step now: the gift introduces the character *and* says what
+// the stage lets you do with it. Two cards in a row, the second repeating the
+// first, was one beat too many for a visitor who has not touched anything yet.
 //
-// The two steps carry separate gates on purpose. `ONBOARD_KEY`, written only by
-// ЗРОЗУМІЛО, governs the tip; the gift is governed by `giftPending` — whether a
-// character has actually been saved. Sharing one gate would strand a visitor who
-// backed out of the ceremony: nothing was written, so they have no character,
-// and a satisfied tip gate would mean they were never offered one again.
-// `giftPending` is resolved at boot by reveal.js, which needs the same answer
-// before the first frame to hide the unearned mascot — one source, so the stage
-// it prepares and the sequence run here can never disagree.
+// The standalone tip survives for the one case the gift cannot cover: a visitor
+// who already has a character but never acknowledged the text — they closed the
+// card with ✕ or Esc rather than ЗРОЗУМІЛО. The gates stay separate for that
+// reason. `giftPending` is resolved at boot by reveal.js, which needs the same
+// answer before the first frame to hide the unearned mascot; one source, so the
+// stage it prepares and the sequence run here can never disagree.
 export function startOnboard() {
-  const wantsGift = giftPending;
-  const wantsTip = shouldOfferOnboard() && onboardEl;
-  if (!wantsGift && !wantsTip) return;
-  // Already has a character (or storage is unavailable) — go straight to the tip.
-  if (!wantsGift) {
-    requestAnimationFrame(showOnboardTip);
+  if (giftPending) {
+    requestAnimationFrame(() => ui.open('gift'));
     return;
   }
-  const onGiftClose = (event) => {
-    if (event.detail?.open !== false || event.detail?.name !== 'gift') return;
-    window.removeEventListener('av2:modal', onGiftClose);
-    if (!wantsTip) return;
-    // One frame late, so `closeAll()` has released its modal isolation first —
-    // it restores `inert` on every body child, this card included.
-    requestAnimationFrame(showOnboardTip);
-  };
-  window.addEventListener('av2:modal', onGiftClose);
-  requestAnimationFrame(() => ui.open('gift'));
+  if (shouldOfferOnboard() && onboardEl) requestAnimationFrame(showOnboardTip);
 }
 
 export function updateOnboardPulse(t) {

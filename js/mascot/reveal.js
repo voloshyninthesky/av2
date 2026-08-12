@@ -32,7 +32,7 @@ import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-05';
 import { resetMascotPose, setDancing } from './pose.js?v=20260813-05';
 import { mascotMove } from './state.js?v=20260813-05';
 import {
-  validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot, MASCOT_NAME_MAX,
+  validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot,
 } from './appearance.js?v=20260813-05';
 import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-05';
 
@@ -41,6 +41,7 @@ import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-05';
 // rather than this file importing upward.
 let hooks = {
   respawnMascot: () => {},
+  markOnboardSeen: () => {},
   syncInstrumentExposure: () => {},
   setBloomStrength: () => {},
   bloomBaseStrength: () => null,
@@ -54,7 +55,7 @@ const giftStageZone = document.getElementById('gift-stage-zone');
 const giftCard = giftModal?.querySelector('.gift-card');
 const giftStatus = document.getElementById('gift-status');
 const giftTierLabel = document.getElementById('gift-tier');
-const giftNameInput = document.getElementById('gift-name-input');
+const giftLead = document.getElementById('gift-lead');
 const giftDoneButton = document.getElementById('gift-keep');
 
 // ---- timeline ----
@@ -94,7 +95,6 @@ export const giftReveal = {
   rate: 1,
   tier: null,
   cfg: null,
-  name: null,
   bursted: false,
   cardShown: false,
   preplaced: false,
@@ -419,7 +419,6 @@ function beginPull() {
   const drawn = drawGift();
   giftReveal.tier = drawn.tier;
   giftReveal.cfg = drawn.cfg;
-  giftReveal.name = drawn.name;
   giftReveal.t = 0;
   giftReveal.rate = ceremonyRate();
   giftReveal.phase = 'fly';
@@ -483,7 +482,7 @@ function fireBurst() {
 
   // The character becomes real here: validated, applied, and written to storage
   // in the same frame the visitor first sees it.
-  Object.assign(mascotCfg, validateMascotAppearance({ ...giftReveal.cfg, name: giftReveal.name }));
+  Object.assign(mascotCfg, validateMascotAppearance(giftReveal.cfg));
   applyMascotConfig();
   saveMascotConfig();
   mascot.group.visible = true;
@@ -511,15 +510,11 @@ function showGiftCard() {
     giftCard.hidden = false;
   }
   if (giftTierLabel) giftTierLabel.textContent = tier.name;
-  if (giftNameInput) {
-    // Empty, not prefilled: a filled field invites editing an existing answer,
-    // an empty one invites writing your own. The drawn name shows as the
-    // placeholder and is what an untouched field still saves.
-    giftNameInput.value = '';
-    giftNameInput.placeholder = giftReveal.name;
-    giftNameInput.maxLength = MASCOT_NAME_MAX;
+  // The card is the first run's only text, so the announcement carries the whole
+  // of it — the introduction and what the visitor can do next.
+  if (giftStatus) {
+    giftStatus.textContent = `Знайомся, це Вайбер ${tier.name}. ${giftLead?.textContent ?? ''}`.trim();
   }
-  if (giftStatus) giftStatus.textContent = `${tier.name}: ${giftReveal.name}`;
   giftDoneButton?.focus();
 }
 
@@ -685,7 +680,6 @@ export function updateGiftReveal(dt) {
 
 function endGiftCeremony() {
   if (!giftReveal.active) return;
-  commitGiftName();
   if (giftReveal.refitFrame) cancelAnimationFrame(giftReveal.refitFrame);
   giftReveal.refitFrame = 0;
   giftReveal.active = false;
@@ -723,26 +717,11 @@ function endGiftCeremony() {
   if (giftCard) giftCard.hidden = true;
 }
 
-// The visitor may rename their character; an empty or blank field keeps the
-// name it was drawn with rather than leaving them with an unnamed one.
-function commitGiftName() {
-  if (!giftReveal.bursted) return;
-  const typed = (giftNameInput?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, MASCOT_NAME_MAX);
-  mascotCfg.name = typed || giftReveal.name;
-  saveMascotConfig();
-}
-
 // ---- input ----
-giftNameInput?.addEventListener('keydown', (event) => {
-  event.stopPropagation();   // Esc/Enter here belong to the field, not the stage
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    giftNameInput.blur();
-    commitGiftName();
-  }
-});
-giftNameInput?.addEventListener('change', commitGiftName);
-giftDoneButton?.addEventListener('click', commitGiftName);
+// The card carries the onboarding text, so ЗРОЗУМІЛО is the same acknowledgement
+// the standalone tip used to collect — it has to satisfy the same gate, or the
+// tip would appear again on the next visit saying what this card just said.
+giftDoneButton?.addEventListener('click', () => hooks.markOnboardSeen());
 // A tap anywhere on the overlay skips ahead. The card's own controls stop
 // propagation so pressing ГОТОВО is never also a skip.
 giftModal?.addEventListener('click', (event) => {

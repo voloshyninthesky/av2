@@ -13,7 +13,6 @@ import { readFileSync } from 'node:fs';
 import {
   GIFT_TIERS,
   GIFT_TIERS_BY_ID,
-  GIFT_NAMES,
   LEGENDARY_LOOKS,
   countSignatureTraits,
   drawMascotGift,
@@ -123,12 +122,12 @@ test('a legendary is always legible as one', () => {
   // Statistical rarity is not perceived rarity: a look that is merely unlikely
   // but reads as ordinary makes the gold burst a lie. Every authored legendary
   // has to carry at least two traits a visitor can actually point at.
-  for (const look of LEGENDARY_LOOKS) {
+  for (const [i, look] of LEGENDARY_LOOKS.entries()) {
     assert.ok(countSignatureTraits(look) >= 2,
-      `legendary "${look.name}" carries only ${countSignatureTraits(look)} signature trait(s)`);
+      `legendary look #${i} carries only ${countSignatureTraits(look)} signature trait(s)`);
   }
-  assert.equal(new Set(LEGENDARY_LOOKS.map((l) => l.name)).size, LEGENDARY_LOOKS.length,
-    'legendary names must be distinct');
+  const shapes = LEGENDARY_LOOKS.map((l) => JSON.stringify(l));
+  assert.equal(new Set(shapes).size, shapes.length, 'legendary looks must be distinct');
 });
 
 test('skin tone is never a rarity signal', () => {
@@ -178,29 +177,28 @@ test('the draw is stateless — a visitor draws once and nothing carries over', 
   assert.deepEqual(interleavedB, alone(22));
 });
 
-test('every drawn character carries a tier and a name', () => {
-  // The name is the only thing the card says about a character besides the
-  // tier, so an unnamed draw would reveal a blank line where the identity goes.
+test('every drawn character carries a tier and nothing that names it', () => {
+  // Characters are not named individually — every one is a Вайбер, and the tier
+  // is the only thing that tells them apart. A stray `name` reaching the saved
+  // config would be dead data the card no longer has anywhere to show.
   const rng = seededRng(88);
   for (let i = 0; i < 20000; i++) {
-    const { tier, cfg, name } = drawMascotGift(rng);
-    assert.ok(GIFT_TIERS_BY_ID[cfg.tier], `cfg.tier "${cfg.tier}" is not a real tier`);
-    assert.equal(cfg.tier, tier.id, 'cfg.tier must match the drawn tier');
-    assert.equal(typeof name, 'string', `${tier.id} produced no name`);
-    assert.ok(name.length > 0, `${tier.id} produced an empty name`);
+    const gift = drawMascotGift(rng);
+    assert.ok(GIFT_TIERS_BY_ID[gift.cfg.tier], `cfg.tier "${gift.cfg.tier}" is not a real tier`);
+    assert.equal(gift.cfg.tier, gift.tier.id, 'cfg.tier must match the drawn tier');
+    assert.ok(!('name' in gift), 'the draw must not name characters');
+    assert.ok(!('name' in gift.cfg), 'a name must not reach the saved config');
   }
 });
 
-test('names are distinct across every tier', () => {
-  // A name shared between a common and a legendary would make the rarest
-  // result indistinguishable from the most ordinary one in conversation.
-  const all = [...Object.values(GIFT_NAMES).flat(), ...LEGENDARY_LOOKS.map((l) => l.name)];
-  assert.equal(new Set(all).size, all.length, 'two characters share a name');
+test('tier names read inside a sentence, not as a shout', () => {
+  // They are printed as «це Вайбер Звичайний», so an all-caps label would shout
+  // mid-sentence. Sentence case is the contract, and CSS is not doing it.
   for (const tier of GIFT_TIERS) {
-    if (tier.id === 'legendary') continue;
-    assert.ok((GIFT_NAMES[tier.id] ?? []).length >= 5,
-      `${tier.id} has too few names to feel varied`);
+    assert.equal(tier.name, tier.name[0] + tier.name.slice(1).toLowerCase(),
+      `${tier.id} name "${tier.name}" is not sentence case`);
   }
+  assert.equal(new Set(GIFT_TIERS.map((t) => t.name)).size, GIFT_TIERS.length);
 });
 
 test('a tier carries only its label and its accent — never a ceremony', () => {
