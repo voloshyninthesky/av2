@@ -124,6 +124,12 @@ Three constraints worth protecting in any edit here:
    is the frame the controls already live at everywhere else. The follow camera is held off
    while the gift's tween owns the rig; two eased motions writing to one camera is what a
    stutter actually is.
+   **And the pose has to be one the follow camera holds, not merely one the controls accept.**
+   The spring wakes the frame after the tween lands, so the close aims at the default pose
+   *translated by the spring's resting offset* (`settleOnFollowCamera()` in
+   `js/view/mobile-controls.js`, which also hands over `controls.cursor`). Aim at the bare
+   pose and the spring drags the rig ~2.3 units onto the mascot afterwards — a second camera
+   move, slower than the first and with no visible cause. → [[Decisions]]
 
 ### Opening the gift from a focused instrument
 

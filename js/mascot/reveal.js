@@ -18,23 +18,24 @@
 // rather than tracks. See notes/Decisions.md.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260813-11';
-import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-11';
-import { trackOnce } from '../core/analytics.js?v=20260813-11';
-import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-11';
+import { session, easeInOut } from '../core/session.js?v=20260813-12';
+import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-12';
+import { trackOnce } from '../core/analytics.js?v=20260813-12';
+import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-12';
 import {
   ui, mascot, mascotLabel, audio, fireworks, giftEgg,
   applyMascotConfig, applyMascotScale,
-} from '../core/studio.js?v=20260813-11';
-import { bumpHitPulse } from '../scene/effects.js?v=20260813-11';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-11';
-import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-11';
-import { resetMascotPose, setDancing } from './pose.js?v=20260813-11';
-import { mascotMove } from './state.js?v=20260813-11';
+} from '../core/studio.js?v=20260813-12';
+import { bumpHitPulse } from '../scene/effects.js?v=20260813-12';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-12';
+import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-12';
+import { settleOnFollowCamera } from '../view/mobile-controls.js?v=20260813-12';
+import { resetMascotPose, setDancing } from './pose.js?v=20260813-12';
+import { mascotMove } from './state.js?v=20260813-12';
 import {
   validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot,
-} from './appearance.js?v=20260813-11';
-import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-11';
+} from './appearance.js?v=20260813-12';
+import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-12';
 
 // Opening the gift borrows the camera and has to quiet whatever else was using
 // it. The bloom pass lives in shell/, above this module, so main.js injects it
@@ -704,18 +705,28 @@ function endGiftCeremony() {
   hooks.syncInstrumentExposure();
   if (mascotLabel) mascotLabel.visible = true;
   giftCam.framed = false;
-  // Ease back out to the default stage pose. The ceremony framing is a portrait
-  // of the character, measured to fit beside the card — right for the reveal, too
-  // close to be left standing in, because the stage the visitor is about to walk
-  // is entirely out of frame. Landing on CAM_END / TARGET ends the first run on
-  // exactly the frame every later visit begins on.
+  // Ease back out to the default stage pose — at the offset the follow camera
+  // holds it at, not the bare pose. One rule twice over: land on a frame whoever
+  // owns the rig next will keep.
   //
-  // It also settles the lurch after ГОТОВО for free: the reveal offsets
-  // controls.target so the character sits beside the card, and that offset alone
-  // tips the camera past controls.maxPolarAngle — OrbitControls would swing it
-  // back on its first update. The default pose is the one frame the controls are
-  // guaranteed to hold, so there is nothing left for them to correct.
-  startGiftCam(CAM_END, TARGET, true);
+  // The ceremony framing is a portrait of the character, measured to fit beside
+  // the card. That is right for the reveal and wrong to be left standing in,
+  // since the stage the visitor is about to walk is out of frame — so the close
+  // returns to CAM_END / TARGET, ending the first run on the frame every later
+  // visit begins on. But the bare pose is not where the rig comes to rest
+  // either: the follow spring wakes the frame after this tween lands and drags
+  // it onto the mascot, which used to be a second, slower camera move with no
+  // visible cause. Translating the destination by the spring's own resting
+  // offset collapses the two into one — it wakes with nothing to correct.
+  //
+  // A rigid translation keeps the default distance and angle, which is also what
+  // keeps OrbitControls quiet: the safe-rect target offset the reveal was using
+  // tips the camera past controls.maxPolarAngle, and anything the controls have
+  // to clamp is a lurch a frame after ГОТОВО.
+  scratchFramePos.copy(CAM_END);
+  scratchFrameTgt.copy(TARGET);
+  settleOnFollowCamera(scratchFramePos, scratchFrameTgt);
+  startGiftCam(scratchFramePos, scratchFrameTgt, true);
   if (giftCard) giftCard.hidden = true;
 }
 

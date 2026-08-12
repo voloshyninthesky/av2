@@ -54,6 +54,22 @@ alone tips the camera past `controls.maxPolarAngle`, and OrbitControls corrects 
 update. The default pose needs no such argument: it is the pose the controls sit at everywhere
 else, so there is nothing for them to clamp.
 
+**Then the same rule applied once more, one layer out.** OrbitControls is not the only thing
+that owns the rig after ГОТОВО: the pursuit spring wakes on the frame after the tween lands,
+and the bare default pose is not one it holds either — it drags the rig 2.26 units onto the
+mascot over the next second or so. Measured on the reroll path, the close was 2.26 units of
+deliberate tween followed by 2.26 units of spring, still creeping 3.5 s after the click. So the
+close now aims at the default pose *translated by the spring's own resting offset*
+(`settleOnFollowCamera()`), and the spring wakes with nothing to correct: 1.0 unit, one move,
+0.002 units of spring afterwards. Because the offset is a rigid translation the shot is
+unchanged — same distance, same angle, and `controls.cursor` travels with it so the
+`maxTargetRadius` scout clamp has nothing to say either.
+
+The generalisation worth keeping: **a tween that hands the rig to something else has to land
+where that something else already wants it.** The instrument close-up got this right by
+accident of design — it restores the saved pre-focus frame, which *was* a settled follow pose.
+The reveal was the one path that returned to a pose no other owner of the camera had ever held.
+
 ---
 
 ## A label's size is a fact about the geometry, not about the name — 2026-08-13

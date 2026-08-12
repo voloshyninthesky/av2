@@ -7,10 +7,10 @@
 // the fade, and the respawn.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-11';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-11';
-import { swallowNextClick } from '../core/gesture-guards.js?v=20260813-11';
-import { camera, controls } from './rig.js?v=20260813-11';
+import { session } from '../core/session.js?v=20260813-12';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-12';
+import { swallowNextClick } from '../core/gesture-guards.js?v=20260813-12';
+import { camera, controls } from './rig.js?v=20260813-12';
 import {
   ui,
   stage,
@@ -20,13 +20,13 @@ import {
   applyMascotScale,
   mascotFallMeshes,
   mascotFallMaterialStates,
-} from '../core/studio.js?v=20260813-11';
-import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260813-11';
-import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260813-11';
-import { mascotMove } from '../mascot/state.js?v=20260813-11';
-import { setDancing } from '../mascot/pose.js?v=20260813-11';
-import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260813-11';
-import { resyncLoopPlayback } from '../play/loop.js?v=20260813-11';
+} from '../core/studio.js?v=20260813-12';
+import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260813-12';
+import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260813-12';
+import { mascotMove } from '../mascot/state.js?v=20260813-12';
+import { setDancing } from '../mascot/pose.js?v=20260813-12';
+import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260813-12';
+import { resyncLoopPlayback } from '../play/loop.js?v=20260813-12';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');
@@ -171,6 +171,36 @@ export function updateMobileFollowCamera(dt, immediate = false) {
   mobileFollow.delta.multiplyScalar(alpha);
   controls.target.add(mobileFollow.delta);
   camera.position.add(mobileFollow.delta);
+}
+
+// Where the spring will leave the rig once it settles on a standing mascot.
+// Anything that tweens the rig and then hands it back to the follow camera
+// should aim here rather than at the pose it measured: the spring wakes on the
+// frame after the tween lands, and if that pose is not one it holds, it spends
+// its own second dragging the rig off it — a second camera move the visitor was
+// never shown the start of.
+//
+// Applied exactly the way the spring applies it, as one delta onto both the
+// target and the eye, so distance, azimuth and polar come through untouched:
+// whatever the caller framed stays framed, it just sits where the follow camera
+// wants it.
+const followRest = new THREE.Vector3();
+const followRestDelta = new THREE.Vector3();
+export function settleOnFollowCamera(pos, tgt) {
+  // Rest means no look-ahead — that term exists only while the mascot is
+  // moving, and decays to nothing once it stops.
+  followRest.set(
+    mascot.group.position.x,
+    MOBILE_FOLLOW_HEIGHT,
+    mascot.group.position.z + MOBILE_FOLLOW_DEPTH_OFFSET,
+  );
+  followRestDelta.subVectors(followRest, tgt);
+  pos.add(followRestDelta);
+  tgt.add(followRestDelta);
+  // The scout clamp is centred on the hero and travels with it, so hand that
+  // over too. Otherwise OrbitControls' first update measures the new target
+  // against wherever the cursor was left and can clamp it back.
+  controls.cursor.copy(followRest);
 }
 
 
