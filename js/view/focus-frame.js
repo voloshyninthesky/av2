@@ -7,11 +7,11 @@
 // any aspect ratio, notch or browser chrome height.
 // ============================================================
 import * as THREE from 'three';
-import { camera, controls, FOCUS_ZOOM_FACTOR } from './rig.js?v=20260813-01';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-01';
-import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-01';
-import { instrumentView } from './instrument-presets.js?v=20260813-01';
-import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-01';
+import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260813-02';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-02';
+import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-02';
+import { instrumentView } from './instrument-presets.js?v=20260813-02';
+import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-02';
 
 const loopPedal = document.getElementById('loop-pedal');
 const mobileExit = document.getElementById('mobile-exit');
@@ -144,7 +144,7 @@ function focusSafeRect(reservedRects = []) {
 // `--wheel-gap` in style.css; change one and you must change the other.
 const WHEEL_GAP = 12;
 const wheelSize = (portrait, width, height) => (portrait
-  ? Math.min(0.78 * width, 0.44 * height, 300)
+  ? Math.min(width - 100, 0.44 * height, 300)
   : Math.min(0.3 * height + 120, 236));
 
 function chordWheelReservedRects() {
@@ -155,7 +155,7 @@ function chordWheelReservedRects() {
   const height = vv?.height || window.innerHeight;
   const portrait = height > width;
   const size = wheelSize(portrait, width, height);
-  const bottom = portrait ? (isMobileGameMode() ? 48 : 40) : WHEEL_GAP;
+  const bottom = portrait ? (isMobileGameMode() ? 16 : 14) : WHEEL_GAP;
   // The wheel docks bottom-left in both orientations, so the reserve is that
   // corner rather than a full-height rail. The piano is the reason a rail was
   // never an option: pianoSafeRectScore cubes the width ratio, so a rail would
@@ -386,7 +386,11 @@ function fitGuitarFocusFrame(preset) {
     minDistance: 0.75,
     maxDistance: 5.6,
     centerBiasY: portrait ? 0.6 : 0.5,
-    zoomFactor: FOCUS_ZOOM_FACTOR,
+    // A phone screen carries the strings much smaller than a desktop one, and
+    // the wheel now takes a corner of it, so mobile opens one further "+" step
+    // inside the fit than the shared two. Cropping the outer edges is the same
+    // trade the zoom control makes, and pinch still reaches the full frame.
+    zoomFactor: isMobileGameMode() ? FOCUS_ZOOM_FACTOR * ZOOM_IN_STEP : FOCUS_ZOOM_FACTOR,
   });
   document.documentElement.dataset.guitarFrameDebug = JSON.stringify({
     safeRect: { ...safeRect },

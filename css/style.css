@@ -718,11 +718,14 @@ html.pads-open #onboard,
    this footprint before the wheel exists, so it cannot measure it — change one
    and you must change the other. */
 #chord-wheel {
-  /* The vh cap is what a short phone falls back to, and it sets the wedge
-     thickness: below ~250px the two rings drop under the 32px floor. */
-  --wheel-size: min(78vw, 44vh, 300px);
+  /* Width is capped by what the right-hand control column needs, not by a flat
+     vw fraction: the ✕ and the loop pedal live there, and on a 320px phone a
+     78vw wheel reaches far enough across to collide with both. The vh cap is
+     the short-screen fallback, and together they keep the two rings above the
+     32px thickness floor at every supported size. */
+  --wheel-size: min(calc(100vw - 100px), 44vh, 300px);
   --wheel-gap: 12px;
-  --wheel-bottom: 40px;
+  --wheel-bottom: 14px;
   /* Bottom-left in both orientations. On guitar that is the fretting-hand side
      with the strum zone free to the right — the same split as the instrument —
      and portrait stands the guitar up with its body low and to the right, so a
@@ -786,14 +789,17 @@ html.pads-open #onboard,
 #chord-wheel .wedge:focus-visible path { stroke: var(--gold); stroke-width: 2.4; }
 
 /* ---- hub: key stepper + sevenths ---- */
+/* Kept to the smallest circle the stepper and the 7 pill fit in — the twin of
+   HUB_RADIUS in chord-wheel.js. Every point given back here widens the two
+   rings, which are the actual touch targets. */
 #chord-wheel-hub {
   position: absolute; left: 50%; top: 50%;
-  width: calc(var(--wheel-size) * .42); height: calc(var(--wheel-size) * .42);
+  width: calc(var(--wheel-size) * .36); height: calc(var(--wheel-size) * .36);
   transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px;
+  gap: 3px;
 }
-.chord-key-step { display: flex; align-items: center; gap: 2px; }
+.chord-key-step { display: flex; align-items: center; gap: 1px; }
 .chord-key-step button, #chord-sevenths {
   display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(253, 251, 247, .22); border-radius: 999px;
@@ -802,12 +808,14 @@ html.pads-open #onboard,
   cursor: pointer; touch-action: manipulation;
   transition: border-color .15s, color .15s, background .15s;
 }
-.chord-key-step button { width: 28px; height: 28px; font-size: 14px; }
+.chord-key-step button { width: 24px; height: 24px; font-size: 13px; }
+/* The label carries one or two characters ("C", "Gb"), so it is what gives way
+   on a narrow phone — the chevrons stay tappable. */
 #chord-key-label {
-  min-width: 38px; text-align: center;
-  color: var(--cream); font: 700 15px/1 'Unbounded', sans-serif; letter-spacing: .03em;
+  min-width: 22px; text-align: center;
+  color: var(--cream); font: 700 13px/1 'Unbounded', sans-serif; letter-spacing: .01em;
 }
-#chord-sevenths { width: 30px; height: 22px; font-size: 10px; }
+#chord-sevenths { width: 26px; height: 19px; font-size: 9px; }
 #chord-sevenths.is-on { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .18); }
 @media (hover: hover) {
   .chord-key-step button:hover, #chord-sevenths:hover { border-color: var(--gold); color: var(--gold); }
@@ -1701,7 +1709,7 @@ html.mascot-editor-open #toast {
   /* Game mode parks the joystick and ГРАТИ along the bottom, so the wheel sits
      a little higher here than on desktop. The twin of the 48 in
      focus-frame.js. */
-  #chord-wheel { --wheel-bottom: 48px; }
+  #chord-wheel { --wheel-bottom: 16px; }
   /* The wheel reaches across most of the width down here, and the loop pedal's
      usual spot is inside it. Stack the pedal above the ✕ column while a play
      surface is open — the same "get out of the pads' way" move the toast and

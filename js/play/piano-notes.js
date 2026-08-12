@@ -15,12 +15,12 @@
 // immediately.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-01';
-import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-01';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-01';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-01';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-01';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-01';
+import { session } from '../core/session.js?v=20260813-02';
+import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-02';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-02';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-02';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-02';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-02';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -29,10 +29,10 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-01';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-01';
-import { syncChordWheelHeld } from './chord-wheel.js?v=20260813-01';
-import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-01';
+} from './loop.js?v=20260813-02';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-02';
+import { syncChordWheelHeld } from './chord-wheel.js?v=20260813-02';
+import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-02';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.

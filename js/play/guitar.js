@@ -10,9 +10,9 @@
 // setKeyChords(), so nothing here has to know what a key is.
 // ============================================================
 import * as THREE from 'three';
-import { GUITAR_CHORDS, keyDegrees } from './harmony.js?v=20260813-01';
-import { play } from './state.js?v=20260813-01';
-import { playMusicalEvent } from './loop.js?v=20260813-01';
+import { GUITAR_CHORDS, keyDegrees } from './harmony.js?v=20260813-02';
+import { play } from './state.js?v=20260813-02';
+import { playMusicalEvent } from './loop.js?v=20260813-02';
 
 // Whether a strum should sound at all depends on the current focus view, which
 // main.js owns; the touch-chord bookkeeping lives with the chord pad.

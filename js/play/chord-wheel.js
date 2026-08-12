@@ -17,10 +17,10 @@
 //
 // The theory is all in harmony.js; this file is geometry, pointers and state.
 // ============================================================
-import { piano } from '../core/studio.js?v=20260813-01';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-01';
-import { canvas } from '../view/rig.js?v=20260813-01';
-import { play, activePointers } from './state.js?v=20260813-01';
+import { piano } from '../core/studio.js?v=20260813-02';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-02';
+import { canvas } from '../view/rig.js?v=20260813-02';
+import { play, activePointers } from './state.js?v=20260813-02';
 import {
   GUITAR_CHORDS,
   fifthIndexOf,
@@ -32,9 +32,9 @@ import {
   wedgeChordName,
   wedgeDegree,
   wedgeLabel,
-} from './harmony.js?v=20260813-01';
-import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-01';
-import { syncPadsOpenClass } from './pads.js?v=20260813-01';
+} from './harmony.js?v=20260813-02';
+import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-02';
+import { syncPadsOpenClass } from './pads.js?v=20260813-02';
 
 // Wheel gestures compete with the stage's own pointer handling, and a wedge
 // press has to know which instrument is listening; main.js supplies both, plus
@@ -84,14 +84,15 @@ function storeChordKey() {
 //
 // The band widths are what set the touch target, not the arc: a 30° wedge is
 // already ~60px wide across at these sizes, while its radial thickness is the
-// narrow axis a fingertip actually misses. That is why the hub is only 42% of
-// the radius — every point it gives back goes into the two rings, which come
-// out ~40px thick at the portrait size instead of ~29px.
+// narrow axis a fingertip actually misses. So the hub is kept to the smallest
+// circle its two controls fit in — 36% of the radius — and every point it
+// gives back goes into the rings, which split what is left evenly.
 // ============================================================
 const WEDGE_DEGREES = 30;
+const HUB_RADIUS = 36;
 const RING_RADII = {
-  major: [71, 99],
-  minor: [42, 71],
+  major: [67.5, 99],
+  minor: [HUB_RADIUS, 67.5],
 };
 const RINGS = ['major', 'minor'];
 
