@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260813-06">
+<link rel="stylesheet" href="/css/style.css?v=20260813-07">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -200,7 +200,7 @@
   <span data-keys="jam">клік — рух · <b>Enter</b> — грати · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — акорди · <b>N M , . /</b> — вокал</span>
   <span data-keys="guitar"><b>1–7</b> — акорди · <b>↓ ↑</b> або пробіл — бій · <b>[ ] \</b> — тональність</span>
   <span data-keys="piano"><b>A…L</b> і <b>W E T Y U O</b> — ноти · <b>1–7</b> — акорди · <b>[ ] \</b> — тональність</span>
-  <span data-keys="drums"><b>Z X C V B</b> — ударні</span>
+  <span data-keys="drums"><b>1–7</b> — ударні · пробіл — хай-хет</span>
   <span data-keys="mic"><b>N M , . /</b> — вокал</span><span id="loop-key-hint" hidden> · <b>L</b> — loop</span>
 </div>
 
@@ -271,6 +271,27 @@
     </div>
     <button type="button" id="chord-sevenths" aria-pressed="false"
             aria-label="Септакорди" title="Септакорди">7</button>
+  </div>
+</div>
+
+<!-- The bar as a circle, which is what a bar is. Twelve grooves on the outer
+     ring — four families of three, busier clockwise inside each — and the bar
+     itself on the ring within, 12 o'clock being beat one exactly as the tonic
+     sits at 12 o'clock next door. The wedges are grooves, never steps: a grid
+     of cells you fill is the six-slot pad again, a settings task inside a play
+     surface. One tap here is one bar of music, and tapping the playing one
+     again stops it — the wedge is the transport, so there is no play button.
+     Stopped, nothing is lit and nothing on the kit moves: a drum that recoils
+     without a sound reads as broken. Generated in js/play/groove.js from the
+     library in js/play/rhythm.js. -->
+<div id="groove-wheel" hidden role="group" aria-label="Ґрув">
+  <svg id="groove-wheel-rings" viewBox="-100 -100 200 200" focusable="false"></svg>
+  <div id="groove-wheel-hub">
+    <div class="groove-tempo-step">
+      <button type="button" data-tempo-step="-1" aria-label="Темп повільніше">‹</button>
+      <span id="groove-tempo" aria-live="off">92</span>
+      <button type="button" data-tempo-step="1" aria-label="Темп швидше">›</button>
+    </div>
   </div>
 </div>
 
@@ -532,6 +553,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260813-06"></script>
+  <script type="module" src="/js/main.js?v=20260813-07"></script>
 </body>
 </html>

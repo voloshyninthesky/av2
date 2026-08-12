@@ -7,43 +7,53 @@
 // injected here through their init* functions so the graph stays a tree.
 // ============================================================
 import * as THREE from 'three';
-import './core/errlog.js?v=20260813-06';
-import './core/telegram.js?v=20260813-06';
-import { session, easeInOut } from './core/session.js?v=20260813-06';
-import { mascotMove, dance } from './mascot/state.js?v=20260813-06';
-import { play } from './play/state.js?v=20260813-06';
-import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260813-06';
-import './shell/qa-hooks.js?v=20260813-06';
+import './core/errlog.js?v=20260813-07';
+import './core/telegram.js?v=20260813-07';
+import { session, easeInOut } from './core/session.js?v=20260813-07';
+import { mascotMove, dance } from './mascot/state.js?v=20260813-07';
+import { play } from './play/state.js?v=20260813-07';
+import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260813-07';
+import './shell/qa-hooks.js?v=20260813-07';
 import {
   chipFor,
   queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
   initVibe,
-} from './play/vibe.js?v=20260813-06';
+} from './play/vibe.js?v=20260813-07';
 import {
+  loop,
   updateLoopProgress,
   initLoopPedal,
-} from './play/loop.js?v=20260813-06';
+} from './play/loop.js?v=20260813-07';
 import {
   currentGuitarChordName,
   allGuitarPitches,
   initGuitarPlay,
-} from './play/guitar.js?v=20260813-06';
+} from './play/guitar.js?v=20260813-07';
 import {
   showVocalPad,
   hideVocalPad,
   captureHeldVocalIntoLoop,
   finishHeldLoopCapture,
   initPads,
-} from './play/pads.js?v=20260813-06';
+} from './play/pads.js?v=20260813-07';
 import {
   showChordWheel,
   hideChordWheel,
   clearGuitarInteractionState,
   markHeldTouchGuitarChordUsed,
   initChordWheel,
-} from './play/chord-wheel.js?v=20260813-06';
+} from './play/chord-wheel.js?v=20260813-07';
+import {
+  showGrooveWheel,
+  hideGrooveWheel,
+  stopGroove,
+  updateGroovePlayhead,
+  grooveBarSeconds,
+  grooveDownbeatAt,
+  initGroove,
+} from './play/groove.js?v=20260813-07';
 import {
   beginHeldPianoNote,
   releaseHeldPianoNote,
@@ -52,7 +62,7 @@ import {
   captureHeldPianoIntoLoop,
   finalizeHeldPianoLoopCapture,
   initPianoNotes,
-} from './play/piano-notes.js?v=20260813-06';
+} from './play/piano-notes.js?v=20260813-07';
 import {
   composer,
   bloomPass,
@@ -60,7 +70,7 @@ import {
   updateMobileQualityProbe,
   qualityWarmup,
   initPostfx,
-} from './shell/postfx.js?v=20260813-06';
+} from './shell/postfx.js?v=20260813-07';
 import {
   FLY_DUR,
   shouldSkipIntro,
@@ -73,13 +83,13 @@ import {
   restoreAfterAudioContextRebuild,
   activateAudioForSound,
   initIntro,
-} from './shell/intro.js?v=20260813-06';
+} from './shell/intro.js?v=20260813-07';
 import {
   closeSoundMixer,
   releaseKeyboardVocal,
   beginKeyboardVocal,
   initMixer,
-} from './play/mixer.js?v=20260813-06';
+} from './play/mixer.js?v=20260813-07';
 import {
   giftCam,
   queueGiftRefit,
@@ -88,7 +98,7 @@ import {
   prepareGiftStage,
   giftApproachFraming,
   initMascotGift,
-} from './mascot/reveal.js?v=20260813-06';
+} from './mascot/reveal.js?v=20260813-07';
 import {
   params,
   isLowEndMobileGameMode,
@@ -97,8 +107,8 @@ import {
   prefersReducedMotion,
   stageAmbience,
   stageLightLevel,
-} from './core/quality.js?v=20260813-06';
-import { onCameraModeChange } from './core/camera-mode.js?v=20260813-06';
+} from './core/quality.js?v=20260813-07';
+import { onCameraModeChange } from './core/camera-mode.js?v=20260813-07';
 import {
   canvas,
   renderer,
@@ -109,7 +119,7 @@ import {
   CAM_START,
   CAM_END,
   TARGET,
-} from './view/rig.js?v=20260813-06';
+} from './view/rig.js?v=20260813-07';
 import {
   ui,
   audio,
@@ -126,25 +136,25 @@ import {
   addLabels,
   instruments,
   interactables,
-} from './core/studio.js?v=20260813-06';
-import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260813-06';
+} from './core/studio.js?v=20260813-07';
+import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260813-07';
 import {
   instrumentView,
-} from './view/instrument-presets.js?v=20260813-06';
+} from './view/instrument-presets.js?v=20260813-07';
 import {
   updateInstrumentViewCamera,
   initInstrumentView,
-} from './view/instrument-view.js?v=20260813-06';
+} from './view/instrument-view.js?v=20260813-07';
 import {
   setDancing,
-} from './mascot/pose.js?v=20260813-06';
+} from './mascot/pose.js?v=20260813-07';
 import {
   PHOTO_SLIDES_ENABLED,
   loadSlideTextures,
   updateSlideshow,
   updateSlideshowNavLayout,
-} from './scene/slideshow.js?v=20260813-06';
-import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260813-06';
+} from './scene/slideshow.js?v=20260813-07';
+import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260813-07';
 import {
   setGlow,
   isInstrumentCloseUp,
@@ -154,7 +164,7 @@ import {
   canPlayInstrument,
   canKeyboardJamPlay,
   syncOrbitZoom,
-} from './view/pointer.js?v=20260813-06';
+} from './view/pointer.js?v=20260813-07';
 import {
   syncViewportMeta,
   resetBrowserPageZoom,
@@ -162,7 +172,7 @@ import {
   eventInvolvesUiChrome,
   isLiveStageZoomLocked,
   initViewport,
-} from './view/viewport.js?v=20260813-06';
+} from './view/viewport.js?v=20260813-07';
 import {
   syncMobileInstrumentChrome,
   releaseMoveJoystick,
@@ -175,10 +185,10 @@ import {
   playNearestInstrument,
   updateMobilePlayAvailability,
   initMobileControls,
-} from './view/mobile-controls.js?v=20260813-06';
-import { updateMascot } from './mascot/update.js?v=20260813-06';
-import { initSigns, revealSigns } from './shell/signs.js?v=20260813-06';
-import { updateSigns } from './scene/signs.js?v=20260813-06';
+} from './view/mobile-controls.js?v=20260813-07';
+import { updateMascot } from './mascot/update.js?v=20260813-07';
+import { initSigns, revealSigns } from './shell/signs.js?v=20260813-07';
+import { updateSigns } from './scene/signs.js?v=20260813-07';
 
 
 // ============================================================
@@ -232,7 +242,7 @@ initViewport({
     composer.setSize(window.innerWidth, window.innerHeight);
   },
 });
-initMobileControls({ playNearestInstrument, hideVocalPad, hideChordWheel });
+initMobileControls({ playNearestInstrument, hideVocalPad, hideChordWheel, hideGrooveWheel });
 // Switching camera in the mixer is live — no reload, unlike ГРАФІКА. A close-up
 // owns the rig outright, so let it finish: applyMobileOrbitPolicy() runs again
 // on exit and picks the new mode up there. Re-applying mid-focus would drag the
@@ -278,6 +288,10 @@ initLoopPedal({
   captureHeldPianoIntoLoop,
   finishHeldPianoLoopCaptures,
   finalizeHeldPianoLoopCapture,
+  // The loop's bar comes from the groove when one is running, so a take
+  // quantises to whole bars instead of to a grid of eighths of a second.
+  grooveBarSeconds,
+  grooveDownbeatAt,
 });
 initGuitarPlay({ isGuitarPlayFocus, markHeldTouchGuitarChordUsed });
 initPads({
@@ -297,6 +311,17 @@ initChordWheel({
   currentGuitarChordName,
   beginHeldPianoNote,
   releaseHeldPianoNote,
+});
+// The groove wheel needs to know which instrument is listening, and it is the
+// one surface that must never wake audio on its own — only its sound pill does,
+// through the hook below.
+initGroove({
+  activateAudioForSound,
+  canPlayInstrument,
+  canKeyboardJamPlay,
+  loopHasContent: () => loop.state !== 'empty',
+  loopIsRecording: () => loop.state === 'recording' || loop.state === 'overdubbing',
+  toast: (message, ms) => ui.toast(message, ms),
 });
 initPianoNotes({
   activateAudioForSound,
@@ -335,12 +360,22 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   }
   if (phase === 'focused' && kind === 'mic') {
     hideChordWheel();
+    hideGrooveWheel();
     showVocalPad(false);
+    document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
+  } else if (phase === 'focused' && kind === 'drums') {
+    // Drums gets the other wheel. The two dock in the same corner and share
+    // their size tokens, so exactly one is ever shown — asserted in
+    // window.__grooveDebug() rather than trusted.
+    hideVocalPad();
+    hideChordWheel();
+    showGrooveWheel();
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
   } else if (phase === 'focused' && (kind === 'guitar' || kind === 'piano')) {
     // The wheel serves both, and the CSS docks it per instrument off
     // `data-instrument`, which is already stamped above.
     hideVocalPad();
+    hideGrooveWheel();
     showChordWheel();
     document.documentElement.classList.toggle('guitar-focused', kind === 'guitar');
   } else if (previousPhase === 'focused' && phase !== 'focused') {
@@ -348,6 +383,8 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
     // merely approaching / entering from idle so multi-instrument play continues.
     hideVocalPad();
     hideChordWheel();
+    hideGrooveWheel();
+    stopGroove();
     releaseAllHeldPianoNotes();
     releaseKeyboardVocal();
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
@@ -356,6 +393,8 @@ function setInstrumentViewPhase(phase, kind = instrumentView.kind) {
   } else {
     hideVocalPad();
     hideChordWheel();
+    hideGrooveWheel();
+    stopGroove();
     document.documentElement.classList.remove('guitar-focused', 'guitar-fretting');
   }
   // Pinch-zoom is allowed in every phase now; only a finger resting on a play
@@ -551,6 +590,7 @@ function animate(frameTime = performance.now()) {
   updateSigns(dt);
   updateSlideshowNavLayout(camera);
   updateLoopProgress();
+  updateGroovePlayhead(dt);
 
   if (composer) composer.render();
   else renderer.render(scene, camera);

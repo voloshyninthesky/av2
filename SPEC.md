@@ -265,7 +265,7 @@ without the feature. No retry, no error surface.
 | `mic` / vocal | Vocal pad / mesh hits **only while mic-focused** | `N M , . /` → ДО РЕ МІ ФА СОЛЬ (hold to sustain; see §5 Desktop keyboard jam) |
 | `guitar` | Two-hand chord + strum / pluck **only while guitar-focused**. Chords come from the shared circle-of-fifths wheel | Chord row = the key's seven degrees — `1`–`7` in a close-up, `Q W E R T Y U` outside one — strum on `↓ ↑ / Space`. Live while idle or guitar-focused, silent inside another instrument's close-up; focused the chord row is select-only, see § Guitar performance mode |
 | `piano` | Mesh keys **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. Plus the shared chord wheel, which sounds whole chords (§ The chord wheel at the piano) | `1–8` whites while idle. **Piano-focused:** `A–L` + upper row, real-keyboard shape, and `1–6` become a chord row that **sounds piano chords** (§ Piano-focused keyboard layout) |
-| `drums` | Kit parts **only while drums-focused** (multitouch) | `Z X C V B` kit — with or without drums focus |
+| `drums` | Kit parts **only while drums-focused** (multitouch). A strike is louder at the centre of a head than at its rim, and the hi-hat pedal opens the cymbals. Plus the shared groove wheel (§ Drums performance mode) | `1`–`7` in a close-up are the seven kit pieces low to high, `Space` the hi-hat pedal; `Z X C V B` five of them with or without drums focus |
 
 The upright piano is drawn at **0.92 scale**: it stands in the middle of the mid-stage
 sign band and its full-height cabinet hid the boards behind it. Uniform, not squashed on Y,
@@ -408,6 +408,62 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - Left-handed layout, capo / alternate tuning, pick versus fingerstyle, metronome, backing groove, and guided chord progressions.
 - Higher-fidelity procedural body modelling or one compact body-resonance impulse where the download budget permits.
 
+### Drums performance mode
+
+The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus / `Enter` / **ГРАТИ** still never starts a groove: reaching the kit opens a **stopped** wheel, and only a deliberate tap on a wedge makes a sound.
+
+#### Focus framing — current
+
+- Drums keeps the **raw camera preset**: `instrumentViewFrame()` returns a measured fit for the piano and guitar only, so `chordWheelReservedRects()` is never consulted here and there is nothing for the groove wheel to reserve into. This is a deliberate scope line, not an oversight — the drums close-up is the over-the-shoulder framing the piano's was copied *from*, and it works.
+- The consequence is that the wheel's footprint is **verified rather than derived**. It docks bottom-left at a cap of its own (`220px`, against the chord wheel's `300px`), because the kit is centred and runs to the bottom of a portrait frame where the guitar stands to the right and the keybed is a mid-screen strip. If it ever collides, the fix is a nudge to the drums camera preset or that cap — not a new fitter.
+
+#### The kit
+
+- Seven playable pieces — kick, snare, two rack toms, floor tom, hi-hat and crash — plus a hi-hat **pedal** that is its own target. The throne is scenery.
+- **A strike carries a dynamic.** Where a pointer lands on a head decides how hard it sounds: full at the centre, falling towards the rim, and never silent there. That is the one dynamic a tap can genuinely express, so it is the one modelled — cymbals and the pedal have no such gradient, because edge-versus-bell is a different sound rather than a quieter one. Dragging across the kit is a roll, and there the stroke's speed counts as well. A key press carries no dynamic and stays at full rather than having one invented for it.
+- **The pedal opens the hi-hat.** Lifting the foot parts the cymbals and the next strike washes; putting it down closes them with the "chick" a real pedal makes. Closing is worth no vibe — it is a foot, not a hit.
+- **A hit squashes the drum, never its hardware.** Stands, tripods, spurs and pedals sit outside the part that recoils. At one hit per tap a pumping tripod is a curiosity; under a groove hitting the snare eight times a bar it is the only thing you can look at.
+- Reduced motion removes the endless idle sway of the cymbals and steps the playhead beat to beat instead of sweeping it. The hit recoil and the crash swing stay: they are the response to a gesture, not shimmer.
+
+#### Drums-focused keyboard layout — current
+
+- **The number row is the kit**, as it is the chord row in every other close-up: `1`–`7` are kick, floor tom, tom 2, tom 1, snare, hi-hat, crash. Ordered by **pitch, low to high**, because that is the one order that survives every camera preset, because it matches the piano and guitar rows where a number is a musical index rather than a screen coordinate, and because `1` is the kick — the home of a bar the way the tonic is the home of a key.
+- `Z X C V B` is unchanged **outside** a close-up, where it reaches five of the seven. That the floor tom and one rack tom are unreachable there is the point: the close-up is where you get the whole instrument.
+- **`Space` held opens the hi-hat**, and releasing it closes. A pedal is a held foot control and Space is the pedal-shaped key. Held means *open*, which inverts a real kit — deliberately, because the default has to be the common sound and closed is the common sound. Space is the guitar's downstroke everywhere else and the two never overlap (§5 rule 3).
+- `;` / `'` step the groove — audibly, since there is no silent selection to move around — and `` ` `` starts or stops it. Drums close-up only.
+
+#### The groove wheel
+
+`#groove-wheel` is the bar drawn as a circle, and it is to time what the circle of fifths is to pitch. Twelve grooves on the outer ring, the bar and its playhead on the ring inside, **12 o'clock is beat one** exactly as the tonic sits at 12 o'clock next door.
+
+- **The wedges are grooves, not steps.** The visitor never fills a cell. A grid you fill is the six-slot chord pad again — a settings task wearing a play surface's clothes — and one tap here is one whole bar of music instead.
+- **The library is twelve: four families of three**, and both axes are position. The family boundaries land on 12 / 3 / 6 / 9 o'clock, which are also the four beat marks on the ring inside, so the two circles share their heavy spokes. Clockwise inside a family is strictly busier, so a wedge's position predicts what it will sound like before it can be named — which is the same claim the chord wheel's contiguous block makes.
+- **Half of every groove is generated.** The part that keeps time is a **Euclidean rhythm** `E(k, n)` — the maximally even set, produced by adding `n/k` steps mod `n` the way the circle of fifths adds 7 semitones mod 12. It is the same object on a different circle: `E(3,8)` is the tresillo, `E(5,16)` the bossa clave, `E(8,12)` the shuffle, and `E(7,12)` turned seven steps is the major scale itself. The backbone — where the kick and snare land — is authored, because that is the style and there is no formula for it. Both halves are checkable in Node, and should be, since a wrong groove is silent-but-wrong in the same way a wrong barre shape is.
+- **The kit is the score.** Nothing here draws the pattern: a chosen groove strikes the real heads and cymbals whether it is audible or not, so the groove is readable before it is audible. Forty-eight cells on a 220px circle would not be.
+- **The wedge is the transport.** Tapping one plays that groove — audible, animated, turning; tapping the one already playing stops it. There is no separate play control to find, and no third state: a groove is going or it is not. Choosing a different wedge while one plays switches without stopping.
+- **Stopped, the wheel shows nothing** — no lit wedge, no playhead, no beat marks picked out, and nothing on the kit moving. **A drum that recoils without a sound reads as broken**, so there is deliberately no silent-but-animating mode; every recoil on the kit arrives with the noise that caused it. A wheel that looked half-live would also invite a tap it would not answer the way you expect.
+- **Nothing sounds until a wedge is tapped**, and until then no `AudioContext` exists. Which groove and which tempo were last chosen persist; **whether it was playing does not** — a remembered playing state would start drums at a returning stranger, which is what "focus never starts a melody" exists to prevent.
+- **Tempo is a stepper, not a drag**, `60`–`160` in steps of `4`, and its readout is plain text rather than a button because — unlike the chord wheel's key readout, which doubles as the mode control — it has no second meaning.
+- Wedges are `role="button"` with visible focus, `aria-pressed`, and an `aria-label` naming the groove **and its family**. Colour is never the only signal.
+- The groove wheel and the chord wheel share their dock, their size tokens and their corner, and exactly one is ever shown — drums gets this one, guitar and piano the other, mic neither.
+
+#### The groove and the loop pedal
+
+- **Recording a take over a groove records the groove.** Every scheduled hit is captured at its scheduled time, so a loop laid down over РОК contains РОК — and when the take closes the groove **stops on its own**, because the loop is playing it now and two of them is just doubling. A toast says so.
+- **A groove still earns nothing.** Its hits carry no vibe whether or not a take is running, so a groove can never fill the VIBE meter or unlock the loop pedal by itself: a machine playing itself is not the visitor earning anything.
+- Clearing the loop does not stop the groove, and stopping the groove does not touch the loop.
+- **With a groove sounding, a loop take is whole bars.** The free-running pedal quantises to an eighth of a second, which is `16 ms` out per bar at 92 BPM — half a sixteenth inside two minutes, drifting silently until the snare you played on the backbeat is on the "and". Against a groove the take rounds to the nearest whole bar instead (never up: a finger that lifts early meant *this* bar), and the loop's downbeat is snapped to the groove's, so bar one and 12 o'clock are the same instant.
+- **Tempo is locked while a loop has content**, with a toast that says so. The loop's length is already whole bars of the old tempo, and moving it underneath would re-open exactly the drift the quantisation closes.
+- With no groove sounding the pedal is unchanged in every respect.
+
+#### Drums interaction roadmap
+
+1. **Rescale instead of lock:** changing tempo against an existing loop rescales its duration, every event offset and every held note's duration, then re-snaps the epoch — replacing the lock above.
+2. **A count-in** before the first loop bar, so a take can start on the downbeat rather than wherever the finger landed.
+3. **The groove as a stage-wide backbone**, available under the guitar and piano close-ups too — both roadmaps already ask for a metronome and a backing groove.
+4. **More of the kit's voice:** ride, rimshot, choke, flam, and a second hi-hat degree between open and closed.
+5. **A measured `drumsFocusSafeRect()`** if the framing ever needs to reserve rather than cap.
+
 ### Mascot
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Starts **downstage, nudged stage-left toward the guitar, inside the key spotlight pool** (`MASCOT_START`, also the fall respawn point), held back off the footlight row so those point lights cannot blow the costume out; the guitar sits in easy reach with every other instrument behind the visitor. Walk with click-to-move on the floor or the mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
@@ -440,7 +496,7 @@ On desktop (fine pointer / hover-capable, not the mobile game shell), the comput
 
 **A close-up makes the keyboard exclusive.** While an instrument is focused, only that instrument's keys answer; every other instrument's keys fall silent for exactly as long as focus holds, and are restored on exit. Choosing to stand at one instrument is a statement about what you are playing, and a drum row still firing underneath a piano performance made the keyboard read as the stage's rather than the instrument's. The chord row is the one map two instruments share, because the wheel is shared: it answers under guitar **and** piano focus, and goes quiet under drums and mic like anything else that is not theirs.
 
-**Always live, in every mode:** `Enter` (approach, while idle), `L` / `Shift+L` (loop), and `[` `]` `\\` (the chord wheel's key and sevenths). These are transport and tuning, not an instrument's voice.
+**Always live, in every mode:** `Enter` (approach, while idle), `L` / `Shift+L` (loop), and `[` `]` `\\` (the chord wheel's key and sevenths). These are transport and tuning, not an instrument's voice. The groove wheel's `;` `'` `` ` `` deliberately do **not** join them: a key signature is a tuning that outlives a close-up, while a groove exists only where its surface does.
 
 **Why this layout:** mascot movement stays pointer/touch based, leaving the desktop keyboard free for instruments and approach (`Enter`).
 
@@ -451,6 +507,9 @@ On desktop (fine pointer / hover-capable, not the mobile game shell), the comput
 | Loop | `L` / Shift+`L` | Pedal toggle / clear (after unlock rules unchanged) |
 | Piano | `1`–`8` | White keys C4–C5; press-and-hold sustains; multi-key chords OK |
 | Drums | `Z` `X` `C` `V` `B` | kick / snare / hihat / tom / crash |
+| Drums (close-up) | `1`–`7` | kick / floor / tom2 / tom1 / snare / hihat / crash — the whole kit, low to high |
+| Hi-hat pedal | `Space` | Drums close-up only; held = open, release closes with a "chick" |
+| Groove wheel | `;` `'` `` ` `` | Drums close-up only; previous / next groove (plays it), and start / stop |
 | Guitar chords | `Q` `W` `E` `R` `T` `Y` | Em / Am / C / D / G / F — press strums the chord immediately and holds it; release → open strings |
 | Guitar strum | Space / Shift+Space | Downstroke / upstroke using the active keyboard (or pad) chord |
 | Vocal | `N` `M` `,` `.` `/` | ДО / РЕ / МІ / ФА / СОЛЬ; hold sustains like the vocal pad |
@@ -459,7 +518,7 @@ Rules:
 
 1. **Simultaneous:** held piano notes, drum hits, a held guitar chord + Space strums, and a held vocal may all be active in the same window. Audio buses already mix; do not mute sibling instruments when one receives a key. Walk keys never steal instrument codes.
 2. **No focus required for keyboard sound.** Focus still reframes the camera, shows pads, and enables mesh / pad pointer play.
-3. **One owner per physical key.** Never bind the same `KeyboardEvent.code` to two instruments or to both walk and play.
+3. **One owner per physical key** — per *scope*. Never bind the same `KeyboardEvent.code` to two instruments that can answer at the same time, or to both walk and play. Two close-ups may share a code, because a close-up owns the keyboard outright and the two can never be live together: `Space` is the guitar's downstroke everywhere the jam map is live, and the hi-hat pedal inside the drums close-up, where the strum keys are already silent. The number row is the same arrangement seen from the other side — seven scale degrees at the guitar and piano, seven kit pieces at the drums, one meaning per close-up.
 4. **Release hygiene:** `keyup`, window blur, visibility hidden, and focus exit clear held piano notes, keyboard guitar chord, and held keyboard vocal for that session path. Walk key sets clear on `keyup` / blur as today.
 5. **Price chips:** first audible play of an instrument (keyboard or pointer) still queues the once-per-instrument chip. If that play happened without focus, show the chip after the visitor next leaves any instrument focus, or after ~2 s of silence from that instrument if they never focused it.
 6. **`#keys-hint` (desktop-only):** show the map that is actually live, not the full one. Away from a close-up it lists the jam surface; inside one it lists only that instrument's keys, because advertising keys that no longer answer is worse than saying nothing. The loop key rides every variant once the pedal is unlocked.
@@ -716,6 +775,8 @@ The character the visitor was given, written on the reveal frame, merged over de
 
 - `av2.onboard.v2` gates the whole first-run sequence (the first gift, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
 - `av2.chord-key.v1` holds the chord wheel's key as `{ tonic, mode, sevenths }` — `tonic` a pitch class `0–11`, `mode` `major` | `minor` (§ The chord wheel). Each field falls back on its own, so an out-of-range or corrupt one lands on C major with sevenths off without discarding the rest.
+- `av2.groove.v1` holds the groove wheel's choice as `{ groove, bpm }` — `groove` an index `0–11`, `bpm` `60–160` (§ The groove wheel). Each field falls back on its own, to ПУЛЬС at 92. **The sound state is deliberately absent**: it resets to silence on every load, because a remembered unmute would start drums at a returning visitor who has not asked for any.
+- A drum event's `part` is one of `kick`, `snare`, `hihat`, `hihatOpen`, `tom1`, `tom2`, `floor`, `crash`. Every one is named explicitly on the audio path — an unhandled name must not fall through to whatever branch happens to be last.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 24-hour gate.
 - `av2.intro.v2` (`sessionStorage`) records that the splash was already entered in this tab so a same-tab reload can skip the intro.
@@ -886,6 +947,22 @@ this site can observe — it is the conversion number.
 - Input-to-audio scheduling is at most `16 ms`; target measured input-to-audible latency is at most `50 ms` desktop and `80 ms` on reference mobile devices.
 - Audio and per-string visual onset differ by at most `33 ms`. Reduced motion removes idle shimmer, not essential play feedback.
 - A physical string has at most one active voice; retrigger and mute ramps do not click. First play performs no synchronous synthesis-table generation in the input handler.
+
+### Drums acceptance
+
+- **Silence through focus.** Reaching the drums opens a stopped wheel: no `AudioContext`, no sound, no lit wedge, no playhead, and a motionless kit. Changing tempo while stopped still creates none. A reload returns the wheel to stopped with the groove and tempo remembered.
+- **Tap to play, tap again to stop.** A wedge starts that groove sounding *and* animating in the same instant; the same wedge stops it and the kit goes still. Nothing on the kit ever recoils without a sound.
+- **A groove earns nothing.** The VIBE meter does not move while one runs, whether or not a take is recording, and a groove alone can never unlock the loop pedal.
+- **A take over a groove contains it.** Record four bars of РОК and the loop holds its kicks, snares and hats at the right offsets; the groove stops itself as the take closes, and the loop plays the beat from then on.
+- The groove ring — the only touch target on the wheel — is at least `32 px` thick radially at `320×568` and `844×390`. The bar ring inside it is read-only and may be thinner.
+- The wheel does not cover the kit, the mascot's hands or the ✕ exit at `320×568`, `390×844`, `430×932`, `844×390` and `1280×720`. Verified by eye at the drums preset, since drums has no measured fitter to derive it from.
+- The groove wheel and the chord wheel are never both visible; drums shows one, guitar and piano the other, mic neither.
+- Recording four bars over a sounding groove yields a loop whose duration is a whole number of bars and whose downbeat coincides with 12 o'clock. Three minutes later they still coincide. `clearRecordedLoop()` does not stop the groove or swallow its pending animation.
+- `1`–`7` play all seven kit pieces in a close-up, including the floor tom and the rack tom that `Z X C V B` cannot reach. `Space` opens the hi-hat while held and closes it on release; outside the drums close-up the same key is the guitar's downstroke and touches no cymbal. `;` `'` `` ` `` are inert outside the close-up.
+- A snare struck at its centre and at its rim are clearly different in level without clipping, and a drag across the kit is a roll with dynamics. A rim strike is quiet, never silent.
+- Reduced motion removes the cymbals' idle sway and steps the playhead beat to beat; the hit recoil and crash swing remain. A hit squashes the drum and never its stand.
+- `;` / `'` step the groove audibly and `` ` `` starts / stops it; all three are inert outside the drums close-up.
+- Switching tabs for 30 s and returning leaves the groove in phase rather than dropping its hits.
 
 ### Desktop keyboard jam acceptance
 

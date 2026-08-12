@@ -59,7 +59,7 @@ html, body {
 }
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
-#loop-pedal, #vocal-pad, #chord-wheel, .overlay,
+#loop-pedal, #vocal-pad, #chord-wheel, #groove-wheel, .overlay,
 button, a, .pill-btn, .icon-btn {
   touch-action: manipulation;
 }
@@ -74,6 +74,7 @@ html.stage-live #drag-hint,
 html.stage-live #loop-pedal,
 html.stage-live #vocal-pad,
 html.stage-live #chord-wheel,
+html.stage-live #groove-wheel,
 html.stage-live .overlay,
 html.stage-live button,
 html.stage-live a,
@@ -708,8 +709,13 @@ html.pads-open #onboard,
    --wheel-size / --wheel-gap / --wheel-bottom ARE THE TWIN of the constants in
    chordWheelReservedRects() (js/view/focus-frame.js). The fitter has to reserve
    this footprint before the wheel exists, so it cannot measure it — change one
-   and you must change the other. */
-#chord-wheel {
+   and you must change the other.
+
+   The groove wheel (drums) shares this dock rather than copying it, and that is
+   not a tidiness preference: a forked size formula would silently invalidate the
+   guitar and piano reserves the first time either was tuned. The two are never
+   visible together — setInstrumentViewPhase shows one per instrument. */
+#chord-wheel, #groove-wheel {
   /* Width is capped by what the right-hand control column needs, not by a flat
      vw fraction: the ✕ and the loop pedal live there, and on a 320px phone a
      78vw wheel reaches far enough across to collide with both. The vh cap is
@@ -736,16 +742,16 @@ html.pads-open #onboard,
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: none;
 }
-#chord-wheel[hidden] { display: none !important; }
+#chord-wheel[hidden], #groove-wheel[hidden] { display: none !important; }
 @keyframes chordWheelIn { 0% { opacity: 0; transform: scale(.9); } }
 
-#chord-wheel-rings { display: block; width: 100%; height: 100%; touch-action: none; }
+#chord-wheel-rings, #groove-wheel-rings { display: block; width: 100%; height: 100%; touch-action: none; }
 /* Stepping the key turns the wheel. Seeing the tonic travel to the top is the
    only thing that makes "a fifth" feel like a distance rather than a word. */
 .wheel-rings { transition: transform .3s cubic-bezier(.3, .9, .3, 1); }
 @media (prefers-reduced-motion: reduce) {
   .wheel-rings { transition: none; }
-  #chord-wheel { animation: none; }
+  #chord-wheel, #groove-wheel { animation: none; }
 }
 
 #chord-wheel .wedge { cursor: pointer; touch-action: none; }
@@ -790,15 +796,16 @@ html.pads-open #onboard,
 /* Kept to the smallest circle the stepper and the 7 pill fit in — the twin of
    HUB_RADIUS in chord-wheel.js. Every point given back here widens the two
    rings, which are the actual touch targets. */
-#chord-wheel-hub {
+#chord-wheel-hub, #groove-wheel-hub {
   position: absolute; left: 50%; top: 50%;
   width: calc(var(--wheel-size) * .36); height: calc(var(--wheel-size) * .36);
   transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: calc(var(--wheel-size) * .012);
 }
-.chord-key-step { display: flex; align-items: center; gap: calc(var(--wheel-size) * .005); }
-.chord-key-step button, #chord-sevenths {
+.chord-key-step, .groove-tempo-step { display: flex; align-items: center; gap: calc(var(--wheel-size) * .005); }
+.chord-key-step button, #chord-sevenths,
+.groove-tempo-step button {
   display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(253, 251, 247, .22); border-radius: 999px;
   background: rgba(23, 18, 28, .5); color: rgba(253, 251, 247, .72);
@@ -810,7 +817,7 @@ html.pads-open #onboard,
    The hub hole is proportional, so fixed controls fill it at exactly one wheel
    size and leave a hole at every other — which is what portrait did, its wheel
    being the larger of the two. */
-.chord-key-step button {
+.chord-key-step button, .groove-tempo-step button {
   width: calc(var(--wheel-size) * .1); height: calc(var(--wheel-size) * .1);
   font-size: calc(var(--wheel-size) * .055);
 }
@@ -836,7 +843,8 @@ html.pads-open #onboard,
 }
 #chord-sevenths.is-on { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .18); }
 @media (hover: hover) {
-  .chord-key-step button:hover, #chord-sevenths:hover { border-color: var(--gold); color: var(--gold); }
+  .chord-key-step button:hover, #chord-sevenths:hover,
+  .groove-tempo-step button:hover { border-color: var(--gold); color: var(--gold); }
 }
 
 /* Landscape / desktop: the wheel docks bottom-left. On guitar that keeps the
@@ -844,11 +852,103 @@ html.pads-open #onboard,
    the right. On piano a full-height rail would eat a quarter of the keybed's
    width, which the fitter punishes cubically, so a corner it is. */
 @media (orientation: landscape) {
-  #chord-wheel {
+  #chord-wheel, #groove-wheel {
     --wheel-size: min(calc(30vh + 120px), 236px);
     --wheel-bottom: 12px;
   }
 }
+
+/* ============ GROOVE WHEEL (the bar as a circle) ============ */
+/* The groove wheel is capped smaller than the chord wheel, and only here,
+   because the two close-ups put their instruments in different places. The
+   guitar stands up to the right and the piano's keybed is a strip across the
+   middle, so a corner leaves both alone at full size — but the drums close-up
+   is an over-the-shoulder view with the kit centred and running to the bottom
+   of a portrait frame, and the shared `100vw - 100px` puts a 290px wheel on a
+   390px phone straight over the lower kit, the mascot's hands and the hi-hat
+   pedal.
+
+   Drums has no measured fitter — instrumentViewFrame() returns a raw preset for
+   it, so chordWheelReservedRects() is never consulted and there is nothing to
+   reserve into. This cap is therefore the whole answer, and 220px is its floor
+   as well as its ceiling: the groove ring is 31 of the 200 viewBox units, so
+   any smaller and the one touch target drops under the 32px thickness §12
+   requires (220 * 31/200 = 34px). Shrink this and you must widen that ring.
+
+   Declared after the landscape override on purpose, so it caps both
+   orientations: the kit is centred in the frame either way, and the landscape
+   236px buys nothing a drummer can use. */
+#groove-wheel { --wheel-size: min(calc(100vw - 100px), 220px); }
+
+/* Same quiet palette as the chord wheel, and the same rule: nothing gradients.
+   The only thing that moves is the playhead, because the only thing that is
+   moving is time. GROOVE_RADII in js/play/groove.js is the twin of the radii
+   these rules assume — the hub fraction below is the twin of HUB_RADIUS. */
+#groove-wheel .wedge { cursor: pointer; touch-action: none; }
+#groove-wheel .wedge path {
+  fill: rgba(253, 251, 247, .05);
+  stroke: rgba(23, 18, 28, .55); stroke-width: 1.1;
+  transition: fill .12s;
+}
+/* Sized against the 44-unit arc a 30° wedge spans at the label radius, which
+   is the binding dimension now that labels run tangentially. The longest name
+   lands near 34 units at the .long size, leaving the wedge edges clear. */
+#groove-wheel .wedge text {
+  fill: rgba(253, 251, 247, .55);
+  font: 600 6.5px/1 'Unbounded', sans-serif; letter-spacing: .02em;
+  text-anchor: middle; dominant-baseline: central;
+  pointer-events: none;
+}
+#groove-wheel .wedge text.long { font-size: 5.5px; }
+/* Every third wedge starts a family, and the quadrant boundaries land on the
+   same four spokes as the beats inside. A hairline, not a fill: the families
+   are a reading aid, and the chosen groove has to stay the loudest thing here. */
+#groove-wheel .wedge.family-start path { stroke: rgba(209, 161, 59, .38); }
+#groove-wheel .wedge.chosen path {
+  fill: rgba(158, 51, 202, .5);
+  stroke: var(--gold); stroke-width: 2.2;
+}
+#groove-wheel .wedge.chosen text { fill: var(--gold-light); }
+@media (hover: hover) {
+  #groove-wheel .wedge:hover path { fill: rgba(158, 51, 202, .3); }
+  #groove-wheel .wedge.chosen:hover path { fill: rgba(158, 51, 202, .6); }
+}
+#groove-wheel .wedge:focus { outline: none; }
+#groove-wheel .wedge:focus-visible path { stroke: var(--gold); stroke-width: 2.4; }
+
+/* ---- the bar ring: read-only, so it may be thin ---- */
+#groove-wheel .bar-ring { fill: rgba(23, 18, 28, .3); stroke: none; }
+#groove-wheel .bar-tick { stroke: rgba(253, 251, 247, .22); stroke-width: 1; }
+#groove-wheel .bar-tick.beat { stroke: rgba(253, 251, 247, .5); stroke-width: 1.8; }
+#groove-wheel .bar-tick.downbeat { stroke: var(--gold); stroke-width: 2.4; }
+/* A hit that lands this bar lights its tick — the bar ring is a level meter for
+   the groove, not a step editor: you cannot press these. */
+#groove-wheel .bar-tick.sounding { stroke: var(--cream); stroke-width: 2.6; }
+#groove-wheel .playhead line {
+  stroke: var(--gold-light); stroke-width: 2.2; stroke-linecap: round;
+}
+#groove-wheel .playhead { pointer-events: none; transition: opacity .18s; }
+
+/* ---- hub: tempo stepper + the one sound control ---- */
+/* The tempo readout is a span, not a button, unlike #chord-key-label — that one
+   is a button because it doubles as the mode control. Tempo has no second
+   meaning, and a button that only looks like one is a lie. */
+#groove-tempo {
+  min-width: calc(var(--wheel-size) * .105); text-align: center;
+  color: var(--cream); letter-spacing: .01em;
+  font: 700 calc(var(--wheel-size) * .058)/1 'Unbounded', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.groove-tempo-step button[aria-disabled="true"] {
+  opacity: .38; cursor: default;
+}
+/* Stopped, the wheel says nothing: no lit wedge, no playhead, no beat marks
+   picked out. There is no groove going on for one of them to be the subject of,
+   and a wheel that looks half-live invites a tap it will not answer the way you
+   expect. The wedges stay individually hoverable, because tapping one is still
+   how you start. */
+#groove-wheel[data-playing="false"] .playhead { opacity: 0; }
+#groove-wheel[data-playing="false"] .bar-tick { stroke: rgba(253, 251, 247, .12); stroke-width: 1; }
 
 /* Guitar play claims the canvas, while panels and controls keep normal zoom. */
 html.guitar-focused #scene,

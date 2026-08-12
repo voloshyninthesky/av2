@@ -6,6 +6,30 @@ tags: [gotchas, debugging]
 
 Traps that have actually cost time. Read this before debugging anything visual.
 
+## An unknown drum part used to play a tom, silently
+
+`playMusicalEvent`'s drum branch in `js/play/loop.js` ended in `else audio.tom(...)`, so a
+typo or a newly added part name was not an error — it was a 120 Hz tom, in time, sounding
+almost right. Every part is now named explicitly and `tests/rhythm.test.mjs` holds the rhythm
+library's part vocabulary against those exact branches. Add a part to one and you must add it
+to the other, or the test says so.
+
+## Glowing one drum lights the whole kit
+
+`buildDrumKit` shares `shellMat`, `headMat`, `goldMetal`, `chrome` and the rest across every
+part, and `glowMesh` remembers rest state *per material* (`js/view/emissive.js` documents the
+class of bug). So per-part emissive on the drums needs the materials cloned per part group
+first — which is a `buildDrumKit` change, not a `setGlow` one. Nothing needs this today: hover
+glow is deliberately off inside a close-up, and from a distance the whole kit *is* the target.
+
+## Object3D.userData cannot hold an Object3D
+
+`Object3D.copy()` does `JSON.parse(JSON.stringify(source.userData))`, so a node stored in its
+own subtree's userData turns any future `clone()` of that subtree into a circular-reference
+throw — far from the code that stored it. The drum kit hands out its measurement frames through
+a plain `heads` map on the returned object instead, and keeps only numbers and strings in
+userData.
+
 ## The canvas is black and it is not a bug
 
 Tabs in the **in-app Browser pane always report `document.hidden === true`**. Two

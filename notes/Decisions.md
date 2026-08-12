@@ -12,6 +12,95 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The bar became a wheel, and the kit stopped playing itself — 2026-08-13
+
+Drums was the richest mesh in the repo and the thinnest instrument: no `play/` module at all,
+no helper surface, no SPEC section, no tests. The gap that rhymes with the chord wheel is
+**time**, not pitch — and [[SPEC]] already had "metronome" and "backing groove" on the piano
+*and* guitar roadmaps, so a time surface is shared the same way the wheel is.
+
+**A wheel, not a step sequencer.** The obvious drum surface is a grid of cells you fill in.
+That is the six-slot chord pad again — a settings task wearing a play surface's clothes — and
+this repo already replaced that once (see below). So the wedges are whole *grooves*, twelve of
+them, and one tap is one bar of music. The visitor never fills a cell.
+
+**The generator is Euclidean rhythm, and that is not a metaphor.** `E(k, n)` places `k` onsets
+maximally evenly by adding `n/k` steps mod `n` — the same arithmetic the circle of fifths uses
+adding 7 semitones mod 12. It really is the same object on a different circle: `E(3,8)` is the
+tresillo, `E(5,16)` the bossa clave, `E(8,12)` the shuffle, and `E(7,12)` turned seven steps is
+the major scale. So the timeline half of every groove is generated and the backbone half is
+authored — where the kick lands *is* the style and has no formula — which is also what lets the
+tests check one against the definition and the other against its own invariants, with nothing
+checking itself. `rhythm.js` imports nothing, for `harmony.js`'s reason.
+
+**The kit is the score.** Forty-eight cells on a 220px circle are unreadable, and the stage
+already owns a notation surface: the drums themselves. A playing groove strikes the real heads
+and cymbals, so you read the pattern off the instrument rather than off a grid. That is also
+the discoverability layer the three removed ones (below, 2026-08-06/07) were reaching for —
+except it shows instead of telling, and being the instrument rather than chrome printed over
+it, it cannot swallow a tap.
+
+**The wedge is the transport, and there is no silent mode.** The first build had a three-state
+sound pill in the hub — silence, a click, the whole groove — with the kit animating in all
+three, on the theory that a muted groove teaches you the pattern. Watching it settled it: **a
+drum that recoils without a sound reads as broken**, not as notation. So the pill is gone, a
+tap on a wedge plays that groove, a tap on the playing one stops it, and nothing on the kit
+moves unless it is making a noise. Stopped, the wheel shows nothing at all — no lit wedge, no
+playhead — because there is no groove going on for one of them to be the subject of.
+
+That also keeps "focus never starts a melody" without needing a mute: reaching the kit opens a
+still wheel, and the tap that starts a groove is as deliberate as the tap that sounds a chord
+at the piano. `av2.groove.v1` carries the groove and the tempo and deliberately **not** whether
+it was playing — a remembered playing state would start drums at a returning stranger.
+
+**A take over a groove contains the groove.** The first cut kept groove hits out of `loop.events`
+entirely, which was tidy and wrong: record a bar over РОК, walk away, and the loop is your own
+sparse hits with the beat gone. The scheduler now captures each hit at its *scheduled* time
+(not at "now" — a look-ahead capture at `currentTime` lands up to 120 ms early), and the groove
+stops itself as the take closes, because the loop is playing it now and two of them is just
+doubling. `feedback: false` still holds throughout: a machine playing itself earns no vibe,
+recording or not.
+
+**Its own scheduler, sharing the road and the constants.** `schedulerTick` early-returns unless
+the loop is playing, and `clearRecordedLoop()` stops its timer — sharing either would tie the
+groove's life to the loop's, when the groove has to run while the loop is empty, recording and
+paused alike. What *is* shared is `playMusicalEvent(…, { record: false, feedback: false })` and
+the look-ahead constants, imported rather than copied.
+
+**The loop now quantises to bars, and the number is the argument.** The free-running pedal
+rounds to an eighth of a second. At 92 BPM a 4/4 bar is 2.6087 s and that grid gives 2.625 —
+**16 ms out per bar**, half a sixteenth inside two minutes, with nothing erroring or logging
+while it drifts. Against a groove the take rounds to the nearest whole bar (`Math.round`, never
+`ceil`: a finger that lifts early meant *this* bar, and ceiling hands back a bar of silence),
+and `recordStartedAt` snaps *back* to the downbeat so every captured offset is already
+bar-relative. Tempo is then locked while a loop has content; rescaling it instead is the
+follow-up, and is ~8 lines nobody has tested yet.
+
+**`1`–`7` in pitch order, and `1` = kick is the drums' tonic.** In a close-up the number row is
+the instrument's own seven things — seven scale degrees at the guitar and piano, seven kit
+pieces here. Pitch order rather than screen order because it is the one order that survives
+every camera preset, and because the kick is the home of a bar the way the tonic is the home of
+a key. `Space` therefore gets a second owner as the hi-hat pedal, which does not break §5's
+one-owner rule but did need it rewritten: the rule is per *scope*, and two close-ups can never
+be live at once.
+
+**The wheel is capped smaller than the chord wheel (220px vs 300px).** Not taste — the guitar
+stands to the right and the keybed is a mid-screen strip, but the drums close-up is
+over-the-shoulder with the kit centred and running to the bottom of a portrait frame. At the
+shared size a 290px wheel on a 390px phone sat straight over the lower kit and the mascot's
+hands. Drums has no measured fitter to reserve against, so the cap is the whole answer, and
+220px is its floor too: any smaller and the groove ring drops under the 32px touch thickness.
+
+Two things that were *not* built, and why. **Per-part hover glow**: `setGlow` lights the whole
+kit, which looks like a bug until you read `main.js` — hover glow is off inside a close-up by
+design ("the glow says *walk over here*"), so the only case where it runs is from a distance,
+where the target really is the kit. There is nothing to fix. **A measured `drumsFocusSafeRect()`**:
+deliberately out of scope; the raw preset is the framing the piano's was copied *from*.
+
+`git show 8df4848` for the whole change. → [[Audio]], [[Module map]], [[Current state]]
+
+---
+
 ## The chord row counts, and a key can be minor — 2026-08-13
 
 Two changes that turned out to be one.

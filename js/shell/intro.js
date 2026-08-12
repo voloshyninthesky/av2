@@ -5,28 +5,29 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260813-06';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-06';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260813-06';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-06';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-06';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-06';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-06';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260813-06';
-import { mascotMove } from '../mascot/state.js?v=20260813-06';
-import { giftPending } from '../mascot/reveal.js?v=20260813-06';
-import { play } from '../play/state.js?v=20260813-06';
+import { session, easeInOut } from '../core/session.js?v=20260813-07';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-07';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260813-07';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-07';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-07';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-07';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-07';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260813-07';
+import { mascotMove } from '../mascot/state.js?v=20260813-07';
+import { giftPending } from '../mascot/reveal.js?v=20260813-07';
+import { play } from '../play/state.js?v=20260813-07';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260813-06';
-import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-06';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-06';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-06';
-import { trackOnce } from '../core/analytics.js?v=20260813-06';
+} from '../play/loop.js?v=20260813-07';
+import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-07';
+import { resyncGroove } from '../play/groove.js?v=20260813-07';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-07';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-07';
+import { trackOnce } from '../core/analytics.js?v=20260813-07';
 
 const mobileControls = document.getElementById('mobile-controls');
 
@@ -232,9 +233,11 @@ export function activateAudioForSound({ allowRecovery = true } = {}) {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible'
-    && (loop.state === 'playing' || loop.state === 'overdubbing')) {
-    resyncLoopPlayback();
+  if (document.visibilityState === 'visible') {
+    if (loop.state === 'playing' || loop.state === 'overdubbing') resyncLoopPlayback();
+    // A hidden tab clamps setInterval to ~1 Hz, so a 0.12 s look-ahead drops
+    // almost every groove hit while the tab is away. Re-pin the bar on return.
+    resyncGroove();
   }
   if (document.visibilityState === 'hidden') {
     audio.markForRecovery('visibility-hidden');

@@ -5,22 +5,41 @@ updated: 2026-08-12
 
 # Current state
 
-Snapshot as of **2026-08-12**. This is the one note that goes stale by design — update it or
+Snapshot as of **2026-08-13**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
 ## In flight
 
-Working tree clean, `main` pushed, and **both surfaces are on `20260813-06`** — production
-`artvibe.com.pl` and the VPS preview `vibe2.ton.zone` (release `20260812T135148Z`). 98 Node
-tests pass.
+`main` is on **`20260813-07`** and 123 Node tests pass. **Neither surface is confirmed on it
+yet** — the drums work below was just pushed, so run the curls before believing anything about
+production or the VPS preview `vibe2.ton.zone` (last known release `20260812T135148Z`).
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-06
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-07
 curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # preview should match
 ```
 
 A green Actions run is still not proof — the curl is, because the run can succeed while the
-CDN serves the previous build.
+CDN serves the previous build. Note `prices.json` carries its own **data** stamp
+(`20260805-03`) on a separate cadence, so "one stamp everywhere" is a claim about modules, not
+about every `?v=` on the page.
+
+**Drums grew a play surface** ([[Decisions]] "The bar became a wheel, and the kit stopped
+playing itself"). It was the richest mesh in the repo and the thinnest instrument — no `play/`
+module at all. Now: `js/play/rhythm.js` (12 Euclidean-backed grooves, zero imports, 25 Node
+tests) and `js/play/groove.js` (`#groove-wheel`, its own look-ahead scheduler). A wedge plays,
+playing it again stops, and nothing on the kit moves unless it is sounding. A loop take
+recorded over a groove **contains** that groove and the groove then stops itself, because the
+loop is playing it. Also landed with it: strike velocity from where a pointer lands on a head,
+a hi-hat pedal that finally reaches `audio.hihat`'s open branch, `1`–`7` as the whole kit in a
+close-up, head-only recoil, and `reducedMotion` honoured in `drums.update()`.
+
+Verified in the pane at 1280×720 and 390×844: silent-on-focus, tap-to-play, the loop capture
+and playback, the bar quantisation, and both keyboard rows. **Not** verified: the remaining
+three acceptance viewports (320×568, 430×932, 844×390) and a real touch device. The groove
+wheel is capped to 220px for drums, against the chord wheel's 300px, because the kit is
+centred in a portrait frame where the guitar and piano are not — at the shared size it sat
+over the lower kit. Drums still has no measured fitter, so that corner is verified by eye.
 
 **The mascot became a gift** (`3910ca2` → `685e383`, [[Decisions]] "The mascot became a gift,
 not a wardrobe", [[Mascot]]). The dressing-room editor is retired: an egg hatches on the
@@ -179,6 +198,7 @@ Newest first (see [[Decisions]] for the reasoning). All live on `main` and on bo
 
 | Commit    | Change                                                        |
 | --------- | ------------------------------------------------------------- |
+| `8df4848` | Drums get a groove wheel, dynamics, a hi-hat pedal and the kit row |
 | `685e383` | Falling off the stage hatches a new Вайбер instead of scolding |
 | `883273c` | Every character is a Вайбер; onboarding folded into the reveal |
 | `499638f` | Camera no longer lurches when the gift card closes            |
@@ -214,6 +234,22 @@ the `/stage/` move (anything document-relative under `/stage/` will 404) and the
 reset (a module loaded twice behaves in genuinely baffling ways). → [[Gotchas]]
 
 ## Roadmap, per [[SPEC]]
+
+### Drums — the groove wheel just landed
+
+Drums went from the richest mesh and the thinnest instrument to having its own play surface,
+its own [[SPEC]] section and its own tests, on 2026-08-13. What shipped: `#groove-wheel` (12
+Euclidean-backed grooves in 4 families, a wedge plays and playing it again stops), strike
+velocity from where a pointer lands on a head, a working hi-hat pedal, `1`–`7` as the whole kit
+in a close-up, head-only recoil, and a loop pedal that quantises to whole bars against a
+running groove and absorbs it into the take. → [[Decisions]]
+
+Still open, in the order [[SPEC]] lists them: rescale a loop on tempo change instead of locking
+the stepper; a count-in; the groove as a stage-wide backbone under the guitar and piano too
+(both their roadmaps already ask for a metronome and a backing groove); ride / rimshot / choke
+/ flam; and a measured `drumsFocusSafeRect()` if the framing ever needs to reserve rather than
+cap. Drums still uses the **raw camera preset** — that is deliberate, and the wheel's corner is
+verified by eye rather than derived.
 
 ### Piano interaction — the biggest open area
 

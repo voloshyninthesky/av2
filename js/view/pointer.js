@@ -7,18 +7,18 @@
 // rotates the stage.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-06';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-06';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-06';
-import { canvas, camera, controls } from './rig.js?v=20260813-06';
-import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260813-06';
-import { instrumentView } from './instrument-presets.js?v=20260813-06';
-import { raycaster, pointer } from './pick.js?v=20260813-06';
-import { glowMesh, unglowMesh } from './emissive.js?v=20260813-06';
-import { walkMascotToInstrument } from './mobile-controls.js?v=20260813-06';
-import { resetBrowserPageZoom } from './viewport.js?v=20260813-06';
-import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260813-06';
-import { activePointers } from '../play/state.js?v=20260813-06';
+import { session } from '../core/session.js?v=20260813-07';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-07';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-07';
+import { canvas, camera, controls } from './rig.js?v=20260813-07';
+import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260813-07';
+import { instrumentView } from './instrument-presets.js?v=20260813-07';
+import { raycaster, pointer } from './pick.js?v=20260813-07';
+import { glowMesh, unglowMesh } from './emissive.js?v=20260813-07';
+import { walkMascotToInstrument } from './mobile-controls.js?v=20260813-07';
+import { resetBrowserPageZoom } from './viewport.js?v=20260813-07';
+import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260813-07';
+import { activePointers } from '../play/state.js?v=20260813-07';
 import {
   currentGuitarShape,
   fireGuitarStrum,
@@ -27,13 +27,13 @@ import {
   guitarLocalPoint,
   nearestGuitarString,
   guitarFretHit,
-} from '../play/guitar.js?v=20260813-06';
+} from '../play/guitar.js?v=20260813-07';
 import {
   trigger,
   beginHeldPianoNote,
   releaseHeldPianoNote,
   handleClick,
-} from '../play/piano-notes.js?v=20260813-06';
+} from '../play/piano-notes.js?v=20260813-07';
 
 export const INSTRUMENT_STYLE = {
   drums: { glow: 0x9E33CA },
@@ -89,10 +89,6 @@ export function hitInteractableDetailsAt(clientX, clientY, guitarZone = null) {
     if (zone === 'approach') return hit;
   }
   return null;
-}
-
-export function hitInteractableAt(clientX, clientY) {
-  return hitInteractableDetailsAt(clientX, clientY)?.object || null;
 }
 
 /** True from the moment the camera commits to a close-up until it lets go. */
@@ -158,7 +154,10 @@ export function handleCanvasPointerDown(e) {
   if (!session.started || ui.modalOpen || session.flyT >= 0) return;
 
   if (isMultiTouchInstrumentFocus()) {
-    const mesh = hitInteractableAt(e.clientX, e.clientY);
+    // Details rather than the bare mesh: a drum reads how hard it was hit from
+    // where on the head the point landed, and only the full hit carries that.
+    const playHit = hitInteractableDetailsAt(e.clientX, e.clientY);
+    const mesh = playHit?.object;
     if (mesh && mesh.userData.instrument === instrumentView.kind && isPlaySurfaceMesh(mesh)) {
       // Claim the pointer so OrbitControls cannot rotate / zoom from keys / drums.
       e.preventDefault();
@@ -171,13 +170,18 @@ export function handleCanvasPointerDown(e) {
         currentX: e.clientX,
         currentY: e.clientY,
         t: performance.now(),
+        lastX: e.clientX,
+        lastY: e.clientY,
+        lastAt: performance.now(),
         token: playTokenForMesh(mesh),
         pointerType: e.pointerType,
         pianoHold: null,
       };
       activePointers.set(e.pointerId, pointerInfo);
       if (instrumentView.kind === 'piano') pointerInfo.pianoHold = beginHeldPianoNote(mesh);
-      else trigger(mesh);
+      // The first strike has no stroke behind it — a tap is not a drag, so it
+      // reads its place on the head alone.
+      else trigger(mesh, { hit: playHit });
       return;
     }
   }
@@ -282,7 +286,8 @@ canvas.addEventListener('pointermove', (e) => {
 
   if (info.mode === 'play') {
     if (!isMultiTouchInstrumentFocus()) return;
-    const mesh = hitInteractableAt(e.clientX, e.clientY);
+    const playHit = hitInteractableDetailsAt(e.clientX, e.clientY);
+    const mesh = playHit?.object;
     if (!mesh || mesh.userData.instrument !== instrumentView.kind) return;
     const token = playTokenForMesh(mesh);
     if (token === info.token) return;
@@ -291,7 +296,18 @@ canvas.addEventListener('pointermove', (e) => {
       releaseHeldPianoNote(info.pianoHold);
       info.pianoHold = beginHeldPianoNote(mesh);
     } else {
-      trigger(mesh);
+      // Dragging across the kit is a roll, and unlike a tap it does have a
+      // speed — measured since the last piece this finger crossed, so a fast
+      // sweep lands harder than a slow one.
+      const now = performance.now();
+      const elapsed = now - info.lastAt;
+      const speedPxPerMs = elapsed > 0
+        ? Math.hypot(e.clientX - info.lastX, e.clientY - info.lastY) / elapsed
+        : null;
+      trigger(mesh, { hit: playHit, speedPxPerMs });
+      info.lastX = e.clientX;
+      info.lastY = e.clientY;
+      info.lastAt = now;
     }
     return;
   }

@@ -16,12 +16,12 @@
 // digits, where they play *piano* chords through the wheel's own route.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-06';
-import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-06';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-06';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-06';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-06';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-06';
+import { session } from '../core/session.js?v=20260813-07';
+import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-07';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-07';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-07';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-07';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-07';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -30,14 +30,15 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-06';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-06';
+} from './loop.js?v=20260813-07';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-07';
 import {
   syncChordWheelHeld,
   pressPianoChordFromKeyboard,
   releasePianoChordFromKeyboard,
-} from './chord-wheel.js?v=20260813-06';
-import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-06';
+} from './chord-wheel.js?v=20260813-07';
+import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-07';
+import { drumHitVelocity } from './rhythm.js?v=20260813-07';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.
@@ -58,11 +59,43 @@ export function initPianoNotes(next) {
 }
 
 // ---- trigger instruments ----
-export function trigger(mesh) {
+
+// A drum head is loud in the middle and quiet at the rim, which is the one
+// dynamic a tap can actually express — so a strike reads its distance from the
+// drum's axis, in that drum's own frame, against the radius the kit published.
+// Cymbals and the hi-hat pedal publish no radius and stay at full.
+function drumStrikeVelocity(u, { hit = null, speedPxPerMs = null } = {}) {
+  let radiusFraction = 0;
+  const head = drums.heads?.[u.part];
+  if (head && u.headRadius && hit?.point) {
+    const local = head.worldToLocal(hit.point.clone());
+    const offAxis = u.headAxis === 'z'
+      ? Math.hypot(local.x, local.y)
+      : Math.hypot(local.x, local.z);
+    radiusFraction = offAxis / u.headRadius;
+  }
+  return drumHitVelocity({ radiusFraction, speedPxPerMs });
+}
+
+/**
+ * The pedal is the hi-hat's second control: lifting the foot opens the cymbals
+ * so the next strike washes, and putting it back down makes the "chick" a real
+ * pedal makes as they meet. Closing is worth no vibe — it is a foot, not a hit.
+ */
+export function setHihatPedal(open) {
+  if (drums.isHihatOpen() === open) return;
+  drums.setHihatOpen(open);
+  drums.hit('hihatPedal');
+  if (!open) playMusicalEvent({ type: 'drum', part: 'hihat', vel: 0.5, vibe: 0, showPrice: false });
+}
+
+export function trigger(mesh, options = {}) {
   const u = mesh.userData;
   switch (u.instrument) {
     case 'drums': {
-      playMusicalEvent({ type: 'drum', part: u.part, vel: 1, vibe: 4 });
+      if (u.part === 'hihatPedal') { setHihatPedal(!drums.isHihatOpen()); break; }
+      const part = (u.part === 'hihat' && drums.isHihatOpen()) ? 'hihatOpen' : u.part;
+      playMusicalEvent({ type: 'drum', part, vel: drumStrikeVelocity(u, options), vibe: 4 });
       break;
     }
     case 'piano': {
@@ -189,6 +222,26 @@ function isEditableHotkeyTarget(target) {
 // are the only mascot movement inputs.
 // Disjoint from E approach / L loop / guitar / vocal / piano.
 const DRUM_KEYS = { KeyZ: 'kick', KeyX: 'snare', KeyC: 'hihat', KeyV: 'tom2', KeyB: 'crash' };
+// A close-up is where you get the whole instrument, so the drums close-up
+// claims the number row for all seven pieces — the two the jam row cannot
+// reach included. Ordered by pitch, low to high: that is the one order that
+// survives every camera preset (portrait, landscape and mobile frame the kit
+// differently), it matches the piano and guitar rows where a number is a
+// musical index rather than a screen coordinate, and it puts the kick on `1`,
+// which is the home of a bar the way the tonic is the home of a key.
+const FOCUS_DRUM_DIGITS = {
+  Digit1: 'kick', Digit2: 'floor', Digit3: 'tom2', Digit4: 'tom1',
+  Digit5: 'snare', Digit6: 'hihat', Digit7: 'crash',
+};
+
+/** Both drum rows go through here so both respect the hi-hat pedal. */
+function playDrumFromKeyboard(part) {
+  // A key press carries no dynamic, so it stays at full rather than having one
+  // invented for it.
+  const sounded = (part === 'hihat' && drums.isHihatOpen()) ? 'hihatOpen' : part;
+  playMusicalEvent({ type: 'drum', part: sounded, vel: 1, vibe: 4 });
+  noteKeyboardJamActivity('drums');
+}
 export const VOCAL_KEYS = {
   KeyN: { freq: 261.63, vowel: 0 },
   KeyM: { freq: 293.66, vowel: 1 },
@@ -338,11 +391,30 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // The drums close-up brings its own row, the way the piano close-up does.
+  if (hooks.canPlayInstrument('drums')) {
+    const focusPart = FOCUS_DRUM_DIGITS[e.code];
+    if (focusPart) {
+      e.preventDefault();
+      if (!e.repeat) playDrumFromKeyboard(focusPart);
+      return;
+    }
+    // Space is the hi-hat pedal, because a pedal is a held foot control and
+    // Space is the pedal-shaped key. Held means *open*, which inverts a real
+    // kit — but the default has to be the common sound, and closed is the
+    // common sound. Space is the guitar's downstroke everywhere else; the two
+    // never overlap, because a close-up owns the keyboard outright.
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!e.repeat) setHihatPedal(true);
+      return;
+    }
+  }
+
   if (e.code in DRUM_KEYS && keyboardOwnedBy('drums')) {
     if (e.repeat) return;
     e.preventDefault();
-    playMusicalEvent({ type: 'drum', part: DRUM_KEYS[e.code], vel: 1, vibe: 4 });
-    noteKeyboardJamActivity('drums');
+    playDrumFromKeyboard(DRUM_KEYS[e.code]);
     return;
   }
 
@@ -408,5 +480,8 @@ window.addEventListener('keyup', (e) => {
   if (play.keyboardVocal?.code === e.code) {
     hooks.releaseKeyboardVocal();
   }
+  // Unconditional like every release above: focus can change between the press
+  // and the release, and a foot that went down still has to come back up.
+  if (e.code === 'Space') setHihatPedal(false);
 });
 

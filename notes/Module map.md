@@ -61,6 +61,8 @@ play is deliberately allowed in *every* phase ([[SPEC]] §5).
 - `js/play/state.js` (48) — what is held down on every input route
 - `js/play/harmony.js` (295) — the chord library and the circle of fifths, as plain data: 12 roots × 7 qualities, the two modes, and the piano voicings. **Imports nothing on purpose**, which is what lets the node tests load it for real → [[Dev workflows]]
 - `js/play/chord-wheel.js` (610) — the circle-of-fifths surface both guitar and piano read chords from: SVG geometry, pointer/touch, key + mode state. A wedge *arms* on guitar and *sounds* on piano
+- `js/play/rhythm.js` (291) — the groove library and the Euclidean generator, as plain data: 12 grooves in 4 families, the timing helpers, and the strike-velocity curve. **Imports nothing on purpose**, for `harmony.js`'s reason → [[Dev workflows]]
+- `js/play/groove.js` (598) — the groove wheel the drums close-up plays from: SVG geometry, the bar's playhead, its own look-ahead scheduler, and the hand-over to the loop pedal. A wedge *plays*, and playing it again stops
 - `js/core/camera-mode.js` (63) — the Вільна / Не дуже preference (Не дуже default — [[SPEC]] § Камера is the source of truth), its storage and its mixer row. `rig.js` and the follow spring read it; `main.js` injects what to re-apply on change, since `core/` cannot import `view/`
 - `js/core/telegram.js` (45) — Telegram Mini App detection and touch claiming
 - `js/view/emissive.js` (31) — hover glow; had a bug where glow stuck to shared materials (`7949b11`)

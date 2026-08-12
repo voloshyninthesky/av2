@@ -15,7 +15,7 @@ import {
   metal,
   sparkleWrapTexture,
   std,
-} from './shared.js?v=20260813-06';
+} from './shared.js?v=20260813-07';
 
 export function buildDrumKit() {
   const kit = new THREE.Group();
@@ -61,8 +61,24 @@ export function buildDrumKit() {
     group.add(lugs);
   }
 
+  // A hit squashes the drum, never its hardware. Every shell therefore sits in
+  // its own `drum` sub-group with the stand, legs, spurs and pedals left on the
+  // part group outside it — otherwise the recoil scales the tripod along with
+  // the head, and a tripod that pumps is the one thing you cannot stop looking
+  // at once a groove is hitting the snare eight times a bar.
   const parts = { cymbals: [] };
   const anim = { snare: 0, tom1: 0, tom2: 0, floor: 0, kick: 0, hihat: 0, crash: 0 };
+
+  // Where on the head a stick lands is the one dynamic a tap can express, so a
+  // struck drum publishes the radius to measure against and which local axis
+  // the head faces along. The frame to measure *in* is the part group, handed
+  // out through `heads` below rather than through userData: Object3D.copy()
+  // JSON-clones userData, and a node stored in its own subtree's userData turns
+  // any future clone of this kit into a circular-reference throw.
+  //
+  // Cymbals deliberately publish none of this: edge versus bell is a different
+  // sound, not a quieter one, and this kit does not model it.
+  const heads = {};
 
   // ---- kick drum (axis towards audience, +z) ----
   const kick = new THREE.Group();
@@ -136,22 +152,24 @@ export function buildDrumKit() {
     roughness: 0.82,
     metalness: 0.04,
   });
+  const kickDrum = new THREE.Group();
+  kick.add(kickDrum);
   const kickShell = new THREE.Mesh(
     new THREE.CylinderGeometry(0.55, 0.55, 0.5, 48, 1, false),
     [shellMat, headMat, headMat],
   );
   kickShell.rotation.x = Math.PI / 2;
-  kick.add(kickShell);
+  kickDrum.add(kickShell);
   for (const s of [-1, 1]) {
     const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.555, 0.028, 10, 40), goldMetal);
     hoop.position.z = s * 0.25;
-    kick.add(hoop);
+    kickDrum.add(hoop);
   }
   // Front disc (CircleGeometry) keeps UV orientation upright.
   const logoHead = new THREE.Mesh(new THREE.CircleGeometry(0.5, 64), logoMat);
   logoHead.position.z = 0.252;
-  kick.add(logoHead);
-  addLugs(kick, 0.585, 8, 'z', 0.19);
+  kickDrum.add(logoHead);
+  addLugs(kickDrum, 0.585, 8, 'z', 0.19);
   // spurs keep the kick from "floating": angled legs + rubber feet
   for (const sd of [-1, 1]) {
     kick.add(cylinderBetween(
@@ -173,19 +191,23 @@ export function buildDrumKit() {
   beater.position.set(0, -0.1, -0.29);
   kick.add(beater);
   kick.position.set(0, 0.58, 0);
-  markInteract(kick, { instrument: 'drums', part: 'kick' });
-  parts.kick = kick;
+  // The batter head faces the audience, so the kick's head axis is z.
+  markInteract(kick, { instrument: 'drums', part: 'kick', headRadius: 0.55, headAxis: 'z' });
+  parts.kick = kickDrum;
+  heads.kick = kick;
   kit.add(kick);
 
   // ---- snare on stand ----
   const snare = new THREE.Group();
+  const snareDrum = new THREE.Group();
+  snare.add(snareDrum);
   const snareShell = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 28), [goldMetal, headMat, headMat]);
-  snare.add(snareShell);
-  addLugs(snare, 0.315, 8, 'y', 0);
+  snareDrum.add(snareShell);
+  addLugs(snareDrum, 0.315, 8, 'y', 0);
   // strainer box on the shell side
   const strainer = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.05), chrome);
   strainer.position.set(-0.3, -0.01, 0.1);
-  snare.add(strainer);
+  snareDrum.add(strainer);
   const snareStand = cylinderBetween(new THREE.Vector3(0, -0.75, 0), new THREE.Vector3(0, -0.1, 0), 0.02, darkMetal);
   snare.add(snareStand);
   for (let i = 0; i < 3; i++) {
@@ -197,35 +219,45 @@ export function buildDrumKit() {
   // Pull the playing surface back toward the drummer while preserving enough
   // side-to-side clearance from the kick and hi-hat.
   snare.position.set(0.65, 0.88, -0.48);
-  markInteract(snare, { instrument: 'drums', part: 'snare' });
-  parts.snare = snare;
+  markInteract(snare, { instrument: 'drums', part: 'snare', headRadius: 0.31, headAxis: 'y' });
+  parts.snare = snareDrum;
+  heads.snare = snare;
   kit.add(snare);
 
   // ---- mounted toms above kick ----
+  // The tilt rides the part group, the recoil the drum inside it — so a hit
+  // squashes along the tom's own axis rather than the stage's vertical, and the
+  // frame a strike is measured in stays still while the head moves.
   const mkTom = (r, h, x, y, z, tilt) => {
     const t = new THREE.Group();
+    const drum = new THREE.Group();
+    t.add(drum);
     const shell = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 26), [shellMat, headMat, headMat]);
-    t.add(shell);
+    drum.add(shell);
     const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.02, 8, 30), chrome);
     rim.rotation.x = Math.PI / 2; rim.position.y = h / 2;
-    t.add(rim);
-    addLugs(t, r + 0.008, 6, 'y', 0);
+    drum.add(rim);
+    addLugs(drum, r + 0.008, 6, 'y', 0);
     t.position.set(x, y, z);
     t.rotation.x = tilt;
-    return t;
+    return { group: t, drum, radius: r };
   };
   const tom1 = mkTom(0.26, 0.28, 0.3, 1.3, 0.12, -0.42);
   const tom2 = mkTom(0.29, 0.3, -0.32, 1.32, 0.1, -0.42);
-  markInteract(tom1, { instrument: 'drums', part: 'tom1' });
-  markInteract(tom2, { instrument: 'drums', part: 'tom2' });
-  parts.tom1 = tom1; parts.tom2 = tom2;
-  kit.add(tom1, tom2);
+  for (const [part, tom] of [['tom1', tom1], ['tom2', tom2]]) {
+    markInteract(tom.group, { instrument: 'drums', part, headRadius: tom.radius, headAxis: 'y' });
+    heads[part] = tom.group;
+  }
+  parts.tom1 = tom1.drum; parts.tom2 = tom2.drum;
+  kit.add(tom1.group, tom2.group);
 
   // ---- floor tom ----
   const floorTom = new THREE.Group();
+  const floorDrum = new THREE.Group();
+  floorTom.add(floorDrum);
   const ftShell = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.44, 28), [shellMat, headMat, headMat]);
-  floorTom.add(ftShell);
-  addLugs(floorTom, 0.345, 8, 'y', 0.05);
+  floorDrum.add(ftShell);
+  addLugs(floorDrum, 0.345, 8, 'y', 0.05);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2 + 0.5;
     floorTom.add(cylinderBetween(
@@ -233,8 +265,9 @@ export function buildDrumKit() {
       new THREE.Vector3(Math.cos(a) * 0.38, -0.72, Math.sin(a) * 0.38), 0.014, chrome));
   }
   floorTom.position.set(-0.88, 0.74, -0.22);
-  markInteract(floorTom, { instrument: 'drums', part: 'floor' });
-  parts.floor = floorTom;
+  markInteract(floorTom, { instrument: 'drums', part: 'floor', headRadius: 0.34, headAxis: 'y' });
+  parts.floor = floorDrum;
+  heads.floor = floorTom;
   kit.add(floorTom);
 
   // ---- cymbals: hi-hat + crash ----
@@ -273,6 +306,11 @@ export function buildDrumKit() {
   hihat.add(hatPedal);
   hihat.position.set(1.04, 1.02, -0.38);
   markInteract(hihat, { instrument: 'drums', part: 'hihat' });
+  // The pedal is its own target, claimed after the group so it overrides: a
+  // hi-hat is opened by lifting a foot, and the board that does it is already
+  // modelled. Without this the open branch in audio.hihat() has no cause and
+  // stays unreachable, which is what it was.
+  markInteract(hatPedal, { instrument: 'drums', part: 'hihatPedal' });
   parts.hihatTop = hatTop;
   kit.add(hihat);
 
@@ -308,28 +346,46 @@ export function buildDrumKit() {
 
   let time = 0;
 
+  // The pedal's state, and the gap it opens. Eased rather than snapped so the
+  // cymbals read as being lifted apart instead of teleporting.
+  const HAT_CLOSED_Y = 0.045;
+  const HAT_OPEN_Y = 0.115;
+  let hatOpen = false;
+  let hatGapY = HAT_CLOSED_Y;
+
   return {
     group: kit,
     label: 'Ударні',
     labelAnchor: new THREE.Vector3(0.5, 2.75, 0),
     refreshLogo: paintKickLogo,
-    hit(part) { anim[part] = 1; },
-    update(dt) {
+    heads,
+    /** Both hi-hat sounds and the pedal itself recoil the one hi-hat. */
+    hit(part) {
+      const key = (part === 'hihatOpen' || part === 'hihatPedal') ? 'hihat' : part;
+      if (key in anim) anim[key] = 1;
+    },
+    setHihatOpen(open) { hatOpen = Boolean(open); },
+    isHihatOpen: () => hatOpen,
+    update(dt, _elapsed, reducedMotion = false) {
       time += dt;
       const decay = Math.pow(0.0001, dt); // fast spring back
       for (const k in anim) anim[k] *= decay;
 
-      // head punches
+      // Head punches. These are the response to a gesture, so they stay under
+      // reduced motion — it is the endless idle sway below that stands down.
       const s1 = 1 + anim.snare * 0.08; parts.snare.scale.set(s1, 1 - anim.snare * 0.12, s1);
       const k1 = 1 + anim.kick * 0.06; parts.kick.scale.set(k1, k1, 1);
       const t1 = 1 + anim.tom1 * 0.07; parts.tom1.scale.set(t1, 1 - anim.tom1 * 0.1, t1);
       const t2 = 1 + anim.tom2 * 0.07; parts.tom2.scale.set(t2, 1 - anim.tom2 * 0.1, t2);
       const f1 = 1 + anim.floor * 0.07; parts.floor.scale.set(f1, 1 - anim.floor * 0.1, f1);
 
-      parts.hihatTop.position.y = 0.045 - anim.hihat * 0.03;
-      parts.hihatTop.rotation.z = -0.03 + Math.sin(time * 1.7) * 0.01;
-      parts.crash.rotation.z = -0.12 - Math.sin(time * 22) * anim.crash * 0.14 + Math.sin(time * 1.2) * 0.012;
-      parts.crash.rotation.x = Math.sin(time * 17) * anim.crash * 0.08 + Math.sin(time * 0.9) * 0.01;
+      const hatTarget = hatOpen ? HAT_OPEN_Y : HAT_CLOSED_Y;
+      hatGapY = reducedMotion ? hatTarget : hatGapY + (hatTarget - hatGapY) * Math.min(1, dt * 18);
+      const idle = reducedMotion ? 0 : 1;
+      parts.hihatTop.position.y = hatGapY - anim.hihat * 0.03;
+      parts.hihatTop.rotation.z = -0.03 + Math.sin(time * 1.7) * 0.01 * idle;
+      parts.crash.rotation.z = -0.12 - Math.sin(time * 22) * anim.crash * 0.14 + Math.sin(time * 1.2) * 0.012 * idle;
+      parts.crash.rotation.x = Math.sin(time * 17) * anim.crash * 0.08 + Math.sin(time * 0.9) * 0.01 * idle;
     },
   };
 }

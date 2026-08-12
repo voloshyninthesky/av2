@@ -7,11 +7,11 @@
 // `playMusicalEvent` is the one road every note takes — pointer, pad, keyboard
 // and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260813-06';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-06';
-import { mascotMove } from '../mascot/state.js?v=20260813-06';
-import { play, heldPianoNotes } from './state.js?v=20260813-06';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260813-06';
+import { session } from '../core/session.js?v=20260813-07';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-07';
+import { mascotMove } from '../mascot/state.js?v=20260813-07';
+import { play, heldPianoNotes } from './state.js?v=20260813-07';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260813-07';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');
@@ -35,6 +35,11 @@ let hooks = {
   captureHeldPianoIntoLoop: () => {},
   finishHeldPianoLoopCaptures: () => {},
   finalizeHeldPianoLoopCapture: () => {},
+  // The groove wheel sits above this module, so its bar arrives as a hook. Both
+  // return null whenever no groove is sounding, which is what leaves the loop
+  // free-running exactly as it was.
+  grooveBarSeconds: () => null,
+  grooveDownbeatAt: () => null,
 };
 export function initLoopPedal(next) {
   hooks = { ...hooks, ...next };
@@ -42,8 +47,11 @@ export function initLoopPedal(next) {
 
 // ---- multi-instrument loop pedal ----
 export const LOOP_MAX_SECONDS = 12;
-const LOOP_LOOKAHEAD = 0.12;
-const LOOP_TICK_MS = 25;
+// The groove wheel runs its own scheduler against the same audio clock. Sharing
+// these two rather than copying them is what stops the pair drifting apart the
+// first time either is tuned.
+export const LOOP_LOOKAHEAD = 0.12;
+export const LOOP_TICK_MS = 25;
 const LOOP_EVENT_LIMIT = 192;
 export const loop = {
   state: 'empty',
@@ -135,7 +143,11 @@ export function runMusicalVisual(event, feedback) {
   if (event.showPrice !== false) queuePriceChip(kind);
 }
 
-export function playMusicalEvent(event, { record = true, at = null, feedback = true } = {}) {
+// `visualBucket` is where a scheduled-ahead visual parks its timer. It defaults
+// to the loop's own set, but the groove wheel passes its own: clearing the loop
+// runs clearLoopVisualTimers(), which would otherwise swallow the groove's next
+// look-ahead window of animation along with the loop's.
+export function playMusicalEvent(event, { record = true, at = null, feedback = true, visualBucket = loop.visualTimers } = {}) {
   // Live input may repair a stale mobile route. Look-ahead loop events only
   // resume the existing context; rebuilding must wait for a trusted gesture.
   hooks.activateAudioForSound({ allowRecovery: record });
@@ -147,11 +159,18 @@ export function playMusicalEvent(event, { record = true, at = null, feedback = t
   const velocity = event.vel ?? 1;
   let voice = null;
   if (event.type === 'drum') {
+    // Every part is named. The `else audio.tom(...)` this replaced turned a
+    // typo or an unhandled new part into a silent 120 Hz tom rather than into
+    // anything a reader would notice — tests/rhythm.test.mjs now holds the
+    // rhythm library's part names against this exact list.
     if (event.part === 'kick') audio.kick(velocity, startAt);
     else if (event.part === 'snare') audio.snare(velocity, startAt);
     else if (event.part === 'hihat') audio.hihat(false, velocity, startAt);
+    else if (event.part === 'hihatOpen') audio.hihat(true, velocity, startAt);
     else if (event.part === 'crash') audio.crash(velocity, startAt);
-    else audio.tom(event.part === 'tom1' ? 150 : (event.part === 'floor' ? 95 : 120), velocity, startAt);
+    else if (event.part === 'tom1') audio.tom(150, velocity, startAt);
+    else if (event.part === 'tom2') audio.tom(120, velocity, startAt);
+    else if (event.part === 'floor') audio.tom(95, velocity, startAt);
   } else if (event.type === 'piano') {
     audio.piano(event.freq, velocity, startAt, event.duration ?? 1.6);
   } else if (event.type === 'guitar-pluck') {
@@ -176,10 +195,10 @@ export function playMusicalEvent(event, { record = true, at = null, feedback = t
   const visualDelay = startAt === null ? 0 : Math.max(0, (startAt - audio.ctx.currentTime) * 1000);
   if (visualDelay > 5) {
     const timer = setTimeout(() => {
-      loop.visualTimers.delete(timer);
+      visualBucket.delete(timer);
       runMusicalVisual(event, feedback);
     }, visualDelay);
-    loop.visualTimers.add(timer);
+    visualBucket.add(timer);
   } else {
     runMusicalVisual(event, feedback);
   }
@@ -292,7 +311,12 @@ function startBaseLoopRecording() {
   loop.layers = 0;
   loop.activeLayer = 1;
   loop.layerStartCount = 0;
-  loop.recordStartedAt = audio.ctx.currentTime;
+  // Snap the start BACK to the downbeat at or before the press when a groove is
+  // running. Every captured offset is measured from recordStartedAt, so this
+  // alone makes them bar-relative — and rounding backwards adds a little
+  // leading silence rather than clipping the visitor's first hit.
+  loop.recordStartedAt = hooks.grooveDownbeatAt(audio.ctx.currentTime, { before: true })
+    ?? audio.ctx.currentTime;
   loopProgressBar.style.width = '0%';
   loop.autoCloseTimer = setTimeout(() => finishBaseLoopRecording(true), LOOP_MAX_SECONDS * 1000);
   hooks.captureHeldVocalIntoLoop();
@@ -312,7 +336,19 @@ export function finishBaseLoopRecording(automatic = false) {
     return;
   }
   const rawDuration = Math.min(LOOP_MAX_SECONDS, Math.max(0, audio.ctx.currentTime - loop.recordStartedAt));
-  loop.duration = Math.max(1, Math.ceil(rawDuration / 0.125) * 0.125);
+  // Against a groove the loop is whole bars, not a grid of eighths of a second.
+  // That grid is 16 ms out per bar at 92 BPM — half a sixteenth inside two
+  // minutes — and nothing errors or logs while it drifts: the snare you played
+  // on the backbeat is simply on the "and" when you come back to it.
+  // Round, never ceil: a finger that lifts a hair early meant this bar, and
+  // ceiling would hand back a bar of silence.
+  const grooveBar = hooks.grooveBarSeconds();
+  loop.duration = grooveBar
+    ? Math.min(
+      Math.max(1, Math.floor(LOOP_MAX_SECONDS / grooveBar)),
+      Math.max(1, Math.round(rawDuration / grooveBar)),
+    ) * grooveBar
+    : Math.max(1, Math.ceil(rawDuration / 0.125) * 0.125);
   // Finalize sustain after loop length is known so held vocals cap correctly.
   hooks.finishHeldLoopCapture();
   hooks.finishHeldPianoLoopCaptures();
@@ -325,7 +361,10 @@ export function finishBaseLoopRecording(automatic = false) {
   }
   loop.layers = 1;
   loop.state = 'playing';
-  loop.epoch = audio.ctx.currentTime + 0.08;
+  // Forward to the groove's next downbeat, so the loop's bar one and the
+  // wheel's 12 o'clock are the same instant. Safe to sit in the future: the
+  // scheduler's floor and look-ahead guards simply idle until it arrives.
+  loop.epoch = hooks.grooveDownbeatAt(audio.ctx.currentTime + 0.08) ?? (audio.ctx.currentTime + 0.08);
   loop.events.sort((a, b) => a.offset - b.offset);
   renderLoopState();
   startLoopScheduler();
