@@ -16,12 +16,12 @@
 // digits, where they play *piano* chords through the wheel's own route.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-03';
-import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-03';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-03';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-03';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-03';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-03';
+import { session } from '../core/session.js?v=20260813-05';
+import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-05';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-05';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-05';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-05';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-05';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -30,14 +30,14 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-03';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-03';
+} from './loop.js?v=20260813-05';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-05';
 import {
   syncChordWheelHeld,
   pressPianoChordFromKeyboard,
   releasePianoChordFromKeyboard,
-} from './chord-wheel.js?v=20260813-03';
-import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-03';
+} from './chord-wheel.js?v=20260813-05';
+import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-05';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.
@@ -212,14 +212,14 @@ const pianoFocusKeymap = new Map([
   ...PIANO_FOCUS_BLACK.map((code, i) => [code, blackKeys[i]]),
 ]);
 
-// The focused piano owns the letter keys outright, so the chord row moves to
-// the digits for the duration. It addresses the same six scale degrees the
-// wheel lights; the white keys those digits normally play are redundant here,
-// because A..L already covers a wider span of the same keybed. Leaving the
-// close-up restores QWERTY chords and digit notes immediately.
-const PIANO_FOCUS_CHORD_DIGITS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'];
+// In a close-up the chord row is the number row, and the number *is* the scale
+// degree: `1` is the tonic in either mode, `7` the degree that has no wedge on
+// the wheel because it is diminished. Nothing else can spell a degree as
+// plainly, and the digits are free here — the piano's own notes have moved to
+// the letters, and outside a close-up the letter row keeps the chords instead.
+const FOCUS_CHORD_DIGITS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7'];
 const STRUM_KEYS = new Set(['Space', 'ArrowDown', 'ArrowUp']);
-const digitChord = (code) => keyChordNames[PIANO_FOCUS_CHORD_DIGITS.indexOf(code)] || null;
+const digitChord = (code) => keyChordNames[FOCUS_CHORD_DIGITS.indexOf(code)] || null;
 
 // ============================================================
 // WHO OWNS THE KEYBOARD
@@ -252,9 +252,10 @@ const chordRowIsLive = () => {
 
 /** Which chord a key event arms right now, given where the visitor is. */
 function chordForKeyEvent(code) {
-  return focusedKeyboardInstrument() === 'piano'
-    ? digitChord(code)
-    : (GUITAR_KEY_CHORDS[code] || null);
+  // Inside a close-up the row is the digits, for guitar and piano alike; the
+  // letter row is what the unfocused jam surface uses, where the digits are
+  // already the piano's white keys.
+  return focusedKeyboardInstrument() ? digitChord(code) : (GUITAR_KEY_CHORDS[code] || null);
 }
 
 // A keyboard-held piano chord is one at a time and belongs to the key that
@@ -345,10 +346,10 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  // The digits are the global white-key row. In a piano close-up 1-6 have
-  // already been claimed as the chord row above, and A..L covers those notes
-  // over a wider span anyway, so nothing falls through to here.
-  if (/^Digit[1-8]$/.test(e.code) && keyboardOwnedBy('piano')) {
+  // The digits are the global white-key row, and only that: inside any
+  // close-up 1-7 were claimed as the chord row above, and at the piano A..L
+  // covers those notes over a wider span anyway.
+  if (/^Digit[1-8]$/.test(e.code) && !focusedKeyboardInstrument() && keyboardOwnedBy('piano')) {
     if (e.repeat || keyboardPianoNotes.has(e.code)) return;
     e.preventDefault();
     const idx = Number(e.code.slice(5)) - 1;

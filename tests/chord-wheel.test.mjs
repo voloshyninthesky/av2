@@ -11,6 +11,7 @@ const h = await loadModule(new URL('../js/play/harmony.js', import.meta.url));
 
 const ALL_KEYS = h.FIFTHS.map((entry) => entry.pc);
 const RINGS = ['major', 'minor'];
+const MODE_NAMES = ['major', 'minor'];
 
 // Read a printed label back to a pitch class, independently of the module —
 // otherwise a wrong spelling table would agree with itself.
@@ -49,96 +50,156 @@ test('every printed label spells its own pitch class', () => {
   }
 });
 
-test('a key is six chords on the major scale, in degree order', () => {
-  // I ii iii IV V vi, as semitones above the tonic and as chord quality.
-  const DEGREES = [
+test('a key is its seven scale-degree chords, in order', () => {
+  // Semitones above the tonic, and the quality each degree takes.
+  const MAJOR = [
     { degree: 'I', semitones: 0, quality: '' },
     { degree: 'ii', semitones: 2, quality: 'm' },
     { degree: 'iii', semitones: 4, quality: 'm' },
     { degree: 'IV', semitones: 5, quality: '' },
     { degree: 'V', semitones: 7, quality: '' },
     { degree: 'vi', semitones: 9, quality: 'm' },
+    { degree: 'vii°', semitones: 11, quality: 'dim' },
   ];
+  const MINOR = [
+    { degree: 'i', semitones: 0, quality: 'm' },
+    { degree: 'ii°', semitones: 2, quality: 'dim' },
+    { degree: 'III', semitones: 3, quality: '' },
+    { degree: 'iv', semitones: 5, quality: 'm' },
+    { degree: 'v', semitones: 7, quality: 'm' },
+    { degree: 'VI', semitones: 8, quality: '' },
+    { degree: 'VII', semitones: 10, quality: '' },
+  ];
+  for (const [mode, want] of [['major', MAJOR], ['minor', MINOR]]) {
+    for (const tonic of ALL_KEYS) {
+      const found = h.keyDegrees(tonic, { mode });
+      assert.equal(found.length, 7, `${h.keyLabel(tonic, mode)}: expected seven chords`);
+      found.forEach((chord, index) => {
+        const expected = want[index];
+        assert.equal(chord.degree, expected.degree,
+          `${h.keyLabel(tonic, mode)}: degree ${index} out of order`);
+        const parsed = h.parseChordName(chord.name);
+        assert.equal(parsed.rootPc, (tonic + expected.semitones) % 12,
+          `${h.keyLabel(tonic, mode)} ${expected.degree}: wrong root (${chord.name})`);
+        assert.equal(parsed.quality, expected.quality,
+          `${h.keyLabel(tonic, mode)} ${expected.degree}: wrong quality (${chord.name})`);
+        assert.ok(h.GUITAR_CHORDS[chord.name], `${chord.name} is not in the library`);
+      });
+      // The number row counts scale degrees, so key 1 must be the tonic.
+      assert.equal(h.parseChordName(found[0].name).rootPc, tonic,
+        `${h.keyLabel(tonic, mode)}: degree 1 is not the tonic`);
+    }
+  }
+});
+
+test('a relative major and minor are the same key wearing two hats', () => {
+  // Same seven notes, so the same six wedges and the same sevenths — the only
+  // difference is which wedge is home. This is what keeps mode cheap.
   for (const tonic of ALL_KEYS) {
-    const found = h.keyDegrees(tonic);
-    assert.equal(found.length, 6, `key ${h.keyLabel(tonic)}: expected six chords`);
-    found.forEach((chord, index) => {
-      const want = DEGREES[index];
-      assert.equal(chord.degree, want.degree, `key ${h.keyLabel(tonic)}: degree ${index} out of order`);
-      const parsed = h.parseChordName(chord.name);
-      assert.equal(parsed.rootPc, (tonic + want.semitones) % 12,
-        `key ${h.keyLabel(tonic)} ${want.degree}: wrong root (${chord.name})`);
-      assert.equal(parsed.quality, want.quality,
-        `key ${h.keyLabel(tonic)} ${want.degree}: wrong quality (${chord.name})`);
-      assert.ok(h.GUITAR_CHORDS[chord.name], `${chord.name} is not in the library`);
-    });
+    const relativeMinor = (tonic + 9) % 12;
+    assert.equal(h.keySignaturePc(relativeMinor, 'minor'), tonic,
+      `${h.keyLabel(relativeMinor, 'minor')} does not share ${h.keyLabel(tonic)}'s signature`);
+    const wedges = (pc, mode) => h.keyDegrees(pc, { mode }).filter((c) => c.ring)
+      .map((c) => `${c.ring}:${c.fifthIndex}`).sort();
+    assert.deepEqual(wedges(relativeMinor, 'minor'), wedges(tonic, 'major'),
+      `${h.keyLabel(tonic)} and its relative minor light different wedges`);
+    const names = (pc, mode) => h.keyDegrees(pc, { mode, sevenths: true })
+      .filter((c) => c.ring).map((c) => c.name).sort();
+    assert.deepEqual(names(relativeMinor, 'minor'), names(tonic, 'major'),
+      `${h.keyLabel(tonic)} and its relative minor take different sevenths`);
   }
 });
 
 test('a key lights one contiguous three-wide sector of the wheel', () => {
   // This is the entire visual argument for the layout: IV I V neighbouring on
   // the outer ring with ii vi iii directly inside them. If the sector ever
-  // scatters, the wheel stops teaching anything.
-  for (const tonic of ALL_KEYS) {
-    const tonicIndex = h.fifthIndexOf(tonic);
-    const wanted = new Set([(tonicIndex + 11) % 12, tonicIndex, (tonicIndex + 1) % 12]);
-    const byRing = { major: new Set(), minor: new Set() };
-    for (const chord of h.keyDegrees(tonic)) byRing[chord.ring].add(chord.fifthIndex);
-
-    for (const ring of RINGS) {
-      assert.deepEqual([...byRing[ring]].sort(), [...wanted].sort(),
-        `key ${h.keyLabel(tonic)}: the ${ring} ring is not the tonic's three neighbours`);
+  // scatters, the wheel stops teaching anything. The diminished degree is the
+  // one chord with no wedge, so exactly six of the seven place.
+  for (const mode of MODE_NAMES) {
+    for (const tonic of ALL_KEYS) {
+      const homeIndex = h.fifthIndexOf(h.keySignaturePc(tonic, mode));
+      const wanted = new Set([(homeIndex + 11) % 12, homeIndex, (homeIndex + 1) % 12]);
+      const byRing = { major: new Set(), minor: new Set() };
+      const placed = h.keyDegrees(tonic, { mode }).filter((chord) => chord.ring);
+      assert.equal(placed.length, 6, `${h.keyLabel(tonic, mode)}: expected six wedges`);
+      for (const chord of placed) byRing[chord.ring].add(chord.fifthIndex);
+      for (const ring of RINGS) {
+        assert.deepEqual([...byRing[ring]].sort(), [...wanted].sort(),
+          `${h.keyLabel(tonic, mode)}: the ${ring} ring is not home's three neighbours`);
+      }
     }
+  }
+});
+
+test('the tonic sits on the outer ring in major and the inner ring in minor', () => {
+  for (const tonic of ALL_KEYS) {
+    const major = h.keyDegrees(tonic, { mode: 'major' })[0];
+    assert.equal(major.ring, 'major', `${h.keyLabel(tonic)}: major tonic is not an outer wedge`);
+    const minor = h.keyDegrees(tonic, { mode: 'minor' })[0];
+    assert.equal(minor.ring, 'minor', `${h.keyLabel(tonic, 'minor')}: minor tonic is not an inner wedge`);
+    // Home is at 12 o'clock in both, so both tonics sit at the same position.
+    assert.equal(major.fifthIndex, h.fifthIndexOf(tonic));
+    assert.equal(minor.fifthIndex, h.fifthIndexOf(h.keySignaturePc(tonic, 'minor')));
   }
 });
 
 test('every wedge in the key reports its degree, and no wedge outside it does', () => {
-  for (const tonic of ALL_KEYS) {
-    const inKey = new Set(h.keyDegrees(tonic).map((chord) => `${chord.ring}:${chord.fifthIndex}`));
-    let degreeCount = 0;
-    for (const ring of RINGS) {
-      for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
-        const degree = h.wedgeDegree(ring, fifthIndex, tonic);
-        const belongs = inKey.has(`${ring}:${fifthIndex}`);
-        assert.equal(Boolean(degree), belongs,
-          `key ${h.keyLabel(tonic)}: ${ring} ${fifthIndex} degree/membership disagree`);
-        if (degree) degreeCount++;
+  for (const mode of MODE_NAMES) {
+    for (const tonic of ALL_KEYS) {
+      const inKey = new Set(h.keyDegrees(tonic, { mode }).filter((c) => c.ring)
+        .map((chord) => `${chord.ring}:${chord.fifthIndex}`));
+      let degreeCount = 0;
+      for (const ring of RINGS) {
+        for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
+          const degree = h.wedgeDegree(ring, fifthIndex, tonic, mode);
+          const belongs = inKey.has(`${ring}:${fifthIndex}`);
+          assert.equal(Boolean(degree), belongs,
+            `${h.keyLabel(tonic, mode)}: ${ring} ${fifthIndex} degree/membership disagree`);
+          if (degree) degreeCount++;
+        }
       }
+      assert.equal(degreeCount, 6, `${h.keyLabel(tonic, mode)}: expected exactly six placed degrees`);
     }
-    assert.equal(degreeCount, 6, `key ${h.keyLabel(tonic)}: expected exactly six degrees`);
   }
 });
 
 test('sevenths are diatonic, not one blanket quality', () => {
-  const WANT = { I: 'maj7', ii: 'm7', iii: 'm7', IV: 'maj7', V: '7', vi: 'm7' };
-  for (const tonic of ALL_KEYS) {
-    for (const chord of h.keyDegrees(tonic, true)) {
-      const parsed = h.parseChordName(chord.name);
-      assert.equal(parsed.quality, WANT[chord.degree],
-        `key ${h.keyLabel(tonic)} ${chord.degree}: expected ${WANT[chord.degree]}, got ${chord.name}`);
-      assert.ok(h.GUITAR_CHORDS[chord.name], `${chord.name} is not in the library`);
-    }
-    // Outside the key there is no degree to follow: a major becomes a plain
-    // dominant 7, a minor an m7.
-    for (const ring of RINGS) {
-      for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
-        if (h.wedgeDegree(ring, fifthIndex, tonic)) continue;
-        assert.equal(h.qualityFor(ring, fifthIndex, tonic, true), ring === 'minor' ? 'm7' : '7',
-          `key ${h.keyLabel(tonic)}: ${ring} ${fifthIndex} took the wrong borrowed quality`);
+  const WANT = {
+    I: 'maj7', ii: 'm7', iii: 'm7', IV: 'maj7', V: '7', vi: 'm7', 'vii°': 'm7b5',
+    i: 'm7', 'ii°': 'm7b5', III: 'maj7', iv: 'm7', v: 'm7', VI: 'maj7', VII: '7',
+  };
+  for (const mode of MODE_NAMES) {
+    for (const tonic of ALL_KEYS) {
+      for (const chord of h.keyDegrees(tonic, { mode, sevenths: true })) {
+        const parsed = h.parseChordName(chord.name);
+        assert.equal(parsed.quality, WANT[chord.degree],
+          `${h.keyLabel(tonic, mode)} ${chord.degree}: expected ${WANT[chord.degree]}, got ${chord.name}`);
+        assert.ok(h.GUITAR_CHORDS[chord.name], `${chord.name} is not in the library`);
+      }
+      // Outside the key there is no degree to follow: a major becomes a plain
+      // dominant 7, a minor an m7.
+      for (const ring of RINGS) {
+        for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
+          if (h.wedgeDegree(ring, fifthIndex, tonic, mode)) continue;
+          assert.equal(h.qualityFor(ring, fifthIndex, tonic, true, mode), ring === 'minor' ? 'm7' : '7',
+            `${h.keyLabel(tonic, mode)}: ${ring} ${fifthIndex} took the wrong borrowed quality`);
+        }
       }
     }
   }
 });
 
-test('every wedge, in every key, names a chord the library has', () => {
-  for (const tonic of ALL_KEYS) {
-    for (const sevenths of [false, true]) {
-      for (const ring of RINGS) {
-        for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
-          const name = h.wedgeChordName(ring, fifthIndex, tonic, sevenths);
-          assert.ok(h.GUITAR_CHORDS[name], `${name} is not in the library`);
-          assert.equal(h.parseChordName(name).rootPc, h.wedgeRootPc(ring, fifthIndex),
-            `${name}: wrong root for ${ring} ${fifthIndex}`);
+test('every wedge, in every key and mode, names a chord the library has', () => {
+  for (const mode of MODE_NAMES) {
+    for (const tonic of ALL_KEYS) {
+      for (const sevenths of [false, true]) {
+        for (const ring of RINGS) {
+          for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
+            const name = h.wedgeChordName(ring, fifthIndex, tonic, sevenths, mode);
+            assert.ok(h.GUITAR_CHORDS[name], `${name} is not in the library`);
+            assert.equal(h.parseChordName(name).rootPc, h.wedgeRootPc(ring, fifthIndex),
+              `${name}: wrong root for ${ring} ${fifthIndex}`);
+          }
         }
       }
     }
@@ -146,17 +207,19 @@ test('every wedge, in every key, names a chord the library has', () => {
 });
 
 test('a wedge label spells the chord it plays', () => {
-  for (const tonic of ALL_KEYS) {
-    for (const sevenths of [false, true]) {
-      for (const ring of RINGS) {
-        for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
-          const label = h.wedgeLabel(ring, fifthIndex, tonic, sevenths);
-          const name = h.wedgeChordName(ring, fifthIndex, tonic, sevenths);
-          const read = readLabel(label);
-          assert.equal(read.pc, h.parseChordName(name).rootPc, `${label} does not spell ${name}`);
-          assert.equal(read.minor, ring === 'minor', `${label} is on the ${ring} ring`);
-          // "Am" + "m7" would print "Amm7".
-          assert.ok(!label.includes('mm'), `${label} doubled its minor`);
+  for (const mode of MODE_NAMES) {
+    for (const tonic of ALL_KEYS) {
+      for (const sevenths of [false, true]) {
+        for (const ring of RINGS) {
+          for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
+            const label = h.wedgeLabel(ring, fifthIndex, tonic, sevenths, mode);
+            const name = h.wedgeChordName(ring, fifthIndex, tonic, sevenths, mode);
+            const read = readLabel(label);
+            assert.equal(read.pc, h.parseChordName(name).rootPc, `${label} does not spell ${name}`);
+            assert.equal(read.minor, ring === 'minor', `${label} is on the ${ring} ring`);
+            // "Am" + "m7" would print "Amm7".
+            assert.ok(!label.includes('mm'), `${label} doubled its minor`);
+          }
         }
       }
     }

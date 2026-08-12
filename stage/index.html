@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260813-03">
+<link rel="stylesheet" href="/css/style.css?v=20260813-05">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -201,8 +201,8 @@
        instrument's keys are. The loop hint sits outside them all, because L
        works in every mode once the pedal is unlocked. -->
   <span data-keys="jam">клік — рух · <b>Enter</b> — грати · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — акорди · <b>N M , . /</b> — вокал</span>
-  <span data-keys="guitar"><b>Q W E R T Y</b> — акорди · <b>↓ ↑</b> або пробіл — бій · <b>[ ] \</b> — тональність</span>
-  <span data-keys="piano"><b>A…L</b> і <b>W E T Y U O</b> — ноти · <b>1–6</b> — акорди · <b>[ ] \</b> — тональність</span>
+  <span data-keys="guitar"><b>1–7</b> — акорди · <b>↓ ↑</b> або пробіл — бій · <b>[ ] \</b> — тональність</span>
+  <span data-keys="piano"><b>A…L</b> і <b>W E T Y U O</b> — ноти · <b>1–7</b> — акорди · <b>[ ] \</b> — тональність</span>
   <span data-keys="drums"><b>Z X C V B</b> — ударні</span>
   <span data-keys="mic"><b>N M , . /</b> — вокал</span><span id="loop-key-hint" hidden> · <b>L</b> — loop</span>
 </div>
@@ -269,7 +269,7 @@
   <div id="chord-wheel-hub">
     <div class="chord-key-step">
       <button type="button" data-key-step="-1" aria-label="Тональність на квінту вниз">‹</button>
-      <span id="chord-key-label" aria-live="polite">C</span>
+      <button type="button" id="chord-key-label" data-mode="major" title="Мажор або мінор">C</button>
       <button type="button" data-key-step="1" aria-label="Тональність на квінту вгору">›</button>
     </div>
     <button type="button" id="chord-sevenths" aria-pressed="false"
@@ -668,6 +668,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260813-03"></script>
+  <script type="module" src="/js/main.js?v=20260813-05"></script>
 </body>
 </html>

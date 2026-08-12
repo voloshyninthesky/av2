@@ -19,6 +19,12 @@ export const CHORD_QUALITIES = {
   7:      { label: 'dominant 7', intervals: [0, 4, 7, 10] },
   m7:     { label: 'minor 7', intervals: [0, 3, 7, 10] },
   maj7:   { label: 'major 7', intervals: [0, 4, 7, 11] },
+  // The seventh degree of a major key is diminished, and so is the second of a
+  // minor one. Neither is a major or a relative minor, so neither has a wedge
+  // on the wheel — but a keyboard row that counts scale degrees has to be able
+  // to reach them, which is the whole reason these two exist.
+  dim:    { label: 'diminished', intervals: [0, 3, 6] },
+  m7b5:   { label: 'half-diminished', intervals: [0, 3, 6, 10] },
 };
 
 // ---- the chord maker ----
@@ -31,6 +37,11 @@ const E_SHAPES = {
   7:    [0, 2, 0, 1, 0, 0],
   m7:   [0, 2, 0, 0, 0, 0],
   maj7: [0, 2, 1, 1, 0, 0],
+  // Both diminished forms drop the top strings rather than mute an inner one:
+  // a stacked minor third has no comfortable octave up there, and muting an
+  // outer string is the only kind a hand does without thinking.
+  dim:  [0, 1, 2, 0, null, null],
+  m7b5: [0, 1, 0, 0, null, null],
 };
 const A_SHAPES = {
   '':   [null, 0, 2, 2, 2, 0],
@@ -38,6 +49,8 @@ const A_SHAPES = {
   7:    [null, 0, 2, 0, 2, 0],
   m7:   [null, 0, 2, 0, 1, 0],
   maj7: [null, 0, 2, 1, 2, 0],
+  dim:  [null, 0, 1, 2, 1, null],
+  m7b5: [null, 0, 1, 0, 1, null],
 };
 const shiftShape = (shape, frets) => shape.map((f) => (f === null ? null : f + frets));
 
@@ -132,46 +145,81 @@ export function wedgeRootPc(ring, fifthIndex) {
   return ring === 'minor' ? entry.minorPc : entry.pc;
 }
 
-// How far a wedge sits from the tonic, in fifths, signed and wrapped to
-// -6..+5 so "one step counter-clockwise" is -1 rather than 11.
-function fifthsFromTonic(fifthIndex, tonicPc) {
-  const offset = fifthIndex - fifthIndexOf(tonicPc);
+export const MODES = ['major', 'minor'];
+
+// A major key and its relative minor are the same seven notes, so they light
+// the same six wedges AND take the same sevenths. Mode changes only which
+// wedge is home, what the degrees are called, and where the row starts
+// counting — which is why nothing below needs a second set of chords.
+//
+// `ring` + `offset` locate a degree on the wheel relative to the key
+// signature's position. `semitones` is for the one degree in each mode that is
+// diminished: it is neither a major nor a relative minor, so it has no wedge,
+// and only a keyboard row that counts scale degrees can reach it.
+const MODE_DEGREES = {
+  major: [
+    { degree: 'I', ring: 'major', offset: 0 },
+    { degree: 'ii', ring: 'minor', offset: -1 },
+    { degree: 'iii', ring: 'minor', offset: 1 },
+    { degree: 'IV', ring: 'major', offset: -1 },
+    { degree: 'V', ring: 'major', offset: 1 },
+    { degree: 'vi', ring: 'minor', offset: 0 },
+    { degree: 'vii°', ring: null, semitones: 11 },
+  ],
+  minor: [
+    { degree: 'i', ring: 'minor', offset: 0 },
+    { degree: 'ii°', ring: null, semitones: 2 },
+    { degree: 'III', ring: 'major', offset: 0 },
+    { degree: 'iv', ring: 'minor', offset: -1 },
+    { degree: 'v', ring: 'minor', offset: 1 },
+    { degree: 'VI', ring: 'major', offset: -1 },
+    { degree: 'VII', ring: 'major', offset: 1 },
+  ],
+};
+
+/** The major key whose signature this one shares — where the wheel points. */
+export const keySignaturePc = (tonicPc, mode = 'major') => (
+  mode === 'minor' ? (tonicPc + 3) % 12 : tonicPc
+);
+
+// How far a wedge sits from home, in fifths, signed and wrapped to -6..+5 so
+// "one step counter-clockwise" is -1 rather than 11.
+function fifthsFromHome(fifthIndex, tonicPc, mode) {
+  const offset = fifthIndex - fifthIndexOf(keySignaturePc(tonicPc, mode));
   return ((offset + 18) % 12) - 6;
 }
 
-// The six chords of a major key, by where they sit relative to its tonic.
-// IV I V across the outer ring, ii vi iii directly inside them.
-const DEGREE_BY_OFFSET = {
-  major: { '-1': 'IV', 0: 'I', 1: 'V' },
-  minor: { '-1': 'ii', 0: 'vi', 1: 'iii' },
-};
 /** Degree name if this wedge belongs to the key, else null. */
-export function wedgeDegree(ring, fifthIndex, tonicPc) {
-  return DEGREE_BY_OFFSET[ring][fifthsFromTonic(fifthIndex, tonicPc)] ?? null;
+export function wedgeDegree(ring, fifthIndex, tonicPc, mode = 'major') {
+  const offset = fifthsFromHome(fifthIndex, tonicPc, mode);
+  return MODE_DEGREES[mode].find((d) => d.ring === ring && d.offset === offset)?.degree ?? null;
 }
 
 // Sevenths are diatonic, not one blanket quality: the tonic and subdominant
 // take a major 7th, the dominant takes a flat 7th (that tension is what makes
-// it a dominant), and the minors take a minor 7th. A wedge outside the key has
-// no degree to follow, so a major there becomes a plain dominant 7 — which is
-// what a borrowed major chord is used for.
-const SEVENTH_BY_DEGREE = { I: 'maj7', IV: 'maj7', V: '7', ii: 'm7', iii: 'm7', vi: 'm7' };
-export function qualityFor(ring, fifthIndex, tonicPc, sevenths = false) {
+// it a dominant), the minors take a minor 7th, and the diminished degree takes
+// a half-diminished. A wedge outside the key has no degree to follow, so a
+// major there becomes a plain dominant 7 — what a borrowed chord is used for.
+const SEVENTH_BY_DEGREE = {
+  I: 'maj7', ii: 'm7', iii: 'm7', IV: 'maj7', V: '7', vi: 'm7', 'vii°': 'm7b5',
+  i: 'm7', 'ii°': 'm7b5', III: 'maj7', iv: 'm7', v: 'm7', VI: 'maj7', VII: '7',
+};
+export function qualityFor(ring, fifthIndex, tonicPc, sevenths = false, mode = 'major') {
   if (!sevenths) return ring === 'minor' ? 'm' : '';
-  const degree = wedgeDegree(ring, fifthIndex, tonicPc);
+  const degree = wedgeDegree(ring, fifthIndex, tonicPc, mode);
   if (degree) return SEVENTH_BY_DEGREE[degree];
   return ring === 'minor' ? 'm7' : '7';
 }
 
 /** Library name for a wedge, e.g. 'A#m7'. */
-export function wedgeChordName(ring, fifthIndex, tonicPc, sevenths = false) {
-  const quality = qualityFor(ring, fifthIndex, tonicPc, sevenths);
+export function wedgeChordName(ring, fifthIndex, tonicPc, sevenths = false, mode = 'major') {
+  const quality = qualityFor(ring, fifthIndex, tonicPc, sevenths, mode);
   return CHORD_ROOTS[wedgeRootPc(ring, fifthIndex)] + quality;
 }
 
 /** What the wedge reads on screen — flat-spelled, and 'Am7' not 'Am' + 'm7'. */
-export function wedgeLabel(ring, fifthIndex, tonicPc, sevenths = false) {
-  const quality = qualityFor(ring, fifthIndex, tonicPc, sevenths);
+export function wedgeLabel(ring, fifthIndex, tonicPc, sevenths = false, mode = 'major') {
+  const quality = qualityFor(ring, fifthIndex, tonicPc, sevenths, mode);
   const entry = FIFTHS[fifthIndex];
   // The minor label already carries its 'm'; the quality's leading 'm' would
   // double it ("Amm7").
@@ -180,40 +228,41 @@ export function wedgeLabel(ring, fifthIndex, tonicPc, sevenths = false) {
     : entry.majorLabel + quality;
 }
 
-// Scale-degree order rather than wheel order: this is the row a visitor plays
-// a progression from, and I–ii–iii–IV–V–vi is how those chords are counted.
-const DEGREE_ORDER = [
-  { degree: 'I', ring: 'major', offset: 0 },
-  { degree: 'ii', ring: 'minor', offset: -1 },
-  { degree: 'iii', ring: 'minor', offset: 1 },
-  { degree: 'IV', ring: 'major', offset: -1 },
-  { degree: 'V', ring: 'major', offset: 1 },
-  { degree: 'vi', ring: 'minor', offset: 0 },
-];
-
-/** The key's six chords, in degree order. */
-export function keyDegrees(tonicPc, sevenths = false) {
-  const tonicIndex = fifthIndexOf(tonicPc);
-  return DEGREE_ORDER.map(({ degree, ring, offset }) => {
-    const fifthIndex = (tonicIndex + offset + 12) % 12;
+/**
+ * The key's seven chords, in scale-degree order — the order the number row
+ * counts in, so `1` is always the tonic in either mode. Six of them carry a
+ * `fifthIndex` and light a wedge; the diminished one carries `ring: null`.
+ */
+export function keyDegrees(tonicPc, { mode = 'major', sevenths = false } = {}) {
+  const homeIndex = fifthIndexOf(keySignaturePc(tonicPc, mode));
+  return MODE_DEGREES[mode].map((entry) => {
+    if (!entry.ring) {
+      const rootPc = (tonicPc + entry.semitones) % 12;
+      const quality = sevenths ? 'm7b5' : 'dim';
+      const name = CHORD_ROOTS[rootPc] + quality;
+      return { degree: entry.degree, ring: null, fifthIndex: null, rootPc, name, label: name };
+    }
+    const fifthIndex = (homeIndex + entry.offset + 12) % 12;
     return {
-      degree,
-      ring,
+      degree: entry.degree,
+      ring: entry.ring,
       fifthIndex,
-      name: wedgeChordName(ring, fifthIndex, tonicPc, sevenths),
-      label: wedgeLabel(ring, fifthIndex, tonicPc, sevenths),
+      rootPc: wedgeRootPc(entry.ring, fifthIndex),
+      name: wedgeChordName(entry.ring, fifthIndex, tonicPc, sevenths, mode),
+      label: wedgeLabel(entry.ring, fifthIndex, tonicPc, sevenths, mode),
     };
   });
 }
 
-/** The key's own name, for the hub readout. */
-export const keyLabel = (tonicPc) => MAJOR_LABELS[fifthIndexOf(tonicPc)];
+/** The key's own name, for the hub readout: 'C' major, 'Am' minor. */
+export const keyLabel = (tonicPc, mode = 'major') => (
+  mode === 'minor'
+    ? MINOR_LABELS[fifthIndexOf(keySignaturePc(tonicPc, mode))]
+    : MAJOR_LABELS[fifthIndexOf(tonicPc)]
+);
 
 /** Step the key by a fifth. +1 clockwise (C -> G), -1 counter-clockwise. */
-export function stepKey(tonicPc, direction) {
-  const next = (fifthIndexOf(tonicPc) + direction + 12) % 12;
-  return FIFTHS_PITCH_CLASSES[next];
-}
+export const stepKey = (tonicPc, direction) => (tonicPc + direction * 7 + 84) % 12;
 
 // ============================================================
 // PIANO VOICING

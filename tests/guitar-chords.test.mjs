@@ -89,5 +89,8 @@ test('a chord name round-trips through parseChordName', () => {
   // "C#" must not be read as "C" with a nonexistent "#" quality.
   assert.equal(chords.parseChordName('C#m7').rootPc, 1);
   assert.equal(chords.parseChordName('Cm7').rootPc, 0);
-  assert.equal(chords.parseChordName('Cdim'), null);
+  assert.equal(chords.parseChordName('C#m7b5').rootPc, 1);
+  // A quality the library does not have must not parse into a near miss.
+  assert.equal(chords.parseChordName('Caug'), null);
+  assert.equal(chords.parseChordName('Hm'), null);
 });

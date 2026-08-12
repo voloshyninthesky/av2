@@ -17,24 +17,25 @@
 //
 // The theory is all in harmony.js; this file is geometry, pointers and state.
 // ============================================================
-import { piano } from '../core/studio.js?v=20260813-03';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-03';
-import { canvas } from '../view/rig.js?v=20260813-03';
-import { play, activePointers } from './state.js?v=20260813-03';
+import { piano } from '../core/studio.js?v=20260813-05';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-05';
+import { canvas } from '../view/rig.js?v=20260813-05';
+import { play, activePointers } from './state.js?v=20260813-05';
 import {
   GUITAR_CHORDS,
   fifthIndexOf,
   keyDegrees,
   keyLabel,
+  keySignaturePc,
   midiFromFreq,
   pianoVoicing,
   stepKey,
   wedgeChordName,
   wedgeDegree,
   wedgeLabel,
-} from './harmony.js?v=20260813-03';
-import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-03';
-import { syncPadsOpenClass } from './pads.js?v=20260813-03';
+} from './harmony.js?v=20260813-05';
+import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-05';
+import { syncPadsOpenClass } from './pads.js?v=20260813-05';
 
 // Wheel gestures compete with the stage's own pointer handling, and a wedge
 // press has to know which instrument is listening; main.js supplies both, plus
@@ -58,21 +59,24 @@ const rings = document.getElementById('chord-wheel-rings');
 const keyLabelEl = document.getElementById('chord-key-label');
 const seventhsBtn = document.getElementById('chord-sevenths');
 
+
 // ---- key state ----
 // One record rather than two keys: the seventh toggle only ever means anything
 // alongside the key it is applied to.
 const CHORD_KEY_STORAGE = 'av2.chord-key.v1';
 let tonicPc = 0;
+let mode = 'major';
 let sevenths = false;
 try {
   const saved = JSON.parse(localStorage.getItem(CHORD_KEY_STORAGE) || 'null');
   if (Number.isInteger(saved?.tonic) && saved.tonic >= 0 && saved.tonic < 12) tonicPc = saved.tonic;
+  if (saved?.mode === 'major' || saved?.mode === 'minor') mode = saved.mode;
   if (typeof saved?.sevenths === 'boolean') sevenths = saved.sevenths;
 } catch { /* storage is optional */ }
 
 function storeChordKey() {
   try {
-    localStorage.setItem(CHORD_KEY_STORAGE, JSON.stringify({ tonic: tonicPc, sevenths }));
+    localStorage.setItem(CHORD_KEY_STORAGE, JSON.stringify({ tonic: tonicPc, mode, sevenths }));
   } catch { /* storage is optional */ }
 }
 
@@ -156,7 +160,7 @@ for (const ring of RINGS) {
 // ============================================================
 // PAINT
 // ============================================================
-const chordNameFor = (ring, fifthIndex) => wedgeChordName(ring, fifthIndex, tonicPc, sevenths);
+const chordNameFor = (ring, fifthIndex) => wedgeChordName(ring, fifthIndex, tonicPc, sevenths, mode);
 
 // A pressed piano chord is the wheel's own; a guitar chord is held elsewhere
 // (pad, latch or keyboard) and read back through the hook.
@@ -175,41 +179,52 @@ function paintActive() {
 
 /** Repaint after a key or seventh change: rotation, labels, lit sector, aria. */
 function paintWheel() {
-  const tonicIndex = fifthIndexOf(tonicPc);
-  // Turning the ring group is what puts the tonic at 12 o'clock. Labels then
-  // carry the opposite rotation so the text stays upright as the wheel turns.
-  ringsGroup.setAttribute('transform', `rotate(${-tonicIndex * WEDGE_DEGREES})`);
-  const upright = tonicIndex * WEDGE_DEGREES;
+  // The wheel points at the key *signature*, not the tonic: a minor key shares
+  // its six chords with the relative major, so both put the same sector at the
+  // top and only the home wedge differs — outer in major, inner in minor.
+  const homeIndex = fifthIndexOf(keySignaturePc(tonicPc, mode));
+  // Labels carry the opposite rotation so the text stays upright as it turns.
+  ringsGroup.setAttribute('transform', `rotate(${-homeIndex * WEDGE_DEGREES})`);
+  const upright = homeIndex * WEDGE_DEGREES;
 
+  const degrees = keyDegrees(tonicPc, { mode, sevenths });
   const degreeSlot = new Map();
-  keyDegrees(tonicPc, sevenths).forEach((chord, index) => {
-    degreeSlot.set(`${chord.ring}:${chord.fifthIndex}`, index);
+  degrees.forEach((chord, index) => {
+    if (chord.ring) degreeSlot.set(`${chord.ring}:${chord.fifthIndex}`, index);
   });
+  const tonicKey = degrees[0].ring ? `${degrees[0].ring}:${degrees[0].fifthIndex}` : null;
 
   for (const wedge of wedges) {
     const { group, text, ring, fifthIndex, x, y } = wedge;
     const name = chordNameFor(ring, fifthIndex);
-    const degree = wedgeDegree(ring, fifthIndex, tonicPc);
+    const degree = wedgeDegree(ring, fifthIndex, tonicPc, mode);
     group.dataset.chord = name;
     group.classList.toggle('in-key', Boolean(degree));
+    group.classList.toggle('tonic', `${ring}:${fifthIndex}` === tonicKey);
     group.setAttribute('aria-label', degree ? `Акорд ${name}, ступінь ${degree}` : `Акорд ${name}`);
 
     const slot = degreeSlot.get(`${ring}:${fifthIndex}`);
     if (slot === undefined) group.removeAttribute('aria-keyshortcuts');
     else group.setAttribute('aria-keyshortcuts', degreeKeyLabel(slot));
 
-    const label = wedgeLabel(ring, fifthIndex, tonicPc, sevenths);
+    const label = wedgeLabel(ring, fifthIndex, tonicPc, sevenths, mode);
     text.textContent = label;
     // "Dbmaj7" has to shrink to clear the wedge that "Db" sits comfortably in.
     text.classList.toggle('long', label.length >= 5);
     text.setAttribute('transform', `rotate(${upright} ${x} ${y})`);
   }
 
-  if (keyLabelEl) keyLabelEl.textContent = keyLabel(tonicPc);
+  if (keyLabelEl) keyLabelEl.textContent = keyLabel(tonicPc, mode);
   seventhsBtn?.setAttribute('aria-pressed', sevenths ? 'true' : 'false');
   seventhsBtn?.classList.toggle('is-on', sevenths);
-  // The jam row follows the wheel: Q is always the tonic, Y always the vi.
-  setKeyChords(keyDegrees(tonicPc, sevenths).map((chord) => chord.name));
+  if (keyLabelEl) {
+    keyLabelEl.dataset.mode = mode;
+    keyLabelEl.setAttribute('aria-label', mode === 'minor'
+      ? `Тональність ${keyLabel(tonicPc, mode)}, мінор — перемкнути на мажор`
+      : `Тональність ${keyLabel(tonicPc, mode)}, мажор — перемкнути на мінор`);
+  }
+  // The chord rows follow the wheel: key 1 is always the tonic, in either mode.
+  setKeyChords(degrees.map((chord) => chord.name));
   paintActive();
 }
 
@@ -243,6 +258,18 @@ function setKey(nextTonicPc) {
   paintWheel();
 }
 
+function setMode(next) {
+  if (next === mode || (next !== 'major' && next !== 'minor')) return;
+  // Keep the same six chords under the hand: switching mode moves home to the
+  // relative key rather than to the same letter, which is what a musician
+  // means by "the relative minor" and keeps the lit sector still.
+  tonicPc = next === 'minor' ? (tonicPc + 9) % 12 : (tonicPc + 3) % 12;
+  mode = next;
+  clearGuitarInteractionState();
+  storeChordKey();
+  paintWheel();
+}
+
 function setSevenths(on) {
   if (on === sevenths) return;
   sevenths = on;
@@ -257,6 +284,10 @@ for (const button of wheel?.querySelectorAll('[data-key-step]') || []) {
   button.addEventListener('click', () => setKey(stepKey(tonicPc, Number(button.dataset.keyStep))));
 }
 seventhsBtn?.addEventListener('click', () => setSevenths(!sevenths));
+// The key readout *is* the mode control: it already spells the answer ("C"
+// against "Am"), and the hub has no room for a third pill at the size a
+// 320px phone gives it.
+keyLabelEl?.addEventListener('click', () => setMode(mode === 'major' ? 'minor' : 'major'));
 
 // One adjacent cluster on the desktop keyboard, claimed by no instrument: the
 // brackets walk the circle and the backslash toggles sevenths, so the wheel is
@@ -555,7 +586,8 @@ for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
 // same role as __pianoDebug / __audioDebug.
 window.__chordWheelDebug = () => ({
   tonic: tonicPc,
-  tonicLabel: keyLabel(tonicPc),
+  tonicLabel: keyLabel(tonicPc, mode),
+  mode,
   sevenths,
   open: Boolean(wheel && !wheel.hidden),
   held: play.heldGuitarChord,
@@ -564,13 +596,14 @@ window.__chordWheelDebug = () => ({
   active: activeChordName(),
   pianoChord: pianoChordName,
   pianoVoicing: pianoChordName ? pianoVoicing(pianoChordName) : null,
-  degrees: keyDegrees(tonicPc, sevenths).map((chord) => `${chord.degree}:${chord.name}`),
+  degrees: keyDegrees(tonicPc, { mode, sevenths }).map((chord) => `${chord.degree}:${chord.name}`),
   wedges: wedges.map(({ group, ring, fifthIndex }) => ({
     ring,
     fifthIndex,
     chord: group.dataset.chord,
     label: group.querySelector('text')?.textContent,
     inKey: group.classList.contains('in-key'),
+    tonic: group.classList.contains('tonic'),
   })),
 });
 

@@ -778,6 +778,12 @@ html.pads-open #onboard,
 }
 #chord-wheel .wedge.in-key text { fill: var(--cream); }
 
+/* Home. In major it is an outer wedge, in minor the inner one directly below
+   it — the same six chords either way, so the marker is the only thing that
+   says which of them the key is named after. */
+#chord-wheel .wedge.tonic path { stroke: var(--gold); stroke-width: 2.2; }
+#chord-wheel .wedge.tonic text { fill: var(--gold-light); }
+
 #chord-wheel .wedge.held path { fill: var(--cream); stroke: var(--gold); stroke-width: 1.6; }
 #chord-wheel .wedge.held text { fill: var(--purple-deep); }
 
@@ -797,9 +803,9 @@ html.pads-open #onboard,
   width: calc(var(--wheel-size) * .36); height: calc(var(--wheel-size) * .36);
   transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px;
+  gap: calc(var(--wheel-size) * .012);
 }
-.chord-key-step { display: flex; align-items: center; gap: 1px; }
+.chord-key-step { display: flex; align-items: center; gap: calc(var(--wheel-size) * .005); }
 .chord-key-step button, #chord-sevenths {
   display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(253, 251, 247, .22); border-radius: 999px;
@@ -808,14 +814,34 @@ html.pads-open #onboard,
   cursor: pointer; touch-action: manipulation;
   transition: border-color .15s, color .15s, background .15s;
 }
-.chord-key-step button { width: 24px; height: 24px; font-size: 13px; }
-/* The label carries one or two characters ("C", "Gb"), so it is what gives way
-   on a narrow phone — the chevrons stay tappable. */
-#chord-key-label {
-  min-width: 22px; text-align: center;
-  color: var(--cream); font: 700 13px/1 'Unbounded', sans-serif; letter-spacing: .01em;
+/* Everything in the hub is a fraction of the wheel, not a fixed pixel size.
+   The hub hole is proportional, so fixed controls fill it at exactly one wheel
+   size and leave a hole at every other — which is what portrait did, its wheel
+   being the larger of the two. */
+.chord-key-step button {
+  width: calc(var(--wheel-size) * .1); height: calc(var(--wheel-size) * .1);
+  font-size: calc(var(--wheel-size) * .055);
 }
-#chord-sevenths { width: 26px; height: 19px; font-size: 9px; }
+/* The readout is also the mode control — tapping it swaps major for its
+   relative minor and back, which is why it reads "C" one moment and "Am" the
+   next. It carries at most three characters, so it is what gives way on a
+   narrow phone; the chevrons stay tappable. */
+#chord-key-label {
+  min-width: calc(var(--wheel-size) * .095); padding: 3px 2px; text-align: center;
+  border: none; border-bottom: 1px dashed rgba(209, 161, 59, .5);
+  background: none; cursor: pointer;
+  color: var(--cream); letter-spacing: .01em;
+  font: 700 calc(var(--wheel-size) * .058)/1 'Unbounded', sans-serif;
+  touch-action: manipulation;
+}
+#chord-key-label[data-mode="minor"] { color: var(--gold-light); }
+@media (hover: hover) {
+  #chord-key-label:hover { border-bottom-color: var(--gold); }
+}
+#chord-sevenths {
+  width: calc(var(--wheel-size) * .11); height: calc(var(--wheel-size) * .08);
+  font-size: calc(var(--wheel-size) * .04);
+}
 #chord-sevenths.is-on { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .18); }
 @media (hover: hover) {
   .chord-key-step button:hover, #chord-sevenths:hover { border-color: var(--gold); color: var(--gold); }
@@ -1705,9 +1731,14 @@ html.mascot-editor-open #toast {
   }
   .icon-btn { width: 36px; height: 36px; }
   .icon-btn.site-btn { width: 28px; height: 28px; }
+  /* Stacked above the ✕ column rather than beside it. The chord wheel reaches
+     most of the way across down here, and the pedal's old spot was inside it —
+     but it sits here in every mode, focused or not, because a control that
+     moves when you walk up to an instrument is a control you have to find
+     twice. */
   #loop-pedal {
-    right: calc(max(14px, env(safe-area-inset-right)) + 88px);
-    bottom: max(18px, env(safe-area-inset-bottom));
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 84px);
   }
   #loop-toggle {
     width: 58px; height: 58px; grid-template-columns: 1fr; grid-template-rows: 10px 16px 9px;
@@ -1733,14 +1764,6 @@ html.mascot-editor-open #toast {
      a little higher here than on desktop. The twin of the 48 in
      focus-frame.js. */
   #chord-wheel { --wheel-bottom: 16px; }
-  /* The wheel reaches across most of the width down here, and the loop pedal's
-     usual spot is inside it. Stack the pedal above the ✕ column while a play
-     surface is open — the same "get out of the pads' way" move the toast and
-     the onboarding tip already make. */
-  html.pads-open #loop-pedal {
-    right: max(14px, env(safe-area-inset-right));
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 84px);
-  }
   #vocal-pad button { width: clamp(42px, 12vw, 50px); height: clamp(42px, 12vw, 50px); font-size: 8px; }
   .overlay { padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); align-items: flex-end; }
   .panel {
@@ -1813,7 +1836,9 @@ html.mascot-editor-open #toast {
   #mobile-play { width: 70px; height: 70px; font-size: 9px; }
   #mobile-exit { width: 74px; height: 74px; font-size: 31px; }
   #mobile-play-hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); width: min(180px, 62vw); font-size: 7px; }
-  #loop-pedal { right: calc(max(14px, env(safe-area-inset-right)) + 78px); }
+  /* No horizontal offset here either: the pedal sits above the ✕ column, and
+     nudging it left would walk it straight into the chord wheel. */
+  #loop-pedal { right: max(14px, env(safe-area-inset-right)); }
   #loop-toggle { width: 52px; height: 52px; grid-template-rows: 9px 14px 8px; padding-top: 7px; }
   #loop-label { font-size: 7px; }
   #loop-meta { max-width: 42px; font-size: 4.5px; }

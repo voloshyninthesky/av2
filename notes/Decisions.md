@@ -12,6 +12,44 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The chord row counts, and a key can be minor — 2026-08-13
+
+Two changes that turned out to be one.
+
+**The row is `1`–`7` in a close-up, and the number is the scale degree.** Letters were
+considered again — press `C` for the C chord — and the objection that killed them in 2026-08-06
+really had gone away: the row now holds one key's diatonic chords, so a root letter no longer
+collides with itself. What killed them the second time is the piano, whose close-up spends
+`A S D F G H J K L` on white notes and `W E T Y U O` on blacks; there is no letter left to
+name a chord with. A digit has no such problem, reads as the degree it *is*, and — because
+focus made the keyboard exclusive — is free in both close-ups. Away from a close-up the digits
+are still the piano's white keys, so the letter row keeps the chords there.
+
+That bought the seventh degree, which the six-slot row never had room for. It also cost two new
+chord qualities: **`dim` and `m7b5`**, because degree 7 of a major key and degree 2 of a minor
+one are diminished. The library is 84 chords now, and neither of those two has a wedge —
+a diminished chord is neither a major nor a relative minor, so the circle of fifths has nowhere
+to put it. Six of the seven light; the seventh is reachable only from the row.
+
+**A key can now be minor**, and it costs almost nothing, because a major key and its relative
+minor are the same seven notes. They light **the same six wedges** and take **the same
+sevenths** — asserted in the tests, not assumed. All that changes is which wedge is home
+(outer in major, inner in minor, marked with a gold outline), what the degrees are called, and
+where the row starts counting. So mode is one field, not a second set of chords.
+
+The mode control is the key readout itself: tapping `C` makes it `Am`. The hub is 79 px across
+on a 320 px phone and already holds a stepper and a 7 toggle; a third pill does not fit, and
+the readout already spells the answer. Switching moves the tonic to the *relative* key rather
+than the same letter, so the sector under your hand does not move — which is what a musician
+means by "the relative minor".
+
+One more thing the phone forced: everything in the hub is sized as a fraction of the wheel now.
+Fixed pixel controls fill the hub at exactly one wheel size and leave a hole at every other,
+and portrait has the larger wheel — which is why the core looked empty there after it had been
+tightened on desktop.
+
+---
+
 ## A close-up owns the keyboard — 2026-08-13
 
 The jam surface was written for a visitor standing in the middle of the stage: every
