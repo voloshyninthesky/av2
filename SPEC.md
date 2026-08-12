@@ -447,6 +447,7 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 - **Nothing sounds until a wedge is tapped**, and until then no `AudioContext` exists. Which groove and which tempo were last chosen persist; **whether it was playing does not** — a remembered playing state would start drums at a returning stranger, which is what "focus never starts a melody" exists to prevent.
 - **Tempo is a stepper, not a drag**, `60`–`160` in steps of `4`, and its readout is plain text rather than a button because — unlike the chord wheel's key readout, which doubles as the mode control — it has no second meaning.
 - Wedges are `role="button"` with visible focus, `aria-pressed`, and an `aria-label` naming the groove **and its family**. Colour is never the only signal.
+- **No two wedge labels overlap**, in any of the twelve keys, in either mode, with sevenths on or off. Label size is derived from the straight-line gap to the neighbouring label on the same ring — not from a character count, which cannot see that the inner ring's gap is 62% of the outer's while a seventh's name is the same length in both.
 - The groove wheel, the chord wheel and the voice ribbon share their dock, their size tokens and their corner. **One dock, three surfaces, exactly one shown**: drums gets this one, guitar and piano the chord wheel, the mic the ribbon. `window.__ribbonDebug().docked` asserts it rather than trusting it.
 
 #### The groove and the loop pedal

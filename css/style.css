@@ -748,7 +748,10 @@ html.pads-open #onboard,
   text-anchor: middle; dominant-baseline: central;
   pointer-events: none;
 }
-#chord-wheel .wedge text.long { font-size: 7px; }
+/* Size is set per label in chord-wheel.js, from the gap to its neighbour: a
+   character count cannot see that the inner ring's gap is 62% of the outer's
+   while a seventh's name is the same length in both. The 9px here is only the
+   ceiling that sizing clamps to. */
 
 /* The key's own six chords: one contiguous block, lit. The other eighteen stay
    playable — dimming them says "not from here", not "not allowed". */

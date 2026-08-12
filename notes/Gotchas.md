@@ -6,6 +6,18 @@ tags: [gotchas, debugging]
 
 Traps that have actually cost time. Read this before debugging anything visual.
 
+## An SVG presentation attribute loses to any CSS rule
+
+`text.setAttribute('font-size', …)` on a chord-wheel label changed the number in the DOM and
+not one glyph on screen: `css/style.css` sets the `font:` shorthand on `#chord-wheel .wedge
+text`, and **any** CSS declaration outranks a presentation attribute, which sits at the bottom
+of the cascade with the author's zero-specificity styles. The measurement is what caught it —
+the reported `font-size` was 6.42 while `getBBox().width` had not moved. Use
+`text.style.fontSize` when a stylesheet already touches that property.
+
+The same trap is waiting on `fill`, `stroke` and `text-anchor`, all of which the wheel styles
+in CSS.
+
 ## A drag surface binds its pointer to the window, not to itself
 
 The two wheels bind `pointermove` / `pointerup` to their own SVG, and that is correct for

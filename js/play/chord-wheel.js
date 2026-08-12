@@ -120,9 +120,38 @@ function wedgePath(ring, fifthIndex) {
     + `L${cx} ${cy}A${inner} ${inner} 0 0 0 ${dx} ${dy}Z`;
 }
 
+const labelRadius = (ring) => (RING_RADII[ring][0] + RING_RADII[ring][1]) / 2;
+
 function wedgeLabelPoint(ring, fifthIndex) {
-  const [inner, outer] = RING_RADII[ring];
-  return polar((inner + outer) / 2, fifthIndex * WEDGE_DEGREES);
+  return polar(labelRadius(ring), fifthIndex * WEDGE_DEGREES);
+}
+
+// ---- how big a label may be ----
+// Labels are counter-rotated to stay upright as the wheel turns, so what limits
+// them is NOT the wedge's arc — it is the straight-line gap between one label's
+// centre and its neighbour's. That gap is a chord, and on the inner ring it is
+// only 62% of the outer's, while a seventh's name is exactly as long in both.
+//
+// A character count cannot express that. The old rule shrank a label at five
+// characters, which is why the outer ring looked fine and the inner ring did
+// not: with sevenths on, `C#m7` is four characters and never shrank, so at 9px
+// it measured 34 units against a 27-unit gap and sat straight on `F#m7`.
+//
+// So the size comes from the geometry instead. GLYPH_EM is Unbounded 700's
+// advance measured off the rendered text (34.4 units for four glyphs at 9px),
+// not guessed — this font is much wider than a character count assumes.
+const GLYPH_EM = 0.96;
+// 0.82, not 0.92: the outer ring's five-character names were the one size that
+// already worked at 7px, and a looser fill grew them past it into the ring below.
+const LABEL_FILL = 0.82;
+const LABEL_MIN = 5;
+const LABEL_MAX = 9;
+const labelGap = (ring) => 2 * labelRadius(ring) * Math.sin((WEDGE_DEGREES / 2) * (Math.PI / 180));
+
+function labelFontSize(ring, label) {
+  const room = labelGap(ring) * LABEL_FILL;
+  const wanted = room / (Math.max(1, label.length) * GLYPH_EM);
+  return Math.max(LABEL_MIN, Math.min(LABEL_MAX, wanted));
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -211,8 +240,12 @@ function paintWheel() {
 
     const label = wedgeLabel(ring, fifthIndex, tonic(), sevenths(), mode());
     text.textContent = label;
-    // "Dbmaj7" has to shrink to clear the wedge that "Db" sits comfortably in.
-    text.classList.toggle('long', label.length >= 5);
+    // Sized from the gap to the neighbouring label, per ring — see labelFontSize.
+    // It has to be an inline STYLE, not a font-size attribute: the stylesheet
+    // sets the `font:` shorthand, and any CSS declaration beats an SVG
+    // presentation attribute. Setting the attribute changed the number in the
+    // DOM and not one glyph on screen.
+    text.style.fontSize = `${labelFontSize(ring, label).toFixed(2)}px`;
     text.setAttribute('transform', `rotate(${upright} ${x} ${y})`);
   }
 

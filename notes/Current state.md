@@ -41,6 +41,12 @@ scale notes, glide capture and the steady-note exemption, the `1`–`7` degree r
 gliding, and the mascot mouth following the vowel and restoring. **Not** verified: a real touch
 device, and audible judgement of the synth — the pane gives no way to hear it.
 
+**The chord wheel's labels are sized from geometry now**, not from a character count
+([[Decisions]] "A label's size is a fact about the geometry"). With sevenths on, the inner
+ring's four-character names (`C#m7`, `F#m7`, `G#m7`) collided — the old rule only shrank at
+five characters, and the inner ring's gap between neighbouring labels is 62% of the outer's.
+[[SPEC]] now asserts no two labels overlap in any key, either mode, sevenths either way.
+
 ### What the pane missed and a user caught
 
 Five defects the pane's synthetic drags never surfaced, all fixed, all in [[Gotchas]]:
@@ -86,14 +92,14 @@ then the vowel morph, and see which one takes the crackle with it. The breath is
 suspect: it is a looping white-noise buffer and the one thing added to a synth that was fine
 without it.
 
-The working tree is on **`20260813-09`** and 140 Node tests pass. **Nothing is deployed** —
-the ribbon has not been committed, let alone shipped, so production is still on the previous
-stamp and the curls below will disagree with the tree until a deploy runs. The VPS preview
+`main` is on `11d9ef5`, the working tree is on **`20260813-09`**, and 140 Node tests pass.
+The ribbon commit and this label fix are both pushed; the deploy workflow runs on push, but
+**a green Actions run is not proof the CDN moved** — curl after it lands. The VPS preview
 `vibe2.ton.zone` is further behind again: it is pinned to release `20260812T135148Z` and needs
 its own release cut.
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-07 until deployed
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-09 once deployed
 curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # 20260813-06, behind
 ```
 

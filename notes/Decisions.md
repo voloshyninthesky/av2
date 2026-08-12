@@ -12,6 +12,34 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## A label's size is a fact about the geometry, not about the name — 2026-08-13
+
+With sevenths on, the chord wheel's inner ring collided with itself: `C#m7` sat on `F#m7` sat
+on `G#m7`. The rule that was supposed to prevent it shrank a label at **five characters**, and
+every one of those names is **four**.
+
+The character count was never the right unit. Labels are counter-rotated to stay upright as the
+wheel turns, so what limits one is not its wedge's arc but the straight-line gap to the *next
+label's centre* — a chord, not an arc. On the inner ring that gap is 26.8 units against the
+outer ring's 43.1, **62%**, while a seventh's name is exactly as long in both. One threshold
+cannot describe two rings, which is why the outer ring looked fine the whole time.
+
+So the size is computed from the gap. It also had to be **measured, not estimated**: the guess
+of ~0.68em per glyph was badly wrong — Unbounded 700 renders `G#m7` at 34.4 units for four
+glyphs at 9px, **0.96em each**. A label 34 units wide in a 27-unit gap is not a near miss.
+
+Two things this turned up. The fill factor had to come *down* to 0.82, because a looser one let
+the outer ring's five-character names grow past the 7px that already worked and push into the
+ring below — the fix for one ring was breaking the other. And the first attempt set
+`font-size` as an SVG **attribute**, which changed the number in the DOM and not one glyph on
+screen, because the stylesheet's `font:` shorthand outranks it. → [[Gotchas]]
+
+Asserted in [[SPEC]] rather than eyeballed: no two labels overlap in any of the twelve keys, in
+either mode, with sevenths on or off. Verified by walking those combinations and comparing
+`getBBox()` rectangles — zero overlaps, tightest label filling 0.88 of its gap.
+
+---
+
 ## The voice stopped being five buttons — 2026-08-13
 
 Vocals was the last hard-coded instrument on the stage. Its five pitches lived as
