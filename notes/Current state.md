@@ -27,7 +27,10 @@ not a wardrobe", [[Mascot]]). The dressing-room editor is retired: an egg hatche
 fly-in and hands the visitor a drawn character with a rarity tier. Every character is a
 **Вайбер** and the tier reads as a species epithet; the reveal card absorbed the onboarding
 tip, and walking off the stage lip hatches a new one instead of scolding you. `js/mascot/
-editor.js` is gone in favour of `gift.js` + `reveal.js`.
+editor.js` is gone in favour of `gift.js` + `reveal.js`. Two gates that look like one and are
+not: the **gift** keys on whether a character exists in storage, the **tip** on
+`av2.onboard.v2`. Backing out of the ceremony writes nothing, so sharing a gate would have
+stranded that visitor with the default look and no way to ever be offered another.
 
 **The chord pad became a wheel** (`48bb64e` → `896c52a`, three [[Decisions]] entries). The
 six-slot guitar-only pad is gone; a circle-of-fifths wheel now serves **both** guitar (a wedge
@@ -49,12 +52,23 @@ load it for real, and `js/play/chord-wheel.js`. What to remember:
   diminished chord is neither a major nor a relative minor — so six of the seven degrees light
   and the seventh is reachable only from the row.
 
-**A warning this session earned the hard way.** `3910ca2` (a parallel session) overwrote
-`notes/Decisions.md` and `notes/Module map.md` from a stale copy, deleting all three
-chord-wheel entries and both new module lines. They were restored from `f8f7fa0`. **The vault
-is edited by more than one session at a time — reread a note immediately before writing it,
-and check `git show <commit> -- notes/` after any large feature lands**, because nothing in
-the tests or the build catches a note that quietly lost a section.
+**A warning this session earned the hard way.** `3910ca2` deleted all three chord-wheel
+entries from `notes/Decisions.md` and both new rows from `notes/Module map.md`; they were
+restored from `f8f7fa0`. The cause was not a stale copy — it was that commit's own conflict
+resolution taking one side of a prose file wholesale (`git checkout --theirs -- notes/…`).
+**On an append-only note that both branches added sections to, `--ours` / `--theirs` is always
+wrong**: each side's "change" is its own new section, so picking a side silently drops the
+other's. Merge the two by hand, then `git show <commit> -- notes/` to confirm nothing left —
+nothing in the tests or the build catches a note that quietly lost a section.
+
+The same rebase hid two *code* changes for a related reason, and one of them shipped a page
+that died on load. → [[Gotchas]] "It also makes every merge look like a conflict"
+
+**Local branch state.** `main` is the only branch that matters; the gift work reached it by
+cherry-pick, so `mascot-gift`, `mascot-gift-backup` and `gift-onto-main` hold the *same
+content* under different SHAs and are **not** ancestors of `main`. `git branch -d` will refuse
+them for that reason — they are safe to `-D` once you have confirmed `main` is pushed, which
+it is.
 
 **Also landed 2026-08-11: the Polish mirror** (`f61d9c0`). `/pl/` carries the hub, the four
 lesson pages and a RODO notice on Polish slugs, deliberately `noindex` so it cannot compete
@@ -84,27 +98,31 @@ read-modify-write from N browsers has no serialisation point. What is easy to fo
 **A human eyeball of the sign modal and its scarcity badge is also still pending**, for the
 same wedged-GPU reason.
 
-Deploy state, verified rather than assumed:
+The signs backend has its own liveness check, separate from the stamp curls above:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'main.js?v=[0-9a-z-]*'   # expect 20260812-01
-curl -s https://back.artvibe.com.pl/healthz   # {"ok":true,...} — signs are alive
+curl -s https://back.artvibe.com.pl/healthz   # {"ok":true,...} — verified, 67 signs
 ```
 
-A green Actions run is *not* proof — that curl is, because the run can succeed while the CDN
-still serves the previous build.
+**VPS rollback, as it stands:** `.previous-release-for-rollback` holds
+`20260812T133258Z` and the nginx conf it replaced is saved beside the live one as
+`.bak.20260812T135148Z`. Both are written by hand at deploy time, so they are only as true as
+the last person who remembered — check them, don't assume.
 
-**Open at the time of writing:** the `ee67aeb` Pages run (`31489443158`) had sat `queued`
-for over five minutes against a ~24 s norm, with no runner acquired and
-[githubstatus.com](https://www.githubstatus.com) reporting all systems operational — so it
-is the recurring runner-acquisition stall, not an incident. Production was still serving
-`20260809-10`. **Check the curl above before assuming this shipped**, and if the run is
-still queued, cancel and start a fresh one per the deploy note below — not `gh run rerun`.
+**A trap in that hand-written step.** The release pointer is rewritten with `sed` on
+`deploy/nginx/vibe2.ton.zone.conf`, matching the release it is replacing — and a `sed` that
+matches nothing exits `0`. Switching branches between deploys changes what that file holds,
+so the substitution silently no-ops and you upload a conf aimed at the *previous* release,
+which `nginx -t` happily passes. Rewrite by pattern and assert the count instead:
 
-The **VPS preview is already on the new build** — `vibe2.ton.zone` release
-`20260811T115728Z`, with the previous release recorded in
-`/var/www/vibe2.ton.zone/.previous-release-for-rollback` and the old nginx conf saved
-alongside it as `.bak.20260811T115728Z`.
+```bash
+python3 - <<'EOF'
+import re
+s = open('deploy/nginx/vibe2.ton.zone.conf').read()
+s, n = re.subn(r'/var/www/vibe2\.ton\.zone/releases/\d{8}T\d{6}Z', NEW_ROOT, s)
+assert n == 3, f'expected 3 root entries, rewrote {n}'
+EOF
+```
 
 **Resolved — analytics are no longer dark.** `count.artvibe.com.pl` used to serve a
 certificate for `goatcounter.com`, so every hit was dropped in silence while the pages
@@ -250,7 +268,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
   behind tap activation.
 - `js/audio.js` is 916 lines against the ~1000-line split rule — the next substantial audio
   change should probably split it → [[Module map]]
-- Cache stamps are **uniform**: 217 occurrences of `20260812-01` across `js/` and
+- Cache stamps are **uniform**: 233 occurrences of `20260813-06` across `js/` and
   `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
   moves with the sweep). `prices.json` keeps its own, deliberately independent stamp — it
   changes on a different cadence and a stale one only serves stale prices, not two versions

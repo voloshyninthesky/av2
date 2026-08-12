@@ -114,6 +114,23 @@ console.log(Object.entries(by).filter(([, s]) => s.size > 1));
 Anything printed is a module loaded twice. The correct result is one stamp across all ~48
 loaded modules.
 
+### It also makes every merge look like a conflict
+
+Two branches that both bumped the stamp conflict in **every file they touch**, so a long-lived
+branch lands ~40 conflicts of which only a handful are real. The tempting shortcut is to
+classify each one — "does this file differ by anything other than `?v=`?" — and auto-resolve
+the rest. That works, and it has one blind spot big enough to break the build:
+
+**an import line contains `?v=`, so a filter that ignores stamped lines also ignores every
+import that was added, removed, or repointed.** Rebasing the gift branch onto the chord-wheel
+work hid exactly two changes that way — `pads.js` → `chord-wheel.js`, and a dead
+`updateMascotEditorPreview` import whose export no longer existed. The second one shipped a
+page that died on load with `does not provide an export named …`.
+
+Neither `node --test` nor a grep catches it: the tests import modules directly and never
+resolve `main.js`'s graph. **Boot the real page after any merge** — the browser is the only
+thing that resolves every import, and it names the missing export precisely.
+
 ## A new top-level directory does not deploy
 
 `.github/workflows/deploy-pages.yml` copies an **explicit list** into `_site/`. Add a
