@@ -110,6 +110,12 @@ Three constraints worth protecting in any edit here:
    instruments on ceremony start (the whole band pops out of the scene on that frame).
 5. **No melody.** The ceremony is percussion only. A pitched line makes it a jingle and
    competes with the instruments the visitor is about to play.
+6. **The reveal pose has to be one OrbitControls will hold.** It is handed straight to the
+   controls when the card closes, so the framing distance is clamped to `minDistance` and the
+   safe-rect target offset is eased away on close — that offset alone tips the camera past
+   `maxPolarAngle`. Miss either and the camera lurches a frame after ГОТОВО. The follow
+   camera is also held off while the gift's tween owns the rig; two eased motions writing to
+   one camera is what a stutter actually is.
 
 ### Opening the gift from a focused instrument
 

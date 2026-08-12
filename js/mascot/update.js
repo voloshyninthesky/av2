@@ -21,7 +21,7 @@ import { instrumentView } from '../view/instrument-presets.js?v=20260813-05';
 import { activateInstrumentView } from '../view/instrument-view.js?v=20260813-05';
 import { moveMascotWithColliders } from './walk.js?v=20260813-05';
 import { mascotMove, dance } from './state.js?v=20260813-05';
-import { giftReveal } from './reveal.js?v=20260813-05';
+import { giftReveal, giftCam } from './reveal.js?v=20260813-05';
 import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260813-05';
 import { play } from '../play/state.js?v=20260813-05';
 
@@ -213,6 +213,9 @@ export function updateMascot(dt) {
     mascotLabel.scale.setScalar(0.55 * pulse);
   }
 
-  updateMobileFollowCamera(dt);
+  // The gift's return tween owns the rig until it lands. The follow camera
+  // running alongside it would write to the same camera every frame, and two
+  // eased motions pulling at once is what reads as a stutter after ГОТОВО.
+  if (!giftCam.active) updateMobileFollowCamera(dt);
 }
 

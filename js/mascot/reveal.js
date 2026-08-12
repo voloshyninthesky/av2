@@ -120,7 +120,6 @@ export const giftCam = {
   active: false, returning: false, framed: false, t: 0,
   fromPos: new THREE.Vector3(), fromTgt: new THREE.Vector3(),
   toPos: new THREE.Vector3(), toTgt: new THREE.Vector3(),
-  savedPos: new THREE.Vector3(), savedTgt: new THREE.Vector3(),
 };
 
 // Scratch objects — the ceremony runs every frame and must not allocate.
@@ -315,7 +314,14 @@ function computeGiftFraming(root, outPos, outTgt) {
   const ndcHalfY = Math.max(0.08, availableHalfY / (viewportHeight / 2));
   const distanceX = (scratchSize.x * 0.5) / (tanHalfH * ndcHalfX);
   const distanceY = (scratchSize.y * 0.5) / (tanHalfV * ndcHalfY);
-  const distance = Math.max(1.35, distanceX, distanceY) * 1.12 + scratchSize.z * 0.55;
+  // Clamped to the orbit minimum, not just to a nice-looking number: this pose
+  // is handed straight to OrbitControls when the gift closes, and anything
+  // nearer makes it clamp on its first update — the camera lurching outward a
+  // frame after ГОТОВО. Framing that the controls cannot hold is not framing.
+  const distance = Math.max(
+    controls.minDistance + 0.05,
+    Math.max(1.35, distanceX, distanceY) * 1.12 + scratchSize.z * 0.55,
+  );
   scratchEye.copy(giftReveal.viewDirection);
   scratchEye.y = 0.12;
   scratchEye.normalize();
@@ -447,8 +453,6 @@ function beginGiftCeremony() {
   // the approach hands over — the seam this whole framing exists to smooth.
   if (mascotLabel) mascotLabel.visible = false;
   controls.autoRotate = false;
-  giftCam.savedPos.copy(camera.position);
-  giftCam.savedTgt.copy(controls.target);
   giftReveal.active = true;
   document.documentElement.classList.add('gift-open');
   giftReveal.openingYaw = mascot.group.rotation.y;
@@ -702,7 +706,20 @@ function endGiftCeremony() {
   hooks.syncInstrumentExposure();
   if (mascotLabel) mascotLabel.visible = true;
   giftCam.framed = false;
-  startGiftCam(giftCam.savedPos, giftCam.savedTgt, true);
+  // The reveal offsets controls.target so the character sits beside the card,
+  // and that offset tips the camera past controls.maxPolarAngle — OrbitControls
+  // swings it back on its first update, which is the lurch after ГОТОВО. With
+  // the card gone there is nothing to sit beside, so ease the target onto the
+  // character: it re-centres them and lands inside every orbit limit, leaving
+  // the controls nothing to correct. The camera itself does not move.
+  const subject = visibleObjectBounds(mascot.group);
+  if (!subject.isEmpty()) {
+    subject.getCenter(scratchFrameTgt);
+    startGiftCam(camera.position, scratchFrameTgt, true);
+  } else {
+    giftCam.active = false;
+    controls.enabled = true;
+  }
   if (giftCard) giftCard.hidden = true;
 }
 

@@ -70,16 +70,6 @@ function shouldOfferOnboard() {
   try { return !localStorage.getItem(ONBOARD_KEY); } catch { return true; }
 }
 
-// The gift has its own gate, deliberately not `ONBOARD_KEY`. The two steps can
-// come apart: abandoning the ceremony writes nothing, and if the tip were then
-// dismissed the visitor would be left with the default look and no way to ever
-// be offered a character again. Keying on the save itself means the gift keeps
-// being offered until one actually exists — and never again after that.
-//
-// `giftPending` is resolved at boot by reveal.js, which needs the same answer
-// before the first frame in order to hide the unearned mascot. One source, so
-// the stage it prepares and the sequence run here can never disagree.
-
 function clearOnboardPulse() {
   if (!onboard.pulsing) return;
   onboard.pulsing = false;
@@ -110,10 +100,14 @@ function showOnboardTip() {
 // before the tip tells them to walk it around — and it asks nothing of them,
 // which the wardrobe it replaced could not say.
 //
-// The two steps carry separate gates on purpose (see shouldOfferGift above):
-// `ONBOARD_KEY`, written only by ЗРОЗУМІЛО, governs the tip, while the gift is
-// governed by whether a character has actually been saved. A visitor who backs
-// out of the ceremony still gets offered one next visit.
+// The two steps carry separate gates on purpose. `ONBOARD_KEY`, written only by
+// ЗРОЗУМІЛО, governs the tip; the gift is governed by `giftPending` — whether a
+// character has actually been saved. Sharing one gate would strand a visitor who
+// backed out of the ceremony: nothing was written, so they have no character,
+// and a satisfied tip gate would mean they were never offered one again.
+// `giftPending` is resolved at boot by reveal.js, which needs the same answer
+// before the first frame to hide the unearned mascot — one source, so the stage
+// it prepares and the sequence run here can never disagree.
 export function startOnboard() {
   const wantsGift = giftPending;
   const wantsTip = shouldOfferOnboard() && onboardEl;
