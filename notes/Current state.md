@@ -198,7 +198,7 @@ Newest first (see [[Decisions]] for the reasoning). All live on `main` and on bo
 
 | Commit    | Change                                                        |
 | --------- | ------------------------------------------------------------- |
-| `8df4848` | Drums get a groove wheel, dynamics, a hi-hat pedal and the kit row |
+| `a3a8b50` | Drums get a groove wheel, dynamics, a hi-hat pedal and the kit row |
 | `685e383` | Falling off the stage hatches a new Вайбер instead of scolding |
 | `883273c` | Every character is a Вайбер; onboarding folded into the reveal |
 | `499638f` | Camera no longer lurches when the gift card closes            |

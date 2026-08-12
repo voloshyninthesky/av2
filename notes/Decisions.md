@@ -97,7 +97,7 @@ design ("the glow says *walk over here*"), so the only case where it runs is fro
 where the target really is the kit. There is nothing to fix. **A measured `drumsFocusSafeRect()`**:
 deliberately out of scope; the raw preset is the framing the piano's was copied *from*.
 
-`git show 8df4848` for the whole change. → [[Audio]], [[Module map]], [[Current state]]
+`git show a3a8b50` for the whole change. → [[Audio]], [[Module map]], [[Current state]]
 
 ---
 
