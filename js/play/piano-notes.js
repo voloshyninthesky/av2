@@ -16,12 +16,12 @@
 // digits, where they play *piano* chords through the wheel's own route.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-07';
-import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-07';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-07';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-07';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-07';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-07';
+import { session } from '../core/session.js?v=20260813-08';
+import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-08';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-08';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-08';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-08';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-08';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -30,15 +30,15 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-07';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-07';
+} from './loop.js?v=20260813-08';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-08';
 import {
   syncChordWheelHeld,
   pressPianoChordFromKeyboard,
   releasePianoChordFromKeyboard,
-} from './chord-wheel.js?v=20260813-07';
-import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-07';
-import { drumHitVelocity } from './rhythm.js?v=20260813-07';
+} from './chord-wheel.js?v=20260813-08';
+import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-08';
+import { drumHitVelocity } from './rhythm.js?v=20260813-08';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.

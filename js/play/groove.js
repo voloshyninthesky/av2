@@ -30,8 +30,8 @@
 //
 // The theory is all in rhythm.js; this file is geometry, pointers and state.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260813-07';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-07';
+import { audio } from '../core/studio.js?v=20260813-08';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-08';
 import {
   LOOP_LOOKAHEAD,
   LOOP_TICK_MS,
@@ -39,7 +39,7 @@ import {
   playMusicalEvent,
   positiveModulo,
   runMusicalVisual,
-} from './loop.js?v=20260813-07';
+} from './loop.js?v=20260813-08';
 import {
   GROOVES,
   GROOVE_COUNT,
@@ -52,8 +52,8 @@ import {
   stepGroove,
   stepSeconds,
   stepTempo,
-} from './rhythm.js?v=20260813-07';
-import { syncPadsOpenClass } from './pads.js?v=20260813-07';
+} from './rhythm.js?v=20260813-08';
+import { syncPadsOpenClass } from './pads.js?v=20260813-08';
 
 // Choosing a groove must not wake audio, and stepping it from the keyboard is
 // the drums close-up's alone. main.js owns both answers.
@@ -250,37 +250,36 @@ function paintTempoLock() {
 }
 
 // ============================================================
-// THE TWO CLOCKS
-// Silent, the bar advances on the frame clock and nothing touches Web Audio.
-// Sounding, it advances on audio.ctx.currentTime, which is the only clock a
-// scheduled hit can be pinned to. Switching between them carries the phase
-// across, so the playhead never jumps when the pill is tapped.
+// ONE BAR, ALWAYS RUNNING
+// The bar is pinned to the audio clock once — the first time a groove is
+// started in this visit — and from then on it simply runs. Stopping does not
+// pause it and starting does not reset it; the transport only joins and leaves
+// a bar that was going anyway.
+//
+// That is what makes the wheel usable for practising fills. Because the epoch
+// never moves, the groove is permanently locked to one grid: drop it out, play
+// a fill of whatever length, tap back in, and it lands in time even if the tap
+// was sloppy — the beat is exactly where it always was. Freezing the phase
+// instead (which this used to do) meant the groove came back on the beat you
+// left on rather than the beat the room is on, and a whole second layer of
+// frame-clock bookkeeping existed to arrange that.
+//
+// `null` means not yet pinned. Only two things pin it: the first start of a
+// visit, which lands the groove on the downbeat, and a tempo change, which
+// re-pins to hold the phase across the new bar length.
 // ============================================================
-let silentElapsed = 0;   // seconds into the current bar, frame-clocked
-let audioEpoch = 0;      // audio-clock time of bar zero
+let audioEpoch = null;   // audio-clock time of bar zero
 let lastVisualStep = -1;
 const scheduled = new Set();
 const grooveVisualTimers = new Set();
 let schedulerTimer = null;
 
-const onAudioClock = () => playing && Boolean(audio.ctx);
+const barPinned = () => Boolean(audio.ctx) && audioEpoch !== null;
 
 function barPhase() {
+  if (!barPinned()) return 0;
   const bar = currentBar();
-  const elapsed = onAudioClock()
-    ? positiveModulo(audio.ctx.currentTime - audioEpoch, bar)
-    : positiveModulo(silentElapsed, bar);
-  return elapsed / bar;
-}
-
-/** Move the bar's phase onto whichever clock is about to own it. */
-function adoptAudioClock() {
-  if (!audio.ctx) return;
-  audioEpoch = audio.ctx.currentTime - positiveModulo(silentElapsed, currentBar());
-}
-function adoptFrameClock() {
-  if (!audio.ctx) return;
-  silentElapsed = positiveModulo(audio.ctx.currentTime - audioEpoch, currentBar());
+  return positiveModulo(audio.ctx.currentTime - audioEpoch, bar) / bar;
 }
 
 // ============================================================
@@ -369,16 +368,18 @@ export function resyncGroove() {
 // animated by the scheduled events on their way through playMusicalEvent, so
 // nothing is drawn here — a drum that recoils without a sound reads as a bug,
 // and there is no longer any mode that would produce one.
+//
+// It takes no `dt`: the bar is read from the audio clock rather than integrated
+// frame by frame, so a slow frame moves the playhead further instead of putting
+// it out of step with what you are hearing.
 // ============================================================
-export function updateGroovePlayhead(dt) {
+export function updateGroovePlayhead() {
   if (wheel.hidden) return;
   paintTempoLock();
+  syncLoopHandover();
   if (!playing) return;
 
   const groove = current();
-  const bar = currentBar();
-  if (!onAudioClock()) silentElapsed = positiveModulo(silentElapsed + dt, bar);
-
   const phase = barPhase();
   const reduced = prefersReducedMotion.matches;
   // Reduced motion steps the playhead beat to beat instead of sweeping it.
@@ -403,8 +404,6 @@ export function updateGroovePlayhead(dt) {
     const tick = ticks[hit.step];
     if (tick && !lit.includes(tick)) { tick.classList.add('sounding'); lit.push(tick); }
   }
-
-  syncLoopHandover();
 }
 
 // ============================================================
@@ -432,7 +431,9 @@ function startPlaying() {
   playing = true;
   // The one place this module wakes audio, and only ever from a real gesture.
   hooks.activateAudioForSound();
-  adoptAudioClock();
+  // Pin the bar only if nothing has pinned it yet, so the first groove of a
+  // visit starts on the downbeat and every later one joins the bar in progress.
+  if (audio.ctx && audioEpoch === null) audioEpoch = audio.ctx.currentTime;
   lastVisualStep = -1;
   startScheduler();
   paintWheel();
@@ -440,7 +441,6 @@ function startPlaying() {
 
 function stopPlaying() {
   if (!playing) return;
-  adoptFrameClock();
   playing = false;
   stopScheduler();
   lastVisualStep = -1;
@@ -456,11 +456,11 @@ function setTempo(direction) {
   }
   const next = stepTempo(bpm, direction);
   if (next === bpm) return;
-  // Keep the phase where it is across the tempo change, or the bar jumps.
+  // Keep the phase where it is across the tempo change, or the bar jumps. This
+  // has to hold while stopped too, since the bar is still running then.
   const phase = barPhase();
   bpm = next;
-  silentElapsed = phase * currentBar();
-  if (playing) adoptAudioClock();
+  if (barPinned()) audioEpoch = audio.ctx.currentTime - phase * currentBar();
   scheduled.clear();
   storeGroove();
   paintWheel();
@@ -474,7 +474,11 @@ let capturedIntoLoop = false;
 let wasRecording = false;
 function syncLoopHandover() {
   const recording = hooks.loopIsRecording();
-  if (wasRecording && !recording && capturedIntoLoop) {
+  // Only hand over a groove that is still going. Stopping one by hand partway
+  // through a take used to leave these two flags stale, because this ran inside
+  // the playing-only half of the frame loop — so the *next* groove started was
+  // handed over the instant it began, and stopped itself.
+  if (wasRecording && !recording && capturedIntoLoop && playing) {
     stopPlaying();
     hooks.toast('Ґрув записано в loop', 1700);
   }
@@ -552,13 +556,14 @@ export function hideGrooveWheel() {
 }
 
 /**
- * Leaving the kit stops the bar but keeps the choice: coming back inside one
- * session resumes where you left off. A page load still starts silent, because
- * that is where the promise lives, not here.
+ * Leaving the kit keeps the choice but drops the bar. Stopping a groove at the
+ * kit leaves its bar running so you can practise fills against it, but walking
+ * away is a real break — a phantom bar that survived a trip across the stage
+ * would be counting nothing — so the next visit starts on the downbeat again.
  */
 export function stopGroove() {
   stopPlaying();
-  silentElapsed = 0;
+  audioEpoch = null;
 }
 
 // ---- what the loop pedal needs to know ----
@@ -589,7 +594,7 @@ window.__grooveDebug = () => ({
   bar: +currentBar().toFixed(4),
   hidden: wheel.hidden,
   scheduled: scheduled.size,
-  onAudioClock: onAudioClock(),
+  barPinned: barPinned(),
   // Two docked wheels at once would be a layout bug the eye catches late and a
   // headless run catches immediately.
   bothWheelsOpen: !wheel.hidden && !document.getElementById('chord-wheel')?.hidden,

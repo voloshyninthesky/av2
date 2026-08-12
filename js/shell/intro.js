@@ -5,29 +5,29 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260813-07';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-07';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260813-07';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-07';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-07';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-07';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-07';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260813-07';
-import { mascotMove } from '../mascot/state.js?v=20260813-07';
-import { giftPending } from '../mascot/reveal.js?v=20260813-07';
-import { play } from '../play/state.js?v=20260813-07';
+import { session, easeInOut } from '../core/session.js?v=20260813-08';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-08';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260813-08';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-08';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-08';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-08';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-08';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260813-08';
+import { mascotMove } from '../mascot/state.js?v=20260813-08';
+import { giftPending } from '../mascot/reveal.js?v=20260813-08';
+import { play } from '../play/state.js?v=20260813-08';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260813-07';
-import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-07';
-import { resyncGroove } from '../play/groove.js?v=20260813-07';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-07';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-07';
-import { trackOnce } from '../core/analytics.js?v=20260813-07';
+} from '../play/loop.js?v=20260813-08';
+import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-08';
+import { resyncGroove } from '../play/groove.js?v=20260813-08';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-08';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-08';
+import { trackOnce } from '../core/analytics.js?v=20260813-08';
 
 const mobileControls = document.getElementById('mobile-controls');
 

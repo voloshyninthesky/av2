@@ -7,44 +7,44 @@
 // injected here through their init* functions so the graph stays a tree.
 // ============================================================
 import * as THREE from 'three';
-import './core/errlog.js?v=20260813-07';
-import './core/telegram.js?v=20260813-07';
-import { session, easeInOut } from './core/session.js?v=20260813-07';
-import { mascotMove, dance } from './mascot/state.js?v=20260813-07';
-import { play } from './play/state.js?v=20260813-07';
-import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260813-07';
-import './shell/qa-hooks.js?v=20260813-07';
+import './core/errlog.js?v=20260813-08';
+import './core/telegram.js?v=20260813-08';
+import { session, easeInOut } from './core/session.js?v=20260813-08';
+import { mascotMove, dance } from './mascot/state.js?v=20260813-08';
+import { play } from './play/state.js?v=20260813-08';
+import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260813-08';
+import './shell/qa-hooks.js?v=20260813-08';
 import {
   chipFor,
   queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
   initVibe,
-} from './play/vibe.js?v=20260813-07';
+} from './play/vibe.js?v=20260813-08';
 import {
   loop,
   updateLoopProgress,
   initLoopPedal,
-} from './play/loop.js?v=20260813-07';
+} from './play/loop.js?v=20260813-08';
 import {
   currentGuitarChordName,
   allGuitarPitches,
   initGuitarPlay,
-} from './play/guitar.js?v=20260813-07';
+} from './play/guitar.js?v=20260813-08';
 import {
   showVocalPad,
   hideVocalPad,
   captureHeldVocalIntoLoop,
   finishHeldLoopCapture,
   initPads,
-} from './play/pads.js?v=20260813-07';
+} from './play/pads.js?v=20260813-08';
 import {
   showChordWheel,
   hideChordWheel,
   clearGuitarInteractionState,
   markHeldTouchGuitarChordUsed,
   initChordWheel,
-} from './play/chord-wheel.js?v=20260813-07';
+} from './play/chord-wheel.js?v=20260813-08';
 import {
   showGrooveWheel,
   hideGrooveWheel,
@@ -53,7 +53,7 @@ import {
   grooveBarSeconds,
   grooveDownbeatAt,
   initGroove,
-} from './play/groove.js?v=20260813-07';
+} from './play/groove.js?v=20260813-08';
 import {
   beginHeldPianoNote,
   releaseHeldPianoNote,
@@ -62,7 +62,7 @@ import {
   captureHeldPianoIntoLoop,
   finalizeHeldPianoLoopCapture,
   initPianoNotes,
-} from './play/piano-notes.js?v=20260813-07';
+} from './play/piano-notes.js?v=20260813-08';
 import {
   composer,
   bloomPass,
@@ -70,7 +70,7 @@ import {
   updateMobileQualityProbe,
   qualityWarmup,
   initPostfx,
-} from './shell/postfx.js?v=20260813-07';
+} from './shell/postfx.js?v=20260813-08';
 import {
   FLY_DUR,
   shouldSkipIntro,
@@ -83,13 +83,13 @@ import {
   restoreAfterAudioContextRebuild,
   activateAudioForSound,
   initIntro,
-} from './shell/intro.js?v=20260813-07';
+} from './shell/intro.js?v=20260813-08';
 import {
   closeSoundMixer,
   releaseKeyboardVocal,
   beginKeyboardVocal,
   initMixer,
-} from './play/mixer.js?v=20260813-07';
+} from './play/mixer.js?v=20260813-08';
 import {
   giftCam,
   queueGiftRefit,
@@ -98,7 +98,7 @@ import {
   prepareGiftStage,
   giftApproachFraming,
   initMascotGift,
-} from './mascot/reveal.js?v=20260813-07';
+} from './mascot/reveal.js?v=20260813-08';
 import {
   params,
   isLowEndMobileGameMode,
@@ -107,8 +107,8 @@ import {
   prefersReducedMotion,
   stageAmbience,
   stageLightLevel,
-} from './core/quality.js?v=20260813-07';
-import { onCameraModeChange } from './core/camera-mode.js?v=20260813-07';
+} from './core/quality.js?v=20260813-08';
+import { onCameraModeChange } from './core/camera-mode.js?v=20260813-08';
 import {
   canvas,
   renderer,
@@ -119,7 +119,7 @@ import {
   CAM_START,
   CAM_END,
   TARGET,
-} from './view/rig.js?v=20260813-07';
+} from './view/rig.js?v=20260813-08';
 import {
   ui,
   audio,
@@ -136,25 +136,25 @@ import {
   addLabels,
   instruments,
   interactables,
-} from './core/studio.js?v=20260813-07';
-import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260813-07';
+} from './core/studio.js?v=20260813-08';
+import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260813-08';
 import {
   instrumentView,
-} from './view/instrument-presets.js?v=20260813-07';
+} from './view/instrument-presets.js?v=20260813-08';
 import {
   updateInstrumentViewCamera,
   initInstrumentView,
-} from './view/instrument-view.js?v=20260813-07';
+} from './view/instrument-view.js?v=20260813-08';
 import {
   setDancing,
-} from './mascot/pose.js?v=20260813-07';
+} from './mascot/pose.js?v=20260813-08';
 import {
   PHOTO_SLIDES_ENABLED,
   loadSlideTextures,
   updateSlideshow,
   updateSlideshowNavLayout,
-} from './scene/slideshow.js?v=20260813-07';
-import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260813-07';
+} from './scene/slideshow.js?v=20260813-08';
+import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260813-08';
 import {
   setGlow,
   isInstrumentCloseUp,
@@ -164,7 +164,7 @@ import {
   canPlayInstrument,
   canKeyboardJamPlay,
   syncOrbitZoom,
-} from './view/pointer.js?v=20260813-07';
+} from './view/pointer.js?v=20260813-08';
 import {
   syncViewportMeta,
   resetBrowserPageZoom,
@@ -172,7 +172,7 @@ import {
   eventInvolvesUiChrome,
   isLiveStageZoomLocked,
   initViewport,
-} from './view/viewport.js?v=20260813-07';
+} from './view/viewport.js?v=20260813-08';
 import {
   syncMobileInstrumentChrome,
   releaseMoveJoystick,
@@ -185,10 +185,10 @@ import {
   playNearestInstrument,
   updateMobilePlayAvailability,
   initMobileControls,
-} from './view/mobile-controls.js?v=20260813-07';
-import { updateMascot } from './mascot/update.js?v=20260813-07';
-import { initSigns, revealSigns } from './shell/signs.js?v=20260813-07';
-import { updateSigns } from './scene/signs.js?v=20260813-07';
+} from './view/mobile-controls.js?v=20260813-08';
+import { updateMascot } from './mascot/update.js?v=20260813-08';
+import { initSigns, revealSigns } from './shell/signs.js?v=20260813-08';
+import { updateSigns } from './scene/signs.js?v=20260813-08';
 
 
 // ============================================================
@@ -590,7 +590,7 @@ function animate(frameTime = performance.now()) {
   updateSigns(dt);
   updateSlideshowNavLayout(camera);
   updateLoopProgress();
-  updateGroovePlayhead(dt);
+  updateGroovePlayhead();
 
   if (composer) composer.render();
   else renderer.render(scene, camera);

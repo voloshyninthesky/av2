@@ -53,6 +53,22 @@ still wheel, and the tap that starts a groove is as deliberate as the tap that s
 at the piano. `av2.groove.v1` carries the groove and the tempo and deliberately **not** whether
 it was playing — a remembered playing state would start drums at a returning stranger.
 
+**Stopping does not pause the bar.** The transport froze the phase at first — stop on beat 3,
+tap again, resume on beat 3 — which needed a whole second frame-clock (`silentElapsed`) and two
+adopt-the-other-clock functions to arrange. It was also the wrong answer for the thing the wheel
+is most useful for. **Practising fills** means dropping the groove out, playing a fill of
+whatever length, and bringing it back: what you want then is the beat where the room is, not the
+beat you left on. So the epoch is pinned once per visit and never moved, and stopping merely
+stops the scheduler.
+
+The pay-off is that the groove is permanently locked to one grid, so tapping back in at any
+instant lands in time *however sloppy the tap* — which is why the obvious alternative,
+re-entering on the next downbeat, is not worth building: it would buy nothing here, and a tap
+that visibly does nothing for up to a bar reads as broken. It was also a net deletion: one clock
+instead of two, and `updateGroovePlayhead` no longer takes a `dt`, so a slow frame moves the
+playhead further rather than putting it out of step with what you are hearing. Leaving the kit
+still drops the bar — a phantom bar surviving a walk across the stage would be counting nothing.
+
 **A take over a groove contains the groove.** The first cut kept groove hits out of `loop.events`
 entirely, which was tidy and wrong: record a bar over РОК, walk away, and the loop is your own
 sparse hits with the beat gone. The scheduler now captures each hit at its *scheduled* time

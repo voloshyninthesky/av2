@@ -6,6 +6,15 @@ tags: [gotchas, debugging]
 
 Traps that have actually cost time. Read this before debugging anything visual.
 
+## A "when did X last happen" flag needs a home outside the thing it watches
+
+`syncLoopHandover()` in `js/play/groove.js` compares the loop's recording state against the last
+frame's, and it lived inside the half of the frame loop that only runs while the groove plays.
+Stop a groove by hand partway through a take and its `wasRecording` / `capturedIntoLoop` pair
+froze mid-transition — so the *next* groove started was handed over the instant it began and
+stopped itself. Edge-detectors have to run on every frame their input can change, not only on
+the frames their output is wanted.
+
 ## An unknown drum part used to play a tom, silently
 
 `playMusicalEvent`'s drum branch in `js/play/loop.js` ended in `else audio.tom(...)`, so a
