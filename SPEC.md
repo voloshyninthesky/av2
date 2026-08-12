@@ -33,7 +33,7 @@ Slogan: *Вчись творити і твори навчаючись.*
 1. Let a visitor **feel the studio** (stage, instruments, sound) in under a minute.
 2. Teach play in two complementary ways:
    - **Pointer / touch:** approach an instrument, then play while focused.
-   - **Desktop keyboard:** jam **several instruments at once** from disjoint hotkeys — focus is optional for keyboard sound.
+   - **Desktop keyboard:** away from a close-up, jam **several instruments at once** from disjoint hotkeys — focus is optional for keyboard sound. **Inside** a close-up the keyboard is that instrument's alone.
 3. Convert interest into a booking path: **ціни / як записатися → Instagram або Messenger**.
 
 Non-goals: accounts, payments, CMS, sample libraries, native apps.
@@ -263,8 +263,8 @@ without the feature. No retry, no error surface.
 | Kind | Pointer / touch play | Desktop keyboard play |
 |------|----------------------|------------------------|
 | `mic` / vocal | Vocal pad / mesh hits **only while mic-focused** | `N M , . /` → ДО РЕ МІ ФА СОЛЬ (hold to sustain; see §5 Desktop keyboard jam) |
-| `guitar` | Two-hand chord + strum / pluck **only while guitar-focused**. Chords come from the shared circle-of-fifths wheel | Chord row `Q W E R T Y` = the key's `I ii iii IV V vi` + Space strum — works **with or without** guitar focus; focused it is select-only, see § Guitar performance mode |
-| `piano` | Mesh keys **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. Plus the shared chord wheel, which sounds whole chords (§ The chord wheel at the piano) | `1–8` whites — with or without piano focus. **Piano-focused only:** `A–L` + upper row, real-keyboard shape, and `1–6` become the chord row (§ Piano-focused keyboard layout) |
+| `guitar` | Two-hand chord + strum / pluck **only while guitar-focused**. Chords come from the shared circle-of-fifths wheel | Chord row `Q W E R T Y` = the key's `I ii iii IV V vi`, strum on `↓ ↑ / Space` — live while idle or guitar-focused, silent inside another instrument's close-up; focused the chord row is select-only, see § Guitar performance mode |
+| `piano` | Mesh keys **only while piano-focused** (multitouch). Hold sustains; release / cancel / exit / mute / background releases. Cabinet / lid / bench do not play. Plus the shared chord wheel, which sounds whole chords (§ The chord wheel at the piano) | `1–8` whites while idle. **Piano-focused:** `A–L` + upper row, real-keyboard shape, and `1–6` become a chord row that **sounds piano chords** (§ Piano-focused keyboard layout) |
 | `drums` | Kit parts **only while drums-focused** (multitouch) | `Z X C V B` kit — with or without drums focus |
 
 The upright piano is drawn at **0.92 scale**: it stands in the middle of the mid-stage
@@ -314,7 +314,7 @@ While piano is focused (`canPlayInstrument('piano')`), the computer keyboard swi
 - **White keys**, left to right: `A S D F G H J K L` → `C4 D4 E4 F4 G4 A4 B4 C5 D5`.
 - **Black keys** sit on the row above, physically between the two white keys they fall between — gaps included, so nothing sits above the `D/F` or `J/K` pairs (matching the missing sharp between E-F and B-C on a real keyboard): `W E _ T Y U _ O` → `C#4 D#4 (gap) F#4 G#4 A#4 (gap) C#5`.
 - This layout **takes priority over the global guitar-chord map**, and takes it whole. It shares four letters with the chord row (`W E T Y`), and a chord row that answers on two keys out of six is worse than one that stands down: for as long as piano focus holds, **`Q W E R T Y` play no chords at all** — `W E T Y` strike piano notes and `Q` / `R` do nothing. Leaving focus restores all six immediately.
-- **The chord row moves to `1–6`** for the duration, addressing the same six degrees the wheel lights. It shadows the global white-key digits, which are redundant here because `A–L` already covers a wider span of the same keybed. `7` and `8` keep striking their white keys.
+- **The chord row moves to `1–6`** for the duration, addressing the same six degrees the wheel lights, and it **plays piano chords** — the same voicing, roll, key dip and loop capture a wheel wedge produces, held for as long as the key is. That is what makes the close-up a two-handed instrument: chords under the left hand, melody under the right. It shadows the global white-key digits, which are redundant here because `A–L` already covers a wider span of the same keybed; `7` and `8` keep striking their white keys.
 - `[` / `]` step the wheel's key and `\` toggles sevenths, in piano focus as everywhere else.
 - Held notes, sustain, and release follow the same rules as pointer/pad play (§ above); `keyup` / focus-exit teardown is shared with the `1–8` path.
 
@@ -345,7 +345,7 @@ These items are planned, but they are not blockers for the current framing / pos
 The primary mental model is **two hands**: the fretting hand chooses the sound; the picking hand creates it. Chord / fret input alone stays silent.
 
 - **Pointer / pad / mesh guitar input** is accepted only during stable guitar focus — never while idle, approaching, entering, returning, or focused on another instrument.
-- **Desktop keyboard** chord + strum keys follow the global jam map (§5): they may sound while idle, while focused on any instrument, and during approach / enter / return camera moves. They stay silent only when the stage has not started, a modal is open, or the event target is editable / a control.
+- **Desktop keyboard** chord + strum keys follow the jam map (§5): they sound while idle and during approach / enter / return camera moves, and while the **guitar** is focused. A close-up of another instrument silences them, as it silences every map that is not its own. They also stay silent when the stage has not started, a modal is open, or the event target is editable / a control.
 - **The QWERTY row addresses scale *degrees*, not chord names.** `Q W E R T Y` map to `I ii iii IV V vi` of the wheel's current key in both modes, so `Q` is always the tonic and `Y` always the vi whatever key is selected. A degree is the only handle that stays stable while the chords under it change, and chord *names* cannot supply one once the library is generated (`C`, `Cm`, `C7`, `Cm7` and `Cmaj7` all start with `C`).
 - **Focused, those keys are select-only.** While guitar is focused, pressing a chord key arms the chord **silently** — exactly like holding its wedge on the wheel — and Space (Shift+Space upstroke) strums it; releasing returns to open strings. That is the two-hand model above, applied to the keyboard. **Unfocused**, the same key still selects *and* strums immediately, because there is no visible wheel to read and a silent arm would look broken.
 
@@ -386,7 +386,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 - The wheel docks **bottom-left** in both orientations (fretting-hand side, strum zone free to the right — the same split as a real guitar), low enough to almost touch the ✕ exit. It cannot be the vertical rail the six-button pad was, so a corner takes that role. The guitar fitter reserves the footprint, and does so from layout constants rather than a DOM measurement, because the wheel only appears after the entry fit has run.
 - **Touch:** tap a wedge to latch it for one-finger playing, or hold it with one pointer and strum with another. A quick tap on the string fan plucks the nearest string. Releasing a genuinely held chord returns to the previously latched chord (or open strings); cancel, exit, background, or lost capture clears transient holds.
 - **Fine pointer / pen:** clicking a wedge latches it so the same pointer can strum repeatedly; clicking it again clears it.
-- **Desktop keyboard (jam map):** hold the QWERTY top row — `Q` / `W` / `E` / `R` / `T` / `Y` — for the current key's `I ii iii IV V vi`. **Unfocused**, pressing a chord key also strums it immediately, because with no visible wheel to read a silent arm looks broken; **focused**, it is select-only and Space strums. Key release returns to open strings. Space re-strums (downstroke); Shift+Space is an upstroke. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
+- **Desktop keyboard (jam map):** hold the QWERTY top row — `Q` / `W` / `E` / `R` / `T` / `Y` — for the current key's `I ii iii IV V vi`. **Unfocused**, pressing a chord key also strums it immediately, because with no visible wheel to read a silent arm looks broken; **focused**, it is select-only and the strum keys play it. **The strum keys are `↓` (downstroke) and `↑` (upstroke)** — adjacent, so an alternating pattern is two fingers rather than a held modifier — with `Space` a downstroke and `Shift+Space` an upstroke, both kept from before. Key release returns to open strings. Mascot movement is not bound to keyboard keys; it uses click-to-move or the mobile joystick.
 - Wedges are `role="button"` with visible focus, `aria-pressed`, and `aria-keyshortcuts` on the six that the jam row addresses; their `aria-label` names the chord **and its degree**. Colour is never the only signal.
 - Use one fretboard plane and derive the nearest string from its local hit point; while a chord is selected, its shape owns the fretting so every fretboard hit uses that string’s chord pitch and mute state. With no chord selected, a fretboard hit uses its local fret.
 
@@ -427,7 +427,11 @@ Opening the editor while an instrument is focused leaves that focus immediately 
 
 ### Desktop keyboard jam
 
-On desktop (fine pointer / hover-capable, not the mobile game shell), the computer keyboard is a **multi-instrument jam surface**. After Enter, with no modal open and the event not from an editable / button target, instrument maps stay live **regardless of which instrument is focused** (including idle / walking). Pointer and on-screen pads remain focus-gated as today.
+On desktop (fine pointer / hover-capable, not the mobile game shell), the computer keyboard is a **multi-instrument jam surface**. After Enter, with no modal open and the event not from an editable / button target, every instrument map is live while idle, walking, approaching, entering or returning. Pointer and on-screen pads remain focus-gated as today.
+
+**A close-up makes the keyboard exclusive.** While an instrument is focused, only that instrument's keys answer; every other instrument's keys fall silent for exactly as long as focus holds, and are restored on exit. Choosing to stand at one instrument is a statement about what you are playing, and a drum row still firing underneath a piano performance made the keyboard read as the stage's rather than the instrument's. The chord row is the one map two instruments share, because the wheel is shared: it answers under guitar **and** piano focus, and goes quiet under drums and mic like anything else that is not theirs.
+
+**Always live, in every mode:** `Enter` (approach, while idle), `L` / `Shift+L` (loop), and `[` `]` `\\` (the chord wheel's key and sevenths). These are transport and tuning, not an instrument's voice.
 
 **Why this layout:** mascot movement stays pointer/touch based, leaving the desktop keyboard free for instruments and approach (`Enter`).
 
@@ -449,7 +453,7 @@ Rules:
 3. **One owner per physical key.** Never bind the same `KeyboardEvent.code` to two instruments or to both walk and play.
 4. **Release hygiene:** `keyup`, window blur, visibility hidden, and focus exit clear held piano notes, keyboard guitar chord, and held keyboard vocal for that session path. Walk key sets clear on `keyup` / blur as today.
 5. **Price chips:** first audible play of an instrument (keyboard or pointer) still queues the once-per-instrument chip. If that play happened without focus, show the chip after the visitor next leaves any instrument focus, or after ~2 s of silence from that instrument if they never focused it.
-6. **`#keys-hint` (desktop-only):** reflect the jam map, e.g. клік · `Enter` · `L` · `Z X C V B` ударні · `1–8` піаніно · `Q W E R T Y`+пробіл акорди · `[ ] \\` тональність · `N M , . /` вокал.
+6. **`#keys-hint` (desktop-only):** show the map that is actually live, not the full one. Away from a close-up it lists the jam surface; inside one it lists only that instrument's keys, because advertising keys that no longer answer is worse than saying nothing. The loop key rides every variant once the pedal is unlocked.
 7. **Mobile unchanged:** no jam keyboard; pads + focused multitouch only. Hide `#keys-hint` as today.
 
 ### Desktop
@@ -855,7 +859,7 @@ this site can observe — it is the conversion number.
 - In a five-person first-use test, at least four players make an open strum within `8 s` and a chorded strum within `20 s` after the camera settles, without verbal help.
 - The first stable guitar-focused frame must match the camera transition endpoint; enabling orbit controls and the focused azimuth limits must not snap, reframe, or otherwise move the view after the animation.
 - No **pointer / pad / mesh** guitar sound occurs outside stable guitar focus, including distant taps, camera transitions, and focus on another instrument.
-- **Desktop keyboard** guitar chords (`Q W E R T Y`) and Space / Shift+Space follow the jam map: they may sound while idle or while focused on any instrument, and must remain silent only when the stage has not started, a modal is open, or the event target is editable / a control.
+- **Desktop keyboard** guitar chords (`Q W E R T Y`) and the strum keys (`↓` `↑` `Space` `Shift+Space`) follow the jam map: they may sound while idle or while the guitar is focused, and must be silent inside another instrument's close-up, before the stage has started, while a modal is open, or when the event target is editable / a control.
 - A complete stroke excites each crossed eligible string once and in directional order; motion along the strings stays silent. Muted strings neither sound nor animate.
 - Soft and hard strokes are audibly distinct. Reversing direction can immediately produce the reverse string order without false retriggers.
 - Twenty consecutive chord-hold + second-pointer strums work on supported iPhone Safari and Android Chrome without page zoom, orbit motion, lost pointers, or a stuck chord.
@@ -873,7 +877,7 @@ this site can observe — it is the conversion number.
 
 - After Enter on a desktop viewport, with no modal open, holding `1` + tapping `Z` + holding `Q` and pressing Space produces piano + drum + guitar audio in one gesture sequence without focusing any instrument.
 - `[` / `]` step the chord wheel's key and `\\` toggles its sevenths from anywhere the jam map is live; the lit sector, the wedge labels and the `Q W E R T Y` row all follow in the same frame.
-- Holding `N` (vocal) together with `3` (piano) and tapping `X` (snare) keeps all three buses audible; focusing piano must not silence drums / vocal / guitar keyboard routes.
+- **Away from a close-up**, holding `N` (vocal) together with `3` (piano) and tapping `X` (snare) keeps all three buses audible. **Inside one**, the opposite is required: focusing the piano must silence the drum, vocal and strum keys, and leaving must restore them on the next press.
 - Mascot movement has no keyboard bindings: use click-to-move or the mobile joystick. No `KeyboardEvent.code` is shared across the **global** approach, loop, piano, drums, guitar, or vocal maps (`Enter` is approach-only while idle; the QWERTY row belongs to the chord wheel, so `Q` is the tonic and `E` the iii). The one **focus-only** layer — the piano's `A–L` + upper row — claims four QWERTY chord letters, so for exactly as long as piano is focused the whole chord row stands down and moves to `1–6`; that shadowing is scoped, deterministic, and reversed on exit. Guitar focus adds no letters of its own: it reuses the same QWERTY row and only changes what a press *does* (select, not select-and-strum).
 - A visitor can hold `W` to walk and tap `Z` / `1` / Space in the same session without the walk key stealing instrument input (play keys fire; walk continues on remaining held walk keys).
 - `keyup`, blur, `visibilitychange` → hidden, and ✕ exit clear held piano keys, keyboard guitar chord, and held keyboard vocal without stuck sustains.

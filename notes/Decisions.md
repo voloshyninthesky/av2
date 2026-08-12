@@ -12,6 +12,47 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## A close-up owns the keyboard — 2026-08-13
+
+The jam surface was written for a visitor standing in the middle of the stage: every
+instrument on disjoint hotkeys, focus optional ([[SPEC]] §1 goal 2). Inside a close-up that
+same rule reads as a bug. You walk to the piano, sit down, and the drum row still fires, the
+strum keys still strum, and the piano's own chord row — this is the part that was actually
+broken — **armed a guitar chord and strummed the guitar**, because the "unfocused, so also
+strum" branch tested only whether the *guitar* was focused. Measured: `guitarStrokeMotion`
+0.85, zero piano keys moving. The instrument in front of you was the one thing the keyboard
+would not play.
+
+So focus now makes the keyboard exclusive: outside a close-up nothing changes, inside one
+only that instrument answers. The jam survives where it was designed to live, and the goal it
+serves is intact — it just stops leaking into a decision the visitor already made.
+
+What fell out of it:
+
+- **The piano's chord row plays piano chords**, routed through the wheel's own
+  `pressPianoChord` rather than around it, so a key and a wedge voice, roll, press the same
+  meshes and capture into the loop identically. Chords under the left hand on `1–6`, melody
+  under the right on `A–L`, which is the first time the close-up has been a two-handed
+  instrument.
+- **The chord row is the one map two instruments share**, because the wheel is shared. It
+  answers under guitar and piano focus and goes quiet under drums and mic. Everything else
+  is one instrument's.
+- **Strum moved to `↓` / `↑`.** Alternating strokes were `Space` and `Shift+Space`, a held
+  modifier in the middle of a rhythm. Adjacent arrows make it two fingers. The arrows were
+  free for the same reason the whole keyboard is: mascot movement has no keyboard binding.
+- **The legend follows the mode.** `#keys-hint` listed the full jam map everywhere, so in a
+  close-up it advertised keys that no longer answer. One `<span>` per mode, swapped in CSS off
+  `data-instrument` — no JS, and the Ukrainian stays in `index.html` with the rest of the copy.
+  It also stopped being hidden outright at the piano; that rule existed because the long jam
+  list crossed the keybed in short landscape windows, and a per-instrument line is a fraction
+  of its width, so it now stands down only there.
+
+The reversed acceptance criterion is worth knowing about: §12 used to require that "focusing
+piano must not silence drums / vocal / guitar keyboard routes". It now requires the opposite
+inside a close-up, and the old guarantee survives only outside one.
+
+---
+
 ## The chord pad became a wheel, and the wheel does not scatter — 2026-08-13
 
 Six slots was the wrong unit. Choosing which six chords you own is a *settings* task, and it had

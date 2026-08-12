@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260813-02">
+<link rel="stylesheet" href="/css/style.css?v=20260813-03">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -196,7 +196,15 @@
 </header>
 
 <div id="keys-hint" class="mono hidden">
-  клік — рух · <b>Enter</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — акорди · <b>[ ] \</b> — тональність · <b>N M , . /</b> — вокал
+  <!-- One legend per keyboard mode, swapped by CSS off data-instrument: away
+       from a close-up the whole jam surface is live, inside one only that
+       instrument's keys are. The loop hint sits outside them all, because L
+       works in every mode once the pedal is unlocked. -->
+  <span data-keys="jam">клік — рух · <b>Enter</b> — грати · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — акорди · <b>N M , . /</b> — вокал</span>
+  <span data-keys="guitar"><b>Q W E R T Y</b> — акорди · <b>↓ ↑</b> або пробіл — бій · <b>[ ] \</b> — тональність</span>
+  <span data-keys="piano"><b>A…L</b> і <b>W E T Y U O</b> — ноти · <b>1–6</b> — акорди · <b>[ ] \</b> — тональність</span>
+  <span data-keys="drums"><b>Z X C V B</b> — ударні</span>
+  <span data-keys="mic"><b>N M , . /</b> — вокал</span><span id="loop-key-hint" hidden> · <b>L</b> — loop</span>
 </div>
 
 <div id="quality-confirm" class="overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="quality-confirm-title" aria-describedby="quality-confirm-copy">
@@ -660,6 +668,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260813-02"></script>
+  <script type="module" src="/js/main.js?v=20260813-03"></script>
 </body>
 </html>

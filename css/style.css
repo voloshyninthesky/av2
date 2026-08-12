@@ -955,14 +955,37 @@ html[data-instrument-view="focused"] #mobile-play {
 html[data-instrument-view="focused"] #hud {
   opacity: .72;
 }
-/* Piano focus gives the measured keybed the full canvas; the global shortcut
-   legend otherwise crosses the keys in short landscape browser windows. */
-html[data-instrument="piano"][data-instrument-view="entering"] #keys-hint,
-html[data-instrument="piano"][data-instrument-view="focused"] #keys-hint,
+/* One legend at a time: the jam list away from a close-up, that instrument's
+   own keys inside one. The keyboard is exclusive in focus, so showing the
+   full map there would advertise keys that no longer answer. */
+#keys-hint > [data-keys] { display: none; }
+#keys-hint > [data-keys="jam"] { display: inline; }
+html[data-instrument-view="entering"] #keys-hint > [data-keys="jam"],
+html[data-instrument-view="focused"] #keys-hint > [data-keys="jam"] { display: none; }
+html[data-instrument-view="entering"][data-instrument="guitar"] #keys-hint > [data-keys="guitar"],
+html[data-instrument-view="focused"][data-instrument="guitar"] #keys-hint > [data-keys="guitar"],
+html[data-instrument-view="entering"][data-instrument="piano"] #keys-hint > [data-keys="piano"],
+html[data-instrument-view="focused"][data-instrument="piano"] #keys-hint > [data-keys="piano"],
+html[data-instrument-view="entering"][data-instrument="drums"] #keys-hint > [data-keys="drums"],
+html[data-instrument-view="focused"][data-instrument="drums"] #keys-hint > [data-keys="drums"],
+html[data-instrument-view="entering"][data-instrument="mic"] #keys-hint > [data-keys="mic"],
+html[data-instrument-view="focused"][data-instrument="mic"] #keys-hint > [data-keys="mic"] { display: inline; }
+
+/* The drag hint is stage-level advice and has no place in a close-up. The
+   keys legend used to be hidden here too, but only ever because the long jam
+   list crossed the keybed in short landscape windows — the per-instrument
+   line is a fraction of its width, so it now stands down only there. */
 html[data-instrument="piano"][data-instrument-view="entering"] #drag-hint,
 html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
   opacity: 0;
   pointer-events: none;
+}
+@media (orientation: landscape) and (max-height: 620px) {
+  html[data-instrument="piano"][data-instrument-view="entering"] #keys-hint,
+  html[data-instrument="piano"][data-instrument-view="focused"] #keys-hint {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 @media (min-width: 721px) {

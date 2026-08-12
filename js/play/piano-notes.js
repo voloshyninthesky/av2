@@ -3,24 +3,25 @@
 // Piano keys sustain while held, so each press opens a loop capture that is
 // only stamped with its duration on release. The keyboard routes the same
 // events as the pointer does — digits are piano, ZXCVB drums, the chord row
-// plus Space guitar, NM,./ vocal — so desktop can play without focusing an
-// instrument at all.
+// plus the strum keys guitar, NM,./ vocal — so away from a close-up desktop
+// can play every instrument at once without focusing anything.
 //
-// Piano close-up additionally gets its own real-keyboard-shaped layout (see
-// PIANO_FOCUS_WHITE/BLACK below), active only while focused there. It claims
-// the letter rows outright — including four of the QWERTY chord letters — so
-// rather than leave a chord row that works two keys in six, the whole row
-// steps aside and the chords move to the digits for the duration. Every other
-// instrument's keys are untouched, and leaving focus restores the global map
-// immediately.
+// A close-up reverses that: it makes the keyboard exclusive, and only the
+// focused instrument's keys answer. See "WHO OWNS THE KEYBOARD" below for why.
+//
+// The piano close-up also brings its own real-keyboard-shaped layout (see
+// PIANO_FOCUS_WHITE/BLACK), which claims the letter rows outright — including
+// four of the QWERTY chord letters — so rather than leave a chord row that
+// works two keys in six, the whole row steps aside and the chords move to the
+// digits, where they play *piano* chords through the wheel's own route.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-02';
-import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-02';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-02';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-02';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-02';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-02';
+import { session } from '../core/session.js?v=20260813-03';
+import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-03';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-03';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-03';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-03';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-03';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -29,10 +30,14 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-02';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-02';
-import { syncChordWheelHeld } from './chord-wheel.js?v=20260813-02';
-import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-02';
+} from './loop.js?v=20260813-03';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-03';
+import {
+  syncChordWheelHeld,
+  pressPianoChordFromKeyboard,
+  releasePianoChordFromKeyboard,
+} from './chord-wheel.js?v=20260813-03';
+import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-03';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.
@@ -130,6 +135,10 @@ export function releaseHeldPianoNote(held, { cancel = false } = {}) {
 export function releaseAllHeldPianoNotes({ cancel = false } = {}) {
   for (const held of [...heldPianoNotes]) releaseHeldPianoNote(held, { cancel });
   keyboardPianoNotes.clear();
+  // A chord the keyboard is holding lives half here and half in the wheel, and
+  // the loop above only reaches this half — leave the other set standing and
+  // the next press would release notes that have already gone.
+  releaseKeyboardPianoChord();
 }
 
 export function finishHeldPianoLoopCaptures() {
@@ -209,11 +218,53 @@ const pianoFocusKeymap = new Map([
 // because A..L already covers a wider span of the same keybed. Leaving the
 // close-up restores QWERTY chords and digit notes immediately.
 const PIANO_FOCUS_CHORD_DIGITS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'];
+const STRUM_KEYS = new Set(['Space', 'ArrowDown', 'ArrowUp']);
 const digitChord = (code) => keyChordNames[PIANO_FOCUS_CHORD_DIGITS.indexOf(code)] || null;
+
+// ============================================================
+// WHO OWNS THE KEYBOARD
+// Away from a close-up the keyboard is the multi-instrument jam surface every
+// map is written for (§1 goal 2): drums, piano, chords and vocal all live at
+// once. Inside one, it is that instrument's alone — a close-up is a decision
+// about what you are playing, and having the drum row still fire underneath a
+// piano performance made the keyboard feel like it belonged to the stage
+// rather than to the instrument in front of you.
+//
+// The chord row is the one map two instruments share, because the wheel is
+// shared: it answers under guitar and piano focus, and falls silent under
+// drums and mic like everything else that is not theirs.
+// ============================================================
+function focusedKeyboardInstrument() {
+  for (const kind of ['piano', 'guitar', 'drums', 'mic']) {
+    if (hooks.canPlayInstrument(kind)) return kind;
+  }
+  return null;
+}
+/** True while nothing is focused (jam), or while `kind` is what is focused. */
+const keyboardOwnedBy = (kind) => {
+  const focused = focusedKeyboardInstrument();
+  return focused === null || focused === kind;
+};
+const chordRowIsLive = () => {
+  const focused = focusedKeyboardInstrument();
+  return focused === null || focused === 'guitar' || focused === 'piano';
+};
 
 /** Which chord a key event arms right now, given where the visitor is. */
 function chordForKeyEvent(code) {
-  return hooks.canPlayInstrument('piano') ? digitChord(code) : (GUITAR_KEY_CHORDS[code] || null);
+  return focusedKeyboardInstrument() === 'piano'
+    ? digitChord(code)
+    : (GUITAR_KEY_CHORDS[code] || null);
+}
+
+// A keyboard-held piano chord is one at a time and belongs to the key that
+// started it, so a second chord key replaces the first and only that key's
+// release lets it go.
+let keyboardPianoChordCode = null;
+function releaseKeyboardPianoChord() {
+  if (!keyboardPianoChordCode) return;
+  keyboardPianoChordCode = null;
+  releasePianoChordFromKeyboard();
 }
 
 window.addEventListener('keydown', (e) => {
@@ -254,31 +305,39 @@ window.addEventListener('keydown', (e) => {
     }
   }
 
-  const guitarChord = chordForKeyEvent(e.code);
-  if (guitarChord) {
+  const chordName = chordRowIsLive() ? chordForKeyEvent(e.code) : null;
+  if (chordName) {
     e.preventDefault();
     if (!e.repeat) {
-      play.keyboardGuitarChord = guitarChord;
-      syncChordWheelHeld();
-      // The row addresses scale degrees, so Q is the tonic and Y the vi in
-      // whatever key the wheel is turned to. What a press *does* still depends
-      // on where you are:
+      // One row, three meanings — each one the wheel's own, so a key and a
+      // wedge never disagree about what the same chord does:
       //
-      // Focused, it is *select-only*, matching the wheel you are looking at —
-      // the fretting hand chooses, Space strums (§ Guitar performance mode's
-      // two-hand model).
+      // Piano-focused, the chord SOUNDS and presses the keys it voices, held
+      // for as long as the key is. The piano has no second surface to strike.
       //
-      // Unfocused, the key IS the play gesture: there is no visible wheel to
-      // read, so arming silently would look broken. Space still re-strums.
-      if (!hooks.canPlayInstrument('guitar')) {
-        fireGuitarStrum(0.85, 'bass-to-treble', null, null, true, { focusRequired: false });
-        noteKeyboardJamActivity('guitar');
+      // Guitar-focused, it is *select-only*: the fretting hand chooses and the
+      // strum keys play (§ Guitar performance mode's two-hand model).
+      //
+      // Unfocused, the key IS the play gesture — with no visible wheel to
+      // read, arming silently would look broken — so it selects and strums.
+      if (focusedKeyboardInstrument() === 'piano') {
+        releaseKeyboardPianoChord();
+        keyboardPianoChordCode = e.code;
+        pressPianoChordFromKeyboard(chordName);
+        noteKeyboardJamActivity('piano');
+      } else {
+        play.keyboardGuitarChord = chordName;
+        syncChordWheelHeld();
+        if (focusedKeyboardInstrument() !== 'guitar') {
+          fireGuitarStrum(0.85, 'bass-to-treble', null, null, true, { focusRequired: false });
+          noteKeyboardJamActivity('guitar');
+        }
       }
     }
     return;
   }
 
-  if (e.code in DRUM_KEYS) {
+  if (e.code in DRUM_KEYS && keyboardOwnedBy('drums')) {
     if (e.repeat) return;
     e.preventDefault();
     playMusicalEvent({ type: 'drum', part: DRUM_KEYS[e.code], vel: 1, vibe: 4 });
@@ -286,7 +345,10 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (/^Digit[1-8]$/.test(e.code)) {
+  // The digits are the global white-key row. In a piano close-up 1-6 have
+  // already been claimed as the chord row above, and A..L covers those notes
+  // over a wider span anyway, so nothing falls through to here.
+  if (/^Digit[1-8]$/.test(e.code) && keyboardOwnedBy('piano')) {
     if (e.repeat || keyboardPianoNotes.has(e.code)) return;
     e.preventDefault();
     const idx = Number(e.code.slice(5)) - 1;
@@ -297,12 +359,16 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (e.code === 'Space') {
+  // Strum: the arrows are the picking hand, down and up on adjacent keys so an
+  // alternating pattern is two fingers rather than a held modifier. Space stays
+  // a downstroke, and Shift+Space an upstroke, because both already shipped.
+  if (STRUM_KEYS.has(e.code) && keyboardOwnedBy('guitar')) {
     e.preventDefault();
     if (e.repeat) return;
+    const upstroke = e.code === 'ArrowUp' || (e.code === 'Space' && e.shiftKey);
     fireGuitarStrum(
       1,
-      e.shiftKey ? 'treble-to-bass' : 'bass-to-treble',
+      upstroke ? 'treble-to-bass' : 'bass-to-treble',
       null,
       null,
       true,
@@ -312,7 +378,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (e.code in VOCAL_KEYS) {
+  if (e.code in VOCAL_KEYS && keyboardOwnedBy('mic')) {
     e.preventDefault();
     if (e.repeat || play.keyboardVocal?.code === e.code) return;
     hooks.beginKeyboardVocal(e.code);
@@ -326,9 +392,12 @@ window.addEventListener('keyup', (e) => {
     keyboardPianoNotes.delete(e.code);
     noteKeyboardJamActivity('piano');
   }
-  // Release checks both maps, not the one that is live now: focus can change
-  // between the press and the release, and a chord that armed under the other
-  // map still has to let go.
+  // Release is deliberately unconditional on focus: it can change between the
+  // press and the release, and whatever a key started still has to let go.
+  if (keyboardPianoChordCode === e.code) {
+    releaseKeyboardPianoChord();
+    noteKeyboardJamActivity('piano');
+  }
   const guitarChord = GUITAR_KEY_CHORDS[e.code] || digitChord(e.code);
   if (guitarChord && play.keyboardGuitarChord === guitarChord) {
     play.keyboardGuitarChord = null;
