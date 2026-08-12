@@ -7,18 +7,18 @@
 // rotates the stage.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-09';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-09';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-09';
-import { canvas, camera, controls } from './rig.js?v=20260813-09';
-import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260813-09';
-import { instrumentView } from './instrument-presets.js?v=20260813-09';
-import { raycaster, pointer } from './pick.js?v=20260813-09';
-import { glowMesh, unglowMesh } from './emissive.js?v=20260813-09';
-import { walkMascotToInstrument } from './mobile-controls.js?v=20260813-09';
-import { resetBrowserPageZoom } from './viewport.js?v=20260813-09';
-import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260813-09';
-import { activePointers } from '../play/state.js?v=20260813-09';
+import { session } from '../core/session.js?v=20260813-10';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-10';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-10';
+import { canvas, camera, controls } from './rig.js?v=20260813-10';
+import { ui, drums, piano, guitar, mic, instruments, interactables } from '../core/studio.js?v=20260813-10';
+import { instrumentView } from './instrument-presets.js?v=20260813-10';
+import { raycaster, pointer } from './pick.js?v=20260813-10';
+import { glowMesh, unglowMesh } from './emissive.js?v=20260813-10';
+import { walkMascotToInstrument } from './mobile-controls.js?v=20260813-10';
+import { resetBrowserPageZoom } from './viewport.js?v=20260813-10';
+import { DOUBLE_TAP_EXEMPT, judgeDoubleTap } from '../core/gesture-guards.js?v=20260813-10';
+import { activePointers } from '../play/state.js?v=20260813-10';
 import {
   currentGuitarShape,
   fireGuitarStrum,
@@ -27,13 +27,13 @@ import {
   guitarLocalPoint,
   nearestGuitarString,
   guitarFretHit,
-} from '../play/guitar.js?v=20260813-09';
+} from '../play/guitar.js?v=20260813-10';
 import {
   trigger,
   beginHeldPianoNote,
   releaseHeldPianoNote,
   handleClick,
-} from '../play/piano-notes.js?v=20260813-09';
+} from '../play/piano-notes.js?v=20260813-10';
 
 export const INSTRUMENT_STYLE = {
   drums: { glow: 0x9E33CA },

@@ -12,6 +12,23 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The reveal hands the stage back, not a portrait — 2026-08-13
+
+Closing the gift card used to leave the camera exactly where the ceremony had put it: a
+measured close-up of the character, framed to sit beside the card. That is the right shot for
+the reveal and the wrong shot to stand in afterwards — the visitor's first act on stage is to
+walk, and the stage was out of frame. The close now eases the whole rig back out to the
+default stage pose (`CAM_END` / `TARGET`), so the first run ends on the frame every later
+visit begins on.
+
+It also retires a piece of careful bookkeeping. The old close eased `controls.target` off its
+safe-rect offset onto the character specifically to avoid the lurch after ГОТОВО — that offset
+alone tips the camera past `controls.maxPolarAngle`, and OrbitControls corrects it on its first
+update. The default pose needs no such argument: it is the pose the controls sit at everywhere
+else, so there is nothing for them to clamp.
+
+---
+
 ## A label's size is a fact about the geometry, not about the name — 2026-08-13
 
 With sevenths on, the chord wheel's inner ring collided with itself: `C#m7` sat on `F#m7` sat

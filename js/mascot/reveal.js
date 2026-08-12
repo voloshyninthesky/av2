@@ -18,23 +18,23 @@
 // rather than tracks. See notes/Decisions.md.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260813-09';
-import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-09';
-import { trackOnce } from '../core/analytics.js?v=20260813-09';
-import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-09';
+import { session, easeInOut } from '../core/session.js?v=20260813-10';
+import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-10';
+import { trackOnce } from '../core/analytics.js?v=20260813-10';
+import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-10';
 import {
   ui, mascot, mascotLabel, audio, fireworks, giftEgg,
   applyMascotConfig, applyMascotScale,
-} from '../core/studio.js?v=20260813-09';
-import { bumpHitPulse } from '../scene/effects.js?v=20260813-09';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-09';
-import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-09';
-import { resetMascotPose, setDancing } from './pose.js?v=20260813-09';
-import { mascotMove } from './state.js?v=20260813-09';
+} from '../core/studio.js?v=20260813-10';
+import { bumpHitPulse } from '../scene/effects.js?v=20260813-10';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-10';
+import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-10';
+import { resetMascotPose, setDancing } from './pose.js?v=20260813-10';
+import { mascotMove } from './state.js?v=20260813-10';
 import {
   validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot,
-} from './appearance.js?v=20260813-09';
-import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-09';
+} from './appearance.js?v=20260813-10';
+import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-10';
 
 // Opening the gift borrows the camera and has to quiet whatever else was using
 // it. The bloom pass lives in shell/, above this module, so main.js injects it
@@ -704,20 +704,18 @@ function endGiftCeremony() {
   hooks.syncInstrumentExposure();
   if (mascotLabel) mascotLabel.visible = true;
   giftCam.framed = false;
-  // The reveal offsets controls.target so the character sits beside the card,
-  // and that offset tips the camera past controls.maxPolarAngle — OrbitControls
-  // swings it back on its first update, which is the lurch after ГОТОВО. With
-  // the card gone there is nothing to sit beside, so ease the target onto the
-  // character: it re-centres them and lands inside every orbit limit, leaving
-  // the controls nothing to correct. The camera itself does not move.
-  const subject = visibleObjectBounds(mascot.group);
-  if (!subject.isEmpty()) {
-    subject.getCenter(scratchFrameTgt);
-    startGiftCam(camera.position, scratchFrameTgt, true);
-  } else {
-    giftCam.active = false;
-    controls.enabled = true;
-  }
+  // Ease back out to the default stage pose. The ceremony framing is a portrait
+  // of the character, measured to fit beside the card — right for the reveal, too
+  // close to be left standing in, because the stage the visitor is about to walk
+  // is entirely out of frame. Landing on CAM_END / TARGET ends the first run on
+  // exactly the frame every later visit begins on.
+  //
+  // It also settles the lurch after ГОТОВО for free: the reveal offsets
+  // controls.target so the character sits beside the card, and that offset alone
+  // tips the camera past controls.maxPolarAngle — OrbitControls would swing it
+  // back on its first update. The default pose is the one frame the controls are
+  // guaranteed to hold, so there is nothing left for them to correct.
+  startGiftCam(CAM_END, TARGET, true);
   if (giftCard) giftCard.hidden = true;
 }
 

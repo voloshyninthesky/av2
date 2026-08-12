@@ -119,9 +119,11 @@ Three constraints worth protecting in any edit here:
 6. **The reveal pose has to be one OrbitControls will hold.** It is handed straight to the
    controls when the card closes, so the framing distance is clamped to `minDistance` and the
    safe-rect target offset is eased away on close — that offset alone tips the camera past
-   `maxPolarAngle`. Miss either and the camera lurches a frame after ГОТОВО. The follow
-   camera is also held off while the gift's tween owns the rig; two eased motions writing to
-   one camera is what a stutter actually is.
+   `maxPolarAngle`. Miss either and the camera lurches a frame after ГОТОВО. Closing now eases
+   the whole rig back out to the default stage pose, which satisfies both by construction: it
+   is the frame the controls already live at everywhere else. The follow camera is held off
+   while the gift's tween owns the rig; two eased motions writing to one camera is what a
+   stutter actually is.
 
 ### Opening the gift from a focused instrument
 

@@ -5,7 +5,7 @@
 // the model builder cannot render. The draw itself lives in ./gift.js.
 // ============================================================
 import * as THREE from 'three';
-import { GIFT_TIERS_BY_ID } from './gift.js?v=20260813-09';
+import { GIFT_TIERS_BY_ID } from './gift.js?v=20260813-10';
 
 // v4 adds `tier`, and v3 looks were hand-authored in the retired editor so they
 // carry none. Per the standing rule, the key bump is how returning visitors get
