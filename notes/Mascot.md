@@ -52,8 +52,9 @@ The editor asked visitors to author a mascot before they had any reason to care 
 and the median first run cost half a minute of form-filling to land somewhere near the
 default. The gift inverts the order: an egg lands in the spotlight, rocks, cracks open,
 and hands you someone — with a rarity tier attached — in about four seconds. *Then* you can
-keep them. There is no reroll and no HUD button to reopen it — the tier you were given only
-means something because you cannot roll it away.
+keep them. There is no HUD button to reopen it; the one way to a different character is to
+walk off the stage edge, which hatches a new one and costs you the one you had. A tier means
+something because rerolling it has a price, not because it is impossible.
 
 Every character is a **Вайбер** — none of them is named individually, and the tier reads as a
 species epithet («це Вайбер Звичайний»). The card is also the whole of the first run: it says

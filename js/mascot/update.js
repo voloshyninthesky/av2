@@ -5,10 +5,10 @@
 // and the fall. The gift reveal owns the mascot outright while it runs.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-05';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-05';
-import { camera, controls } from '../view/rig.js?v=20260813-05';
-import { ui, mascot, mascotLabel, mascotLabelY, applyMascotScale, mascotFallMaterialStates } from '../core/studio.js?v=20260813-05';
+import { session } from '../core/session.js?v=20260813-06';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-06';
+import { camera, controls } from '../view/rig.js?v=20260813-06';
+import { ui, mascot, mascotLabel, mascotLabelY, applyMascotScale, mascotFallMaterialStates } from '../core/studio.js?v=20260813-06';
 import {
   joystickInput,
   cameraForwardXZ,
@@ -16,14 +16,14 @@ import {
   updateMobileFollowCamera,
   beginMascotFall,
   respawnMascot,
-} from '../view/mobile-controls.js?v=20260813-05';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-05';
-import { activateInstrumentView } from '../view/instrument-view.js?v=20260813-05';
-import { moveMascotWithColliders } from './walk.js?v=20260813-05';
-import { mascotMove, dance } from './state.js?v=20260813-05';
-import { giftReveal, giftCam } from './reveal.js?v=20260813-05';
-import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260813-05';
-import { play } from '../play/state.js?v=20260813-05';
+} from '../view/mobile-controls.js?v=20260813-06';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-06';
+import { activateInstrumentView } from '../view/instrument-view.js?v=20260813-06';
+import { moveMascotWithColliders } from './walk.js?v=20260813-06';
+import { mascotMove, dance } from './state.js?v=20260813-06';
+import { giftReveal, giftCam } from './reveal.js?v=20260813-06';
+import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260813-06';
+import { play } from '../play/state.js?v=20260813-06';
 
 // First-person guitar view (landscape): the focus camera sits where the
 // player's own eyes are, so the mascot's head — and, seen from inside, the
@@ -99,7 +99,13 @@ export function updateMascot(dt) {
       mascotLabel.visible = fall.t < 0.42;
       mascotLabel.position.set(mascot.group.position.x, mascot.group.position.y + mascotLabelY(), mascot.group.position.z);
     }
-    if (fall.t >= fall.duration) respawnMascot();
+    if (fall.t >= fall.duration) {
+      respawnMascot();
+      // Walking off the stage costs you the character you had: a new egg is
+      // waiting when you land. The old toast just told the visitor off for
+      // finding the edge — this turns the same discovery into the reveal.
+      ui.open('gift');
+    }
     return;
   }
   if (instrumentView.phase === 'entering' || instrumentView.phase === 'focused' || instrumentView.phase === 'returning') {

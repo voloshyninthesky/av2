@@ -24,12 +24,17 @@ A gift inverts the order. You receive someone — hatched out of an egg, named, 
 attached (a tier) — in about seven seconds, having chosen nothing. The whole editor is gone:
 three tabs, ten control groups, the draft/commit/undo model, ~480 lines.
 
-**It happens exactly once, and there is no way back to it.** No reroll, no HUD button. A tier
-you can re-roll away is not a tier — it is a slot machine, and the character stops being
-*yours* the moment it is replaceable. The gift is re-offered only until a character actually
-exists in storage, which is a separate gate from the onboarding tip on purpose: abandoning the
-ceremony writes nothing, and sharing the tip's key would have stranded that visitor with the
-default look forever.
+**No HUD button, and the only reroll costs the character you have.** A tier you can re-roll
+on a whim is not a tier — it is a slot machine, and the character stops being *yours* the
+moment a button can replace it. But making it strictly permanent was the wrong end of the
+same argument: the one thing every visitor eventually does is walk off the stage edge, and
+that used to earn a «Не втечеш ;)» toast telling them off for finding it. Now it hatches a
+new character. The reroll exists, it is discovered rather than offered, and it costs the
+character you had — which is what keeps the tier meaning something.
+
+The first-run gift is re-offered only until a character actually exists in storage, which is
+a separate gate from the onboarding tip on purpose: abandoning the ceremony writes nothing,
+and sharing the tip's key would have stranded that visitor with the default look forever.
 
 **Rarity is drawn tier-first, not scored from the traits.** A score over twelve independent
 draws produces statistically rare looks that nobody can *read* as rare — a 1-in-3000

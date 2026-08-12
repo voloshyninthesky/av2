@@ -9,10 +9,10 @@
 // The guitar's chord surface used to live in this file too; it is now the
 // circle of fifths in chord-wheel.js, which serves the piano as well.
 // ============================================================
-import { audio, mic } from '../core/studio.js?v=20260813-05';
-import { play } from './state.js?v=20260813-05';
-import { addVibe } from './vibe.js?v=20260813-05';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260813-05';
+import { audio, mic } from '../core/studio.js?v=20260813-06';
+import { play } from './state.js?v=20260813-06';
+import { addVibe } from './vibe.js?v=20260813-06';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260813-06';
 
 // Pad gestures compete with the stage's own pointer handling; main.js supplies
 // the predicates and teardown that only it can answer.

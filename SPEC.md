@@ -412,7 +412,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Starts **downstage, nudged stage-left toward the guitar, inside the key spotlight pool** (`MASCOT_START`, also the fall respawn point), held back off the footlight row so those point lights cannot blow the costume out; the guitar sits in easy reach with every other instrument behind the visitor. Walk with click-to-move on the floor or the mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**The gift** (`#modal-gift`, opened by the first run only — there is no HUD control for it): the visitor **receives** a character rather than building one. An egg lands in the spotlight, rocks and strains for a few seconds, then cracks open along a jagged seam to reveal a randomly drawn look. **It happens exactly once.** There is no reroll and no way to reopen it: the character a visitor is given is theirs permanently, which is what makes the drawn tier worth anything. The gift is offered on every visit until a character has actually been saved, and never again after that.
+**The gift** (`#modal-gift`, opened by the first run only — there is no HUD control for it): the visitor **receives** a character rather than building one. An egg lands in the spotlight, rocks and strains for a few seconds, then cracks open along a jagged seam to reveal a randomly drawn look. **There is no HUD control and no reroll button.** The gift runs on the first visit, and again **whenever the mascot falls off the stage** — walking off the lip costs you the character you had and hatches a new one. That is the only route to a different tier, and it has a price, which is what keeps the drawn tier worth something. On first run the gift is offered on every visit until a character has actually been saved.
 
 **A visitor who has no character never sees one.** The egg is placed on stage and the mascot hidden **before the first frame** — the intro fly-in renders for 2.6 s before onboarding runs, and showing the default mascot for that whole approach would give away that the character was never theirs.
 
@@ -907,7 +907,7 @@ The gift should feel like being handed someone, not like filling in a form. The 
 
 1. A first-time visitor meets their character in **under five seconds**, having chosen nothing.
 2. The reveal is legible as an event: several seconds of building anticipation, then a payoff loud enough to be worth having waited for.
-3. It happens **once per visitor, permanently**. No reroll, no reopening, no HUD entry point — a tier that can be re-rolled away is not a tier. The gift is re-offered only until a character actually exists in storage.
+3. **No HUD entry point, and the only reroll costs something.** A tier you can re-roll on a whim is not a tier, so there is no button; but walking off the stage edge hatches a new character, trading the one you had. On first run the gift is re-offered until a character actually exists in storage.
 4. The feature stays lightweight: procedural geometry, shared materials, curated pools, local persistence, no account or asset download.
 
 ### The draw

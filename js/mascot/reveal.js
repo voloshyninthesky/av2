@@ -18,23 +18,23 @@
 // rather than tracks. See notes/Decisions.md.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260813-05';
-import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-05';
-import { trackOnce } from '../core/analytics.js?v=20260813-05';
-import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-05';
+import { session, easeInOut } from '../core/session.js?v=20260813-06';
+import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-06';
+import { trackOnce } from '../core/analytics.js?v=20260813-06';
+import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-06';
 import {
   ui, mascot, mascotLabel, audio, fireworks, giftEgg,
   applyMascotConfig, applyMascotScale,
-} from '../core/studio.js?v=20260813-05';
-import { bumpHitPulse } from '../scene/effects.js?v=20260813-05';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-05';
-import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-05';
-import { resetMascotPose, setDancing } from './pose.js?v=20260813-05';
-import { mascotMove } from './state.js?v=20260813-05';
+} from '../core/studio.js?v=20260813-06';
+import { bumpHitPulse } from '../scene/effects.js?v=20260813-06';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-06';
+import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-06';
+import { resetMascotPose, setDancing } from './pose.js?v=20260813-06';
+import { mascotMove } from './state.js?v=20260813-06';
 import {
   validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot,
-} from './appearance.js?v=20260813-05';
-import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-05';
+} from './appearance.js?v=20260813-06';
+import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-06';
 
 // Opening the gift borrows the camera and has to quiet whatever else was using
 // it. The bloom pass lives in shell/, above this module, so main.js injects it
@@ -686,6 +686,10 @@ function endGiftCeremony() {
   giftReveal.phase = 'idle';
   document.documentElement.classList.remove('gift-open');
   giftReveal.dragPointer = null;
+  // Only the first-run egg is pre-placed by prepareGiftStage(); a gift that
+  // follows a fall has to pop in like any other, so retire the flag with the
+  // ceremony that earned it.
+  giftReveal.preplaced = false;
   giftEgg.group.visible = false;
   // A ceremony abandoned mid-ramp would otherwise leave the stage permanently
   // over-bloomed.
