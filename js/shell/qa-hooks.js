@@ -9,13 +9,15 @@ import * as THREE from 'three';
 import { params } from '../core/quality.js?v=20260813-05';
 import { session } from '../core/session.js?v=20260813-05';
 import { renderer, scene, camera, controls } from '../view/rig.js?v=20260813-05';
-import { mascot, guitar, interactables } from '../core/studio.js?v=20260813-05';
+import { ui, mascot, guitar, interactables } from '../core/studio.js?v=20260813-05';
 import { INSTRUMENT_VIEW_PRESETS, instrumentView } from '../view/instrument-presets.js?v=20260813-05';
 import { raycaster } from '../view/pick.js?v=20260813-05';
 import { mascotMove } from '../mascot/state.js?v=20260813-05';
 import { setDancing } from '../mascot/pose.js?v=20260813-05';
 import { leaveInstrumentView, requestInstrumentView } from '../view/instrument-view.js?v=20260813-05';
 import { addVibe, VIBE_NOTE_GAIN } from '../play/vibe.js?v=20260813-05';
+import { giftReveal, skipGiftCeremony, forceGiftTier } from '../mascot/reveal.js?v=20260813-05';
+import { drawMascotGift } from '../mascot/gift.js?v=20260813-05';
 import { composer } from './postfx.js?v=20260813-05';
 
 // ============================================================
@@ -50,8 +52,45 @@ if (params.has('testhooks')) {
       };
     },
   };
+  // A tiny LCG so a headless run can pin the one RNG the stage now has — the
+  // gift draw. Everything else on stage is deterministic or purely decorative.
+  let giftRng = null;
+  const seededRng = (value) => {
+    let state = (value >>> 0) || 1;
+    return () => ((state = (state * 1664525 + 1013904223) >>> 0) / 4294967296);
+  };
+
   window.__THREE_GAME_TEST_HOOKS__ = {
-    seed() { /* stage has no gameplay RNG to pin */ },
+    seed(value) {
+      giftRng = Number.isFinite(value) ? seededRng(value) : null;
+    },
+    gift: {
+      // Pure draw, no ceremony — for asserting the distribution from a page.
+      draw(value) {
+        const rng = Number.isFinite(value) ? seededRng(value) : (giftRng || Math.random);
+        const drawn = drawMascotGift(rng);
+        return { tier: drawn.tier.id, name: drawn.name, cfg: drawn.cfg };
+      },
+      // Pin the tier, then run the real ceremony.
+      open(tierId = null) {
+        forceGiftTier(tierId);
+        if (ui.current === 'gift') ui.closeAll();
+        ui.open('gift');
+      },
+      skip: skipGiftCeremony,
+      get state() {
+        return {
+          active: giftReveal.active,
+          phase: giftReveal.phase,
+          tier: giftReveal.tier?.id ?? null,
+          name: giftReveal.name,
+          t: +giftReveal.t.toFixed(3),
+          rate: giftReveal.rate,
+          bursted: giftReveal.bursted,
+          mascotVisible: mascot.group.visible,
+        };
+      },
+    },
     setState(name) {
       if (name === 'stage') { leaveInstrumentView({ immediate: true, offerPriceChip: false }); return; }
       if (name === 'dance') { setDancing(true); return; }

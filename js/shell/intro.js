@@ -14,6 +14,7 @@ import { instrumentView } from '../view/instrument-presets.js?v=20260813-05';
 import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-05';
 import { mobileFollow } from '../view/mobile-controls.js?v=20260813-05';
 import { mascotMove } from '../mascot/state.js?v=20260813-05';
+import { giftPending } from '../mascot/reveal.js?v=20260813-05';
 import { play } from '../play/state.js?v=20260813-05';
 import {
   LOOP_MAX_SECONDS,
@@ -69,6 +70,16 @@ function shouldOfferOnboard() {
   try { return !localStorage.getItem(ONBOARD_KEY); } catch { return true; }
 }
 
+// The gift has its own gate, deliberately not `ONBOARD_KEY`. The two steps can
+// come apart: abandoning the ceremony writes nothing, and if the tip were then
+// dismissed the visitor would be left with the default look and no way to ever
+// be offered a character again. Keying on the save itself means the gift keeps
+// being offered until one actually exists — and never again after that.
+//
+// `giftPending` is resolved at boot by reveal.js, which needs the same answer
+// before the first frame in order to hide the unearned mascot. One source, so
+// the stage it prepares and the sequence run here can never disagree.
+
 function clearOnboardPulse() {
   if (!onboard.pulsing) return;
   onboard.pulsing = false;
@@ -94,24 +105,34 @@ function showOnboardTip() {
   onboardEl.hidden = false;
 }
 
-// First run is two steps in this order: make a mascot, then read what the stage
-// lets you do with it. Dressing up first gives the visitor something of their own
-// on stage before the tip tells them to walk it around.
+// First run is two steps in this order: receive a character, then read what the
+// stage lets you do with it. The gift hands the visitor someone of their own
+// before the tip tells them to walk it around — and it asks nothing of them,
+// which the wardrobe it replaced could not say.
 //
-// `ONBOARD_KEY` gates the whole sequence and is only written by ЗРОЗУМІЛО, so
-// leaving midway replays both steps next visit rather than stranding a visitor
-// who saw the wardrobe but never the tip.
+// The two steps carry separate gates on purpose (see shouldOfferGift above):
+// `ONBOARD_KEY`, written only by ЗРОЗУМІЛО, governs the tip, while the gift is
+// governed by whether a character has actually been saved. A visitor who backs
+// out of the ceremony still gets offered one next visit.
 export function startOnboard() {
-  if (!shouldOfferOnboard() || !onboardEl) return;
-  const onMascotClose = (event) => {
-    if (event.detail?.open !== false || event.detail?.name !== 'mascot') return;
-    window.removeEventListener('av2:modal', onMascotClose);
+  const wantsGift = giftPending;
+  const wantsTip = shouldOfferOnboard() && onboardEl;
+  if (!wantsGift && !wantsTip) return;
+  // Already has a character (or storage is unavailable) — go straight to the tip.
+  if (!wantsGift) {
+    requestAnimationFrame(showOnboardTip);
+    return;
+  }
+  const onGiftClose = (event) => {
+    if (event.detail?.open !== false || event.detail?.name !== 'gift') return;
+    window.removeEventListener('av2:modal', onGiftClose);
+    if (!wantsTip) return;
     // One frame late, so `closeAll()` has released its modal isolation first —
     // it restores `inert` on every body child, this card included.
     requestAnimationFrame(showOnboardTip);
   };
-  window.addEventListener('av2:modal', onMascotClose);
-  requestAnimationFrame(() => ui.open('mascot'));
+  window.addEventListener('av2:modal', onGiftClose);
+  requestAnimationFrame(() => ui.open('gift'));
 }
 
 export function updateOnboardPulse(t) {

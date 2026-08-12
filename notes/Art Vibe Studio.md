@@ -47,7 +47,7 @@ ways to play, then convert into **ціни / як записатися → Insta
 
 - [[Audio]] — the play-along contract. The most fragile, most rule-bound part of the project
 - [[Focus framing]] — how instrument close-ups get *measured* instead of hard-coded
-- [[Mascot]] — the avatar, its dressing-room editor, its performance poses
+- [[Mascot]] — the avatar, the gift that hands it to you, its performance poses
 - [[Prices]] — editing one JSON file is a complete price change
 - [[Current state]] — what is in flight right now
 

@@ -84,7 +84,7 @@ js/
   view/             # render rig, camera framing, focus views, pointer routing, viewport
   scene/            # procedural textures, stage, lighting, screen + slideshow, effects, sign surfaces
   instruments/      # procedural drums / piano / guitar / mic (+ shared materials)
-  mascot/           # appearance, model state, poses, walk collision, editor, per-frame update
+  mascot/           # appearance, model state, poses, walk collision, gift draw + reveal, per-frame update
   play/             # vibe meter, loop pedal, guitar, pads, piano notes, mixer, shared state
   shell/            # post-processing probe, intro flow, signs controller, headless QA hooks
 prices.json         # per-instrument lesson prices + promos
@@ -412,11 +412,17 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 Low-poly avatar labeled «Ти» (matched skin hands on both arms; no jacket-panel “fake hand”). Starts **downstage, nudged stage-left toward the guitar, inside the key spotlight pool** (`MASCOT_START`, also the fall respawn point), held back off the footlight row so those point lights cannot blow the costume out; the guitar sits in easy reach with every other instrument behind the visitor. Walk with click-to-move on the floor or the mobile stick. Can fall off stage edge (short recovery). Instrument focus poses or seats the mascot and reframes the camera.
 
-**Customization** (HUD person icon button next to the settings gear → `#modal-mascot`): three categories **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** with deliberately small, curated groups: four authored hairstyles (**Довге / Боб / Коротке / Мінімум** — side-swept fringe, blunt-fringe bob, clean crop, and bald with every hair piece hidden so the skin-toned scalp shows through; a shared fringe shell is restyled per hairstyle, and each style also places its side locks, which must fall beside and behind the jaw so long hair never reads as a beard), three smiles (**Легка / Широка / Стримана** — Широка is an open singing mouth with teeth, Стримана a calm closed lip with a hint of curve; default is Легка), five hair colors (also recolor brows), three eye colors (dedicated iris material; glasses/badge ink stays shared), four skin tones (**Теплий / Світлий / Золотий / Чорний**, applied to face and both hands), four coherent varsity palettes (**Сцена / Фірмовий / Джинс / Ніч** — matched sleeves, base + one primary + one accent on a placket / chest-stripe / hem-band / cuffs garment), four-option primary and accent overrides, a shoe-color override (**З ПАЛІТРИ / Чорні / Білі / Червоні**), four accessories (**немає / сережки / окуляри з дужками / навушники**), and height / build sliders. Removed legacy values (`buzz`, `tied`, `sunset` palette, `chain`, `cap`, the `blush` field, skin tones 1/2/6, dropped colors) fall back per-field to defaults when loading an older save. The procedural parts are created once and toggled or recolored in place. **РАНДОМ** chooses a compatible look; horizontal drag remains the sole orientation control.
+**The gift** (`#modal-gift`, opened by the first run only — there is no HUD control for it): the visitor **receives** a character rather than building one. An egg lands in the spotlight, rocks and strains for a few seconds, then cracks open along a jagged seam to reveal a randomly drawn look. **It happens exactly once.** There is no reroll and no way to reopen it: the character a visitor is given is theirs permanently, which is what makes the drawn tier worth anything. The gift is offered on every visit until a character has actually been saved, and never again after that.
+
+**A visitor who has no character never sees one.** The egg is placed on stage and the mascot hidden **before the first frame** — the intro fly-in renders for 2.6 s before onboarding runs, and showing the default mascot for that whole approach would give away that the character was never theirs.
+
+**The approach lands on the ceremony's own framing**, so the handover is invisible: `prepareGiftStage()` locks the viewing angle and resolves the exact camera pose the ceremony would frame the egg with, and the fly-in tweens to *that* instead of the default stage pose. There must be no change of angle when the ceremony takes the camera — the approach and the reveal are one continuous move. Two things break this and are guarded: **OrbitControls must not be enabled** for the frame between the approach landing and the gift opening (its own stale spherical state would snap the camera back), and **the instruments stay visible** throughout — hiding them, as the retired editor did, pops the whole band out of the scene on exactly that frame.
+
+**The visitor names their character.** The card carries a name field that starts **empty**, with the drawn name as its placeholder — a prefilled field invites editing someone else's answer, an empty one invites writing your own. Whatever it holds when the card closes is saved; an empty or whitespace-only field keeps the drawn name, so nobody ends up with an unnamed character. Capped at 24 characters because the card is fixed-width. The draw covers the same twelve appearance fields as before: four authored hairstyles (**Довге / Боб / Коротке / Мінімум** — side-swept fringe, blunt-fringe bob, clean crop, and bald with every hair piece hidden so the skin-toned scalp shows through; a shared fringe shell is restyled per hairstyle, and each style also places its side locks, which must fall beside and behind the jaw so long hair never reads as a beard), three smiles (**Легка / Широка / Стримана**), five hair colors (also recolor brows), three eye colors (dedicated iris material; glasses/badge ink stays shared), four skin tones (**Теплий / Світлий / Золотий / Чорний**, applied to face and both hands), four coherent varsity palettes (**Сцена / Фірмовий / Джинс / Ніч**), four-option primary and accent overrides, a shoe-color override (**З ПАЛІТРИ / Чорні / Білі / Червоні**), four accessories (**немає / сережки / окуляри з дужками / навушники**), and a height / build pair. Removed legacy values (`buzz`, `tied`, `sunset` palette, `chain`, `cap`, the `blush` field, skin tones 1/2/6, dropped colors) fall back per-field to defaults when loading an older save. The procedural parts are created once and toggled or recolored in place. Horizontal drag over the stage rotates the revealed character and is the sole orientation control.
 
 Only the mascot's major masses cast shadows (torso, neck, face, hair, limbs, shoes). Trim, stripes, collar, eyes and pins are excluded: they add nothing to the shadow map and would roughly double the shadow-pass draw calls now that the mascot stands in the key light. The guitar and mic follow the same rule inside that pool.
 
-Opening the editor creates a draft. Changes apply live to the 3D mascot; **ГОТОВО** commits them to `localStorage` `av2.mascot.v3`, while **✕ / Esc** restores the opening appearance. **СКИНУТИ** resets the draft and exposes **ПОВЕРНУТИ**. The measured unobscured canvas rectangle—not a fixed breakpoint offset—frames either head / shoulders or the full body around the actual HUD and panel bounds. Horizontal preview drag rotates the mascot without moving the stage camera. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the preview. Background controls are inert, and backdrop taps never close the editor.
+The character is written to `localStorage` `av2.mascot.v4` **on the reveal frame**, not on a later confirm: there is no draft to back out of, so what is on disk always matches what is standing on stage. **✕ / Esc** before the burst abandons the ceremony and writes nothing — so the visitor still has no character, and the gift is offered again on their next visit. After the burst the character is already saved and **ГОТОВО** simply closes the card. A tap anywhere outside the card (or Enter / Space) skips ahead to the reveal, after a short grace period so the tap that opened the gift cannot also skip it. The measured unobscured canvas rectangle — not a fixed breakpoint offset — frames the egg, and then the character, around the actual HUD and card bounds. The camera returns to its saved frame on close. Instruments and stage hints are temporarily hidden so they cannot obscure the ceremony. Background controls are inert, and backdrop taps never close the modal.
 
 Opening the editor while an instrument is focused leaves that focus immediately (no return animation): the instrument settles into its resting pose (the guitar drops back onto its stand) and the camera snaps straight to its pre-focus stage frame before the editor's own preview camera takes over. That snap must land exactly on the saved frame — any orbit drag made just before opening the editor must not leave a residual offset — since the editor saves this exact position as the frame to restore on close.
 
@@ -505,12 +511,12 @@ Unlocked once after first vibe fill. Record layers while playing; pause / clear 
 | Overlay | Purpose |
 |---------|---------|
 | Intro | Brand splash; **ВИЙТИ НА СЦЕНУ** starts the visual fly-in while audio stays dormant. A reload / same-tab return bypasses the splash and also leaves audio dormant until a real sound action. |
-| Onboard | Second step of the first run, after mascot customization: one tip (`localStorage` `av2.onboard.v2`) dismissed only by **ЗРОЗУМІЛО**; mic pulse cue |
-| HUD | Logo (click = mascot dance), VIBE, **pricing button** (gold graduation-cap icon, **Уроки та ціни**), **mascot button**, **settings mixer** (gear) |
+| Onboard | Second step of the first run, after the first gift: one tip (`localStorage` `av2.onboard.v2`) dismissed only by **ЗРОЗУМІЛО**; mic pulse cue |
+| HUD | Logo (click = mascot dance), VIBE, **pricing button** (gold graduation-cap icon, **Уроки та ціни**), **settings mixer** (gear). No gift control — the gift is a first-run event, not a feature to revisit |
 | Settings mixer | Opens from the gear (**Налаштування**): **Світло** fader (0–100%, `av2.lights.v2`, default `78`; **GLAMOUR** defaults to `67` and **PIXEL** to `100` when unset), **Гучність** with per-instrument faders (0–100%; 100% is boosted gain), then the **Камера** selector and the minimal **Графіка** selector |
-| Modals | **Mascot customization**, graphics-reload confirmation, steps, rules, **interactive pricing mixer**, **sign form** (`#modal-sign`, § Signs — reachable from the below-HUD marker button when storage is alive) |
+| Modals | **Mascot gift** (`#modal-gift`), graphics-reload confirmation, steps, rules, **interactive pricing mixer**, **sign form** (`#modal-sign`, § Signs — reachable from the below-HUD marker button when storage is alive) |
 | Chord / strum / vocal pads | Instrument play helpers while focused |
-| Chip | Once-per-instrument price teaser: a compact tag-style pill reading as one line — instrument emoji + «Уроки» + a CTA button carrying the price, «від N зл ›» — fading in/out softly. The price is the CTA label; there is no separate «ЦІНИ» word. Before `prices.json` lands (or when an instrument has no single lesson) the button reads «в Art Vibe ›» and is rewritten in place the moment the file arrives. **Placement:** on desktop it hangs under the HUD's lessons-and-prices button, their right edges aligned (measured on each show, so it follows the nav when the sign button appears); at the phone breakpoint it stays bottom-centre, above the pads. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument's focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. **A shown chip buys a 3-minute global quiet period** — however it ended (read, dismissed, or timed out on its own) — before the next one, of any instrument, is allowed to show; a visitor who quickly samples several instruments gets one nudge at a time. Skipped on fall, instrument switch, and mascot-editor leave. |
+| Chip | Once-per-instrument price teaser: a compact tag-style pill reading as one line — instrument emoji + «Уроки» + a CTA button carrying the price, «від N зл ›» — fading in/out softly. The price is the CTA label; there is no separate «ЦІНИ» word. Before `prices.json` lands (or when an instrument has no single lesson) the button reads «в Art Vibe ›» and is rewritten in place the moment the file arrives. **Placement:** on desktop it hangs under the HUD's lessons-and-prices button, their right edges aligned (measured on each show, so it follows the nav when the sign button appears); at the phone breakpoint it stays bottom-centre, above the pads. **N is that instrument's own cheapest single lesson**, read from `prices.json`. Its full non-control surface opens its CTA; carousel arrows are hidden chrome — swipe still changes slides (the hidden arrow buttons are driven programmatically). The chip is queued on first play (pointer or keyboard), shown after leaving that instrument's focus — or after ~2 s of silence from that instrument if the play was keyboard-only without focus. **A shown chip buys a 3-minute global quiet period** — however it ended (read, dismissed, or timed out on its own) — before the next one, of any instrument, is allowed to show; a visitor who quickly samples several instruments gets one nudge at a time. Skipped on fall, instrument switch, and leaving the gift reveal. |
 | Toast / tooltip | Short feedback |
 
 ### Графіка
@@ -682,20 +688,23 @@ The planned piano feedback / loop milestone will use one attack event. `key` is 
 
 A glissando emits one event for each newly crossed key in order. The loop pedal preserves each event's timing and velocity; pointer identity and camera-gesture state are never recorded.
 
-### `av2.mascot.v3` (localStorage)
+### `av2.mascot.v4` (localStorage)
 
-Mascot customization, merged over defaults and validated on load (unknown / malformed values fall back per field). Older `av2.mascot.v1` / `av2.mascot.v2` values are intentionally ignored so a key bump resets appearance for returning visitors:
+The character the visitor was given, written on the reveal frame, merged over defaults and validated on load (unknown / malformed values fall back **per field**, so one bad value never invalidates the whole look). Older `av2.mascot.v1` … `v3` values are intentionally ignored — a key bump is how returning visitors get reset, and v3 looks were hand-authored in the retired editor so they carry no tier:
 
 ```js
 {
-  hair: "long",             // "long" | "bob" | "short" | "buzz" | "tied"
-  hairColor: "5a2f22",      // 6-digit hex, no '#'
-  smile: "neutral",         // "soft" | "wide" | "neutral"
+  tier: "common",           // "common" | "rare" | "epic" | "legendary"
+  hair: "long",             // "long" | "bob" | "short" | "bald"
+  hairColor: "5a2f22",      // 5a2f22 | 241a14 | c9a35f | a14d2d | b04a68
+  smile: "soft",            // "soft" | "wide" | "neutral"
+  eyeColor: "dark",         // "dark" | "green" | "blue"
   outfit: "stage",          // "stage" | "vibe" | "denim" | "night"
-  outfitPrimary: "default", // "default" | "purple" | "gold" | "denim" | "ink"
-  outfitAccent: "default",  // "default" | "purple" | "gold" | "cream" | "green"
-  skinTone: "tone-3",       // "tone-1" … "tone-7"
-  accessory: "hoops",      // "none" | "hoops" | "glasses" | "headphones"
+  outfitPrimary: "default", // "default" | "purple" | "gold" | "denim"
+  outfitAccent: "default",  // "default" | "purple" | "gold" | "cream"
+  shoeColor: "default",     // "default" | "ink" | "cream" | "red"
+  skinTone: "tone-3",       // "tone-3" | "tone-4" | "tone-5" | "tone-7"
+  accessory: "hoops",       // "none" | "hoops" | "glasses" | "headphones"
   height: 100,              // percent, 70–145
   width: 100                // percent, 65–150
 }
@@ -703,7 +712,7 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 
 ### First-run UI state (localStorage / sessionStorage)
 
-- `av2.onboard.v2` gates the whole first-run sequence (mascot customization, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
+- `av2.onboard.v2` gates the whole first-run sequence (the first gift, then the tip) and is written only by **ЗРОЗУМІЛО**. Leaving before that click replays both steps on the next visit.
 - `av2.chord-key.v1` holds the chord wheel's key and seventh toggle as `{ tonic, sevenths }` (§ The chord wheel); an out-of-range or corrupt record falls back to C major with sevenths off.
 - `av2.mobile-play-hint.v2` records the one-time unavailable-**ГРАТИ** proximity hint.
 - `av2.sign.v1` holds the visitor's last stage sign (`{ text, color, ts }`): prefill plus the rolling 24-hour gate.
@@ -717,12 +726,14 @@ Mascot customization, merged over defaults and validated on load (unknown / malf
 |-------|--------|
 | `nointro` | Skip splash; land on stage + HUD |
 | `autoenter` | Auto-click enter after load |
-| `skiponboard` | Never show the first run — no mascot editor and no tip |
+| `skiponboard` | Never show the first run — no gift and no tip |
 | `shot=pricing\|rules\|steps\|chip\|toast` | Open overlay / demo UI |
 | `anchor=vocal\|guitar\|drums\|piano` | Preselect pricing instrument |
 | `sstime` | Slideshow timing override (debug) |
 | `camera=follow\|free` | Force the stage camera for one load, ignoring `av2.camera.v1` (does not persist) |
-| `testhooks` | Headless QA only: exposes `__THREE_GAME_TEST_HOOKS__` (setState: stage/piano/guitar/drums/mic/vibe/dance, debug `pick(clientX, clientY)` raycast listing, a `scene` handle for isolation toggles, a `state` snapshot of the view / walk / mascot / camera-distance limits, and `captureFrame()` for synchronous canvas capture) + `__THREE_GAME_DIAGNOSTICS__` (renderer counts) for the canvas inspector; never active for visitors |
+| `testhooks` | Headless QA only: exposes `__THREE_GAME_TEST_HOOKS__` (setState: stage/piano/guitar/drums/mic/vibe/dance, debug `pick(clientX, clientY)` raycast listing, a `scene` handle for isolation toggles, a `state` snapshot of the view / walk / mascot / camera-distance limits, `captureFrame()` for synchronous canvas capture, `seed(n)` to pin the gift RNG, and a `gift` group with `draw(seed)` / `open(tier)` / `skip()` / `state`) + `__THREE_GAME_DIAGNOSTICS__` (renderer counts) for the canvas inspector; never active for visitors |
+| `gift=common\|rare\|epic\|legendary` | With `testhooks` only: pins every draw to that tier |
+| `giftfast` | With `testhooks` only: replays the same reveal timeline at ~40× so a headless run can drive many pulls |
 | `headless` | With `testhooks` only: pumps the frame loop from a worker interval so hidden/backgrounded QA tabs still simulate and render |
 
 `testhooks`, `headless` and `shot` also stop analytics events being **sent** — QA
@@ -735,7 +746,7 @@ still recorded into `window.__av2Events`, which is how headless checks assert th
 
 **Two steps, in this order,** once the camera fly-in lands:
 
-1. **Mascot customization** opens on its own (`#modal-mascot`, §Mascot). The visitor leaves it by any of its normal routes — **ГОТОВО**, **✕**, Esc.
+1. **The first gift** opens on its own (`#modal-gift`, §Mascot) and asks nothing of the visitor — it hands them a character in a few seconds. The egg is already standing in the spotlight when the fly-in lands (§Mascot), so it does not pop in. They leave it by any of its normal routes — **ГОТОВО**, **✕**, Esc. This opening rides the camera fly-in rather than a tap, so it is **silent**: creating an `AudioContext` without a user gesture is forbidden (§ Audio activation), and every synth call no-ops until one arrives.
 2. **The tip** appears one frame later.
 
 Default copy:
@@ -886,85 +897,88 @@ this site can observe — it is the conversion number.
 
 ---
 
-## 13. Mascot customization v2
+## 13. Mascot gift (гача)
 
 ### Outcomes
 
-The editor should feel like a small dressing room inside the stage, not a settings form.
+The gift should feel like being handed someone, not like filling in a form. The editor it replaced asked visitors to design a character before they had any reason to care about one.
 
-1. A first-time visitor can make a recognizable change and return to play in **under 30 seconds**.
-2. Every change is visible on the real mascot at a useful scale; the panel never covers the face or the body part being edited.
-3. Exploration is reversible. **ГОТОВО** commits the draft; **✕ / Esc** cancels it and restores the configuration from when the editor opened.
-4. The feature stays lightweight: procedural geometry, shared materials and build-time canvas micro-textures (knit, rib, hair strands), curated choices, local persistence, and no account or asset download.
+1. A first-time visitor meets their character in **under five seconds**, having chosen nothing.
+2. The reveal is legible as an event: several seconds of building anticipation, then a payoff loud enough to be worth having waited for.
+3. It happens **once per visitor, permanently**. No reroll, no reopening, no HUD entry point — a tier that can be re-rolled away is not a tier. The gift is re-offered only until a character actually exists in storage.
+4. The feature stays lightweight: procedural geometry, shared materials, curated pools, local persistence, no account or asset download.
 
-### Information architecture and flow
+### The draw
 
-- Use three short categories: **ОБЛИЧЧЯ** (hair, hair color, smile, skin tone), **ОДЯГ** (outfit, color overrides, accessories), and **ФОРМА** (height, build). Do not force a step-by-step wizard; the visitor may switch categories in any order.
-- Keep the category rail, title / close control, and bottom action bar visible. Only the category contents scroll.
-- The first-run handoff after **ЗРОЗУМІЛО** uses this same editor and never requires a choice. **ГОТОВО** is visible immediately so the visitor can keep the default and reach the stage.
-- Selecting an option updates an in-memory draft and the 3D preview immediately. It does not write `localStorage` on every tap or slider tick.
-- **ГОТОВО** writes the validated draft, closes the editor, and restores the previous stage camera. It shows no toast — the mascot standing there in its new look is the confirmation.
-- **✕ / Esc** restores the opening snapshot in 3D and storage before closing. Backdrop taps remain inert.
-- **СКИНУТИ** changes the draft to defaults but does not close or persist it. Offer an inline **ПОВЕРНУТИ** action until the next edit; committing still requires **ГОТОВО**.
-- **РАНДОМ** chooses a random look only from curated compatible options. It updates the draft and supports the same undo / cancel behavior.
+- **Tier first, then a constrained draw from that tier's pools.** Rarity is never scored from the drawn traits: a score model produces looks that are statistically rare but read as ordinary, and the reveal then promises something the character cannot deliver.
 
-### Responsive composition
+| Tier | Weight | Accent |
+|------|--------|--------|
+| **ЗВИЧАЙНИЙ** | 58% | cream `0xFDFBF7` |
+| **РІДКІСНИЙ** | 27% | denim `0x5B82A6` |
+| **ЕПІЧНИЙ** | 11% | purple `0x9E33CA` |
+| **ЛЕГЕНДАРНИЙ** | 4% | gold `0xD1A13B` |
 
-| Viewport | Editor | Preview |
-|----------|--------|---------|
-| Desktop / wide tablet | Right rail, `380–440 px`; sticky header and action bar | Safe rectangle in the remaining canvas, centered on the mascot |
-| Phone portrait | Bottom sheet, normally `50–58dvh`; sticky header / categories / actions | Safe rectangle between the HUD and the measured top edge of the sheet |
-| Phone landscape / short viewport | Side rail instead of a bottom sheet when the upper preview strip would be too shallow | Largest unobscured canvas rectangle |
+- **The ceremony is identical at every tier** — the same ~7 s timeline, five thumps, five bursts, bloom ramp and closing spin that used to be reserved for a legendary. A visitor receives one gift in their life, so scaling the spectacle to the roll would mean most people never see the good version of the only reveal they will ever get. A tier carries **only** a label and an accent colour, and must never grow timing or intensity fields again.
+- **Every character has a name**, at every tier. Pools are flavoured per tier and every name is distinct, so a common is never called something that oversells it and no two characters share one. Legendary names belong to their authored looks.
 
-- Derive the preview rectangle from `visualViewport`, safe-area insets, HUD bounds, and the actual panel bounding box. Do not rely on a width breakpoint plus hard-coded camera offsets.
-- Frame **ОБЛИЧЧЯ** as head and shoulders. Frame **ОДЯГ** and **ФОРМА** as a full-body view with a small amount of stage floor visible.
-- Offset the preview by shifting the camera look target, never by lowering the camera with its target. This keeps the camera above the platform edge at every height / build value, so the stage floor cannot occlude the mascot.
-- Refit on open, category change, resize, orientation change, `visualViewport` change, and after height / build changes. Slider movement may use a throttled refit and settle once input ends so the camera does not visibly jitter.
-- The complete relevant mascot bounds must remain inside the preview rectangle with at least `16 px` visual margin. Hair, shoes, and the customized height extremes count toward those bounds.
-- Horizontal drag in the unobscured preview rotates the mascot around its own Y axis. Preview gestures never orbit the stage camera, move the mascot, or start a dance.
-- Background stage controls are disabled while editing. Panel gestures never leak into raycasting, walking, orbit, zoom, or instrument play.
-- Under `prefers-reduced-motion`, use a short dissolve or immediate reframe instead of a long camera tween; essential live appearance feedback remains.
+- The card shows the tier and the name and nothing else — no trait list. Higher tiers weight toward the traits that read as distinctive at stage distance — `bald`, the `night` palette, `headphones`, the pink hair swatch, `gold` overrides, wider height / build ladders. Common keeps the whole vocabulary so the ordinary population stays varied.
+- **`skinTone` is drawn evenly at every tier and must never become a rarity signal.**
+- **Legendary is six authored looks**, picked uniformly, each carrying at least two signature traits and its own name. A tier a visitor cannot recognise on sight is not a tier.
+- There is **no pity counter and no repeat-guard**: both only made sense with rerolls. 4% is the true one-shot rate, and the draw is pure — same rng in, same character out.
+- Two identical characters never arrive back to back; an exact repeat is redrawn once.
 
-### Control design
+### The reveal
 
-- Use a minimum target of **48 × 48 CSS px** with `8 px` separation for category, choice, swatch, close, and action controls.
-- Replace ambiguous visible hair labels with **Довге / Боб / Коротке / Мінімум** while retaining the existing runtime IDs.
-- Each group label also exposes its selected value, for example `КОЛІР ВОЛОССЯ · КАШТАНОВЕ`.
-- Hair-color and future skin-tone swatches show a selected checkmark and a visible or screen-reader label; color is never the only signal.
-- Outfit choices show the name plus a small 2–3-color palette preview so visitors can predict the result without cycling through every option.
-- Height and build are labeled sliders without numeric or endpoint descriptions.
-- Arrow keys move within radio groups; Home / End select the first / last option. Sliders retain native keyboard behavior. Focus returns to the HUD mascot button after close.
-- The modal uses `role="dialog"`, `aria-modal="true"`, an accessible title, a focus trap, and an inert background. Live slider updates do not flood an `aria-live` region.
+Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 Hz in a hidden tab, which would strand the burst).
 
-### Feature set
+| Beat | What |
+|------|------|
+| `fly` 0 → 0.9 s | Camera tweens to the egg; the egg pops in with overshoot |
+| `settle` → 1.25 s | The egg rests. Shell and glow stay neutral cream **at every tier** — no tell yet |
+| `strain` → +3.8 s | The rocking escalates; the upper shell lifts off the seam and the glow leaks through the crack. From 60% through the strain the glow lerps toward the tier accent — the tell, late enough to land as a payoff. Bloom ramps with it. Five thumps, evenly spaced |
 
-| Layer | Scope |
-|-------|-------|
-| **Editor foundation** | Measured preview safe rectangle; category rail; sticky actions; draft / commit / cancel model; reset undo; accessible dialog and radio behavior; compact landscape layout |
-| **Identity and delight** | Four curated skin tones applied to face and both hands; five hair colors; three eye colors on a dedicated iris material inside a layered sclera / iris / pupil eye, so the chosen color reads at stage distance; three authored smiles (soft default, open singing wide, calm neutral); drag-to-rotate preview; compatible random look |
-| **Wardrobe** | Accessories `немає / сережки / окуляри / навушники` (glasses have temple arms and tinted lens fills); four authored hairstyles (including bald) with a restyled shared fringe, per-style lock placement, and a long-style back fall; four varsity palettes (**Сцена / Фірмовий / Джинс / Ніч**) on the placket / chest-stripe / hem-band / cuffs garment; four-option primary / accent overrides; shoe-color override with a palette-default option |
+**The ceremony is percussion only — no melody.** Knocking from inside the shell and a crash at the hatch. A pitched line turns the reveal into a jingle and competes with the instruments the visitor is about to play.
+| `burst` | The cap flies off; five firework bursts; footlight pulse; crash. **The config is validated, applied and written to storage on this frame.** The character lands with a scale overshoot |
+| `pose` +0.1 → ~1.4 s | Camera pushes onto the character; arms up, hold, relax. Legendary gets a full turn |
+| `card` +0.55 s | The card shows the tier and an editable name field; focus moves to **ГОТОВО** (not the field — an autofocused input would raise the phone keyboard over the character) |
+| `held` | Idle. Horizontal drag rotates the character |
 
-All options reuse or toggle cached geometry and shared materials. Changing a choice must not allocate new meshes, materials, textures, or synthesis work inside the input handler. Arbitrary uploads, AI avatars, an unrestricted color picker, accounts, and a downloadable wardrobe remain out of scope.
+- **One rate scalar (`giftReveal.rate`) owns every time distortion** — `1` normally, `~5` under `prefers-reduced-motion`, `~40` under `?giftfast`. The timeline is authored once at real speed and replayed faster, so no second set of durations can drift from it. Audio is scheduled in absolute `AudioContext` time before the rate is applied, so it never drifts with frame pacing.
+- The ceremony is **exempt from the 15 fps modal render budget**; the `held` phase is not.
+- Under `prefers-reduced-motion` the whole thing collapses to about a second: no wobble, one burst, no bloom ramp, no pose. **Audio is unchanged** — it is action feedback, not ambient shimmer. The tier is still carried by the card and the accent colour.
+- A tap outside the card, or Enter / Space, skips to the reveal after a 400 ms grace so the opening tap cannot also skip it.
+- The egg is **built once at boot** and kept invisible: three meshes, two materials, ~1.7k triangles, **no lights**. A light added lazily would relink every lit program mid-ceremony. Both shell halves are generated from one surface function so the jagged seam interlocks; a clean equatorial cut reads as a sliced egg rather than a hatched one.
 
-### Persistence and migration
+### Persistence
 
-- `av2.mascot.v3` is the source contract. Prior mascot keys are not migrated. A malformed v3 field falls back independently and never invalidates the whole look.
-- The editor holds `openingConfig` and a live draft separately; only **ГОТОВО** writes storage.
+- `av2.mascot.v4` is the source contract (§7). Prior mascot keys are not migrated. A malformed field falls back independently and never invalidates the whole look.
+- Storage is written **at the reveal**, not on a later confirm. There is no draft: the pull the visitor is looking at is the pull they have.
+- Preview rotation angle is session-only and never part of the saved appearance.
+- The stage must keep working if `v4` is removed or storage is unavailable; fall back to defaults without blocking entry.
 
-- `openingConfig`, drafts, undo state, and preview angle are session-only. Preview angle is not part of the saved appearance.
-- The current appearance must keep working if v3 is removed or storage is unavailable; fall back to defaults without blocking entry to the stage.
+### Accessibility and framing
+
+- Derive the framing rectangle from `visualViewport`, safe-area insets, HUD bounds, and the measured card bounding box — never a width breakpoint plus hard-coded camera offsets. Refit on open, resize, orientation change, `visualViewport` change, and when the card appears.
+- Offset by shifting the camera look target, never by lowering the camera with its target, so the stage floor cannot occlude the subject at any height / build value.
+- The complete relevant bounds stay inside that rectangle with at least `16 px` margin, hair and shoes included.
+- Minimum target **48 × 48 CSS px** for the card's controls. The modal uses `role="dialog"`, `aria-modal="true"`, an accessible title, a focus trap and an inert background.
+- A polite `aria-live` status announces the start of the ceremony and then the tier and name — never per frame.
+- Background stage controls are disabled while open; gestures never leak into raycasting, walking, orbit, zoom or instrument play.
 
 ### Acceptance
 
-- Validate at `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`, including browser chrome / `visualViewport` changes. The relevant mascot bounds never intersect the editor panel or HUD.
-- **ГОТОВО**, **✕**, and the active category remain reachable without scrolling the control body.
-- **ГОТОВО** survives reload. **✕ / Esc** leaves storage unchanged and restores every opening value. Reset → undo returns the exact preceding draft.
-- All combinations remain readable at the height / build extremes and do not detach hands, pointer label, fall scaling, or instrument poses. At 145% height / 150% build and 131% height / 65% build, the stage floor must not cross in front of the mascot. Test idle, walk, dance, fall, and each instrument focus pose.
-- A 20-change stress pass creates no additional mascot meshes or materials and causes no visible frame hitch.
-- Keyboard-only and screen-reader passes can identify the dialog, current category, selected values, slider values, reset, cancel, and commit controls. Focus never escapes behind the dialog.
-- In a five-person first-use test, at least four visitors change hair or outfit, inspect the preview, and return to the stage within **30 seconds** without verbal help.
-
----
+- Validate at `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`. The character never intersects the card or the HUD.
+- The full ceremony renders at the display frame rate, not the 15 fps modal budget.
+- On a first run the **mascot is never visible at any point before the reveal** — not during the fly-in, not for a single frame — and the egg is on stage at full scale throughout the approach.
+- The camera moves **zero units and turns zero degrees** on the frames where the ceremony takes over from the approach, and the instruments never disappear.
+- A renamed character survives reload; an emptied name field falls back to the drawn name rather than saving a blank.
+- **A 20-pull stress pass creates no additional geometries or textures** (`__THREE_GAME_DIAGNOSTICS__.renderer`) and causes no visible frame hitch.
+- Reload after a reveal restores the same character. **Esc** mid-strain leaves storage untouched, restores the previous look, and returns bloom to its base — an abandoned ramp must never leave the stage permanently over-bloomed.
+- The first-run gift creates **no `AudioContext`** (no user gesture has happened yet) and still completes normally.
+- Every tier is reachable via `?gift=`, renders its accent, is named, and reports `stage-gift-<tier>` into `window.__av2Events`. A common draw runs the same ~7 s ceremony as a legendary.
+- All drawn combinations stay readable at the height / build extremes and do not detach hands, pointer label, fall scaling, or instrument poses. Test idle, walk, dance, fall, and each instrument focus pose.
+- Keyboard-only and screen-reader passes can identify the dialog, the tier, the character, and both actions. Focus never escapes behind the dialog.
 
 ## 14. Change checklist
 

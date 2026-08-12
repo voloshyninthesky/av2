@@ -34,7 +34,7 @@ export class UI {
       steps: document.getElementById('modal-steps'),
       rules: document.getElementById('modal-rules'),
       pricing: document.getElementById('modal-pricing'),
-      mascot: document.getElementById('modal-mascot'),
+      gift: document.getElementById('modal-gift'),
       sign: document.getElementById('modal-sign'),
     };
     this.current = null;
@@ -178,8 +178,10 @@ export class UI {
   _focusModal(name) {
     if (this.current !== name) return;
     const modal = this.modals[name];
-    const preferred = name === 'mascot'
-      ? modal?.querySelector('[data-mascot-tab][aria-selected="true"]')
+    // The gift card is hidden until the reveal lands, so there is nothing to
+    // focus while the ceremony plays; reveal.js focuses ГОТОВО when it appears.
+    const preferred = name === 'gift'
+      ? modal?.querySelector('#gift-keep')
       : null;
     (preferred || this._focusableElements(modal)[0])?.focus();
   }
@@ -188,8 +190,9 @@ export class UI {
     if (this.current) this.closeAll({ restoreFocus: false });
     const m = this.modals[name];
     if (!m) return;
-    this._modalTrigger = trigger
-      || (name === 'mascot' ? document.getElementById('mascot-btn') : document.activeElement);
+    // The gift has no HUD trigger — it only ever opens itself during the first
+    // run — so there is nothing to restore focus to but whatever was active.
+    this._modalTrigger = trigger || document.activeElement;
     m.hidden = false;
     this.current = name;
     this._focusModal(name);

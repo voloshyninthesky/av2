@@ -55,6 +55,7 @@ import {
 } from './play/piano-notes.js?v=20260813-05';
 import {
   composer,
+  bloomPass,
   initPostprocessing,
   updateMobileQualityProbe,
   qualityWarmup,
@@ -78,7 +79,15 @@ import {
   beginKeyboardVocal,
   initMixer,
 } from './play/mixer.js?v=20260813-05';
-import { mascotEditor, queueMascotRefit, mascotCam, initMascotEditor } from './mascot/editor.js?v=20260813-05';
+import {
+  giftCam,
+  queueGiftRefit,
+  updateGiftReveal,
+  isGiftCeremonyRunning,
+  prepareGiftStage,
+  giftApproachFraming,
+  initMascotGift,
+} from './mascot/reveal.js?v=20260813-05';
 import {
   params,
   isLowEndMobileGameMode,
@@ -215,6 +224,7 @@ initInstrumentView({
 initPostfx({ syncRendererToWindow });
 initViewport({
   syncInstrumentExposure,
+  onGiftRefit: queueGiftRefit,
   resizeComposer: () => {
     if (!composer) return;
     composer.setPixelRatio(renderer.getPixelRatio());
@@ -237,7 +247,16 @@ initIntro({
   resetBrowserPageZoom,
   hoveredMesh: () => hovered,
 });
-initMascotEditor({ respawnMascot, closeSoundMixer, syncInstrumentExposure });
+// The gift ceremony ramps bloom, which lives in shell/ — above mascot/ — so it
+// is handed down rather than imported upward. `bloomPass` is null until
+// postprocessing warms up, and stays null on low-end mobile, so every access is
+// guarded here rather than at each call site.
+initMascotGift({
+  respawnMascot,
+  syncInstrumentExposure,
+  bloomBaseStrength: () => (bloomPass ? bloomPass.strength : null),
+  setBloomStrength: (value) => { if (bloomPass) bloomPass.strength = value; },
+});
 initSigns();
 // Filling the meter opens the loop pedal and signing together. vibe.js sits
 // below shell/, so the reveal is handed down rather than imported upward.
@@ -365,12 +384,17 @@ window.addEventListener('resize', syncRendererToWindow);
 // MAIN LOOP
 // ============================================================
 const clock = new THREE.Clock();
+const flyLookTarget = new THREE.Vector3();
+const flyEndPos = new THREE.Vector3();
 let firstFrame = true;
 let lastRenderedFrameAt = -Infinity;
 
 function renderIntervalMs() {
   if (isMobileQualityProbe()) return 0;
   if (!session.started) return 1000 / 10;
+  // The gift ceremony is a modal that animates — the 15 fps modal budget below
+  // would turn its few seconds of suspense into a slideshow.
+  if (isGiftCeremonyRunning()) return isLowEndMobileGameMode() ? 1000 / 30 : 0;
   if (ui.modalOpen) return 1000 / 15;
   if (isLowEndMobileGameMode()) return 1000 / 30;
   return 0;
@@ -398,25 +422,46 @@ function animate(frameTime = performance.now()) {
     session.flyT += dt;
     const k = Math.min(1, session.flyT / FLY_DUR);
     const e = easeInOut(k);
-    camera.position.lerpVectors(CAM_START, CAM_END, e);
-    camera.lookAt(TARGET);
+    // On a first run the stage holds an egg instead of a mascot, and the
+    // approach lands on *exactly* the pose the ceremony frames it with — so when
+    // the ceremony takes the camera a frame later there is nothing left to move.
+    // Anything short of that reads as a jolt in the middle of the reveal.
+    if (giftApproachFraming(flyEndPos, flyLookTarget)) {
+      camera.position.lerpVectors(CAM_START, flyEndPos, e);
+      flyLookTarget.lerpVectors(TARGET, flyLookTarget, e);
+      camera.lookAt(flyLookTarget);
+    } else {
+      camera.position.lerpVectors(CAM_START, CAM_END, e);
+      camera.lookAt(TARGET);
+    }
     if (k >= 1) {
       session.flyT = -1;
-      controls.enabled = true;
+      // The gift opens one frame after this, and OrbitControls holds its own
+      // spherical state that the manual fly-in never wrote to. Enabling it for
+      // that single gap frame lets controls.update() snap the camera back to
+      // where *it* thinks the camera belongs — the jolt between the approach and
+      // the reveal. Hand the target over instead and leave control to the
+      // ceremony, which disables it anyway.
+      if (giftApproachFraming(flyEndPos, flyLookTarget)) {
+        controls.target.copy(flyLookTarget);
+      } else {
+        controls.enabled = true;
+      }
       ui.showHUD();
       startOnboard();
     }
-  } else if (mascotCam.active) {
-    // ОБРАЗ modal camera framing (tween toward / away from the mascot).
-    mascotCam.t += dt;
-    const k = Math.min(1, mascotCam.t / (prefersReducedMotion.matches ? 0.01 : 0.6));
+  } else if (giftCam.active) {
+    // ПОДАРУНОК modal camera framing (tween toward / away from the egg, then
+    // onto the character it hatches).
+    giftCam.t += dt;
+    const k = Math.min(1, giftCam.t / (prefersReducedMotion.matches ? 0.01 : 0.6));
     const e = easeInOut(k);
-    camera.position.lerpVectors(mascotCam.fromPos, mascotCam.toPos, e);
-    controls.target.lerpVectors(mascotCam.fromTgt, mascotCam.toTgt, e);
+    camera.position.lerpVectors(giftCam.fromPos, giftCam.toPos, e);
+    controls.target.lerpVectors(giftCam.fromTgt, giftCam.toTgt, e);
     camera.lookAt(controls.target);
     if (k >= 1) {
-      mascotCam.active = false;
-      if (mascotCam.returning) controls.enabled = true;
+      giftCam.active = false;
+      if (giftCam.returning) controls.enabled = true;
     }
   } else if (!updateInstrumentViewCamera(dt) && controls.enabled) {
     controls.update();
@@ -424,6 +469,7 @@ function animate(frameTime = performance.now()) {
 
   // instruments
   for (const inst of instruments) inst.update(dt, t, prefersReducedMotion.matches);
+  updateGiftReveal(dt);
   updateMascot(dt);
   updateMobilePlayAvailability();
   updateOnboardPulse(t);
@@ -535,6 +581,9 @@ Promise.all([
     window.__dbg = 'photo slideshow disabled: Art Vibe title slide only';
   }
   addLabels();
+  // Before the first frame: a visitor who has not been given a character yet
+  // must never see the default one standing on stage.
+  prepareGiftStage();
   renderer.compile(scene, camera);
   animate();
 

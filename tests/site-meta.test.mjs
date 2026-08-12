@@ -200,6 +200,23 @@ test('the stage funnel is wired to the paths visitors actually take', () => {
   // Every instrument route funnels through addVibe; hooking anything narrower
   // would miss the keyboard and pad paths.
   assert.match(functionSource('addVibe'), /trackOnce\('stage-first-play'\)/);
+  // The gift is the first-run step, so it reports on open. `trackOnce`, never
+  // `track`: a visitor with cleared storage could otherwise re-report on every
+  // visit and skew the four-step funnel this dashboard exists to show.
+  assert.match(functionSource('beginGiftCeremony'), /trackOnce\('stage-gift-open'\)/);
+  assert.doesNotMatch(functionSource('beginGiftCeremony'), /[^e]track\(/);
+  assert.doesNotMatch(functionSource('fireBurst'), /[^e]track\(/);
+});
+
+test('the gift ceremony never creates an AudioContext', () => {
+  // The gift only ever opens from the camera fly-in, which is not a user
+  // gesture, so it must not unlock audio by any route — silence before a real
+  // sound action is a standing rule. There is no longer a gesture-opened path.
+  const source = functionSource('beginGiftCeremony');
+  assert.doesNotMatch(source, /audio\.(unlock|init|resume)\(/,
+    'beginGiftCeremony must not touch the audio context directly');
+  assert.doesNotMatch(source, /activateAudioForSound/,
+    'the gift has no gesture-opened path left, so it must never unlock audio');
 });
 
 test('booking links never depend on analytics succeeding', async () => {

@@ -21,11 +21,13 @@ import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js
 import { instrumentViewFrame } from './focus-frame.js?v=20260813-05';
 import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260813-05';
 import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260813-05';
-import { mascotEditor, queueMascotRefit } from '../mascot/editor.js?v=20260813-05';
 
 // Resizing has to re-post the composer and re-sync chrome that main.js owns.
+// The gift reveal refit is a hook rather than an import: mascot/ sits *above*
+// view/ in the one-way chain, so importing it here would be a back-reference.
 let hooks = {
   syncInstrumentExposure: () => {},
+  onGiftRefit: () => {},
   resizeComposer: () => {},
 };
 export function initViewport(next) {
@@ -107,7 +109,7 @@ export function syncRendererToWindow() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   hooks.resizeComposer();
   refitActiveInstrumentView();
-  if (mascotEditor.active) queueMascotRefit();
+  hooks.onGiftRefit();
 }
 
 // Pedal / pads / HUD sit above the canvas. preventDefault on a 2nd-finger
@@ -177,8 +179,6 @@ if (window.visualViewport) {
     syncRendererToWindow();
   });
   window.visualViewport.addEventListener('scroll', resetBrowserPageZoom);
-  window.visualViewport.addEventListener('scroll', () => {
-    if (mascotEditor.active) queueMascotRefit();
-  });
+  window.visualViewport.addEventListener('scroll', () => hooks.onGiftRefit());
 }
 

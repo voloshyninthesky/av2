@@ -27,6 +27,7 @@ import {
   applyLowMobileSceneBudget,
 } from '../scene/lighting.js?v=20260813-05';
 import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-05';
+import { buildGiftEgg } from '../scene/gift-egg.js?v=20260813-05';
 import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-05';
 import {
   MASCOT_BASE_SCALE,
@@ -57,6 +58,12 @@ applyLowMobileSceneBudget();
 applyStageLightLevel(stageLightLevel);
 scene.add(dust);
 export const fireworks = new Fireworks(scene);
+// Added invisible at boot for the same reason as the sign boards: renderer.compile
+// only sees what is already in the scene, and a first gift that had to link its
+// programs mid-ceremony would stall on the frame it matters most.
+export const giftEgg = buildGiftEgg();
+giftEgg.group.visible = false;
+scene.add(giftEgg.group);
 
 // instruments
 export const drums = buildDrumKit();

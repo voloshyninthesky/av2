@@ -5,7 +5,7 @@ tags: [subsystem]
 # Mascot
 
 The low-poly avatar labelled «Ти» — the visitor's body on stage. `js/mascot/` (appearance,
-state, pose, walk, editor, update) plus `js/scene/mascot-model.js`. Contract: [[SPEC]] §4
+state, pose, walk, gift, reveal, update) plus `js/scene/mascot-model.js`. Contract: [[SPEC]] §4
 and the whole of §13.
 
 ## On stage
@@ -41,56 +41,100 @@ eyes and pins are excluded — they add nothing to the shadow map and would roug
 shadow-pass draw calls now that the mascot stands in the key light. The guitar and mic follow
 the same rule inside that pool.
 
-## The dressing room
+## The gift
 
-HUD person icon → `#modal-mascot`. `js/mascot/editor.js` (480 lines).
+HUD person icon → `#modal-gift`. `js/mascot/gift.js` (the draw) and `js/mascot/reveal.js`
+(the ceremony), which together replaced the ~480-line dressing-room editor.
 
-> It should feel like a small dressing room inside the stage, not a settings form.
+> You receive a character. You don't build one.
 
-Three categories — **ОБЛИЧЧЯ / ОДЯГ / ФОРМА** — with deliberately small, curated groups:
-four hairstyles (including bald, with a shared fringe shell restyled per style), three
-smiles, five hair colours, three eye colours, four skin tones applied to face *and both
-hands*, four coherent varsity palettes, primary / accent / shoe overrides, four accessories,
-and height / build sliders. **РАНДОМ** picks only from compatible combinations.
+The editor asked visitors to author a mascot before they had any reason to care about one,
+and the median first run cost half a minute of form-filling to land somewhere near the
+default. The gift inverts the order: an egg lands in the spotlight, rocks, cracks open,
+and hands you someone — with a rarity tier attached — in about four seconds. *Then* you can
+keep them. There is no reroll and no HUD button to reopen it — the tier you were given only
+means something because you cannot roll it away.
 
-Exact option lists and IDs: [[SPEC]] §4 and §13. They change more often than this note will.
+Exact tier weights, pools, names and the beat-by-beat timeline: [[SPEC]] §13. They change
+more often than this note will.
+
+**The ceremony does not vary by tier.** Everyone gets the full ~7 s version — the one that
+used to be reserved for a legendary. You receive one gift in your life; grading the spectacle
+to the roll would mean most visitors never see the good version of the only reveal they get.
+The tier shows up in the glow colour and on the card, nowhere else.
+
+### Why the tier is drawn first
+
+Rarity is drawn **tier first**, then each field from that tier's own pool — never scored from
+the traits after the fact. A score model happily emits a genuinely 1-in-3000 combination that
+reads, to the eye, as a thin person with blue eyes; the gold burst then writes a cheque the
+character can't cash. Tier-first lets each tier own a pool that *looks* like its tier, and the
+legendary tier is six authored looks rather than a weighted draw.
+
+One trap worth naming: **`skinTone` is drawn evenly at every tier and must never become a
+rarity signal.** There is a test for it.
 
 ### The model that makes it safe
 
-- Opening creates a **draft**. Changes apply live to the real 3D mascot.
-- **ГОТОВО** validates and writes `localStorage` `av2.mascot.v3`, closes, restores the
-  previous stage camera. No toast — the changed mascot is its own confirmation.
-- **✕ / Esc** restores the *opening snapshot* in 3D and storage.
-- **СКИНУТИ** resets the draft without closing or persisting, and exposes **ПОВЕРНУТИ**.
-- Nothing writes storage on a tap or a slider tick — only **ГОТОВО**.
+- The draw happens at t=0, so the whole ceremony — its length, its glow colour, its audio
+  schedule — is decided before the first frame. Nothing is decided mid-flight.
+- Storage is written **on the reveal frame**, not on a later confirm. There is no draft: what
+  is on disk always matches what is standing on stage. That is the invariant the editor
+  deliberately broke and paid for with `openingConfig` bookkeeping.
+- **✕ / Esc** before the burst abandons the pull — nothing was written, so the previous look
+  simply stands — and, because nothing was written, the gift is offered again next visit.
+  After the burst the character is already saved and **ГОТОВО** just closes.
 
-Two constraints worth protecting in any edit here:
+Three constraints worth protecting in any edit here:
 
-1. **No allocation in the input handler.** Procedural parts are created once and toggled or
-   recoloured in place. A 20-change stress pass must create no additional meshes or materials
-   and cause no frame hitch.
-2. **Per-field fallback on load.** A malformed `av2.mascot.v3` field falls back
+1. **No allocation per pull.** Procedural parts — the mascot's and the egg's — are created
+   once and toggled or recoloured in place. A 20-pull stress pass must add no geometries or
+   textures and cause no frame hitch.
+2. **Per-field fallback on load.** A malformed `av2.mascot.v4` field falls back
    independently and never invalidates the whole look. Removed legacy values (`buzz`,
    `tied`, `sunset`, `chain`, `cap`, `blush`, dropped tones and colours) each fall back to a
-   default. `v1` / `v2` keys are deliberately **not** migrated — the key bump is how returning
-   visitors get reset. The mascot must also keep working if v3 is absent or storage is
+   default. `v1`–`v3` keys are deliberately **not** migrated — the key bump is how returning
+   visitors get reset. The mascot must also keep working if v4 is absent or storage is
    unavailable.
+3. **The first gift is silent.** It opens from the camera fly-in, not a tap, so no
+   `AudioContext` may be created — see [[Gotchas]]. Nothing in the ceremony unlocks audio;
+   the synth calls find no context and no-op harmlessly.
+4. **The stage is prepared before the first frame.** `prepareGiftStage()` runs in `main.js`
+   between `addLabels()` and `animate()`: with no character saved it hides the mascot and its
+   label and stands the egg in their place. Do this any later and the visitor watches the
+   *default* mascot through the whole 2.6 s approach, which gives the whole thing away.
+   It also locks the viewing angle and resolves the framing the approach flies to, so the
+   ceremony inherits the camera without moving it — approach and reveal are one move. Two
+   things used to break that seam and are now guarded: enabling OrbitControls for the one
+   frame before the gift opens (it snaps the camera to its own stale state), and hiding the
+   instruments on ceremony start (the whole band pops out of the scene on that frame).
+5. **No melody.** The ceremony is percussion only. A pitched line makes it a jingle and
+   competes with the instruments the visitor is about to play.
 
-### Opening the editor from a focused instrument
+### Opening the gift from a focused instrument
 
 It leaves focus **immediately, with no return animation**: the instrument settles to rest
 (the guitar drops back on its stand) and the camera snaps straight to its pre-focus stage
-frame before the preview camera takes over.
+frame before the ceremony camera takes over.
 
 That snap **must land exactly on the saved frame** — an orbit drag made just before opening
-must not leave a residual offset — because the editor saves this exact position as the frame
-to restore on close. A drift here is invisible until the visitor closes the editor and the
+must not leave a residual offset — because the reveal saves this exact position as the frame
+to restore on close. A drift here is invisible until the visitor closes the card and the
 stage is subtly wrong.
 
-While editing: instruments and stage hints are hidden so they can't obscure the preview,
-background controls are inert, and backdrop taps never close the editor. Horizontal drag in
-the preview rotates the mascot around its own Y axis and never touches the stage camera.
-Preview angle is session-only — not part of the saved appearance.
+While the gift is open: instruments and stage hints are hidden so they can't obscure the
+ceremony, background controls are inert, and backdrop taps never close the modal. Horizontal
+drag over the stage rotates the character around its own Y axis and never touches the stage
+camera. That angle is session-only — not part of the saved appearance.
+
+Two more things that are easy to break:
+
+- `js/mascot/gift.js` **imports nothing**, deliberately — that is what lets
+  `tests/mascot-gift.test.mjs` import it under plain `node`. It therefore spells the
+  appearance vocabulary a second time, and a test reads `appearance.js` as text to keep the
+  two from drifting. Don't "fix" the duplication by importing.
+- The ceremony is **exempt from the 15 fps modal render budget** (`renderIntervalMs()` in
+  `js/main.js`). Without that exemption its few seconds of suspense play as a slideshow.
 
 ## Related
 

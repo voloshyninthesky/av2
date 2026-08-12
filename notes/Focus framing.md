@@ -6,10 +6,10 @@ tags: [subsystem, pattern]
 
 How the stage composes an instrument close-up. `js/view/focus-frame.js` (432 lines) plus
 `js/view/instrument-view.js` (416) and `js/view/instrument-presets.js`. Contract:
-[[SPEC]] §4 (piano / guitar) and §13 (mascot editor).
+[[SPEC]] §4 (piano / guitar) and §13 (the gift reveal).
 
 This is the project's most reusable idea, and worth understanding once rather than three
-times — **piano focus, guitar focus and the mascot editor preview all use the same
+times — **piano focus, guitar focus and the gift reveal all use the same
 pattern**, and any new close-up should too.
 
 ## The pattern: measure, don't hard-code
@@ -88,12 +88,14 @@ the head's hair shell, the **whole mascot is hidden** and only the held guitar r
 are looking out of that body. Hysteresis stops the boundary flickering; orbiting away,
 portrait, and any non-guitar phase bring the body straight back.
 
-## Mascot editor preview
+## Gift reveal framing
 
-Same measurement discipline, different subject — see [[Mascot]]. One rule specific to it:
-offset the preview by shifting the camera **look target**, never by lowering the camera with
-its target, so the camera stays above the platform edge at every height / build value and
-the stage floor can't occlude the mascot.
+Same measurement discipline, two subjects in sequence — the box, then the character it
+reveals — see [[Mascot]]. One rule specific to it: offset by shifting the camera **look
+target**, never by lowering the camera with its target, so the camera stays above the
+platform edge at every height / build value and the stage floor can't occlude the subject.
+The card is measured, not assumed: it appears part-way through the ceremony, and the reframe
+rides its `animationend`.
 
 ## Verifying framing changes
 

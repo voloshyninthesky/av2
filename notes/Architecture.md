@@ -31,7 +31,7 @@ before committing to bloom (see [[Decisions]] on quality tiers).
 `main.js` → `shell/` → `play/` → `instruments/` / `mascot/` → `scene/` → `view/` → `core/`
 
 Some features genuinely need a back-reference: recording has to close held notes, a
-close-up has to interrupt the pads, the mascot editor has to respawn the mascot. Those are
+close-up has to interrupt the pads, the gift reveal has to respawn the mascot. Those are
 **not** solved with an upward import. `main.js` injects the callback through that module's
 `init*()` function:
 

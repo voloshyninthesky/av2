@@ -1,13 +1,22 @@
 // ============================================================
 // MASCOT APPEARANCE (persisted in localStorage)
-// The vocabulary of every look the ОБРАЗ editor can produce, plus the
-// validator that keeps a hand-edited or outdated saved config from putting
-// the mascot into a state the model builder cannot render.
+// The vocabulary of every look the gift can draw, plus the validator that keeps
+// a hand-edited or outdated saved config from putting the mascot into a state
+// the model builder cannot render. The draw itself lives in ./gift.js.
 // ============================================================
 import * as THREE from 'three';
+import { GIFT_TIERS_BY_ID } from './gift.js?v=20260813-05';
 
-export const MASCOT_KEY = 'av2.mascot.v3';
+// v4 adds `tier`, and v3 looks were hand-authored in the retired editor so they
+// carry none. Per the standing rule, the key bump is how returning visitors get
+// reset — old keys are deliberately not migrated.
+export const MASCOT_KEY = 'av2.mascot.v4';
+// A visitor may rename their character, so the name is part of the saved look.
+// Bounded because it is drawn into a fixed-width card.
+export const MASCOT_NAME_MAX = 24;
 export const MASCOT_DEFAULTS = {
+  tier: 'common',
+  name: '',
   hair: 'long',
   hairColor: '5a2f22',
   smile: 'soft',
@@ -120,6 +129,12 @@ export const MASCOT_ACCENT_COLORS = new Set(['default', 'purple', 'gold', 'cream
 export function validateMascotAppearance(saved) {
   const cfg = { ...MASCOT_DEFAULTS };
   if (!saved || typeof saved !== 'object') return cfg;
+  if (saved.tier in GIFT_TIERS_BY_ID) cfg.tier = saved.tier;
+  if (typeof saved.name === 'string') {
+    // Collapse whitespace so a name of spaces cannot render as a blank card.
+    const trimmed = saved.name.replace(/\s+/g, ' ').trim().slice(0, MASCOT_NAME_MAX);
+    if (trimmed) cfg.name = trimmed;
+  }
   if (saved.hair in MASCOT_HAIR_STYLES) cfg.hair = saved.hair;
   if (typeof saved.hairColor === 'string' && MASCOT_HAIR_COLOR_VALUES.has(saved.hairColor.toLowerCase())) cfg.hairColor = saved.hairColor.toLowerCase();
   if (MASCOT_SMILES.has(saved.smile)) cfg.smile = saved.smile;
@@ -146,6 +161,14 @@ export const mascotCfg = (() => {
   } catch { /* storage is optional */ }
   return validateMascotAppearance(saved);
 })();
+
+// Whether this visitor has already been given a character. Deliberately checks
+// for the key rather than inspecting `mascotCfg`, which always validates to a
+// full config — a visitor with no save is indistinguishable from one holding the
+// defaults, and only the key can tell them apart.
+export function hasSavedMascot() {
+  try { return localStorage.getItem(MASCOT_KEY) !== null; } catch { return false; }
+}
 
 export function saveMascotConfig() {
   const saved = mascotAppearanceSnapshot(mascotCfg);

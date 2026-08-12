@@ -2,7 +2,7 @@
 // MASCOT PER-FRAME UPDATE
 // Everything that moves the mascot each frame: joystick and keyboard walking,
 // route following, the walk-cycle bob, the strum-arm decay, the fall, and the
-// slow turntable spin used while the wardrobe is open.
+// and the fall. The gift reveal owns the mascot outright while it runs.
 // ============================================================
 import * as THREE from 'three';
 import { session } from '../core/session.js?v=20260813-05';
@@ -21,22 +21,9 @@ import { instrumentView } from '../view/instrument-presets.js?v=20260813-05';
 import { activateInstrumentView } from '../view/instrument-view.js?v=20260813-05';
 import { moveMascotWithColliders } from './walk.js?v=20260813-05';
 import { mascotMove, dance } from './state.js?v=20260813-05';
-import { mascotEditor } from './editor.js?v=20260813-05';
+import { giftReveal } from './reveal.js?v=20260813-05';
 import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260813-05';
 import { play } from '../play/state.js?v=20260813-05';
-
-export function updateMascotEditorPreview(dt) {
-  const relax = Math.min(1, dt * 10);
-  mascot.legL.rotation.x = THREE.MathUtils.lerp(mascot.legL.rotation.x, 0, relax);
-  mascot.legR.rotation.x = THREE.MathUtils.lerp(mascot.legR.rotation.x, 0, relax);
-  mascot.armL.rotation.x = THREE.MathUtils.lerp(mascot.armL.rotation.x, 0, relax);
-  mascot.armR.rotation.x = THREE.MathUtils.lerp(mascot.armR.rotation.x, 0, relax);
-  mascot.armL.rotation.z = THREE.MathUtils.lerp(mascot.armL.rotation.z, -0.12, relax);
-  mascot.armR.rotation.z = THREE.MathUtils.lerp(mascot.armR.rotation.z, 0.12, relax);
-  mascot.torso.rotation.z = THREE.MathUtils.lerp(mascot.torso.rotation.z, 0, relax);
-  mascot.head.rotation.z = THREE.MathUtils.lerp(mascot.head.rotation.z, 0, relax);
-  mascot.group.position.y = THREE.MathUtils.lerp(mascot.group.position.y, 0, relax);
-}
 
 // First-person guitar view (landscape): the focus camera sits where the
 // player's own eyes are, so the mascot's head — and, seen from inside, the
@@ -82,12 +69,13 @@ function syncGuitarFirstPersonBody() {
 }
 
 export function updateMascot(dt) {
+  // Ahead of the first-person check: that helper owns `mascot.group.visible`,
+  // and the reveal hides the mascot inside the gift box. Leaving guitar focus to
+  // open a gift would otherwise let its "not in guitar view" branch un-hide the
+  // body one frame later, spoiling the box.
+  if (giftReveal.active) return;
   syncGuitarFirstPersonBody();
   if (!session.started || session.flyT >= 0) return;
-  if (mascotEditor.active) {
-    updateMascotEditorPreview(dt);
-    return;
-  }
   if (ui.modalOpen) return;
   if (mascotMove.fall) {
     const fall = mascotMove.fall;
