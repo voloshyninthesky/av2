@@ -24,7 +24,7 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260812-04">
+<link rel="stylesheet" href="/css/style.css?v=20260813-01">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -196,7 +196,7 @@
 </header>
 
 <div id="keys-hint" class="mono hidden">
-  клік — рух · <b>Enter</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — гітара · <b>N M , . /</b> — вокал
+  клік — рух · <b>Enter</b> — грати<span id="loop-key-hint" hidden> · <b>L</b> — loop</span> · <b>Z X C V B</b> — ударні · <b>1–8</b> — піаніно · <b>Q W E R T Y</b>+пробіл — акорди · <b>[ ] \</b> — тональність · <b>N M , . /</b> — вокал
 </div>
 
 <div id="quality-confirm" class="overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="quality-confirm-title" aria-describedby="quality-confirm-copy">
@@ -253,19 +253,20 @@
   <button type="button" data-vocal-freq="392.00" data-vocal-vowel="1" aria-label="Нота Соль">СОЛЬ</button>
 </div>
 
-<!-- Slot labels are re-rendered from the saved layout on boot (renderChordPad);
-     these six buttons are the defaults and the permanent DOM nodes. -->
-<div id="chord-pad" hidden role="group" aria-label="Акорди гітари">
-  <div class="guitar-chord-buttons">
-    <button type="button" data-chord="Em" aria-label="Акорд Em" aria-pressed="false" aria-keyshortcuts="Q">Em</button>
-    <button type="button" data-chord="Am" aria-label="Акорд Am" aria-pressed="false" aria-keyshortcuts="W">Am</button>
-    <button type="button" data-chord="C" aria-label="Акорд C" aria-pressed="false" aria-keyshortcuts="E">C</button>
-    <button type="button" data-chord="D" aria-label="Акорд D" aria-pressed="false" aria-keyshortcuts="R">D</button>
-    <button type="button" data-chord="G" aria-label="Акорд G" aria-pressed="false" aria-keyshortcuts="T">G</button>
-    <button type="button" data-chord="F" aria-label="Акорд F" aria-pressed="false" aria-keyshortcuts="Y">F</button>
+<!-- Circle of fifths. The 24 wedges are generated in js/play/chord-wheel.js —
+     their geometry is arithmetic, and hand-writing 24 arcs would be 24 chances
+     to get one wrong. The hub controls stay here, with the rest of the copy. -->
+<div id="chord-wheel" hidden role="group" aria-label="Коло квінт">
+  <svg id="chord-wheel-rings" viewBox="-100 -100 200 200" focusable="false"></svg>
+  <div id="chord-wheel-hub">
+    <div class="chord-key-step">
+      <button type="button" data-key-step="-1" aria-label="Тональність на квінту вниз">‹</button>
+      <span id="chord-key-label" aria-live="polite">C</span>
+      <button type="button" data-key-step="1" aria-label="Тональність на квінту вгору">›</button>
+    </div>
+    <button type="button" id="chord-sevenths" aria-pressed="false"
+            aria-label="Септакорди" title="Септакорди">7</button>
   </div>
-  <button type="button" id="chord-edit-btn" aria-pressed="false" aria-label="Змінити акорди" title="Змінити акорди">✎</button>
-  <div id="chord-picker" hidden role="group" aria-label="Бібліотека акордів"></div>
 </div>
 
 <div id="mobile-controls" aria-label="Ігрове керування">
@@ -659,6 +660,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260812-04"></script>
+  <script type="module" src="/js/main.js?v=20260813-01"></script>
 </body>
 </html>

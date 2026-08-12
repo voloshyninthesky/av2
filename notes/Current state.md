@@ -186,7 +186,7 @@ The current milestone delivered **framing and pose only** ([[Focus framing]]). E
 
 1. **Reliable key surface** — piano-local hit plane, dead-gap removal, black-key priority,
    captured pointers, held key state, ordered glissando, robust multi-finger chords
-2. **Gesture ownership** — a pointer on keys / drums / strings / frets / chord pad claims that
+2. **Gesture ownership** — a pointer on keys / drums / strings / frets / chord wheel claims that
    finger so OrbitControls can't rotate from it; empty canvas still orbits
 3. **Performance feedback** — one piano-note event driving audio, key travel, glow,
    note-following hands, VIBE, haptics and loop capture; ≥16 voices, click-free same-pitch

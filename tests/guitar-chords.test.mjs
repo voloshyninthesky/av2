@@ -2,55 +2,27 @@
 // so a wrong shape is silent-but-wrong: it sounds like a chord, just not the
 // one on the label. Nothing in the running app would surface that, which is
 // exactly why it is pinned here.
-//
-// `js/play/guitar.js` imports three.js and the studio singleton, neither of
-// which loads under plain node, so the chord-maker slice is extracted from the
-// source and evaluated on its own — the same trick `audio-lifecycle.test.mjs`
-// uses to assert on code it cannot import.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { loadModule } from './load-module.mjs';
 
-const SOURCE = new URL('../js/play/guitar.js', import.meta.url);
-const src = readFileSync(SOURCE, 'utf8');
-
-function loadChordMaker() {
-  const start = src.indexOf('export const CHORD_ROOTS');
-  const end = src.indexOf('// ---- the six pad slots ----');
-  assert.ok(start !== -1 && end > start,
-    'chord-maker slice not found — did the CHORD_ROOTS / pad-slots markers move?');
-  const body = src.slice(start, end).replaceAll('export const ', 'const ')
-    + '\nreturn { CHORD_ROOTS, CHORD_QUALITIES, GUITAR_CHORDS, CHORD_NAMES };';
-  return new Function(body)();
-}
+const chords = await loadModule(new URL('../js/play/harmony.js', import.meta.url));
 
 // Open strings, low to high: E A D G B E, as pitch classes (0 = C).
 const OPEN_PITCH_CLASSES = [4, 9, 2, 7, 11, 4];
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-/** Split a generated name back into its root index and quality suffix. */
-function parseChordName(name, roots) {
-  // Sharp roots are two characters ("C#"), naturals one.
-  const rootIndex = roots.includes(name.slice(0, 2))
-    ? roots.indexOf(name.slice(0, 2))
-    : roots.indexOf(name[0]);
-  assert.notEqual(rootIndex, -1, `${name}: no root`);
-  return { rootIndex, quality: name.slice(roots[rootIndex].length) };
-}
-
-const chords = loadChordMaker();
-
 test('every chord sounds exactly its own chord tones', () => {
   for (const name of chords.CHORD_NAMES) {
     const shape = chords.GUITAR_CHORDS[name];
-    const { rootIndex, quality } = parseChordName(name, chords.CHORD_ROOTS);
+    const { rootPc, quality } = chords.parseChordName(name);
     const intervals = chords.CHORD_QUALITIES[quality].intervals;
 
     const sounded = new Set();
     shape.forEach((fret, string) => {
       if (fret !== null) sounded.add((OPEN_PITCH_CLASSES[string] + fret) % 12);
     });
-    const expected = new Set(intervals.map((i) => (rootIndex + i) % 12));
+    const expected = new Set(intervals.map((i) => (rootPc + i) % 12));
 
     const extra = [...sounded].filter((pc) => !expected.has(pc)).map((pc) => NOTE_NAMES[pc]);
     const missing = [...expected].filter((pc) => !sounded.has(pc)).map((pc) => NOTE_NAMES[pc]);
@@ -77,7 +49,7 @@ test('every voicing is six strings of playable frets', () => {
   }
 });
 
-test('the default pad chords keep their open voicings', () => {
+test('the beginner chords keep their open voicings', () => {
   // These are what a beginner actually plays; the generated barre forms are
   // correct too, just thinner and higher up, so the open ones are pinned.
   const open = {
@@ -107,12 +79,15 @@ test('the library covers every root in every quality', () => {
   }
 });
 
-test('the six pad slots default to chords the library actually has', () => {
-  const defaults = /const DEFAULT_PAD_CHORDS = \[([^\]]*)\]/.exec(src);
-  assert.ok(defaults, 'DEFAULT_PAD_CHORDS not found');
-  const names = defaults[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
-  assert.equal(names.length, 6, 'the pad has six slots');
-  for (const name of names) {
-    assert.ok(chords.GUITAR_CHORDS[name], `default slot chord ${name} is not in the library`);
+test('a chord name round-trips through parseChordName', () => {
+  for (const name of chords.CHORD_NAMES) {
+    const parsed = chords.parseChordName(name);
+    assert.ok(parsed, `${name}: did not parse`);
+    assert.equal(chords.CHORD_ROOTS[parsed.rootPc] + parsed.quality, name,
+      `${name}: parsed back to something else`);
   }
+  // "C#" must not be read as "C" with a nonexistent "#" quality.
+  assert.equal(chords.parseChordName('C#m7').rootPc, 1);
+  assert.equal(chords.parseChordName('Cm7').rootPc, 0);
+  assert.equal(chords.parseChordName('Cdim'), null);
 });

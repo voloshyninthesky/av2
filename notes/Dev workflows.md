@@ -47,15 +47,19 @@ Six suites, no dependencies:
 | `lesson-prices.test.mjs`     | Generated price cells and the no-prices-in-copy rule → [[Prices]] |
 | `guitar-gestures.test.mjs`   | Tap-vs-hold classification for chord touches                   |
 | `guitar-chords.test.mjs`     | Every generated chord voicing sounds its own chord tones        |
+| `chord-wheel.test.mjs`       | The circle of fifths: rotation, relative minors, diatonic degrees and sevenths, piano voicings |
 | `emissive-highlight.test.mjs`| Hover glow not leaking through shared materials                |
 | `site-meta.test.mjs`         | Analytics tag, `404.html` shipping, funnel hooks, minified three |
 
-Two of these assert on **source text** rather than running anything: `audio-lifecycle` reads
-across `js/**/*.js`, and `guitar-chords` extracts the chord-maker slice out of
-`js/play/guitar.js` and evaluates it alone, because that file imports three.js and the studio
-singleton and so cannot be imported under plain node. Both survive code moving between
-modules — and both can fail on a pure rename. If `guitar-chords` reports "chord-maker slice
-not found", the `CHORD_ROOTS` / pad-slots marker comments it splits on have moved.
+`audio-lifecycle` asserts on **source text** rather than running anything: it reads across
+`js/**/*.js`, which survives code moving between modules but can fail on a pure rename.
+
+`guitar-chords` and `chord-wheel` used to need the same trick and no longer do. Both load
+`js/play/harmony.js` for real, through `tests/load-module.mjs` — the repo has no `package.json`,
+so node reads a `.js` file as CommonJS and cannot import one of the site's ES modules directly,
+but a `data:` URL is always parsed as an ES module. That only works for a module importing
+nothing itself, which is exactly why `harmony.js` is written that way. The old marker-comment
+slicing, and its "chord-maker slice not found" failure mode, are gone with it.
 
 ## Verify the 3D stage headlessly
 
@@ -99,7 +103,7 @@ From [[SPEC]] §14, and it is in that order for a reason:
 2. **Update [[SPEC]] if contracts or UX change.** Add a line to [[Decisions]] if the
    *reason* changed.
 3. **Push to `main`**, then verify the live HTML contains the new `?v=` and the expected
-   markup (onboard, pricing mixer, chord pad, settings mixer).
+   markup (onboard, pricing mixer, chord wheel, settings mixer).
 
 ## Deploy
 

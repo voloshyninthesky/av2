@@ -12,6 +12,60 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The chord pad became a wheel, and the wheel does not scatter — 2026-08-13
+
+Six slots was the wrong unit. Choosing which six chords you own is a *settings* task, and it had
+grown a settings UI inside a play surface: a ✎ mode, a quality × root picker, per-slot storage.
+The ✎ mode only existed because *holding* a button was already the play gesture and could not be
+given a second meaning — so deleting the slots deleted the reason for the mode along with it.
+
+The replacement is a **circle of fifths**, and the argument for it is one geometric fact: with the
+tonic at 12 o'clock, a key's six chords are **three neighbouring positions on the outer ring with
+their relative minors directly inside** — `IV I V` over `ii vi iii`. One contiguous block, the
+same six places in all twelve keys. Which chords belong together becomes visible before it is
+nameable, which six free slots could never show however well they were chosen.
+
+Consequences worth knowing:
+
+- **The wheel turns; the block stays.** Stepping the key rotates the ring group and counter-rotates
+  the labels. Seeing the tonic travel to the top is what makes "a fifth" a distance rather than a
+  word — and it is the same step `‹ ›`, `[` and `]` take.
+- **The key is a stepper, not a drag.** Dragging the ring is the same gesture as holding a wedge to
+  play it, and a finger drifting during a hold would spin the key out from under the chord. This
+  surface has learned that lesson once already (see ✎, above).
+- **The seventh rule is one sentence and the diatonic answer falls out of it.** `maj7` on I and IV,
+  `7` on V, `m7` on the minors; outside the key a major takes `7` and a minor `m7`, which is what a
+  borrowed chord gets reached for. Nothing is special-cased, so the test asserts the general rule
+  and gets the specific one free.
+- **Degrees restored the mnemonic that generated names destroyed.** `Q W E R T Y` addressed slot
+  *positions* because `C`, `Cm`, `C7`, `Cm7` and `Cmaj7` all start with `C` (the mnemonic-key
+  attempt below, reverted the same day). A degree is a name that survives the chord changing under
+  it, so `Q` is the tonic in every key.
+- **Radial thickness, not arc, is the touch target.** A 30° wedge is ~50–60 px across its arc at
+  every size; what a fingertip misses is the band's thickness. That is why the hub is only 42 % of
+  the radius: every point it gives back goes to the rings, which come out ~35 px on a 320×568 phone
+  instead of ~27 px. The honest cost is that the wheel is roughly four times the pad's footprint,
+  and on the smallest phone it is half the screen height.
+- **The same wedge means two things, and that follows from the instruments.** On guitar it only
+  *arms* — the neck makes the sound, so holding and latching stay silent. On piano it *plays*, and
+  presses the voiced key meshes, because there is no second surface to strike; it is therefore
+  momentary and never latches, since a latched piano chord would sustain forever.
+- **The piano chord pad that was built and cut before shipping is back** (see 2026-08-06, below) —
+  but shared with the guitar rather than piano-only, and it depresses the keys instead of
+  highlighting them. A highlight was decoration; a chord that moves four keys under one finger is
+  the connection between the wheel and the instrument.
+- **`harmony.js` imports nothing on purpose.** That is what lets `node --test` load it through a
+  `data:` URL and check all 60 chords, all 24 wedges in all 12 keys, and every piano voicing for
+  real — retiring the source-slicing hack the chord tests used to need. A wrong wheel is
+  silent-but-wrong in exactly the way a wrong barre shape is.
+
+Two things moved out of the way rather than being redesigned: the onboarding tip now rides the
+existing `html.pads-open` rule to the top of the screen (the wheel is big enough to swallow it),
+and `view/mobile-controls.js` stopped importing `play/pads.js` upward — `hideChordWheel` is
+injected from `main.js` like every other back-reference.
+
+---
+
 ## The free camera is a setting, not a replacement — 2026-08-12
 
 The pursuit camera is right for the visitor this site is built for: someone who lands on a

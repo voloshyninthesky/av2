@@ -7,11 +7,11 @@
 // any aspect ratio, notch or browser chrome height.
 // ============================================================
 import * as THREE from 'three';
-import { camera, controls, FOCUS_ZOOM_FACTOR } from './rig.js?v=20260812-04';
-import { isMobileGameMode } from '../core/quality.js?v=20260812-04';
-import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260812-04';
-import { instrumentView } from './instrument-presets.js?v=20260812-04';
-import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260812-04';
+import { camera, controls, FOCUS_ZOOM_FACTOR } from './rig.js?v=20260813-01';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-01';
+import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-01';
+import { instrumentView } from './instrument-presets.js?v=20260813-01';
+import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-01';
 
 const loopPedal = document.getElementById('loop-pedal');
 const mobileExit = document.getElementById('mobile-exit');
@@ -137,26 +137,44 @@ function focusSafeRect(reservedRects = []) {
   return candidates[0] || viewport;
 }
 
-export function pianoFocusSafeRect() {
-  return focusSafeRect();
-}
+// The chord wheel appears only after the entry fit has already run, so its
+// footprint is reserved from the layout constants that style.css sizes it by
+// instead of a DOM measurement — entry fit and later refits then agree on the
+// same play area. THE NUMBERS BELOW ARE THE TWIN OF `--wheel-size` /
+// `--wheel-gap` in style.css; change one and you must change the other.
+const WHEEL_GAP = 12;
+const wheelSize = (portrait, width, height) => (portrait
+  ? Math.min(0.78 * width, 0.44 * height, 300)
+  : Math.min(0.3 * height + 120, 236));
 
-function guitarFocusSafeRect() {
+function chordWheelReservedRects() {
   const vv = window.visualViewport;
   const left = vv?.offsetLeft || 0;
   const top = vv?.offsetTop || 0;
   const width = vv?.width || window.innerWidth;
   const height = vv?.height || window.innerHeight;
   const portrait = height > width;
-  // The chord pad appears only after the entry fit has already run, so its
-  // gutter is reserved from the layout constants (left rail on landscape,
-  // bottom row on portrait — see #chord-pad in style.css) instead of a DOM
-  // measurement. Entry fit and later refits then agree on the same play area.
-  const padBottomOffset = isMobileGameMode() ? 120 : 104;
-  const reserved = portrait
-    ? [{ left, top: top + height - (padBottomOffset + 76), right: left + width, bottom: top + height }]
-    : [{ left, top, right: left + 118, bottom: top + height }];
-  return focusSafeRect(reserved);
+  const size = wheelSize(portrait, width, height);
+  const bottom = portrait ? (isMobileGameMode() ? 48 : 40) : WHEEL_GAP;
+  // The wheel docks bottom-left in both orientations, so the reserve is that
+  // corner rather than a full-height rail. The piano is the reason a rail was
+  // never an option: pianoSafeRectScore cubes the width ratio, so a rail would
+  // cost the keybed a quarter of its width and be punished far harder than a
+  // corner that leaves the full-width strip above it intact.
+  return [{
+    left,
+    top: top + height - (bottom + size + WHEEL_GAP),
+    right: left + WHEEL_GAP + size + WHEEL_GAP,
+    bottom: top + height,
+  }];
+}
+
+export function pianoFocusSafeRect() {
+  return focusSafeRect(chordWheelReservedRects());
+}
+
+function guitarFocusSafeRect() {
+  return focusSafeRect(chordWheelReservedRects());
 }
 
 export function projectedBounds(points, projectionCamera) {

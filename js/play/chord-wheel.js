@@ -1,0 +1,563 @@
+// ============================================================
+// CHORD WHEEL
+// The circle of fifths, as the stage's one chord surface. Twelve major wedges
+// on the outer ring, their relative minors directly inside, rotated so the
+// current key's tonic sits at the top. A key's six chords are then not six
+// arbitrary buttons but one contiguous block of the wheel — you can see which
+// chords belong together before you can name them, which six free slots could
+// never show.
+//
+// The same wedge means different things to the two instruments it serves, and
+// that follows from the instruments rather than from taste:
+//   * Guitar — a wedge only *arms* a chord. The neck still makes the sound, so
+//     holding and latching stay silent, exactly as the two-hand model requires.
+//   * Piano — a wedge sounds the chord itself and presses those keys on the
+//     3D keybed, because there is no second surface to strike. It is therefore
+//     momentary: a latched piano chord would sustain forever.
+//
+// The theory is all in harmony.js; this file is geometry, pointers and state.
+// ============================================================
+import { piano } from '../core/studio.js?v=20260813-01';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-01';
+import { canvas } from '../view/rig.js?v=20260813-01';
+import { play, activePointers } from './state.js?v=20260813-01';
+import {
+  GUITAR_CHORDS,
+  fifthIndexOf,
+  keyDegrees,
+  keyLabel,
+  midiFromFreq,
+  pianoVoicing,
+  stepKey,
+  wedgeChordName,
+  wedgeDegree,
+  wedgeLabel,
+} from './harmony.js?v=20260813-01';
+import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-01';
+import { syncPadsOpenClass } from './pads.js?v=20260813-01';
+
+// Wheel gestures compete with the stage's own pointer handling, and a wedge
+// press has to know which instrument is listening; main.js supplies both, plus
+// the piano note route it owns above this layer.
+let hooks = {
+  activateAudioForSound: () => {},
+  canPlayInstrument: () => false,
+  canKeyboardJamPlay: () => false,
+  isGuitarPlayFocus: () => false,
+  eventInvolvesUiChrome: () => false,
+  currentGuitarChordName: () => null,
+  beginHeldPianoNote: () => null,
+  releaseHeldPianoNote: () => {},
+};
+export function initChordWheel(next) {
+  hooks = { ...hooks, ...next };
+}
+
+const wheel = document.getElementById('chord-wheel');
+const rings = document.getElementById('chord-wheel-rings');
+const keyLabelEl = document.getElementById('chord-key-label');
+const seventhsBtn = document.getElementById('chord-sevenths');
+
+// ---- key state ----
+// One record rather than two keys: the seventh toggle only ever means anything
+// alongside the key it is applied to.
+const CHORD_KEY_STORAGE = 'av2.chord-key.v1';
+let tonicPc = 0;
+let sevenths = false;
+try {
+  const saved = JSON.parse(localStorage.getItem(CHORD_KEY_STORAGE) || 'null');
+  if (Number.isInteger(saved?.tonic) && saved.tonic >= 0 && saved.tonic < 12) tonicPc = saved.tonic;
+  if (typeof saved?.sevenths === 'boolean') sevenths = saved.sevenths;
+} catch { /* storage is optional */ }
+
+function storeChordKey() {
+  try {
+    localStorage.setItem(CHORD_KEY_STORAGE, JSON.stringify({ tonic: tonicPc, sevenths }));
+  } catch { /* storage is optional */ }
+}
+
+// ============================================================
+// GEOMETRY
+// A 200-unit viewBox, so radii read as percentages of the wheel. Wedges are
+// contiguous within a ring and separated by a drawn line rather than a gap:
+// a gap between two 30° targets is a dead strip the finger keeps finding.
+//
+// The band widths are what set the touch target, not the arc: a 30° wedge is
+// already ~60px wide across at these sizes, while its radial thickness is the
+// narrow axis a fingertip actually misses. That is why the hub is only 42% of
+// the radius — every point it gives back goes into the two rings, which come
+// out ~40px thick at the portrait size instead of ~29px.
+// ============================================================
+const WEDGE_DEGREES = 30;
+const RING_RADII = {
+  major: [71, 99],
+  minor: [42, 71],
+};
+const RINGS = ['major', 'minor'];
+
+function polar(radius, degrees) {
+  const radians = ((degrees - 90) * Math.PI) / 180;
+  return [radius * Math.cos(radians), radius * Math.sin(radians)];
+}
+
+function wedgePath(ring, fifthIndex) {
+  const [inner, outer] = RING_RADII[ring];
+  const from = fifthIndex * WEDGE_DEGREES - WEDGE_DEGREES / 2;
+  const to = from + WEDGE_DEGREES;
+  const [ax, ay] = polar(outer, from);
+  const [bx, by] = polar(outer, to);
+  const [cx, cy] = polar(inner, to);
+  const [dx, dy] = polar(inner, from);
+  // Every wedge is 30°, so the large-arc flag is always 0.
+  return `M${ax} ${ay}A${outer} ${outer} 0 0 1 ${bx} ${by}`
+    + `L${cx} ${cy}A${inner} ${inner} 0 0 0 ${dx} ${dy}Z`;
+}
+
+function wedgeLabelPoint(ring, fifthIndex) {
+  const [inner, outer] = RING_RADII[ring];
+  return polar((inner + outer) / 2, fifthIndex * WEDGE_DEGREES);
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const wedges = [];
+// The key rotation goes on an inner group, not on the <svg> itself: a
+// transform attribute on a root <svg> is SVG2 and browsers disagree about it.
+const ringsGroup = document.createElementNS(SVG_NS, 'g');
+ringsGroup.setAttribute('class', 'wheel-rings');
+rings?.append(ringsGroup);
+
+for (const ring of RINGS) {
+  for (let fifthIndex = 0; fifthIndex < 12; fifthIndex++) {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.classList.add('wedge');
+    group.dataset.ring = ring;
+    group.dataset.fifth = String(fifthIndex);
+    // role + tabindex rather than a real <button>: the shape is the control.
+    // The global hotkey router already skips [role="button"] targets, so a
+    // focused wedge cannot also fire the Space strum underneath it.
+    group.setAttribute('role', 'button');
+    group.setAttribute('tabindex', '0');
+    group.setAttribute('aria-pressed', 'false');
+
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', wedgePath(ring, fifthIndex));
+    const text = document.createElementNS(SVG_NS, 'text');
+    const [x, y] = wedgeLabelPoint(ring, fifthIndex);
+    text.setAttribute('x', String(x));
+    text.setAttribute('y', String(y));
+
+    group.append(path, text);
+    ringsGroup.append(group);
+    wedges.push({ group, text, ring, fifthIndex, x, y });
+  }
+}
+
+// ============================================================
+// PAINT
+// ============================================================
+const chordNameFor = (ring, fifthIndex) => wedgeChordName(ring, fifthIndex, tonicPc, sevenths);
+
+// A pressed piano chord is the wheel's own; a guitar chord is held elsewhere
+// (pad, latch or keyboard) and read back through the hook.
+let pianoChordName = null;
+const activeChordName = () => pianoChordName || hooks.currentGuitarChordName();
+
+function paintActive() {
+  const active = activeChordName();
+  for (const wedge of wedges) {
+    const on = wedge.group.dataset.chord === active;
+    wedge.group.classList.toggle('held', on);
+    wedge.group.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  document.documentElement.classList.toggle('guitar-fretting', Boolean(hooks.currentGuitarChordName()));
+}
+
+/** Repaint after a key or seventh change: rotation, labels, lit sector, aria. */
+function paintWheel() {
+  const tonicIndex = fifthIndexOf(tonicPc);
+  // Turning the ring group is what puts the tonic at 12 o'clock. Labels then
+  // carry the opposite rotation so the text stays upright as the wheel turns.
+  ringsGroup.setAttribute('transform', `rotate(${-tonicIndex * WEDGE_DEGREES})`);
+  const upright = tonicIndex * WEDGE_DEGREES;
+
+  const degreeSlot = new Map();
+  keyDegrees(tonicPc, sevenths).forEach((chord, index) => {
+    degreeSlot.set(`${chord.ring}:${chord.fifthIndex}`, index);
+  });
+
+  for (const wedge of wedges) {
+    const { group, text, ring, fifthIndex, x, y } = wedge;
+    const name = chordNameFor(ring, fifthIndex);
+    const degree = wedgeDegree(ring, fifthIndex, tonicPc);
+    group.dataset.chord = name;
+    group.classList.toggle('in-key', Boolean(degree));
+    group.setAttribute('aria-label', degree ? `Акорд ${name}, ступінь ${degree}` : `Акорд ${name}`);
+
+    const slot = degreeSlot.get(`${ring}:${fifthIndex}`);
+    if (slot === undefined) group.removeAttribute('aria-keyshortcuts');
+    else group.setAttribute('aria-keyshortcuts', degreeKeyLabel(slot));
+
+    const label = wedgeLabel(ring, fifthIndex, tonicPc, sevenths);
+    text.textContent = label;
+    // "Dbmaj7" has to shrink to clear the wedge that "Db" sits comfortably in.
+    text.classList.toggle('long', label.length >= 5);
+    text.setAttribute('transform', `rotate(${upright} ${x} ${y})`);
+  }
+
+  if (keyLabelEl) keyLabelEl.textContent = keyLabel(tonicPc);
+  seventhsBtn?.setAttribute('aria-pressed', sevenths ? 'true' : 'false');
+  seventhsBtn?.classList.toggle('is-on', sevenths);
+  // The jam row follows the wheel: Q is always the tonic, Y always the vi.
+  setKeyChords(keyDegrees(tonicPc, sevenths).map((chord) => chord.name));
+  paintActive();
+}
+
+/** Called from the keyboard router when a chord is armed or released. */
+export const syncChordWheelHeld = paintActive;
+
+// ============================================================
+// KEY CONTROLS
+// A stepper rather than a draggable ring: dragging the wheel would be the same
+// gesture as holding a wedge to play it, and this surface has already learned
+// once that a play gesture cannot be given a second meaning.
+// ============================================================
+function setKey(nextTonicPc) {
+  if (nextTonicPc === tonicPc) return;
+  tonicPc = nextTonicPc;
+  clearGuitarInteractionState();
+  storeChordKey();
+  paintWheel();
+}
+
+function setSevenths(on) {
+  if (on === sevenths) return;
+  sevenths = on;
+  // The armed chord's name changes under the toggle; clearing keeps what is
+  // lit, what is armed and what would sound in agreement.
+  clearGuitarInteractionState();
+  storeChordKey();
+  paintWheel();
+}
+
+for (const button of wheel?.querySelectorAll('[data-key-step]') || []) {
+  button.addEventListener('click', () => setKey(stepKey(tonicPc, Number(button.dataset.keyStep))));
+}
+seventhsBtn?.addEventListener('click', () => setSevenths(!sevenths));
+
+// One adjacent cluster on the desktop keyboard, claimed by no instrument: the
+// brackets walk the circle and the backslash toggles sevenths, so the wheel is
+// steerable without letting go of the jam row.
+window.addEventListener('keydown', (event) => {
+  if (event.repeat || !hooks.canKeyboardJamPlay()) return;
+  if (event.target?.closest?.('button, a, input, textarea, select, [contenteditable="true"]')) return;
+  if (event.code === 'BracketLeft') setKey(stepKey(tonicPc, -1));
+  else if (event.code === 'BracketRight') setKey(stepKey(tonicPc, 1));
+  else if (event.code === 'Backslash') setSevenths(!sevenths);
+  else return;
+  event.preventDefault();
+});
+
+// Hub controls are ordinary click-driven buttons: keep their pointer off the
+// canvas, but do NOT preventDefault, or touch never gets the synthesized click
+// and they read as dead.
+wheel?.addEventListener('pointerdown', (event) => {
+  if (event.target.closest?.('.wedge')) return;
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+}, { capture: true });
+
+// ============================================================
+// PIANO: the wedge sounds
+// ============================================================
+// The key meshes carry a bare frequency, so the only way back from a voicing
+// to a mesh is through MIDI.
+const keyByMidi = new Map();
+for (const key of piano.keys) {
+  if (Number.isFinite(key.userData?.freq)) keyByMidi.set(midiFromFreq(key.userData.freq), key);
+}
+
+// A hand does not put four notes down at the same instant. The stagger is
+// small enough to read as one chord and large enough to stop it sounding like
+// a machine — and because each note opens its own loop capture, the roll is
+// recorded exactly as it was played.
+const PIANO_ROLL_MS = 14;
+const pianoChordVoices = new Set();
+const pianoChordTimers = new Set();
+let pianoChordPointer = null;
+
+function releasePianoChord() {
+  for (const timer of pianoChordTimers) clearTimeout(timer);
+  pianoChordTimers.clear();
+  for (const held of pianoChordVoices) hooks.releaseHeldPianoNote(held);
+  pianoChordVoices.clear();
+  pianoChordPointer = null;
+  if (!pianoChordName) return;
+  pianoChordName = null;
+  paintActive();
+}
+
+function startChordNote(key, vibe) {
+  const held = hooks.beginHeldPianoNote(key, { vibe });
+  if (held) pianoChordVoices.add(held);
+}
+
+function pressPianoChord(name, pointerId) {
+  releasePianoChord();
+  hooks.activateAudioForSound();
+  pianoChordName = name;
+  pianoChordPointer = pointerId;
+  pianoVoicing(name).forEach((midi, index) => {
+    const key = keyByMidi.get(midi);
+    if (!key) return;
+    // One chord is worth one note's vibe. Letting all four count would make a
+    // chord four times the reward of a note for the same single gesture.
+    const vibe = index === 0 ? undefined : 0;
+    if (index === 0) {
+      startChordNote(key, vibe);
+      return;
+    }
+    const timer = setTimeout(() => {
+      pianoChordTimers.delete(timer);
+      startChordNote(key, vibe);
+    }, index * PIANO_ROLL_MS);
+    pianoChordTimers.add(timer);
+  });
+  navigator.vibrate?.(10);
+  paintActive();
+}
+
+// ============================================================
+// GUITAR: the wedge arms
+// ============================================================
+function holdGuitarChord(name, pointerId) {
+  if (!GUITAR_CHORDS[name]) return;
+  play.heldGuitarChord = name;
+  play.heldGuitarChordPointer = pointerId;
+  paintActive();
+  navigator.vibrate?.(10);
+}
+
+function releaseHeldGuitarChord(event) {
+  if (event && play.heldGuitarChordPointer !== null && event.pointerId !== play.heldGuitarChordPointer) return;
+  play.heldGuitarChord = null;
+  play.heldGuitarChordPointer = null;
+  paintActive();
+}
+
+function toggleLatchedGuitarChord(name) {
+  if (!GUITAR_CHORDS[name]) return;
+  play.latchedGuitarChord = play.latchedGuitarChord === name ? null : name;
+  play.heldGuitarChord = null;
+  play.heldGuitarChordPointer = null;
+  paintActive();
+}
+
+const recentTouchChordAt = new WeakMap();
+const activeTouchChordPointers = new Map();
+
+export function markHeldTouchGuitarChordUsed() {
+  if (play.heldGuitarChordPointer === null) return;
+  const interaction = activeTouchChordPointers.get(play.heldGuitarChordPointer);
+  if (interaction) interaction.usedForPlay = true;
+}
+
+function finishTouchGuitarChord(event, { cancelled = false } = {}) {
+  const interaction = activeTouchChordPointers.get(event.pointerId);
+  if (!interaction) {
+    releaseHeldGuitarChord(event);
+    return;
+  }
+  activeTouchChordPointers.delete(event.pointerId);
+  releaseHeldGuitarChord(event);
+  if (!isQuickGuitarTap({
+    elapsedMs: performance.now() - interaction.startedAt,
+    distancePx: interaction.distancePx,
+    cancelled,
+    usedForPlay: interaction.usedForPlay,
+  })) return;
+  toggleLatchedGuitarChord(interaction.name);
+}
+
+export function clearGuitarInteractionState() {
+  for (const [pointerId, info] of activePointers) {
+    if (!info.mode?.startsWith('guitar-')) continue;
+    activePointers.delete(pointerId);
+    try {
+      if (canvas.hasPointerCapture?.(pointerId)) canvas.releasePointerCapture(pointerId);
+    } catch (_) { /* ignore */ }
+  }
+  for (const pointerId of activeTouchChordPointers.keys()) {
+    try {
+      if (rings?.hasPointerCapture?.(pointerId)) rings.releasePointerCapture(pointerId);
+    } catch (_) { /* ignore */ }
+  }
+  activeTouchChordPointers.clear();
+  releasePianoChord();
+  play.heldGuitarChord = null;
+  play.heldGuitarChordPointer = null;
+  play.latchedGuitarChord = null;
+  play.keyboardGuitarChord = null;
+  play.guitarStrokeMotion = 0;
+  paintActive();
+}
+
+// ============================================================
+// POINTER ROUTING
+// One delegated listener rather than 24 sets: the wedges are generated, and a
+// listener per wedge would be 24 more places for the touch bookkeeping below
+// to drift out of step.
+// ============================================================
+const wedgeAt = (target) => target?.closest?.('.wedge') || null;
+const isPianoChordFocus = () => hooks.canPlayInstrument('piano');
+
+// Capture is the last thing a press does, and it is allowed to fail: the chord
+// is already armed by then, so a pointer the browser no longer considers
+// active must not take the hold down with it.
+function captureWedgePointer(pointerId) {
+  try {
+    rings?.setPointerCapture?.(pointerId);
+  } catch (_) { /* the press stands without it */ }
+}
+
+rings?.addEventListener('pointerdown', (event) => {
+  const wedge = wedgeAt(event.target);
+  if (!wedge) return;
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  const name = wedge.dataset.chord;
+
+  if (isPianoChordFocus()) {
+    // Every pointer type sounds on press here: on the piano the wedge is the
+    // instrument, so waiting for a click would put the chord behind the tap.
+    event.preventDefault();
+    pressPianoChord(name, event.pointerId);
+    captureWedgePointer(event.pointerId);
+    return;
+  }
+
+  if (event.pointerType !== 'touch') return;
+  event.preventDefault();
+  recentTouchChordAt.set(wedge, performance.now());
+  activeTouchChordPointers.set(event.pointerId, {
+    name,
+    startedAt: performance.now(),
+    startX: event.clientX,
+    startY: event.clientY,
+    distancePx: 0,
+    usedForPlay: false,
+  });
+  holdGuitarChord(name, event.pointerId);
+  captureWedgePointer(event.pointerId);
+});
+
+rings?.addEventListener('pointermove', (event) => {
+  const interaction = activeTouchChordPointers.get(event.pointerId);
+  if (!interaction) return;
+  interaction.distancePx = Math.max(
+    interaction.distancePx,
+    Math.hypot(event.clientX - interaction.startX, event.clientY - interaction.startY),
+  );
+});
+
+function endWedgePointer(event, options) {
+  if (pianoChordPointer === event.pointerId) {
+    releasePianoChord();
+    return;
+  }
+  finishTouchGuitarChord(event, options);
+}
+rings?.addEventListener('pointerup', (event) => endWedgePointer(event));
+rings?.addEventListener('pointercancel', (event) => endWedgePointer(event, { cancelled: true }));
+rings?.addEventListener('lostpointercapture', (event) => endWedgePointer(event, { cancelled: true }));
+
+rings?.addEventListener('click', (event) => {
+  const wedge = wedgeAt(event.target);
+  if (!wedge || isPianoChordFocus()) return;
+  // Ignore the click a touch synthesizes after its own hold has been resolved.
+  if (event.detail !== 0 && performance.now() - (recentTouchChordAt.get(wedge) || 0) < 700) return;
+  toggleLatchedGuitarChord(wedge.dataset.chord);
+});
+
+// A wedge is a role="button", so Enter / Space have to be wired by hand. On
+// guitar that latches; on piano it is momentary, held for as long as the key.
+let keyboardWedge = null;
+rings?.addEventListener('keydown', (event) => {
+  const wedge = wedgeAt(event.target);
+  if (!wedge || (event.key !== 'Enter' && event.key !== ' ')) return;
+  event.preventDefault();
+  if (event.repeat) return;
+  if (!isPianoChordFocus()) {
+    toggleLatchedGuitarChord(wedge.dataset.chord);
+    return;
+  }
+  keyboardWedge = wedge;
+  pressPianoChord(wedge.dataset.chord, null);
+});
+rings?.addEventListener('keyup', (event) => {
+  if (!keyboardWedge || (event.key !== 'Enter' && event.key !== ' ')) return;
+  keyboardWedge = null;
+  releasePianoChord();
+});
+
+// ============================================================
+// SHOW / HIDE
+// ============================================================
+export function showChordWheel() {
+  if (!wheel) return;
+  paintActive();
+  wheel.hidden = false;
+  syncPadsOpenClass();
+}
+
+export function hideChordWheel() {
+  if (!wheel) return;
+  clearGuitarInteractionState();
+  wheel.hidden = true;
+  syncPadsOpenClass();
+}
+
+// ============================================================
+// BROWSER ZOOM GUARDS
+// Moved here with the chord code they protect. Hold chord + second-finger
+// strum must not become a Safari/Chrome page pinch — but never preventDefault
+// a pad↔canvas multitouch touchstart, which drops the strum finger. Piano
+// focus is deliberately excluded: two-finger zoom stays available there.
+// ============================================================
+function blockGuitarBrowserPageZoom(event) {
+  if (!hooks.isGuitarPlayFocus()) return;
+  if (hooks.eventInvolvesUiChrome(event)) return;
+  if (event.touches && event.touches.length >= 2 && event.cancelable) event.preventDefault();
+}
+document.addEventListener('touchstart', blockGuitarBrowserPageZoom, { passive: false, capture: true });
+document.addEventListener('touchmove', blockGuitarBrowserPageZoom, { passive: false, capture: true });
+// iOS Safari still fires gesture* for page pinch even with user-scalable=no.
+for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(name, (event) => {
+    if (hooks.isGuitarPlayFocus()) event.preventDefault();
+  }, { passive: false, capture: true });
+}
+
+// Headless QA reads the wheel as data rather than driving synthetic pointers —
+// same role as __pianoDebug / __audioDebug.
+window.__chordWheelDebug = () => ({
+  tonic: tonicPc,
+  tonicLabel: keyLabel(tonicPc),
+  sevenths,
+  open: Boolean(wheel && !wheel.hidden),
+  held: play.heldGuitarChord,
+  latched: play.latchedGuitarChord,
+  keyboard: play.keyboardGuitarChord,
+  active: activeChordName(),
+  pianoChord: pianoChordName,
+  pianoVoicing: pianoChordName ? pianoVoicing(pianoChordName) : null,
+  degrees: keyDegrees(tonicPc, sevenths).map((chord) => `${chord.degree}:${chord.name}`),
+  wedges: wedges.map(({ group, ring, fifthIndex }) => ({
+    ring,
+    fifthIndex,
+    chord: group.dataset.chord,
+    label: group.querySelector('text')?.textContent,
+    inKey: group.classList.contains('in-key'),
+  })),
+});
+
+paintWheel();

@@ -59,7 +59,7 @@ html, body {
 }
 .panel { touch-action: pan-y; }
 #intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
-#loop-pedal, #vocal-pad, #chord-pad, .overlay,
+#loop-pedal, #vocal-pad, #chord-wheel, .overlay,
 button, a, .pill-btn, .icon-btn {
   touch-action: manipulation;
 }
@@ -73,7 +73,7 @@ html.stage-live #keys-hint,
 html.stage-live #drag-hint,
 html.stage-live #loop-pedal,
 html.stage-live #vocal-pad,
-html.stage-live #chord-pad,
+html.stage-live #chord-wheel,
 html.stage-live .overlay,
 html.stage-live button,
 html.stage-live a,
@@ -667,8 +667,11 @@ html.stage-live .icon-btn {
   -webkit-touch-callout: none;
 }
 #toast .hl { color: var(--gold); }
-/* Keep vibe-max / pad-safe toasts under the HUD — never over vocal/chord pads. */
+/* Keep vibe-max / pad-safe toasts under the HUD — never over the play
+   surfaces. The onboarding tip docks in the same corner and the chord wheel is
+   large enough to swallow it whole, so it moves with them. */
 html.pads-open #toast,
+html.pads-open #onboard,
 #toast[data-kind="vibe-max"] {
   top: max(96px, calc(env(safe-area-inset-top) + 78px));
   bottom: auto !important;
@@ -704,119 +707,123 @@ html.pads-open #toast,
   box-shadow: 0 0 0 3px var(--gold), 0 0 24px rgba(209, 161, 59, .85);
 }
 
-/* ============ GUITAR CHORD PAD ============ */
-#chord-pad {
-  position: fixed; left: 50%; bottom: 104px; z-index: 46;
-  transform: translateX(-50%);
-  display: flex; align-items: center;
-  padding: 9px; border: 1px solid rgba(209, 161, 59, .72); border-radius: 20px;
-  background: rgba(23, 18, 28, .82); backdrop-filter: blur(12px);
-  box-shadow: 0 10px 34px rgba(0, 0, 0, .42), 0 0 22px rgba(158, 51, 202, .25);
-  animation: vocalPadIn .24s cubic-bezier(.2, 1.3, .35, 1);
+/* ============ CHORD WHEEL (circle of fifths) ============ */
+/* Deliberately quiet next to the pads it replaces: two fill opacities, one
+   gold hairline around the chords that belong to the current key, and the
+   existing cream/gold only for whatever is actually sounding. Nothing here
+   gradients, because 24 gradients read as noise where six read as buttons.
+
+   --wheel-size / --wheel-gap / --wheel-bottom ARE THE TWIN of the constants in
+   chordWheelReservedRects() (js/view/focus-frame.js). The fitter has to reserve
+   this footprint before the wheel exists, so it cannot measure it — change one
+   and you must change the other. */
+#chord-wheel {
+  /* The vh cap is what a short phone falls back to, and it sets the wedge
+     thickness: below ~250px the two rings drop under the 32px floor. */
+  --wheel-size: min(78vw, 44vh, 300px);
+  --wheel-gap: 12px;
+  --wheel-bottom: 40px;
+  /* Bottom-left in both orientations. On guitar that is the fretting-hand side
+     with the strum zone free to the right — the same split as the instrument —
+     and portrait stands the guitar up with its body low and to the right, so a
+     centred wheel sat straight on the soundhole. The piano's keybed is a strip
+     across the middle, which a corner leaves alone either way.
+     `transform` is left entirely to the entry animation; docking by `left`
+     means the keyframe never has to know where the wheel is. */
+  position: fixed; z-index: 46;
+  left: var(--wheel-gap);
+  bottom: calc(var(--wheel-bottom) + env(safe-area-inset-bottom));
+  width: var(--wheel-size); height: var(--wheel-size);
+  border-radius: 50%;
+  background: rgba(23, 18, 28, .62); backdrop-filter: blur(12px);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .42), 0 0 22px rgba(158, 51, 202, .2);
+  animation: chordWheelIn .24s cubic-bezier(.2, 1.3, .35, 1);
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: none;
 }
-#chord-pad[hidden] { display: none !important; }
-.guitar-chord-buttons {
-  display: flex; align-items: center; gap: 7px;
-}
-#chord-pad [data-chord] {
-  min-width: 48px; height: 48px; padding: 0 10px;
-  border: 1px solid rgba(253, 251, 247, .28); border-radius: 50%;
-  background: linear-gradient(145deg, rgba(158, 51, 202, .95), rgba(92, 24, 118, .92));
-  color: var(--cream); font: 700 11px/1 'Unbounded', sans-serif; letter-spacing: .04em;
-  cursor: pointer; touch-action: none;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 4px 12px rgba(0, 0, 0, .3);
-  transition: transform .12s, background .12s, box-shadow .12s;
-}
-#chord-pad [data-chord]:nth-child(even) {
-  background: linear-gradient(145deg, var(--gold), #9d6f14); color: var(--ink);
-}
-#chord-pad [data-chord].held {
-  transform: translateY(-4px) scale(1.06);
-  background: var(--cream); color: var(--purple-deep);
-  box-shadow: 0 0 0 3px var(--gold), 0 0 22px rgba(209, 161, 59, .85);
+#chord-wheel[hidden] { display: none !important; }
+@keyframes chordWheelIn { 0% { opacity: 0; transform: scale(.9); } }
+
+#chord-wheel-rings { display: block; width: 100%; height: 100%; touch-action: none; }
+/* Stepping the key turns the wheel. Seeing the tonic travel to the top is the
+   only thing that makes "a fifth" feel like a distance rather than a word. */
+.wheel-rings { transition: transform .3s cubic-bezier(.3, .9, .3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .wheel-rings { transition: none; }
+  #chord-wheel { animation: none; }
 }
 
-/* ---- chord slot editing (✎) ---- */
-#chord-edit-btn {
-  width: 34px; height: 34px; margin-left: 8px; flex: none;
-  border: 1px solid rgba(253, 251, 247, .28); border-radius: 50%;
-  background: rgba(23, 18, 28, .5); color: rgba(253, 251, 247, .75);
-  font-size: 14px; line-height: 1; cursor: pointer;
-  transition: border-color .15s, color .15s;
+#chord-wheel .wedge { cursor: pointer; touch-action: none; }
+#chord-wheel .wedge path {
+  fill: rgba(253, 251, 247, .05);
+  stroke: rgba(23, 18, 28, .55); stroke-width: 1.1;
+  transition: fill .12s;
 }
-@media (hover: hover) {
-  #chord-edit-btn:hover { border-color: var(--gold); color: var(--gold); }
+#chord-wheel .wedge text {
+  fill: rgba(253, 251, 247, .55);
+  font: 600 9px/1 'Unbounded', sans-serif; letter-spacing: .02em;
+  text-anchor: middle; dominant-baseline: central;
+  pointer-events: none;
 }
-#chord-edit-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .16); }
-#chord-pad.editing [data-chord] { opacity: .82; }
-#chord-pad.editing [data-chord].editing {
-  opacity: 1;
-  box-shadow: 0 0 0 3px var(--gold), 0 0 18px rgba(209, 161, 59, .6);
-}
-#chord-picker {
-  position: absolute; bottom: calc(100% + 10px); left: 50%;
-  transform: translateX(-50%);
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
-  width: max-content; max-width: min(92vw, 430px);
-  padding: 10px; border: 1px solid rgba(209, 161, 59, .72); border-radius: 16px;
-  background: rgba(23, 18, 28, .92); backdrop-filter: blur(12px);
-  box-shadow: 0 10px 34px rgba(0, 0, 0, .42);
-}
-#chord-picker[hidden] { display: none !important; }
-#chord-picker button {
-  min-width: 44px; height: 40px; padding: 0 10px;
-  border: 1px solid rgba(253, 251, 247, .28); border-radius: 999px;
-  background: rgba(158, 51, 202, .35); color: var(--cream);
-  font: 700 10px/1 'Unbounded', sans-serif; letter-spacing: .04em;
-  cursor: pointer; transition: background .12s, border-color .12s;
-}
-@media (hover: hover) {
-  #chord-picker button:hover:not(:disabled) { border-color: var(--gold); background: rgba(158, 51, 202, .6); }
-}
-#chord-picker button.current { background: var(--cream); color: var(--purple-deep); border-color: var(--gold); }
-#chord-picker button:disabled { opacity: .35; cursor: default; }
-.chord-picker-qualities, .chord-picker-roots {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%;
-}
-.chord-picker-qualities { padding-bottom: 9px; border-bottom: 1px solid rgba(253, 251, 247, .16); }
-.chord-picker-qualities button { min-width: 40px; height: 32px; font-size: 9px; }
-.chord-picker-roots button { min-width: 38px; }
+#chord-wheel .wedge text.long { font-size: 7px; }
 
-/* Landscape / desktop: chords rail on the left = fretting hand, strum zone on
-   the right = picking hand — the same split as a real guitar. */
+/* The key's own six chords: one contiguous block, lit. The other eighteen stay
+   playable — dimming them says "not from here", not "not allowed". */
+#chord-wheel .wedge.in-key path {
+  fill: rgba(158, 51, 202, .38);
+  stroke: rgba(209, 161, 59, .45);
+}
+#chord-wheel .wedge.in-key text { fill: var(--cream); }
+
+#chord-wheel .wedge.held path { fill: var(--cream); stroke: var(--gold); stroke-width: 1.6; }
+#chord-wheel .wedge.held text { fill: var(--purple-deep); }
+
+@media (hover: hover) {
+  #chord-wheel .wedge:hover path { fill: rgba(158, 51, 202, .3); }
+  #chord-wheel .wedge.in-key:hover path { fill: rgba(158, 51, 202, .52); }
+}
+#chord-wheel .wedge:focus { outline: none; }
+#chord-wheel .wedge:focus-visible path { stroke: var(--gold); stroke-width: 2.4; }
+
+/* ---- hub: key stepper + sevenths ---- */
+#chord-wheel-hub {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--wheel-size) * .42); height: calc(var(--wheel-size) * .42);
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+}
+.chord-key-step { display: flex; align-items: center; gap: 2px; }
+.chord-key-step button, #chord-sevenths {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(253, 251, 247, .22); border-radius: 999px;
+  background: rgba(23, 18, 28, .5); color: rgba(253, 251, 247, .72);
+  font: 700 11px/1 'Unbounded', sans-serif;
+  cursor: pointer; touch-action: manipulation;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.chord-key-step button { width: 28px; height: 28px; font-size: 14px; }
+#chord-key-label {
+  min-width: 38px; text-align: center;
+  color: var(--cream); font: 700 15px/1 'Unbounded', sans-serif; letter-spacing: .03em;
+}
+#chord-sevenths { width: 30px; height: 22px; font-size: 10px; }
+#chord-sevenths.is-on { border-color: var(--gold); color: var(--gold); background: rgba(209, 161, 59, .18); }
+@media (hover: hover) {
+  .chord-key-step button:hover, #chord-sevenths:hover { border-color: var(--gold); color: var(--gold); }
+}
+
+/* Landscape / desktop: the wheel docks bottom-left. On guitar that keeps the
+   real instrument's split — chords under the fretting hand, strum zone free on
+   the right. On piano a full-height rail would eat a quarter of the keybed's
+   width, which the fitter punishes cubically, so a corner it is. */
 @media (orientation: landscape) {
-  html.guitar-focused #chord-pad {
-    left: 14px; top: 50%; bottom: auto;
-    transform: translateY(-50%);
-    flex-direction: column;
-    border-radius: 26px;
-  }
-  html.guitar-focused #chord-pad .guitar-chord-buttons {
-    flex-direction: column;
-  }
-  html.guitar-focused #chord-pad [data-chord].held {
-    transform: translateX(4px) scale(1.06);
-  }
-  /* Column rail: ✎ under the chords, picker beside the rail (above it would
-     leave the viewport — the rail is already vertically centered). */
-  html.guitar-focused #chord-edit-btn { margin: 8px 0 0; }
-  html.guitar-focused #chord-picker {
-    bottom: auto; left: calc(100% + 10px); top: 50%;
-    transform: translateY(-50%);
-    max-width: min(72vw, 380px);
+  #chord-wheel {
+    --wheel-size: min(calc(30vh + 120px), 236px);
+    --wheel-bottom: 12px;
   }
 }
-/* Short landscape phones: keep the six chords inside the viewport. */
-@media (orientation: landscape) and (max-height: 460px) {
-  html.guitar-focused #chord-pad { padding: 6px; }
-  html.guitar-focused #chord-pad .guitar-chord-buttons { gap: 5px; }
-  html.guitar-focused #chord-pad [data-chord] {
-    min-width: 44px; height: 44px; font-size: 10px;
-  }
-}
+
 /* Guitar play claims the canvas, while panels and controls keep normal zoom. */
 html.guitar-focused #scene,
 html.guitar-fretting #scene {
@@ -1627,7 +1634,7 @@ html.mascot-editor-open #drag-hint,
 html.mascot-editor-open #mobile-controls,
 html.mascot-editor-open #loop-pedal,
 html.mascot-editor-open #vocal-pad,
-html.mascot-editor-open #chord-pad,
+html.mascot-editor-open #chord-wheel,
 html.mascot-editor-open #chip,
 html.mascot-editor-open #toast {
   opacity: 0 !important; pointer-events: none !important;
@@ -1687,21 +1694,23 @@ html.mascot-editor-open #toast {
     padding: 0 max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     pointer-events: none;
   }
-  #vocal-pad, #chord-pad {
+  #vocal-pad {
     bottom: calc(168px + env(safe-area-inset-bottom));
     max-width: calc(100vw - 22px); padding: 7px;
   }
-  /* Chords sit lower than the vocal pad: it frees the guitar's lower bout.
-     At that height the zoom column is alongside, so centre the pad in the
-     space left of it instead of overlapping the "+" button. */
-  #chord-pad {
-    bottom: calc(120px + env(safe-area-inset-bottom));
-    left: calc(50% - 26px);
-    max-width: calc(100vw - 74px);
+  /* Game mode parks the joystick and ГРАТИ along the bottom, so the wheel sits
+     a little higher here than on desktop. The twin of the 48 in
+     focus-frame.js. */
+  #chord-wheel { --wheel-bottom: 48px; }
+  /* The wheel reaches across most of the width down here, and the loop pedal's
+     usual spot is inside it. Stack the pedal above the ✕ column while a play
+     surface is open — the same "get out of the pads' way" move the toast and
+     the onboarding tip already make. */
+  html.pads-open #loop-pedal {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 84px);
   }
   #vocal-pad button { width: clamp(42px, 12vw, 50px); height: clamp(42px, 12vw, 50px); font-size: 8px; }
-  .guitar-chord-buttons { gap: 5px; }
-  #chord-pad [data-chord] { min-width: clamp(40px, 11vw, 48px); height: clamp(42px, 12vw, 50px); font-size: 10px; padding: 0 8px; }
   .overlay { padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); align-items: flex-end; }
   .panel {
     width: 100%; max-height: min(92vh, 100%);
@@ -1736,6 +1745,7 @@ html.mascot-editor-open #toast {
   #chip .pill-btn { padding: 7px 11px; font-size: 7px; }
   #toast { bottom: calc(120px + env(safe-area-inset-bottom)); }
   html.pads-open #toast,
+  html.pads-open #onboard,
   #toast[data-kind="vibe-max"] {
     top: calc(72px + env(safe-area-inset-top));
     bottom: auto !important;

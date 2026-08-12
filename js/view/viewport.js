@@ -6,22 +6,22 @@
 // guards let pinch work where it helps (inspecting an instrument) while
 // blocking the double-tap zoom that would otherwise eat a drum hit.
 // ============================================================
-import { session } from '../core/session.js?v=20260812-04';
-import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260812-04';
+import { session } from '../core/session.js?v=20260813-01';
+import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260813-01';
 import {
   renderer,
   camera,
   controls,
   fitCameraToViewport,
   applyMobileOrbitPolicy,
-} from './rig.js?v=20260812-04';
-import { ui } from '../core/studio.js?v=20260812-04';
-import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260812-04';
-import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260812-04';
-import { instrumentViewFrame } from './focus-frame.js?v=20260812-04';
-import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260812-04';
-import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260812-04';
-import { mascotEditor, queueMascotRefit } from '../mascot/editor.js?v=20260812-04';
+} from './rig.js?v=20260813-01';
+import { ui } from '../core/studio.js?v=20260813-01';
+import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260813-01';
+import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260813-01';
+import { instrumentViewFrame } from './focus-frame.js?v=20260813-01';
+import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260813-01';
+import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260813-01';
+import { mascotEditor, queueMascotRefit } from '../mascot/editor.js?v=20260813-01';
 
 // Resizing has to re-post the composer and re-sync chrome that main.js owns.
 let hooks = {
@@ -113,7 +113,7 @@ export function syncRendererToWindow() {
 // Pedal / pads / HUD sit above the canvas. preventDefault on a 2nd-finger
 // touchstart suppresses that finger's pointer events — so never claim multitouch
 // when any active touch is on UI chrome (loop pedal + drum must work together).
-const UI_TOUCH_CHROME = '#loop-pedal, #vocal-pad, #chord-pad, #mobile-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
+const UI_TOUCH_CHROME = '#loop-pedal, #vocal-pad, #chord-wheel, #mobile-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
 
 export function isUiChromeElement(el) {
   return Boolean(el?.closest?.(`${UI_TOUCH_CHROME}, .panel, input, textarea, [contenteditable="true"]`));

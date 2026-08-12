@@ -7,19 +7,20 @@
 // instrument at all.
 //
 // Piano close-up additionally gets its own real-keyboard-shaped layout (see
-// PIANO_FOCUS_WHITE/BLACK below), active only while focused there. It reuses
-// four of the QWERTY chord letters (W E T Y), so for the duration of piano
-// focus those specific keys strike piano notes instead of selecting chords —
-// Q and R stay guitar throughout, and every other instrument's keys are
-// untouched. Leaving focus restores the global map immediately.
+// PIANO_FOCUS_WHITE/BLACK below), active only while focused there. It claims
+// the letter rows outright — including four of the QWERTY chord letters — so
+// rather than leave a chord row that works two keys in six, the whole row
+// steps aside and the chords move to the digits for the duration. Every other
+// instrument's keys are untouched, and leaving focus restores the global map
+// immediately.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260812-04';
-import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260812-04';
-import { instrumentView } from '../view/instrument-presets.js?v=20260812-04';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260812-04';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260812-04';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260812-04';
+import { session } from '../core/session.js?v=20260813-01';
+import { ui, audio, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-01';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-01';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-01';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-01';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-01';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -28,9 +29,10 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260812-04';
-import { GUITAR_KEY_CHORDS, fireGuitarStrum } from './guitar.js?v=20260812-04';
-import { syncChordPadHeld, deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260812-04';
+} from './loop.js?v=20260813-01';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-01';
+import { syncChordWheelHeld } from './chord-wheel.js?v=20260813-01';
+import { deferHeldLoopEventPlayback, playVocalNote } from './pads.js?v=20260813-01';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.
@@ -77,10 +79,13 @@ export function trigger(mesh) {
   }
 }
 
-export function beginHeldPianoNote(key) {
+// `vibe` is an option because the chord wheel presses four keys for one
+// gesture: only its first note carries the reward, or a chord would be worth
+// four times a note for the same single tap.
+export function beginHeldPianoNote(key, { vibe = 3.5 } = {}) {
   if (!key?.userData || !Number.isFinite(key.userData.freq)) return null;
   hooks.activateAudioForSound();
-  const event = { type: 'piano', freq: key.userData.freq, vel: 1, vibe: 3.5 };
+  const event = { type: 'piano', freq: key.userData.freq, vel: 1, vibe };
   const startedAt = audio.ctx?.currentTime ?? 0;
   const captured = captureLoopEvent({ ...event, duration: 0.12 }, startedAt);
   if (captured) captured.durationPending = true;
@@ -198,6 +203,19 @@ const pianoFocusKeymap = new Map([
   ...PIANO_FOCUS_BLACK.map((code, i) => [code, blackKeys[i]]),
 ]);
 
+// The focused piano owns the letter keys outright, so the chord row moves to
+// the digits for the duration. It addresses the same six scale degrees the
+// wheel lights; the white keys those digits normally play are redundant here,
+// because A..L already covers a wider span of the same keybed. Leaving the
+// close-up restores QWERTY chords and digit notes immediately.
+const PIANO_FOCUS_CHORD_DIGITS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'];
+const digitChord = (code) => keyChordNames[PIANO_FOCUS_CHORD_DIGITS.indexOf(code)] || null;
+
+/** Which chord a key event arms right now, given where the visitor is. */
+function chordForKeyEvent(code) {
+  return hooks.canPlayInstrument('piano') ? digitChord(code) : (GUITAR_KEY_CHORDS[code] || null);
+}
+
 window.addEventListener('keydown', (e) => {
   if (!session.started || ui.modalOpen) return;
   if (isEditableHotkeyTarget(e.target)) return;
@@ -236,19 +254,21 @@ window.addEventListener('keydown', (e) => {
     }
   }
 
-  const guitarChord = GUITAR_KEY_CHORDS[e.code];
+  const guitarChord = chordForKeyEvent(e.code);
   if (guitarChord) {
     e.preventDefault();
     if (!e.repeat) {
       play.keyboardGuitarChord = guitarChord;
-      syncChordPadHeld();
-      // Same QWERTY row in both modes, but it means different things:
+      syncChordWheelHeld();
+      // The row addresses scale degrees, so Q is the tonic and Y the vi in
+      // whatever key the wheel is turned to. What a press *does* still depends
+      // on where you are:
       //
-      // Focused, it is *select-only*, matching the on-screen pad you are
-      // looking at — the fretting hand chooses, Space strums (§ Guitar
-      // performance mode's two-hand model).
+      // Focused, it is *select-only*, matching the wheel you are looking at —
+      // the fretting hand chooses, Space strums (§ Guitar performance mode's
+      // two-hand model).
       //
-      // Unfocused, the key IS the play gesture: there is no visible pad to
+      // Unfocused, the key IS the play gesture: there is no visible wheel to
       // read, so arming silently would look broken. Space still re-strums.
       if (!hooks.canPlayInstrument('guitar')) {
         fireGuitarStrum(0.85, 'bass-to-treble', null, null, true, { focusRequired: false });
@@ -306,10 +326,13 @@ window.addEventListener('keyup', (e) => {
     keyboardPianoNotes.delete(e.code);
     noteKeyboardJamActivity('piano');
   }
-  const guitarChord = GUITAR_KEY_CHORDS[e.code];
+  // Release checks both maps, not the one that is live now: focus can change
+  // between the press and the release, and a chord that armed under the other
+  // map still has to let go.
+  const guitarChord = GUITAR_KEY_CHORDS[e.code] || digitChord(e.code);
   if (guitarChord && play.keyboardGuitarChord === guitarChord) {
     play.keyboardGuitarChord = null;
-    syncChordPadHeld();
+    syncChordWheelHeld();
     noteKeyboardJamActivity('guitar');
   }
   if (play.keyboardVocal?.code === e.code) {

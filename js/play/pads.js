@@ -1,175 +1,34 @@
 // ============================================================
-// VOCAL + CHORD PADS
-// The on-screen instruments that appear in a close-up. Both are held-note
-// surfaces: sound starts on press and its real duration is only known on
-// release, so loop capture opens an entry on press and stamps it on release.
-// The chord pad also supports latching, so a quick tap frees the strum hand.
+// VOCAL PAD
+// The on-screen note strip that appears in the microphone close-up. It is a
+// held-note surface: sound starts on press and its real duration is only known
+// on release, so loop capture opens an entry on press and stamps it on
+// release. Those capture helpers are shared — the piano's held keys work the
+// same way and import them from here.
+//
+// The guitar's chord surface used to live in this file too; it is now the
+// circle of fifths in chord-wheel.js, which serves the piano as well.
 // ============================================================
-import { ui, audio, guitar, mic } from '../core/studio.js?v=20260812-04';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260812-04';
-import { canvas } from '../view/rig.js?v=20260812-04';
-import { play, activePointers } from './state.js?v=20260812-04';
-import {
-  CHORD_QUALITIES,
-  CHORD_ROOTS,
-  GUITAR_CHORDS,
-  padChords,
-  setPadChord,
-  slotKeyLabel,
-} from './guitar.js?v=20260812-04';
-import { addVibe } from './vibe.js?v=20260812-04';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260812-04';
+import { audio, mic } from '../core/studio.js?v=20260813-01';
+import { play } from './state.js?v=20260813-01';
+import { addVibe } from './vibe.js?v=20260813-01';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent, playMusicalEvent } from './loop.js?v=20260813-01';
 
 // Pad gestures compete with the stage's own pointer handling; main.js supplies
 // the predicates and teardown that only it can answer.
 let hooks = {
   activateAudioForSound: () => {},
-  isGuitarPlayFocus: () => false,
   isLiveStageZoomLocked: () => false,
-  eventInvolvesUiChrome: () => false,
   releaseKeyboardVocal: () => {},
-  currentGuitarChordName: () => null,
 };
 export function initPads(next) {
   hooks = { ...hooks, ...next };
 }
 
-// ---- microphone note pad ----
 const vocalPad = document.getElementById('vocal-pad');
 const vocalButtons = [...vocalPad.querySelectorAll('[data-vocal-freq]')];
 let vocalPadTimer = null;
-const chordPad = document.getElementById('chord-pad');
-const chordButtons = [...(chordPad?.querySelectorAll('[data-chord]') || [])];
-const chordEditBtn = document.getElementById('chord-edit-btn');
-const chordPicker = document.getElementById('chord-picker');
-// Slot editing: ✎ arms it, a slot tap opens the picker, ✓ / focus exit ends it.
-// A separate mode instead of long-press, because holding a chord button IS the
-// play gesture — the pad cannot give "hold" a second meaning.
-const chordEdit = { on: false, slot: null };
-
-// The six button elements are permanent (touch bookkeeping is keyed on them);
-// a slot change restyles them in place rather than replacing nodes.
-function renderChordPad() {
-  chordButtons.forEach((button, slot) => {
-    const name = padChords[slot];
-    button.dataset.chord = name;
-    button.textContent = name;
-    button.setAttribute('aria-label', `Акорд ${name}`);
-    // Position, not the chord's name, is what the keyboard addresses — a
-    // generated library has too many same-initial names to key off.
-    button.setAttribute('aria-keyshortcuts', slotKeyLabel(slot));
-  });
-  syncChordPadHeld();
-}
-
-function closeChordPicker() {
-  if (!chordPicker) return;
-  chordPicker.hidden = true;
-  chordEdit.slot = null;
-  for (const button of chordButtons) button.classList.remove('editing');
-}
-
-function setChordEditMode(on) {
-  if (!chordEditBtn || chordEdit.on === on) return;
-  chordEdit.on = on;
-  chordEditBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  chordEditBtn.textContent = on ? '✓' : '✎';
-  chordPad?.classList.toggle('editing', on);
-  if (!on) closeChordPicker();
-}
-
-// 84 chords will not fit in a flat list, and they do not need to: a chord is
-// a root plus a quality, so the picker asks for those two separately — 12 + 7
-// controls instead of 84. The quality row is sticky within one open picker so
-// picking "m" then trying several roots is one tap each.
-function openChordPicker(slot) {
-  if (!chordPicker) return;
-  chordEdit.slot = slot;
-  chordButtons.forEach((button, index) => button.classList.toggle('editing', index === slot));
-
-  const current = padChords[slot];
-  // Split the current chord back into root + quality so the picker opens on it.
-  const currentRoot = CHORD_ROOTS.find((r) => current === r || (current.startsWith(r)
-    && CHORD_QUALITIES[current.slice(r.length)] !== undefined
-    // "C#..." must not match root "C"
-    && !CHORD_ROOTS.includes(current.slice(0, r.length + 1)))) || 'C';
-  let quality = current.slice(currentRoot.length);
-  if (CHORD_QUALITIES[quality] === undefined) quality = '';
-
-  const qualityRow = document.createElement('div');
-  qualityRow.className = 'chord-picker-qualities';
-  qualityRow.setAttribute('role', 'radiogroup');
-  qualityRow.setAttribute('aria-label', 'Тип акорду');
-  const rootRow = document.createElement('div');
-  rootRow.className = 'chord-picker-roots';
-  rootRow.setAttribute('role', 'radiogroup');
-  rootRow.setAttribute('aria-label', 'Нота акорду');
-
-  const paint = () => {
-    for (const button of qualityRow.children) {
-      const on = button.dataset.quality === quality;
-      button.classList.toggle('current', on);
-      button.setAttribute('aria-checked', on ? 'true' : 'false');
-    }
-    for (const button of rootRow.children) {
-      const name = button.dataset.root + quality;
-      const isCurrent = name === padChords[slot];
-      button.classList.toggle('current', isCurrent);
-      button.setAttribute('aria-checked', isCurrent ? 'true' : 'false');
-      // Already on another slot: a second pad with the same chord just wastes
-      // one of six. Harmless now that keys are positional, still pointless.
-      button.disabled = !isCurrent && padChords.includes(name);
-      button.title = name;
-    }
-  };
-
-  for (const [suffix, { label }] of Object.entries(CHORD_QUALITIES)) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.quality = suffix;
-    button.textContent = suffix || 'maj';
-    button.setAttribute('role', 'radio');
-    button.setAttribute('aria-label', label);
-    button.addEventListener('click', () => { quality = suffix; paint(); });
-    qualityRow.appendChild(button);
-  }
-  for (const root of CHORD_ROOTS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.root = root;
-    button.textContent = root;
-    button.setAttribute('role', 'radio');
-    button.addEventListener('click', () => {
-      if (!setPadChord(slot, root + quality)) return;
-      // The swapped-out chord may still be held / latched / key-armed;
-      // clearing selection keeps pad state and sound in agreement.
-      clearGuitarInteractionState();
-      renderChordPad();
-      closeChordPicker();
-    });
-    rootRow.appendChild(button);
-  }
-
-  chordPicker.replaceChildren(qualityRow, rootRow);
-  paint();
-  chordPicker.hidden = false;
-}
-
-chordEditBtn?.addEventListener('click', () => setChordEditMode(!chordEdit.on));
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && chordEdit.on) setChordEditMode(false);
-});
-chordPad?.addEventListener('pointerdown', (event) => {
-  // Swallow pad chrome only — chord buttons handle their own pointer claim.
-  if (event.target.closest?.('[data-chord]')) return;
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  // The ✎ toggle and the picker options are ordinary buttons driven by click:
-  // keep their pointer off the canvas, but do NOT preventDefault, or touch
-  // never gets the synthesized click and the controls read as dead.
-  if (event.target.closest?.('#chord-edit-btn, #chord-picker')) return;
-  if (event.pointerType === 'touch') event.preventDefault();
-}, { capture: true });
+const chordWheel = document.getElementById('chord-wheel');
 
 export function stampHeldLoopCaptureDuration() {
   if (!play.heldLoopCapture || play.heldLoopCapture.finished || !audio.ctx) return;
@@ -223,10 +82,13 @@ export function finishHeldLoopCapture() {
   play.heldLoopCapture = null;
 }
 
-function syncPadsOpenClass() {
+// Both play surfaces share one "something is docked at the bottom" class, so
+// the toast knows to move. The wheel lives in another module; reading its
+// hidden state off the DOM keeps that a one-way call rather than a cycle.
+export function syncPadsOpenClass() {
   const padsOpen = Boolean(
     (vocalPad && !vocalPad.hidden)
-    || (chordPad && !chordPad.hidden),
+    || (chordWheel && !chordWheel.hidden),
   );
   document.documentElement.classList.toggle('pads-open', padsOpen);
 }
@@ -251,168 +113,10 @@ export function hideVocalPad() {
   syncPadsOpenClass();
 }
 
-export function syncChordPadHeld() {
-  const activeChord = hooks.currentGuitarChordName();
-  for (const button of chordButtons) {
-    const isActive = button.dataset.chord === activeChord;
-    button.classList.toggle('held', isActive);
-    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-  }
-  document.documentElement.classList.toggle('guitar-fretting', Boolean(activeChord));
-}
-
-export function showChordPad() {
-  if (!chordPad) return;
-  syncChordPadHeld();
-  chordPad.hidden = false;
-  syncPadsOpenClass();
-}
-
-export function hideChordPad() {
-  if (!chordPad) return;
-  clearGuitarInteractionState();
-  setChordEditMode(false); // leaving focus also leaves slot editing
-  chordPad.hidden = true;
-  syncPadsOpenClass();
-}
-
-function holdGuitarChord(name, pointerId) {
-  if (!GUITAR_CHORDS[name]) return;
-  play.heldGuitarChord = name;
-  play.heldGuitarChordPointer = pointerId;
-  syncChordPadHeld();
-  navigator.vibrate?.(10);
-}
-
-function releaseHeldGuitarChord(event) {
-  if (event && play.heldGuitarChordPointer !== null && event.pointerId !== play.heldGuitarChordPointer) return;
-  play.heldGuitarChord = null;
-  play.heldGuitarChordPointer = null;
-  syncChordPadHeld();
-}
-
-function toggleLatchedGuitarChord(name) {
-  if (!GUITAR_CHORDS[name]) return;
-  play.latchedGuitarChord = play.latchedGuitarChord === name ? null : name;
-  play.heldGuitarChord = null;
-  play.heldGuitarChordPointer = null;
-  syncChordPadHeld();
-}
-
-export function clearGuitarInteractionState() {
-  for (const [pointerId, info] of activePointers) {
-    if (!info.mode?.startsWith('guitar-')) continue;
-    activePointers.delete(pointerId);
-    try {
-      if (canvas.hasPointerCapture?.(pointerId)) canvas.releasePointerCapture(pointerId);
-    } catch (_) { /* ignore */ }
-  }
-  for (const [pointerId, interaction] of activeTouchChordPointers) {
-    try {
-      if (interaction.button?.hasPointerCapture?.(pointerId)) {
-        interaction.button.releasePointerCapture(pointerId);
-      }
-    } catch (_) { /* ignore */ }
-  }
-  activeTouchChordPointers.clear();
-  play.heldGuitarChord = null;
-  play.heldGuitarChordPointer = null;
-  play.latchedGuitarChord = null;
-  play.keyboardGuitarChord = null;
-  play.guitarStrokeMotion = 0;
-  syncChordPadHeld();
-}
-
-const recentTouchChordAt = new WeakMap();
-const activeTouchChordPointers = new Map();
-
-export function markHeldTouchGuitarChordUsed() {
-  if (play.heldGuitarChordPointer === null) return;
-  const interaction = activeTouchChordPointers.get(play.heldGuitarChordPointer);
-  if (interaction) interaction.usedForPlay = true;
-}
-
-function finishTouchGuitarChord(event, { cancelled = false } = {}) {
-  const interaction = activeTouchChordPointers.get(event.pointerId);
-  if (!interaction) {
-    releaseHeldGuitarChord(event);
-    return;
-  }
-  activeTouchChordPointers.delete(event.pointerId);
-  releaseHeldGuitarChord(event);
-  if (!isQuickGuitarTap({
-    elapsedMs: performance.now() - interaction.startedAt,
-    distancePx: interaction.distancePx,
-    cancelled,
-    usedForPlay: interaction.usedForPlay,
-  })) return;
-  toggleLatchedGuitarChord(interaction.name);
-}
-
-for (const button of chordButtons) {
-  button.addEventListener('pointerdown', (event) => {
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    // Edit mode repurposes the tap: no hold, no capture, and no preventDefault
-    // so the browser still synthesizes the click that opens the picker.
-    if (chordEdit.on) return;
-    if (event.pointerType === 'touch') {
-      event.preventDefault();
-      recentTouchChordAt.set(button, performance.now());
-      activeTouchChordPointers.set(event.pointerId, {
-        name: button.dataset.chord,
-        button,
-        startedAt: performance.now(),
-        startX: event.clientX,
-        startY: event.clientY,
-        distancePx: 0,
-        usedForPlay: false,
-      });
-      holdGuitarChord(button.dataset.chord, event.pointerId);
-      button.setPointerCapture?.(event.pointerId);
-    }
-  });
-  button.addEventListener('pointermove', (event) => {
-    const interaction = activeTouchChordPointers.get(event.pointerId);
-    if (!interaction) return;
-    interaction.distancePx = Math.max(
-      interaction.distancePx,
-      Math.hypot(event.clientX - interaction.startX, event.clientY - interaction.startY),
-    );
-  });
-  button.addEventListener('click', (event) => {
-    if (chordEdit.on) {
-      openChordPicker(chordButtons.indexOf(button));
-      return;
-    }
-    if (event.detail !== 0 && performance.now() - (recentTouchChordAt.get(button) || 0) < 700) return;
-    toggleLatchedGuitarChord(button.dataset.chord);
-  });
-  button.addEventListener('pointerup', (event) => finishTouchGuitarChord(event));
-  button.addEventListener('pointercancel', (event) => finishTouchGuitarChord(event, { cancelled: true }));
-  button.addEventListener('lostpointercapture', (event) => finishTouchGuitarChord(event, { cancelled: true }));
-}
-
-// Hold chord + second-finger strum: stop Safari/Chrome page pinch-zoom (not orbit dolly).
-// Do not preventDefault on pad↔canvas multitouch touchstart — that drops the strum finger.
-function blockGuitarBrowserPageZoom(event) {
-  if (!hooks.isGuitarPlayFocus()) return;
-  if (hooks.eventInvolvesUiChrome(event)) return;
-  if (event.touches && event.touches.length >= 2 && event.cancelable) event.preventDefault();
-}
-document.addEventListener('touchstart', blockGuitarBrowserPageZoom, { passive: false, capture: true });
-document.addEventListener('touchmove', blockGuitarBrowserPageZoom, { passive: false, capture: true });
-// iOS Safari still fires gesture* for page pinch even with user-scalable=no.
-for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
-  document.addEventListener(name, (event) => {
-    if (hooks.isGuitarPlayFocus()) event.preventDefault();
-  }, { passive: false, capture: true });
-}
-
 // Prevent rapid cross-control taps from being promoted to page zoom by mobile
 // browsers. Informational panels remain zoomable / scrollable.
 document.addEventListener('dblclick', (event) => {
-  if (hooks.isLiveStageZoomLocked() || event.target.closest?.('#vocal-pad, #chord-pad, #toast')) {
+  if (hooks.isLiveStageZoomLocked() || event.target.closest?.('#vocal-pad, #chord-wheel, #toast')) {
     event.preventDefault();
   }
 }, { passive: false, capture: true });
@@ -462,7 +166,3 @@ for (const button of vocalButtons) {
   button.addEventListener('lostpointercapture', releaseHeldVocal);
   button.addEventListener('touchend', (event) => event.preventDefault(), { passive: false });
 }
-
-
-// Restore any saved chord-slot layout onto the pad's permanent buttons.
-renderChordPad();

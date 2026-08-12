@@ -15,7 +15,7 @@ pattern**, and any new close-up should too.
 ## The pattern: measure, don't hard-code
 
 A naive close-up picks camera offsets per breakpoint. That fails here because the usable
-area is not the viewport: HUD, loop pedal, zoom column, ✕ exit, chord-pad gutter, safe-area
+area is not the viewport: HUD, loop pedal, zoom column, ✕ exit, chord-wheel corner, safe-area
 insets and browser chrome all eat into it, and `visualViewport` moves under you on mobile.
 
 So instead:

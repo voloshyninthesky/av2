@@ -7,10 +7,10 @@
 // the fade, and the respawn.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260812-04';
-import { isMobileGameMode } from '../core/quality.js?v=20260812-04';
-import { swallowNextClick } from '../core/gesture-guards.js?v=20260812-04';
-import { camera, controls } from './rig.js?v=20260812-04';
+import { session } from '../core/session.js?v=20260813-01';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-01';
+import { swallowNextClick } from '../core/gesture-guards.js?v=20260813-01';
+import { camera, controls } from './rig.js?v=20260813-01';
 import {
   ui,
   stage,
@@ -20,14 +20,13 @@ import {
   applyMascotScale,
   mascotFallMeshes,
   mascotFallMaterialStates,
-} from '../core/studio.js?v=20260812-04';
-import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260812-04';
-import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260812-04';
-import { mascotMove } from '../mascot/state.js?v=20260812-04';
-import { setDancing } from '../mascot/pose.js?v=20260812-04';
-import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260812-04';
-import { resyncLoopPlayback } from '../play/loop.js?v=20260812-04';
-import { hideVocalPad, hideChordPad } from '../play/pads.js?v=20260812-04';
+} from '../core/studio.js?v=20260813-01';
+import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260813-01';
+import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260813-01';
+import { mascotMove } from '../mascot/state.js?v=20260813-01';
+import { setDancing } from '../mascot/pose.js?v=20260813-01';
+import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260813-01';
+import { resyncLoopPlayback } from '../play/loop.js?v=20260813-01';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');
@@ -52,8 +51,15 @@ function claimMobilePlayGhostClick() {
   releaseMobilePlayClick = swallowNextClick({ within: 500 });
 }
 
-// Playing whatever is in reach runs through the stage's own trigger path.
-let hooks = { playNearestInstrument: () => {} };
+// Playing whatever is in reach runs through the stage's own trigger path, and
+// a mascot fall has to dismiss the play surfaces. Both live in `play/`, which
+// sits above `view/` — so they are injected from main.js rather than imported,
+// or the graph stops being a tree and the cycle fails as a silent `undefined`.
+let hooks = {
+  playNearestInstrument: () => {},
+  hideVocalPad: () => {},
+  hideChordWheel: () => {},
+};
 export function initMobileControls(next) {
   hooks = { ...hooks, ...next };
 }
@@ -286,8 +292,8 @@ export function beginMascotFall(direction) {
   mascotMove.keys.clear();
   releaseMoveJoystick();
   ui.hideChip();
-  hideVocalPad();
-  hideChordPad();
+  hooks.hideVocalPad();
+  hooks.hideChordWheel();
   mascotMove.fall = {
     t: 0,
     duration: 2.7,
