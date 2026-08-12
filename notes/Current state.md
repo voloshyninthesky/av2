@@ -16,20 +16,25 @@ now serves both guitar (arms a chord, silent) and piano (sounds the chord and de
 voiced keys). New `js/play/harmony.js` (imports nothing) and `js/play/chord-wheel.js`; 84
 Node tests pass, 11 new.
 
-**Deployed to the VPS preview — verified live, not just green.** `vibe2.ton.zone` release
-`20260812T114213Z`, previous release recorded in
-`/var/www/vibe2.ton.zone/.previous-release-for-rollback` and the prior nginx confs saved
-alongside as `.bak.20260812T114213Z`. Confirmed via headless load of
-`https://vibe2.ton.zone/stage/?testhooks=1&headless=1`: scene boots, the wheel opens on
-guitar focus with 24 wedges / 6 lit in key, `curl` shows `stage/` serving `v=20260813-01`.
+`45d8706` then sat the wheel in the bottom corner (almost touching ✕), shrank its hub to the
+smallest circle its controls fit in — wedge thickness ~35 px at 320×568, ~44 px on a typical
+phone — capped its width by what the right-hand control column needs rather than a flat
+`78vw`, and gave **mobile guitar focus one further zoom step** inside its measured fit.
+
+**Live on both surfaces, verified rather than assumed.** Production `artvibe.com.pl` (Pages
+run succeeded in 17 s) and VPS preview `vibe2.ton.zone` release `20260812T115855Z` — previous
+release in `/var/www/vibe2.ton.zone/.previous-release-for-rollback`, prior nginx confs saved
+as `.bak.<stamp>`. Confirmed by headless load of production: scene boots, wheel opens on
+guitar focus with 24 wedges / 6 lit, one cache stamp across every module loaded, no console
+errors beyond the ad-blocker eating GoatCounter.
 
 ```bash
-curl -s https://vibe2.ton.zone/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect one stamp, v=20260813-01
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect v=20260813-02
+curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # preview should match
 ```
 
-**Not pushed to `main` on GitHub, so `artvibe.com.pl` (GitHub Pages) is still on the previous
-build.** The commit exists locally only — pushing triggers `deploy-pages.yml` against the
-production custom domain, which is a separate decision from shipping the VPS preview.
+A green Actions run is still not proof — the curl is, because the run can succeed while the
+CDN serves the previous build.
 
 **Also landed 2026-08-11: the Polish mirror** (`f61d9c0`). `/pl/` carries the hub, the four
 lesson pages and a RODO notice on Polish slugs, deliberately `noindex` so it cannot compete
