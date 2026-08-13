@@ -18,7 +18,7 @@
 // would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-14';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-15';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -29,8 +29,8 @@ import { prefersReducedMotion } from '../core/quality.js?v=20260813-14';
 // colour is the tier accent. Kept out of the «світло» dimmer registry on
 // purpose: rarity should still read on a darkened stage.
 export const MASCOT_TIER_TRIM = {
-  epic: 0.22,
-  legendary: 0.35,
+  epic: 0.15,
+  legendary: 0.24,
 };
 
 // What each tier wears. `ring`/`rays` scale the additive colour (for additive
@@ -41,20 +41,25 @@ export const MASCOT_TIER_TRIM = {
 // counter-turn to the sparks, so the two never look locked together). `ripple`
 // is the expanding pulse that leaves the mark every `rippleEvery` seconds —
 // what turns a static decal into something the character is *emitting*.
+// Tuned quiet on purpose (one loudness pass down from the first shipped
+// values): the mark should read at a glance and then get out of the way — it
+// shares the stage with the instruments, the footlights and the bloom, and at
+// the old levels it competed with all three. The ladder still orders
+// rare < epic < legendary; the whole ladder just sits lower.
 const AURA_TIERS = {
   // Rare's denim sits over the warm key-light pool, which eats saturation —
   // it runs a little hotter than the ladder position alone would suggest.
   rare: {
-    ring: 0.68, ringPulse: 1.4, rays: 0, sparks: 0, sparkSize: 0, spin: 0, bird: false,
-    glyph: 0.32, glyphSpin: -0.10, ripple: 0.5, rippleEvery: 3.6, drift: 0,
+    ring: 0.45, ringPulse: 1.4, rays: 0, sparks: 0, sparkSize: 0, spin: 0, bird: false,
+    glyph: 0.20, glyphSpin: -0.10, ripple: 0.30, rippleEvery: 5.2, drift: 0,
   },
   epic: {
-    ring: 0.75, ringPulse: 1.9, rays: 0, sparks: 26, sparkSize: 0.058, spin: 0.7, bird: false,
-    glyph: 0.5, glyphSpin: -0.16, ripple: 0.7, rippleEvery: 2.8, drift: 0.5,
+    ring: 0.50, ringPulse: 1.9, rays: 0, sparks: 20, sparkSize: 0.050, spin: 0.7, bird: false,
+    glyph: 0.30, glyphSpin: -0.16, ripple: 0.42, rippleEvery: 4.2, drift: 0.5,
   },
   legendary: {
-    ring: 0.9, ringPulse: 2.3, rays: 0.5, sparks: 44, sparkSize: 0.068, spin: 0.9, bird: true,
-    glyph: 0.72, glyphSpin: -0.22, ripple: 0.9, rippleEvery: 2.2, drift: 0.8,
+    ring: 0.60, ringPulse: 2.3, rays: 0.32, sparks: 34, sparkSize: 0.058, spin: 0.9, bird: true,
+    glyph: 0.44, glyphSpin: -0.22, ripple: 0.55, rippleEvery: 3.4, drift: 0.8,
   },
 };
 const MAX_SPARKS = 44;
@@ -169,7 +174,7 @@ function makeSparkTexture() {
 // single rotation.z flaps them.
 function buildCompanionBird() {
   const bird = new THREE.Group();
-  const plumage = new THREE.MeshStandardMaterial({ color: 0xE8BE5B, roughness: 0.55, emissive: 0xD1A13B, emissiveIntensity: 0.28 });
+  const plumage = new THREE.MeshStandardMaterial({ color: 0xE8BE5B, roughness: 0.55, emissive: 0xD1A13B, emissiveIntensity: 0.2 });
   const inkMat = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.6 });
 
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), plumage);
@@ -416,14 +421,14 @@ export function buildMascotAura() {
       sparks.rotation.y = 0;
       sparkMat.size = params.sparkSize;
     } else {
-      const pulse = 1 + 0.15 * Math.sin(t * params.ringPulse);
+      const pulse = 1 + 0.10 * Math.sin(t * params.ringPulse);
       ringMat.color.copy(state.ringBase).multiplyScalar(pulse);
       // Counter-turn, so pool, runes and sparks never lock into one rotation.
       glyph.rotation.y = t * params.glyphSpin;
-      glyphMat.color.copy(state.glyphBase).multiplyScalar(1 + 0.1 * Math.sin(t * params.ringPulse * 0.7));
+      glyphMat.color.copy(state.glyphBase).multiplyScalar(1 + 0.07 * Math.sin(t * params.ringPulse * 0.7));
       rays.rotation.y = t * 0.3;
       sparks.rotation.y = t * params.spin;
-      sparkMat.size = params.sparkSize * (1 + 0.22 * Math.sin(t * 3.7));
+      sparkMat.size = params.sparkSize * (1 + 0.16 * Math.sin(t * 3.7));
 
       // One ripple in flight: phase 0→1 over its period, scaling out and
       // fading. Driven off `t` rather than accumulated, so it cannot drift.

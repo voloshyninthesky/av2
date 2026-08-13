@@ -31,6 +31,14 @@ texture counts identical at every tier and across a 20-pull stress. One trap wor
 the drift walks points above the authored heights, so the **bounding sphere has to be grown
 at build time** or the frustum test culls the whole cloud in a close-up.
 
+**Then the whole ladder was turned down** (same day, one loudness pass): every additive
+intensity down by roughly a third, the ripple to about half its cadence, fewer and smaller
+embers, dimmer trim glow. The first values were tuned looking *at the aura*; on the stage the
+mark competed with the footlights, the bloom and the instruments — and the instruments are
+the product. The mark should read at a glance and then get out of the way. The ladder's
+ordering (rare < epic < legendary) is untouched; the whole ladder just sits lower. If it ever
+creeps back up, this is the entry to reread.
+
 **A generated per-tier headpiece was built and thrown away in the same session**, and the
 rule it produced is now in [[SPEC]] §13: *a tier's presence never adds a slot to the
 appearance vocabulary.* Three Tripo crowns (silver laurel, amethyst, gold) were generated,

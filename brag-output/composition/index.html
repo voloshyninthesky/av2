@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Art Vibe Studio — brag</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/fonts/fonts.css" />
+    <style>
+      :root {
+        --purple: #9e33ca;
+        --purple-deep: #4a1263;
+        --gold: #d1a13b;
+        --gold-light: #f0d17d;
+        --cream: #fdfbf7;
+        --paper: #ffffff;
+        --ink: #241a2b;
+        --ink-soft: #5b4b66;
+        --line: #b9a06a;
+        --line-soft: #d8cbae;
+        --scene-bg: #0a0612;
+        --sans: Verdana, Geneva, Tahoma, 'DejaVu Sans', sans-serif;
+        --display: 'Trebuchet MS', 'Lucida Grande', Verdana, sans-serif;
+        --shadow-pop: 10px 10px 0 rgba(158, 51, 202, 0.35);
+      }
+      body { margin: 0; background: #000; font-family: var(--sans); }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--scene-bg);
+      }
+      .clip { position: absolute; inset: 0; }
+
+      /* ============ the 2007 frame (authentic lessons.css values) ============ */
+      .bg2007 {
+        position: absolute;
+        inset: 0;
+        background:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'%3E%3Cg opacity='.15' transform='translate(30 32) rotate(-14)'%3E%3Cellipse cx='7' cy='26.5' rx='6' ry='4.4' transform='rotate(-20 7 26.5)' fill='%23f0d17d'/%3E%3Cpath d='M12.4 26V4.5c6.5 2.5 8.6 8 5.2 14.6' fill='none' stroke='%23f0d17d' stroke-width='2.6' stroke-linecap='round'/%3E%3C/g%3E%3Cg opacity='.11' transform='translate(146 118) rotate(9)'%3E%3Cellipse cx='6.5' cy='27' rx='5.6' ry='4.1' transform='rotate(-18 6.5 27)' fill='%23fff'/%3E%3Cellipse cx='24.5' cy='24.5' rx='5.6' ry='4.1' transform='rotate(-18 24.5 24.5)' fill='%23fff'/%3E%3Cpath d='M11.5 26.4V7.2M29.5 23.9V4.7' stroke='%23fff' stroke-width='2.4' fill='none'/%3E%3Cpath d='M10.3 3.4l20.4-3.2v6.4L10.3 9.8z' fill='%23fff'/%3E%3C/g%3E%3Cg opacity='.12' transform='translate(76 188) rotate(16) scale(.78)'%3E%3Cellipse cx='7' cy='26.5' rx='6' ry='4.4' transform='rotate(-20 7 26.5)' fill='%23f0d17d'/%3E%3Cpath d='M12.4 26V4.5c6.5 2.5 8.6 8 5.2 14.6' fill='none' stroke='%23f0d17d' stroke-width='2.6' stroke-linecap='round'/%3E%3C/g%3E%3Cg opacity='.1' transform='translate(192 46) rotate(-8) scale(.7)'%3E%3Cellipse cx='6.5' cy='27' rx='5.6' ry='4.1' transform='rotate(-18 6.5 27)' fill='%23f0d17d'/%3E%3Cellipse cx='24.5' cy='24.5' rx='5.6' ry='4.1' transform='rotate(-18 24.5 24.5)' fill='%23f0d17d'/%3E%3Cpath d='M11.5 26.4V7.2M29.5 23.9V4.7' stroke='%23f0d17d' stroke-width='2.4' fill='none'/%3E%3Cpath d='M10.3 3.4l20.4-3.2v6.4L10.3 9.8z' fill='%23f0d17d'/%3E%3C/g%3E%3C/svg%3E")
+            0 0 / 340px 340px repeat,
+          linear-gradient(#5c1876, #4a1263 45%, #2a0f3a);
+      }
+      .site-wrap {
+        position: absolute;
+        left: 50%;
+        top: 100px;
+        width: 1360px;
+        margin-left: -680px; /* no transform: GSAP owns transforms */
+      }
+      .banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .brand { display: flex; align-items: baseline; gap: 16px; }
+      .brand-logo {
+        display: inline-grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        border-radius: 12px;
+        background: linear-gradient(140deg, #9e33ca, #5c1876);
+        border: 2px solid var(--gold);
+        color: var(--gold-light);
+        font: italic 900 30px 'Playfair Display', Georgia, serif;
+        align-self: center;
+      }
+      .brand-text { color: var(--cream); font: bold 38px var(--display); letter-spacing: 0.02em; }
+      .brand-slogan { color: var(--gold-light); font: italic 20px Georgia, serif; }
+      .header-actions { display: flex; align-items: center; gap: 22px; }
+      .badge-new {
+        display: grid;
+        width: 84px;
+        height: 84px;
+        place-items: center;
+        background: radial-gradient(circle at 50% 40%, #fff3a8 0, #ffd23f 38%, #ff9c1a 62%, #e8410f 100%);
+        clip-path: polygon(50% 0%, 58% 12%, 68% 3%, 72% 17%, 85% 12%, 84% 27%, 98% 26%, 91% 39%, 100% 50%, 91% 61%, 98% 74%, 84% 73%, 85% 88%, 72% 83%, 68% 97%, 58% 88%, 50% 100%, 42% 88%, 32% 97%, 28% 83%, 15% 88%, 16% 73%, 2% 74%, 9% 61%, 0% 50%, 9% 39%, 2% 26%, 16% 27%, 15% 12%, 28% 17%, 32% 3%, 42% 12%);
+        color: #7a1500;
+        font: bold 19px var(--display);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+        transform: rotate(-13deg);
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 26px;
+        border: 1px solid #7a5a12;
+        border-radius: 6px;
+        background: linear-gradient(#fbe9b0 0, #f0c765 48%, #dda833 52%, #f4d485 100%);
+        color: #3a2708;
+        font: bold 21px var(--sans);
+        text-decoration: none;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 2px 3px rgba(0, 0, 0, 0.35);
+      }
+      .lang-switch { color: var(--cream); font: bold 18px var(--sans); }
+      .lang-switch .is-current { color: var(--gold-light); }
+      .ticker {
+        overflow: hidden;
+        margin: 0 0 18px;
+        padding: 9px 0;
+        border: 1px solid var(--line);
+        background: #ffffcc;
+        color: #a01010;
+        font: bold 22px var(--sans);
+        white-space: nowrap;
+      }
+      .ticker span { display: inline-block; }
+      .window {
+        border: 1px solid var(--line);
+        background: var(--paper);
+        box-shadow: 0 4px 0 rgba(0, 0, 0, 0.07);
+      }
+      .window-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0;
+        padding: 13px 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(#f9edd0, #ead18f 50%, #dfc077 51%, #f2e0b4);
+        color: #4a2f05;
+        font: bold 22px var(--sans);
+        letter-spacing: 0.08em;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+        text-transform: uppercase;
+      }
+      .blink { animation: blink 1.1s step-end 3; }
+      @keyframes blink { 50% { opacity: 0; } }
+      .window-body { padding: 30px 36px; color: var(--ink); }
+      .window-body h1 { margin: 0 0 16px; font: bold 47px var(--display); color: var(--ink); }
+      .window-body .lead { margin: 0 0 12px; font-size: 26px; line-height: 1.55; color: var(--ink); }
+      .window-body p { margin: 0 0 12px; font-size: 23px; line-height: 1.5; color: var(--ink-soft); }
+      .actions { display: flex; gap: 16px; margin: 18px 0 8px; }
+      .location { color: var(--ink-soft); font-size: 18px; margin: 8px 0 0; }
+      .caption {
+        position: absolute;
+        left: 90px;
+        bottom: 64px;
+        margin: 0;
+        color: var(--cream);
+        font: bold 46px var(--display);
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      /* ============ scene 2: the click ============ */
+      #click-stage {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #big-btn-wrap { position: relative; }
+      #big-btn {
+        padding: 34px 74px;
+        font-size: 46px;
+        border-radius: 12px;
+        border-width: 2px;
+      }
+      #big-btn-badge {
+        position: absolute;
+        top: -46px;
+        left: -52px;
+        width: 108px;
+        height: 108px;
+        font-size: 24px;
+      }
+      #cursor { position: absolute; left: 0; top: 0; width: 70px; height: 70px; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45)); }
+
+      /* ============ stage capture scenes ============ */
+      .shot-wrap { position: absolute; inset: 0; }
+      .shot-wrap img, .shot img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .shot { position: absolute; inset: 0; }
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 6, 18, 0.55) 100%);
+      }
+      #seam-glow {
+        position: absolute;
+        left: 50%;
+        top: 60px;
+        width: 260px;
+        height: 570px;
+        margin-left: -140px;
+        background: radial-gradient(ellipse at center, rgba(240, 209, 125, 0.85) 0%, rgba(158, 51, 202, 0.4) 45%, transparent 72%);
+        mix-blend-mode: screen;
+        opacity: 0;
+      }
+      #flash { position: absolute; inset: 0; background: #fff8ea; opacity: 0; }
+
+      /* reveal card — stage design tokens (style.css) */
+      #reveal-card {
+        position: absolute;
+        right: 100px;
+        top: 50%;
+        width: 620px;
+        margin-top: -220px;
+        background: var(--cream);
+        border-radius: 22px;
+        box-shadow: var(--shadow-pop);
+        padding: 40px 44px 44px;
+      }
+      #reveal-card .card-top {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 22px;
+        font: 600 17px 'Unbounded', sans-serif;
+        letter-spacing: 0.14em;
+        color: var(--ink-soft);
+      }
+      #reveal-card .card-top .l { color: #7e29a2; }
+      #reveal-card h2 {
+        margin: 0 0 18px;
+        font: 700 47px 'Unbounded', sans-serif;
+        line-height: 1.14;
+        color: var(--ink);
+      }
+      #reveal-card h2 .tier { color: #b5883a; }
+      #reveal-card .card-note {
+        margin: 0 0 30px;
+        font: 500 22px 'Manrope', sans-serif;
+        line-height: 1.5;
+        color: var(--ink-soft);
+      }
+      #card-ok {
+        display: inline-block;
+        padding: 18px 44px;
+        border-radius: 999px;
+        background: var(--gold);
+        color: var(--ink);
+        font: 700 22px 'Unbounded', sans-serif;
+        letter-spacing: 0.06em;
+      }
+      #card-x {
+        position: absolute;
+        top: -20px;
+        right: -20px;
+        display: grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--cream);
+        font: 400 24px 'Manrope', sans-serif;
+      }
+
+      /* ============ scene 5: band montage ============ */
+      #shot-drums, #shot-mic, #shot-piano { opacity: 0; visibility: hidden; }
+      #band-scrim {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 380px;
+        background: linear-gradient(transparent, rgba(10, 6, 18, 0.88));
+      }
+      #band-lower { position: absolute; left: 90px; bottom: 70px; }
+      #band-lower h3 {
+        margin: 0 0 16px;
+        font: 700 52px 'Unbounded', sans-serif;
+        color: var(--cream);
+      }
+      .footnote {
+        position: absolute;
+        left: 2px;
+        top: 84px;
+        margin: 0;
+        font: 600 27px 'Manrope', sans-serif;
+        color: var(--gold-light);
+        white-space: nowrap;
+      }
+      #fn-drums, #fn-mic, #fn-piano { opacity: 0; visibility: hidden; }
+
+      /* ============ scene 6: prices + end card ============ */
+      #prices-wrap { top: 150px; width: 1140px; margin-left: -570px; }
+      .retro-table { width: 100%; border-collapse: collapse; font-size: 23px; }
+      .retro-table th, .retro-table td {
+        padding: 12px 16px;
+        border: 1px solid var(--line-soft);
+        text-align: left;
+        color: var(--ink);
+      }
+      .retro-table thead th { background: #f6eed9; color: var(--ink-soft); }
+      .trial-offer {
+        margin: 20px 0 0;
+        padding: 14px 20px;
+        border: 1px dashed var(--line);
+        border-radius: 4px;
+        background: linear-gradient(rgba(240, 209, 125, 0.42), rgba(240, 209, 125, 0.16));
+        font-size: 21px;
+        line-height: 1.6;
+        color: var(--ink);
+      }
+      #cta-window { margin-top: 26px; }
+      #cta-window .window-body { font: bold 33px var(--display); color: var(--ink); }
+      #cta-window .dm { color: #7e29a2; }
+      #end-card {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+        visibility: hidden;
+      }
+      #end-inner { text-align: center; }
+      #end-logo {
+        display: inline-grid;
+        place-items: center;
+        width: 148px;
+        height: 148px;
+        border-radius: 26px;
+        background: linear-gradient(140deg, #9e33ca, #5c1876);
+        border: 3px solid var(--gold);
+        color: var(--gold-light);
+        font: italic 900 66px 'Playfair Display', Georgia, serif;
+        margin-bottom: 34px;
+      }
+      #end-domain {
+        margin: 0 0 18px;
+        font: 700 46px 'Unbounded', sans-serif;
+        color: var(--gold-light);
+      }
+      #end-slogan {
+        margin: 0;
+        font: 500 30px 'Unbounded', sans-serif;
+        color: var(--cream);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="22.5">
+      <!-- Scene 1 — «Сайт — як у 2007» -->
+      <section id="scene-2007" class="clip" data-start="0" data-duration="3.7" data-track-index="1">
+        <div class="bg2007"></div>
+        <div class="site-wrap" id="site-2007">
+          <div class="banner">
+            <span class="brand">
+              <span class="brand-logo">AV</span>
+              <span class="brand-text">Art Vibe Studio</span>
+              <span class="brand-slogan">by Daryna Sheremet</span>
+            </span>
+            <span class="header-actions">
+              <span class="badge-new">NEW!</span>
+              <span class="button">3D-сцена</span>
+              <span class="lang-switch"><span class="is-current">UA</span> · PL</span>
+            </span>
+          </div>
+          <p class="ticker"><span id="ticker-belt">★ Уроки музики у Лодзі ★ вокал ★ гітара ★ фортепіано ★ ударні ★ для дітей і дорослих ★ Art Vibe Studio · Łódź ★&nbsp;&nbsp;&nbsp;★ Уроки музики у Лодзі ★ вокал ★ гітара ★ фортепіано ★ ударні ★ для дітей і дорослих ★ Art Vibe Studio · Łódź ★</span></p>
+          <div class="window" id="hero-window">
+            <p class="window-title"><span>★ Ласкаво просимо ★</span><span class="blink">◄ ►</span></p>
+            <div class="window-body">
+              <h1>Art Vibe Studio — культурно-освітній простір у Лодзі</h1>
+              <p class="lead">Art Vibe Studio запрошує на уроки вокалу та гри на музичних інструментах — гітарі, фортепіано й ударних.</p>
+              <p>Спробувати всі інструменти можна на інтерактивній 3D-сцені.</p>
+              <div class="actions">
+                <span class="button">Вийти на 3D-сцену</span>
+                <span class="button">Обрати напрямок</span>
+              </div>
+              <p class="location">Łódź</p>
+            </div>
+          </div>
+        </div>
+        <p id="cap-2007" class="caption">Сайт — як у 2007.</p>
+      </section>
+
+      <!-- Scene 2 — the click -->
+      <section id="scene-click" class="clip" data-start="3.7" data-duration="2.1" data-track-index="1" data-layout-allow-overflow>
+        <div class="bg2007"></div>
+        <div id="click-stage">
+          <div id="big-btn-wrap">
+            <span id="big-btn" class="button">Вийти на 3D-сцену</span>
+            <span id="big-btn-badge" class="badge-new">NEW!</span>
+          </div>
+        </div>
+        <svg id="cursor" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 2 L4 19 L8.6 15.4 L11.4 21.6 L14.4 20.2 L11.6 14.2 L17.4 13.8 Z" fill="#ffffff" stroke="#241a2b" stroke-width="1.6" stroke-linejoin="round" />
+        </svg>
+      </section>
+
+      <!-- Scene 3 — the wardrobe strains -->
+      <section id="scene-wardrobe" class="clip" data-start="5.8" data-duration="3.7" data-track-index="1" data-layout-allow-overflow>
+        <div class="shot-wrap" id="wardrobe-wrap"><img id="wardrobe-img" src="assets/img/wardrobe.png" alt="" /></div>
+        <div id="seam-glow"></div>
+        <div class="vignette"></div>
+      </section>
+
+      <!-- Scene 4 — burst + reveal card -->
+      <section id="scene-burst" class="clip" data-start="9.5" data-duration="3.15" data-track-index="1" data-layout-allow-overflow>
+        <div class="shot-wrap" id="burst-wrap"><img id="burst-img" src="assets/img/burst.png" alt="" /></div>
+        <div id="flash"></div>
+        <div id="reveal-card">
+          <div id="card-x">✕</div>
+          <div class="card-top"><span class="l">ART VIBE STUDIO</span><span>ТВІЙ ГЕРОЙ</span></div>
+          <h2>Знайомся, це Вайбер <span class="tier">Легендарний</span>.</h2>
+          <p class="card-note">Вайбери люблять ходити по сцені та грати на інструментах.</p>
+          <span id="card-ok">ЗРОЗУМІЛО</span>
+        </div>
+      </section>
+
+      <!-- Scene 5 — four instruments, beat-cut montage -->
+      <section id="scene-band" class="clip" data-start="12.65" data-duration="5.26" data-track-index="1" data-layout-allow-overflow>
+        <div class="shot" id="shot-guitar"><img id="img-guitar" src="assets/img/guitar.png" alt="" /></div>
+        <div class="shot" id="shot-drums"><img id="img-drums" src="assets/img/drums.png" alt="" /></div>
+        <div class="shot" id="shot-mic"><img id="img-mic" src="assets/img/mic.png" alt="" /></div>
+        <div class="shot" id="shot-piano"><img id="img-piano" src="assets/img/piano.png" alt="" /></div>
+        <div id="band-scrim"></div>
+        <div id="band-lower" data-layout-allow-caption-zone>
+          <h3 id="band-title">Чотири інструменти. Усі грають.</h3>
+          <p class="footnote" id="fn-guitar">коло квінт — справжнє</p>
+          <p class="footnote" id="fn-drums">ритми — евклідові</p>
+          <p class="footnote" id="fn-mic">голос — безперервний</p>
+          <p class="footnote" id="fn-piano">зведено у LUFS</p>
+        </div>
+      </section>
+
+      <!-- Scene 6 — prices, DM, slogan -->
+      <section id="scene-2007b" class="clip" data-start="17.91" data-duration="4.59" data-track-index="1">
+        <div class="bg2007"></div>
+        <div class="site-wrap" id="prices-wrap">
+          <div class="window" id="prices-window">
+            <p class="window-title"><span>★ Ціни ★</span><span>▼</span></p>
+            <div class="window-body">
+              <table class="retro-table">
+                <thead>
+                  <tr><th>Напрямок</th><th>30 хв</th><th>45 хв</th><th>55 хв</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th>Вокал</th><td>50 зл</td><td>75 зл</td><td>90 зл</td></tr>
+                  <tr><th>Гітара</th><td>50 зл</td><td>75 зл</td><td>90 зл</td></tr>
+                </tbody>
+              </table>
+              <p class="trial-offer">🎁 Пробний урок — <b>50 зл</b>. Абонементи та знижки — на сторінці кожного напрямку.</p>
+            </div>
+          </div>
+          <div class="window" id="cta-window">
+            <p class="window-title"><span>★ Як записатися ★</span><span>@</span></p>
+            <div class="window-body">Напиши в директ: <span class="dm">«Хочу на пробний урок»</span></div>
+          </div>
+        </div>
+        <div id="end-card">
+          <div id="end-inner">
+            <div id="end-logo">AV</div>
+            <p id="end-domain">artvibe.com.pl</p>
+            <p id="end-slogan">Вчись творити і твори навчаючись.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audio: music bed on track 10, SFX on 11+ -->
+      <audio id="bg-music" data-start="0" data-duration="22.5" data-track-index="10" src="assets/music/happy-beats-business-moves-vol-11-by-ende-dot-app.mp3"></audio>
+      <audio id="sfx-pop1" data-start="0.22" data-track-index="11" data-volume="0.55" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-click" data-start="5.6" data-track-index="12" data-volume="0.7" src="assets/sfx/ui/mouseclick1.ogg"></audio>
+      <audio id="sfx-rattle" data-start="8.15" data-track-index="13" data-volume="0.5" src="assets/sfx/casino/dice-shake-1.ogg"></audio>
+      <audio id="sfx-burst" data-start="9.48" data-track-index="14" data-volume="0.75" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+      <audio id="sfx-card" data-start="10.15" data-track-index="15" data-volume="0.5" src="assets/sfx/casino/card-slide-2.ogg"></audio>
+      <audio id="sfx-pop2" data-start="17.88" data-track-index="16" data-volume="0.55" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx-end" data-start="20.55" data-track-index="17" data-volume="0.45" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      /* ===== Scene 1 (0–3.7) ===== */
+      tl.fromTo("#hero-window", { scale: 0.92, y: 34, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.5)" }, 0.22);
+      tl.fromTo("#ticker-belt", { xPercent: 0 }, { xPercent: -50, duration: 3.7, ease: "none" }, 0);
+      // beat-locked: 1.60s — the deadpan caption lands on a strong cue
+      tl.fromTo("#cap-2007", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 1.6);
+
+      /* ===== Scene 2 (3.7–5.8) — cut on 3.70s strong cue ===== */
+      tl.fromTo("#big-btn-wrap", { scale: 0.96, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "power2.out" }, 3.72);
+      tl.fromTo("#cursor", { x: 1660, y: 990 }, { x: 1128, y: 618, duration: 1.45, ease: "power2.inOut" }, 3.95);
+      // the press: depress at 5.6, cut lands on the 5.80s strong cue
+      tl.to("#cursor", { x: 1120, y: 626, duration: 0.12, ease: "power1.in" }, 5.6);
+      tl.to("#big-btn-wrap", { scale: 0.965, duration: 0.1, ease: "power1.in" }, 5.6);
+      tl.to("#big-btn", { filter: "brightness(0.94)", duration: 0.1 }, 5.6);
+
+      /* ===== Scene 3 (5.8–9.5) — one continuous shot, strain builds ===== */
+      tl.fromTo("#wardrobe-wrap", { scale: 1.04 }, { scale: 1.16, duration: 3.7, ease: "power1.in" }, 5.8);
+      tl.fromTo(
+        "#wardrobe-img",
+        { x: 0 },
+        {
+          keyframes: [
+            { x: -2, duration: 0.09 }, { x: 2, duration: 0.09 }, { x: -3, duration: 0.09 },
+            { x: 3, duration: 0.09 }, { x: -4, duration: 0.08 }, { x: 4, duration: 0.08 },
+            { x: -5, duration: 0.08 }, { x: 5, duration: 0.08 }, { x: -6, duration: 0.07 },
+            { x: 6, duration: 0.07 }, { x: -7, duration: 0.07 }, { x: 7, duration: 0.07 },
+            { x: -7, duration: 0.06 }, { x: 7, duration: 0.06 }, { x: 0, duration: 0.06 },
+          ],
+          ease: "none",
+        },
+        8.28
+      );
+      tl.fromTo("#seam-glow", { opacity: 0.1 }, { opacity: 0.42, duration: 0.33, yoyo: true, repeat: 3, ease: "sine.inOut" }, 8.2);
+
+      /* ===== Scene 4 (9.5–12.65) — beat-locked: 9.50s burst ===== */
+      tl.fromTo("#burst-wrap", { scale: 1.32 }, { scale: 1.07, duration: 0.38, ease: "expo.out" }, 9.5);
+      tl.to("#burst-wrap", { scale: 1.11, duration: 2.75, ease: "none" }, 9.9);
+      tl.fromTo("#flash", { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "power2.out" }, 9.5);
+      tl.fromTo("#reveal-card", { x: 760, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "back.out(1.3)" }, 10.15);
+
+      /* ===== Scene 5 (12.65–17.91) — beat-grid cuts: 12.65 / 14.22 / 15.28 / 16.86 ===== */
+      tl.fromTo("#img-guitar", { scale: 1.02, y: -14 }, { scale: 1.09, y: 10, duration: 1.6, ease: "none" }, 12.65);
+      tl.set("#shot-guitar", { autoAlpha: 0 }, 14.22);
+      tl.set("#shot-drums", { autoAlpha: 1 }, 14.22);
+      tl.fromTo("#img-drums", { scale: 1.0 }, { scale: 1.07, duration: 1.1, ease: "none" }, 14.22);
+      tl.set("#shot-drums", { autoAlpha: 0 }, 15.28);
+      tl.set("#shot-mic", { autoAlpha: 1 }, 15.28);
+      tl.fromTo("#img-mic", { scale: 1.05, x: 10 }, { scale: 1.1, x: -10, duration: 1.6, ease: "none" }, 15.28);
+      tl.set("#shot-mic", { autoAlpha: 0 }, 16.86);
+      tl.set("#shot-piano", { autoAlpha: 1 }, 16.86);
+      tl.fromTo("#img-piano", { scale: 1.03 }, { scale: 1.09, duration: 1.1, ease: "none" }, 16.86);
+      tl.fromTo("#band-title", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 12.85);
+      // beat-grid: footnotes swap with the cuts, each settled ≥0.9s
+      tl.fromTo("#fn-guitar", { opacity: 0 }, { opacity: 1, duration: 0.25 }, 12.95);
+      tl.set("#fn-guitar", { autoAlpha: 0 }, 14.22);
+      tl.set("#fn-drums", { autoAlpha: 1 }, 14.22);
+      tl.set("#fn-drums", { autoAlpha: 0 }, 15.28);
+      tl.set("#fn-mic", { autoAlpha: 1 }, 15.28);
+      tl.set("#fn-mic", { autoAlpha: 0 }, 16.86);
+      tl.set("#fn-piano", { autoAlpha: 1 }, 16.86);
+
+      /* ===== Scene 6 (17.91–22.5) — beat-locked: 17.91s prices pop ===== */
+      tl.fromTo("#prices-window", { scale: 0.93, y: 26, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.45, ease: "back.out(1.5)" }, 17.93);
+      tl.fromTo("#cta-window", { scale: 0.94, y: 22, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.5)" }, 19.1);
+      tl.to("#prices-wrap", { autoAlpha: 0, duration: 0.35, ease: "power1.in" }, 20.4);
+      tl.set("#end-card", { visibility: "visible" }, 20.55);
+      tl.fromTo("#end-card", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 20.55);
+      tl.fromTo("#end-inner", { y: 26 }, { y: 0, duration: 0.55, ease: "power3.out" }, 20.55);
+
+      /* ===== Music volume: base, duck under strain, restore on burst, final fade ===== */
+      tl.set("#bg-music", { volume: 0.34 }, 0);
+      tl.to("#bg-music", { volume: 0.2, duration: 0.5, ease: "power1.out" }, 7.7);
+      tl.to("#bg-music", { volume: 0.34, duration: 0.25, ease: "power1.in" }, 9.5);
+      tl.to("#bg-music", { volume: 0.0, duration: 1.4, ease: "power1.in" }, 21.0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

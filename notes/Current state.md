@@ -8,12 +8,13 @@ updated: 2026-08-13
 Snapshot as of **2026-08-13**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
-`main` is on **`4f92483`**, the tree is on stamp **`20260813-14`** (265 occurrences), 142 Node
+`main` is on **`371e03e`** plus the aura-quieting commit, the tree is on stamp
+**`20260813-15`** (265 occurrences), 142 Node
 tests pass across 11 suites, and the working tree is clean. Both of the changes below are
 deployed and **verified live**, not just green in Actions:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # 20260813-14 ✓
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # expect 20260813-15
 curl -sI https://artvibe.com.pl/stage/assets/wardrobe.glb                       # 200, 2.0 MB ✓
 curl -sI https://artvibe.com.pl/vendor/three/examples/jsm/loaders/GLTFLoader.js # 200 ✓
 ```
@@ -39,7 +40,11 @@ hands back to the procedural carcass on the burst frame, under the flash.
 *The tier on stage* ([[Decisions]] "A tier is worn, not just announced" and "The tier mark had
 to move"): `js/scene/mascot-aura.js` — ground pool, counter-turning rune ring and pulse ripple
 from rare up, rising ember sparks and trim glow for epic, light rays and the golden companion
-bird for legendary. Common stays bare, which is what makes the ladder legible.
+bird for legendary. Common stays bare, which is what makes the ladder legible. The whole
+ladder was then **turned down one loudness pass** (additive intensities ≈ −⅓, ripple about
+half as often, fewer / smaller embers, dimmer trim) — the first values competed with the
+footlights and the instruments; the reasoning is appended to the "had to move" entry in
+[[Decisions]].
 
 What to remember:
 
@@ -467,7 +472,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
   `tests/audio-lifecycle.test.mjs` imports it through a `data:` URL, which works only while the
   file imports nothing. Any reduction has to move data *out* to a caller, the way the vowel
   table went to `js/play/voice.js` → [[Module map]]
-- Cache stamps are **uniform**: 265 occurrences of `20260813-14` across `js/` and
+- Cache stamps are **uniform**: 265 occurrences of `20260813-15` across `js/` and
   `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
   moves with the sweep). The vendored `GLTFLoader.js` / `BufferGeometryUtils.js` are
   deliberately **unstamped** — they are pinned vendor files at three r160, imported through

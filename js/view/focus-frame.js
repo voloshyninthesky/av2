@@ -7,11 +7,11 @@
 // any aspect ratio, notch or browser chrome height.
 // ============================================================
 import * as THREE from 'three';
-import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260813-14';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-14';
-import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-14';
-import { instrumentView } from './instrument-presets.js?v=20260813-14';
-import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-14';
+import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260813-15';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-15';
+import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260813-15';
+import { instrumentView } from './instrument-presets.js?v=20260813-15';
+import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260813-15';
 
 const loopPedal = document.getElementById('loop-pedal');
 const mobileExit = document.getElementById('mobile-exit');
