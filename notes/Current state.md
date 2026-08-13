@@ -8,13 +8,13 @@ updated: 2026-08-13
 Snapshot as of **2026-08-13**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
-`main` is on **`ba33544`** plus the distinct-flock commit, the tree is on stamp
-**`20260813-18`** (265 occurrences), 142 Node
+`main` is on **`7f680a9`** plus the one-bird commit, the tree is on stamp
+**`20260813-19`** (265 occurrences), 142 Node
 tests pass across 11 suites, and the working tree is clean. Both of the changes below are
 deployed and **verified live**, not just green in Actions:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # expect 20260813-18
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # expect 20260813-19
 curl -sI https://artvibe.com.pl/stage/assets/wardrobe.glb                       # 200, 2.0 MB ✓
 curl -sI https://artvibe.com.pl/vendor/three/examples/jsm/loaders/GLTFLoader.js # 200 ✓
 ```
@@ -37,24 +37,25 @@ on, plus a generated GLB (`threejs-3d-generator` / Tripo, 10.7k tris) that dress
 lands. The generated mesh is fused so its doors cannot hinge; it owns the shut states and
 hands back to the procedural carcass on the burst frame, under the flash.
 
-*The tier on stage* ([[Decisions]] "The aura became a flock", which supersedes "A tier is
+*The tier on stage* ([[Decisions]] "The aura became a companion bird", which supersedes "A tier is
 worn" and "The tier mark had to move"): the additive aura was built, quieted, and then
 **deleted whole** in favour of the companion birds it shipped alongside —
 `js/scene/mascot-aura.js` is gone, `js/scene/mascot-companion.js` owns the mark, and the
-outfit trim glow went with it. The ladder is the **count**: one timid low-flying sparrow for
-rare, a pair on opposite orbits that lands on the shoulders for epic, a golden trio for
-legendary with the third bird perched on the crown of the head. Common stays alone. Epic and
-legendary share the same two flock birds recoloured; measured against common the trio costs
-+27 draw calls / +1743 triangles, with geometry and texture counts identical at every tier.
+outfit trim glow went with it. The ladder is **species + landing spot + glow**, one bird per
+tier: a timid sparrow that keeps to the boards for rare, a swallow that lands on the shoulder
+for epic, the crested golden songbird that perches on the crown of the head for legendary —
+each over a halo that brightens with the tier (0.30 / 0.46 / 0.66). Common stays alone. The
+count ladder (one / two / three birds) was tried and pulled: a flock made the stage busy, and
+the count was doing work the glow does more quietly. Legendary now costs +10 draw calls /
++621 triangles over common, with geometry and texture counts identical at every tier.
 Verified in the pane at 1280×720: all four tiers, the wider epic orbit clearing the resting
 hands, the head perch, and zero allocations across tier switches. Generation was declined
 for both the birds and a regenerated mascot body under the user's "don't use if it makes no
-sense" rule — reasoning in the [[Decisions]] entry. The flock then became **three authored
-species** (crested songbird, forked-tail swallow, dark-capped tit — one builder, four
-silhouette options) so it reads as an entourage rather than clones, and a **quiet accent
-halo** returned under the birds' owner by request (one additive ring, 0.30 / 0.38 / 0.48 by
-tier, breathing ±8%) — an underline, not a ladder; the count of birds stays the tier.
-Verified on all three marked tiers; common stays bare.
+sense" rule — reasoning in the [[Decisions]] entry. The three species come from one
+builder with authored silhouette options (crest, tail, slimness, cap), and a **quiet accent
+halo** sits under the bird's owner (one additive ring, breathing ±8%) — it took over the rung
+the bird count used to hold, and must never regrow the runes, ripple, rays or trim it once
+had. Verified on all three marked tiers; common stays bare.
 
 What to remember:
 
@@ -67,11 +68,10 @@ What to remember:
   burst-frame cut cannot jump size or footprint.
 - **No new attribute slots.** A per-tier headpiece was built, looked good, and was thrown
   away; the rule is now in [[SPEC]] §13. Tier upgrades go into what the character already has.
-- **The spark cloud's bounding sphere is grown at build time**, because the ember drift walks
-  points above their authored heights and the frustum test would cull the whole cloud in a
-  close-up.
-- Cost against common: legendary **+14 draw calls / +717 tris**, epic +4, rare +3. Geometry
-  and texture counts are identical at every tier *and* across a 20-pull stress.
+- **The tier mark went through five shapes in one session** — aura, quieter aura, creatures,
+  a bird-count ladder, and finally one bird per tier. Every intermediate was verified in the
+  pane before the next one replaced it; read the [[Decisions]] entry before re-proposing any
+  of the discarded ones.
 
 Verified over CDP in local Chrome at 1000×680 and 900×620: all four tiers, a full first-run
 legendary ceremony beat by beat (including a slowed-clock pass over the burst frame), the
@@ -482,7 +482,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
   `tests/audio-lifecycle.test.mjs` imports it through a `data:` URL, which works only while the
   file imports nothing. Any reduction has to move data *out* to a caller, the way the vowel
   table went to `js/play/voice.js` → [[Module map]]
-- Cache stamps are **uniform**: 265 occurrences of `20260813-18` across `js/` and
+- Cache stamps are **uniform**: 265 occurrences of `20260813-19` across `js/` and
   `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
   moves with the sweep). The vendored `GLTFLoader.js` / `BufferGeometryUtils.js` are
   deliberately **unstamped** — they are pinned vendor files at three r160, imported through

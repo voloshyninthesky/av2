@@ -2,26 +2,26 @@
 // MASCOT TIER COMPANION
 // The persistent mark of the gift's rarity: the ceremony stays identical for
 // everyone (SPEC §13), but the character that walks out of it is accompanied
-// by birds — one family, and the ladder is the COUNT. One small sparrow makes
-// low, timid flights around a rare character and rests on the boards; an epic
-// pair circles on opposite orbits and lands on the character's shoulders; a
-// legendary trio goes gold and crowns them — both shoulders and the top of
-// the head. Common stays alone; the ladder only reads because its bottom
-// rung is unmarked.
+// by ONE bird — its own species per tier, over a halo that brightens with the
+// tier. A timid sparrow keeps to the boards beside a rare character; a swallow
+// lands on an epic character's shoulder; the crested songbird perches on a
+// legendary character's head, lit from inside, over the brightest halo.
+// Common stays alone; the ladder only reads because its bottom rung is
+// unmarked.
 //
 // This replaced the additive aura outright. A glow on the boards fought the
 // stage's own lighting and read as a decal; a small creature moving with
-// intent reads as *someone's* at any distance, in one glance. All birds on
-// purpose: one build reused across tiers keeps the family coherent, and the
-// count is legible from the back row — one on the boards, two on your
-// shoulders, three golden ones crowning you.
+// intent reads as *someone's* at any distance, in one glance. One bird rather
+// than a flock: two or three of them turned the stage busy and the count was
+// doing work the glow does more quietly. So the ladder is now species +
+// landing spot + glow — where the bird lands is the loudest rung of it.
 //
 // Procedural, not generated: a Tripo bird is a fused mesh whose wings cannot
 // hinge, and the avian rig has no flight preset to retarget — a generated
 // companion would cost ~2 MB per tier and animate worse than these ~9 meshes.
 // The generated-asset budget belongs to static hero props (the wardrobe).
 //
-// All four birds are built once at boot and toggled / recoloured per tier, so
+// All three birds are built once at boot and toggled / recoloured per tier, so
 // a 20-pull stress pass allocates nothing (SPEC §13 acceptance). No lights,
 // no shadows (the curated shadow rule: only major masses cast), and per-frame
 // animation is transform-level only. Material opacity is deliberately never
@@ -29,7 +29,7 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-18';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-19';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -37,13 +37,14 @@ import { prefersReducedMotion } from '../core/quality.js?v=20260813-18';
 
 const WHITE = new THREE.Color(0xffffff);
 
-// A soft accent halo on the boards under the birds' owner — the one piece of
-// the deleted aura that came back, by request, as an underline rather than a
-// ladder. One additive ring, deliberately quiet: the birds carry the tier,
-// the halo just says "marked" in the tier's colour. Intensities climb gently
-// with the tier but stay below where the old aura started competing with the
-// footlights.
-const HALO = { rare: 0.30, epic: 0.38, legendary: 0.48 };
+// A soft accent halo on the boards under the bird's owner. With one bird per
+// tier the halo carries more of the ladder than it used to, so it steps up
+// more decisively — but the top rung still sits below where the old aura
+// started competing with the footlights.
+const HALO = { rare: 0.30, epic: 0.46, legendary: 0.66 };
+// The bird's own emissive climbs with it: the legendary one is lit from
+// inside, the rare one barely.
+const PLUMAGE_GLOW = { rare: 0.10, epic: 0.20, legendary: 0.34 };
 
 // Soft pool with a bright rim — one texture carries both, so the halo is a
 // single mesh / single draw call.
@@ -65,12 +66,25 @@ function makeHaloTexture() {
   return tex;
 }
 
-// The rare solo flyer, told apart by timidity: low, brief flights — under
-// the resting hands — resting twice as long as it flies, flapping in a hurry
-// the way small birds do. Its rest spot sits on the boards.
-const SPARROW_FLIGHT = {
-  radius: 0.5, height: 0.45, bobRate: 2.9, speed: 1.6, period: 16, flyFor: 7,
-  rest: { x: -0.38, z: 0.32 }, restYaw: -0.5, flapRate: 18,
+// One bird per tier, each its own species and its own confidence. The rare
+// sparrow is timid — low, brief flights under the resting hands, resting on
+// the *boards* twice as long as it flies, flapping in a hurry the way small
+// birds do. The epic swallow owns the air and lands on the shoulder. The
+// legendary songbird flies highest and perches on the crown of the head,
+// which is the one landing spot no lesser bird gets.
+const FLIGHT = {
+  rare: {
+    radius: 0.50, height: 0.45, bobRate: 2.9, speed: 1.6, period: 16, flyFor: 7,
+    rest: { x: -0.38, y: 0, z: 0.32 }, onFloor: true, restYaw: -0.5, flapRate: 18,
+  },
+  epic: {
+    radius: 0.72, height: 1.02, bobRate: 2.1, speed: 1.35, period: 17, flyFor: 10,
+    rest: { x: 0.34, y: 1.46, z: 0.02 }, onFloor: false, restYaw: 0.3, flapRate: 15,
+  },
+  legendary: {
+    radius: 0.66, height: 1.28, bobRate: 2.3, speed: 1.5, period: 17, flyFor: 11,
+    rest: { x: 0, y: 1.96, z: 0.02 }, onFloor: false, restYaw: 0, flapRate: 15,
+  },
 };
 
 // One builder, four authored species-silhouettes, so a flock reads as a
@@ -166,33 +180,29 @@ export function buildMascotCompanion() {
   const haloBase = new THREE.Color();
   const scratchHSL = { h: 0, s: 0, l: 0 };
 
-  // rare: the sparrow — no crest, four-fifths scale, a low flyer.
+  // One bird per tier, each its own species so a reroll changes the creature
+  // and not just its colour. All three exist at boot; only one is ever shown.
+  // rare — a small crestless sparrow, four-fifths scale.
   const sparrow = buildBird({ crest: false });
   sparrow.bird.scale.setScalar(0.8);
   root.add(sparrow.bird);
+  // epic — a slim, forked-tail swallow.
+  const swallow = buildBird({ crest: false, tail: 'forked', slim: true });
+  swallow.bird.scale.setScalar(0.92);
+  swallow.bird.position.set(0.34, 1.46, 0.02);
+  root.add(swallow.bird);
+  // legendary — the crested songbird, the finest of the three.
+  const songbird = buildBird();
+  songbird.bird.position.set(0, 1.96, 0.02);
+  root.add(songbird.bird);
 
-  // The flock — three different birds, so it reads as a flock rather than
-  // clones. A and B serve both epic (a purple pair) and legendary (gold); C
-  // flies only for legendary — the smallest, a round capped tit, because its
-  // perch is the crown of the head and a big bird up there reads as a hat.
-  const birdA = buildBird(); // crested songbird, the lead
-  birdA.bird.position.set(0.34, 1.46, 0.02);
-  root.add(birdA.bird);
-  const birdB = buildBird({ crest: false, tail: 'forked', slim: true }); // swallow
-  birdB.bird.scale.setScalar(0.92);
-  birdB.bird.position.set(-0.34, 1.46, 0.02);
-  root.add(birdB.bird);
-  const birdC = buildBird({ crest: false, tail: 'fan', cap: true }); // capped tit
-  birdC.bird.scale.setScalar(0.85);
-  birdC.bird.position.set(0, 1.96, 0.02);
-  root.add(birdC.bird);
+  const BIRD_OF = { rare: sparrow, epic: swallow, legendary: songbird };
 
   const state = {
-    active: null, // 'sparrow' | 'pair' | 'trio' | null
-    restSparrow: 1,
-    perchA: 1,
-    perchB: 1,
-    perchC: 1,
+    tierId: null,
+    bird: null,
+    flight: null,
+    rest: 1,
     groundY: 0,
   };
 
@@ -201,30 +211,22 @@ export function buildMascotCompanion() {
   // program link. Plumage takes the tier accent lifted toward white (lit
   // geometry, not additive, so the plain accent already survives the stage
   // light) plus a whisper of emissive so the bird reads on a darkened stage.
-  const COMPANION_OF = { rare: 'sparrow', epic: 'pair', legendary: 'trio' };
   function setTier(tier) {
-    state.active = tier ? COMPANION_OF[tier.id] ?? null : null;
-    root.visible = Boolean(state.active);
-    sparrow.bird.visible = state.active === 'sparrow';
-    birdA.bird.visible = state.active === 'pair' || state.active === 'trio';
-    birdB.bird.visible = birdA.bird.visible;
-    birdC.bird.visible = state.active === 'trio';
-    if (!state.active) return;
-    const tint = (material, lift, glow) => {
-      material.color.setHex(tier.accent).lerp(WHITE, lift);
-      material.emissive.setHex(tier.accent);
-      material.emissiveIntensity = glow;
-    };
-    if (state.active === 'sparrow') tint(sparrow.plumage, 0.4, 0.1);
-    else {
-      // The pair takes epic purple; the trio takes legendary gold — same
-      // birds, recoloured, which is what lets two tiers share the build.
-      const lift = state.active === 'trio' ? 0.3 : 0.25;
-      const glow = state.active === 'trio' ? 0.2 : 0.15;
-      tint(birdA.plumage, lift, glow);
-      tint(birdB.plumage, lift, glow);
-      if (state.active === 'trio') tint(birdC.plumage, lift, glow);
-    }
+    const bird = tier ? BIRD_OF[tier.id] ?? null : null;
+    state.tierId = bird ? tier.id : null;
+    state.bird = bird;
+    state.flight = bird ? FLIGHT[tier.id] : null;
+    root.visible = Boolean(bird);
+    sparrow.bird.visible = bird === sparrow;
+    swallow.bird.visible = bird === swallow;
+    songbird.bird.visible = bird === songbird;
+    if (!bird) return;
+    // Lit geometry, not additive, so the plain accent already survives the
+    // stage light; the lift keeps small birds from turning into dark blobs
+    // and the emissive is what climbs with the tier.
+    bird.plumage.color.setHex(tier.accent).lerp(WHITE, state.tierId === 'rare' ? 0.4 : 0.28);
+    bird.plumage.emissive.setHex(tier.accent);
+    bird.plumage.emissiveIntensity = PLUMAGE_GLOW[tier.id] ?? 0.1;
     haloBase.setHex(tier.accent).getHSL(scratchHSL);
     haloBase
       .setHSL(scratchHSL.h, Math.min(1, scratchHSL.s * 1.75), scratchHSL.l)
@@ -235,19 +237,25 @@ export function buildMascotCompanion() {
   // A solo flyer: circle the character at its own height, then land at its
   // rest spot on the boards. The rest y takes the ground offset, so a bird
   // resting beside a seated pianist still stands on the floor.
-  function updateFlyer(b, params, blendKey, t, dt, reduced, hold) {
+  // The one flight path, shared by all three birds and differentiated by
+  // their FLIGHT entry: circle the character, then land at the tier's rest
+  // spot — the boards for rare, the shoulder for epic, the crown of the head
+  // for legendary. A floor rest takes the ground offset, so a bird resting
+  // beside a seated pianist still stands on the boards.
+  function updateFlyer(b, params, t, dt, reduced, hold) {
     const cycle = t % params.period;
     const wantsRest = reduced || hold || cycle >= params.flyFor;
-    state[blendKey] += ((wantsRest ? 1 : 0) - state[blendKey]) * Math.min(1, dt * 2.2);
-    const blend = THREE.MathUtils.smoothstep(state[blendKey], 0.02, 0.98);
+    state.rest += ((wantsRest ? 1 : 0) - state.rest) * Math.min(1, dt * 2.2);
+    const blend = THREE.MathUtils.smoothstep(state.rest, 0.02, 0.98);
 
     const angle = t * params.speed;
     const orbitX = Math.sin(angle) * params.radius;
     const orbitZ = Math.cos(angle) * params.radius;
     const orbitY = params.height + Math.sin(t * params.bobRate) * 0.06;
+    const restY = params.onFloor ? state.groundY + 0.015 : params.rest.y;
     b.bird.position.set(
       THREE.MathUtils.lerp(orbitX, params.rest.x, blend),
-      THREE.MathUtils.lerp(orbitY, state.groundY + 0.015, blend),
+      THREE.MathUtils.lerp(orbitY, restY, blend),
       THREE.MathUtils.lerp(orbitZ, params.rest.z, blend),
     );
     const targetYaw = blend > 0.5 ? params.restYaw : angle + Math.PI / 2;
@@ -261,45 +269,12 @@ export function buildMascotCompanion() {
     b.wings.right.rotation.z = raise;
   }
 
-  // One bird of the flock — the original golden-bird behaviour, with a time
-  // offset, an orbit direction and its own landing spot on the character.
-  // All of them perch while the visitor plays: shoulders (and, for the trio,
-  // the crown of the head) each get their bird.
-  function updateFlockBird(b, blendKey, t, dt, reduced, holdPerch, offset, dir, perch, perchYaw, orbitR, orbitBase) {
-    const bt = t + offset;
-    const cycle = bt % 17;
-    const wantsPerch = reduced || holdPerch || cycle >= 11;
-    state[blendKey] += ((wantsPerch ? 1 : 0) - state[blendKey]) * Math.min(1, dt * 2.2);
-    const blend = THREE.MathUtils.smoothstep(state[blendKey], 0.02, 0.98);
-
-    const angle = dir * bt * 1.5;
-    const orbitX = Math.sin(angle) * orbitR;
-    const orbitZ = Math.cos(angle) * orbitR;
-    const orbitY = orbitBase + Math.sin(bt * 2.3) * 0.07;
-    b.bird.position.set(
-      THREE.MathUtils.lerp(orbitX, perch.x, blend),
-      THREE.MathUtils.lerp(orbitY, perch.y, blend),
-      THREE.MathUtils.lerp(orbitZ, perch.z, blend),
-    );
-    // Face the direction of travel in flight (which reverses with the orbit),
-    // drift to the mascot's forward (+ a little outward) at the perch.
-    const targetYaw = blend > 0.5 ? perchYaw : angle + dir * (Math.PI / 2);
-    const yawDelta = Math.atan2(Math.sin(targetYaw - b.bird.rotation.y), Math.cos(targetYaw - b.bird.rotation.y));
-    b.bird.rotation.y += yawDelta * Math.min(1, dt * 8);
-    b.bird.rotation.z = Math.sin(bt * 3.1) * 0.06 * (1 - blend);
-
-    const flap = reduced ? 0 : Math.sin(bt * THREE.MathUtils.lerp(15, 6, blend));
-    const raise = THREE.MathUtils.lerp(0.3 + flap * 0.6, -0.35 + flap * 0.04, blend);
-    b.wings.left.rotation.z = -raise;
-    b.wings.right.rotation.z = raise;
-  }
-
   // Called unconditionally from the frame loop — the companion keeps living
   // while the reveal card is up, which is exactly when the visitor is staring
-  // at their character. `hold` is main.js telling the birds the visitor is at
+  // at their character. `hold` is main.js telling the bird the visitor is at
   // an instrument (orbiting through a piano cabinet breaks the toy).
   function update(t, dt, hold = false) {
-    if (!state.active || !root.visible) return;
+    if (!state.bird || !root.visible) return;
     const parent = root.parent;
     const parentY = parent ? parent.position.y : 0;
     const scaleY = parent ? Math.max(0.2, parent.scale.y) : 1;
@@ -313,17 +288,7 @@ export function buildMascotCompanion() {
     // The halo breathes, barely; under reduced motion it stands still.
     haloMat.color.copy(haloBase);
     if (!reduced) haloMat.color.multiplyScalar(1 + 0.08 * Math.sin(t * 1.6));
-    if (state.active === 'sparrow') {
-      updateFlyer(sparrow, SPARROW_FLIGHT, 'restSparrow', t, dt, reduced, hold);
-    } else {
-      // Offsets stagger the cycles so someone is usually in the air; on a
-      // hold everyone lands at once — shoulders (and the head) occupied.
-      updateFlockBird(birdA, 'perchA', t, dt, reduced, hold, 0, 1, { x: 0.34, y: 1.46, z: 0.02 }, 0.3, 0.62, 1.12);
-      updateFlockBird(birdB, 'perchB', t, dt, reduced, hold, 8.5, -1, { x: -0.34, y: 1.46, z: 0.02 }, -0.3, 0.55, 1.28);
-      if (state.active === 'trio') {
-        updateFlockBird(birdC, 'perchC', t, dt, reduced, hold, 4.2, 1, { x: 0, y: 1.96, z: 0.02 }, 0, 0.7, 1.45);
-      }
-    }
+    updateFlyer(state.bird, state.flight, t, dt, reduced, hold);
   }
 
   return { group: root, setTier, update };

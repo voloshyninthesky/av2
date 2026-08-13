@@ -1142,41 +1142,45 @@ the **count** — legible from the back row:
 | Tier            | Companions                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **ЗВИЧАЙНИЙ**   | Nobody — the unmarked bottom rung is what makes the ladder read                             |
-| **РІДКІСНИЙ**   | **One** small crestless sparrow: low, timid flights under the resting hands, resting on the boards twice as long as it flies |
-| **ЕПІЧНИЙ**     | **Two different birds** — a crested songbird and a slim forked-tail swallow — on opposite orbits, landing on the character, one shoulder each while they play |
-| **ЛЕГЕНДАРНИЙ** | **Three different birds, in gold**: the pair plus a third, smallest — a round dark-capped tit — whose perch is the **crown of the head**; shoulders and head occupied while they play |
+| **РІДКІСНИЙ**   | A small crestless **sparrow**: low, timid flights under the resting hands, resting on the **boards** twice as long as it flies, over a faint halo |
+| **ЕПІЧНИЙ**     | A slim forked-tail **swallow**: confident chest-high circles, landing on the character's **shoulder**, over a brighter halo |
+| **ЛЕГЕНДАРНИЙ** | The crested **songbird** in gold, lit from inside: the highest flight, perching on the **crown of the head**, over the brightest halo |
 
-The flock is **three authored species-silhouettes from one builder** (crest, tail shape —
-long / forked / fan — slimness, a dark cap), so it reads as a flock rather than clones. The
-differences are the ones that carry at stage distance; keep new variety in that vocabulary
-rather than new meshes.
+**Exactly one bird per tier.** Two and three were tried and pulled: a flock made the stage
+busy, and the count was doing work the glow does more quietly. The ladder is now *species +
+landing spot + glow* — where the bird lands is its loudest rung (boards → shoulder → head),
+and the halo and the bird's own emissive both climb with the tier (halo 0.30 / 0.46 / 0.66,
+plumage emissive 0.10 / 0.20 / 0.34).
 
-- One on the boards < two on your shoulders < three golden ones crowning you. The count is
-  the ladder; gold and the head-perch are what keep legendary unmistakable at a glance.
-- Under the birds' owner sits a **soft accent halo** on the boards — one additive ring in
-  the tier colour, breathing barely (±8%), intensities 0.30 / 0.38 / 0.48. It is an
-  underline, not a ladder: the one piece of the deleted aura that came back, and it must
-  never regrow the runes, ripples, rays or trim that were removed with it. It follows the
-  floor in seated poses and is absent for common.
-- The companions appear **at the burst**, with the character — never before. The wardrobe's
+The three birds come from **one builder with authored silhouette options** (crest, tail
+long / forked / fan, slimness, a dark cap) — the differences that carry at stage distance.
+Keep new variety in that vocabulary rather than new meshes.
+
+- Beside you on the boards < on your shoulder < on your head. The landing spot is the
+  clearest rung; gold plus the head-perch is what keeps legendary unmistakable at a glance.
+- Under the bird's owner sits a **soft accent halo** on the boards — one additive ring in
+  the tier colour, breathing barely (±8%). It carries part of the ladder now that the count
+  does not, but it must never regrow the runes, ripples, rays or trim that were removed with
+  the aura. It follows the floor in seated poses and is absent for common.
+- The companion appears **at the burst**, with the character — never before. The wardrobe's
   seam glow stays the sole tell during the strain.
-- **Budget rules.** All four birds (sparrow + the flock of three; epic and legendary share
-  the same two flock birds, recoloured) are built once at boot in the scene before the first
+- **Budget rules.** All three birds are built once at boot in the scene before the first
   `renderer.compile`, then only toggled and recoloured per tier: a reroll allocates no
   geometry, no texture, no program link. No new lights, no post passes, no shadow casters
-  (the curated shadow rule). Measured against common: legendary +27 draw calls / +1743
-  triangles, epic +18, rare +8. Geometry and texture counts are identical at every tier and
-  across a 20-pull stress. Replacing the additive aura with creatures *removed* four
-  full-screen-blended ground layers.
+  (the curated shadow rule). Measured against common: **+10 draw calls / +621 triangles** at
+  legendary, and less below it — one bird plus one halo ring. Geometry and texture counts
+  are identical at every tier and across a 20-pull stress. Replacing the additive aura with
+  a creature *removed* four full-screen-blended ground layers.
 - Per-frame animation is transform-level only — positions, rotations, wing pivots. Material
   **opacity is never written** by the companion — the stage-fall fade owns opacity for
   everything under `mascot.group` and restores it on respawn.
-- The sparrow's floor rest counters the group's lift in seated poses and the dance bounce so
-  its feet stay on the boards; in a fall the companions ride the body and fade with it.
-- Companions settle while the visitor is at an instrument (nothing may orbit through a piano
-  cabinet): the sparrow lands beside them, the flock lands **on** them — shoulders, and for
-  the trio the head. Under `prefers-reduced-motion` they hold those same settled poses.
-- Companions are **procedural, not generated**: a generated bird is a fused mesh whose wings
+- A floor rest (the sparrow's, and the halo always) counters the group's lift in seated poses
+  and the dance bounce so nothing floats; in a fall the companion rides the body and fades
+  with it.
+- The companion settles while the visitor is at an instrument (nothing may orbit through a
+  piano cabinet): the sparrow lands beside them, the swallow on the shoulder, the songbird on
+  the head. Under `prefers-reduced-motion` it holds that same settled pose.
+- The companion is **procedural, not generated**: a generated bird is a fused mesh whose wings
   cannot hinge, and the avian auto-rig has no flight preset to retarget — the
   generated-asset budget belongs to static hero props like the wardrobe.
 - **A tier's presence never adds a slot to the appearance vocabulary.** It is carried by the

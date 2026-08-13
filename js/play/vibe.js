@@ -7,12 +7,12 @@
 // stopped playing long enough to read one.
 // ============================================================
 import * as THREE from 'three';
-import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260813-18';
-import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260813-18';
-import { bumpHitPulse } from '../scene/effects.js?v=20260813-18';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-18';
-import { play, keyboardPianoNotes } from './state.js?v=20260813-18';
-import { trackOnce } from '../core/analytics.js?v=20260813-18';
+import { ui, audio, fireworks, mascot } from '../core/studio.js?v=20260813-19';
+import { loadPrices, pricesNow, lowestSinglePrice } from '../core/prices.js?v=20260813-19';
+import { bumpHitPulse } from '../scene/effects.js?v=20260813-19';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-19';
+import { play, keyboardPianoNotes } from './state.js?v=20260813-19';
+import { trackOnce } from '../core/analytics.js?v=20260813-19';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopStatus = document.getElementById('loop-status');

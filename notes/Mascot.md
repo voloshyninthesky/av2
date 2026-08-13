@@ -71,9 +71,10 @@ to the roll would mean most visitors never see the good version of the only reve
 During the ceremony the tier shows up in the glow colour and on the card, nowhere else.
 
 **After the ceremony the tier walks out with company.** `js/scene/mascot-companion.js` owns
-the persistent mark — companion birds, and the ladder is the *count*: one timid sparrow for
-rare, a pair that lands on the shoulders for epic, a golden trio that also crowns the head
-for legendary; common stays alone. (This replaced the additive aura: a glow on the boards
+the persistent mark — one companion bird per tier, and the ladder is *species + landing spot
++ glow*: a timid sparrow that keeps to the boards for rare, a swallow that lands on the
+shoulder for epic, the crested golden songbird that perches on the head for legendary, each
+over a halo that brightens with the tier; common stays alone. (This replaced the additive aura: a glow on the boards
 fought the stage lighting and read as a decal; a creature moving with intent reads in one
 glance.) All four birds are built once at boot and toggled/recoloured from
 `applyMascotConfig()`, so the no-allocation-per-pull rule below covers it. Exact ladder and
