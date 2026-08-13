@@ -29,7 +29,17 @@ light, or a post pass:
 Cost, measured against common: legendary +14 draw calls, epic +4, rare +3, with geometry and
 texture counts identical at every tier and across a 20-pull stress. One trap worth naming —
 the drift walks points above the authored heights, so the **bounding sphere has to be grown
-at build time** or the frustum test culls the whole cloud in a close-up. → [[Mascot]]
+at build time** or the frustum test culls the whole cloud in a close-up.
+
+**A generated per-tier headpiece was built and thrown away in the same session**, and the
+rule it produced is now in [[SPEC]] §13: *a tier's presence never adds a slot to the
+appearance vocabulary.* Three Tripo crowns (silver laurel, amethyst, gold) were generated,
+fitted to the head, lifted clear of the headphone band, and they looked good — which is the
+point of recording this. The objection is structural, not visual: a new wearable has to be
+drawn, validated, persisted, fitted across the height / build extremes and checked against
+every instrument pose, and it turns the tier into a costume rather than a rarity. The same
+effort spent inside the existing vocabulary — the aura above, the trait weighting already in
+the pools — buys the same "this one is rare" read with none of that surface. → [[Mascot]]
 
 ---
 

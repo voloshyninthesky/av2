@@ -1,6 +1,6 @@
 ---
 tags: [status]
-updated: 2026-08-12
+updated: 2026-08-13
 ---
 
 # Current state
@@ -8,7 +8,69 @@ updated: 2026-08-12
 Snapshot as of **2026-08-13**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
+`main` is on **`4f92483`**, the tree is on stamp **`20260813-14`** (265 occurrences), 142 Node
+tests pass across 11 suites, and the working tree is clean. Both of the changes below are
+deployed and **verified live**, not just green in Actions:
+
+```bash
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # 20260813-14 ✓
+curl -sI https://artvibe.com.pl/stage/assets/wardrobe.glb                       # 200, 2.0 MB ✓
+curl -sI https://artvibe.com.pl/vendor/three/examples/jsm/loaders/GLTFLoader.js # 200 ✓
+```
+
+That second curl matters more than it looks: `stage/assets/` is a **new directory**, and the
+deploy workflow copies an explicit file list. It ships because `stage` and `vendor` are
+already on that list — a new *top-level* directory would not have been.
+
 ## In flight
+
+**The gift hatches out of a wardrobe now, and the tier is worn on stage.** Two commits,
+`408e43f` and `4f92483`, both on `main` and live. Together they answer "make rare / epic /
+legendary actually feel rare" without a single new post-processing pass.
+
+*The reveal* ([[Decisions]] "The egg became a magic wardrobe"): a magic wardrobe rattles,
+light forces its way out of the door seam, and the doors fling open with the character in the
+doorway. Every beat, the rate scalar and the write-on-burst rule are unchanged. The prop is
+**two layers on purpose** — a procedural cabinet built at boot that the ceremony always runs
+on, plus a generated GLB (`threejs-3d-generator` / Tripo, 10.7k tris) that dresses it when it
+lands. The generated mesh is fused so its doors cannot hinge; it owns the shut states and
+hands back to the procedural carcass on the burst frame, under the flash.
+
+*The tier on stage* ([[Decisions]] "A tier is worn, not just announced" and "The tier mark had
+to move"): `js/scene/mascot-aura.js` — ground pool, counter-turning rune ring and pulse ripple
+from rare up, rising ember sparks and trim glow for epic, light rays and the golden companion
+bird for legendary. Common stays bare, which is what makes the ladder legible.
+
+What to remember:
+
+- **The dress-up window closes at the strain, not at ceremony start.** A first-run gift opens
+  straight out of the boot fly-in, so gating the swap on "is the wardrobe visible" meant the
+  only visitor who ever watches a ceremony always got the procedural prop.
+- **The generator ignores "front facing."** Both generated wardrobes came out on different
+  local axes. The facing is a measured constant, verified by rendering the asset at four yaws
+  under the stage lights, and the shell is scaled *per axis* into the procedural box so the
+  burst-frame cut cannot jump size or footprint.
+- **No new attribute slots.** A per-tier headpiece was built, looked good, and was thrown
+  away; the rule is now in [[SPEC]] §13. Tier upgrades go into what the character already has.
+- **The spark cloud's bounding sphere is grown at build time**, because the ember drift walks
+  points above their authored heights and the frustum test would cull the whole cloud in a
+  close-up.
+- Cost against common: legendary **+14 draw calls / +717 tris**, epic +4, rare +3. Geometry
+  and texture counts are identical at every tier *and* across a 20-pull stress.
+
+Verified over CDP in local Chrome at 1000×680 and 900×620: all four tiers, a full first-run
+legendary ceremony beat by beat (including a slowed-clock pass over the burst frame), the
+shell→carcass handover, the wardrobe facing the camera at four azimuths (facing dot 1.000
+each), and the renderer counters above. **Not** verified: a real touch device, mobile
+viewports, `prefers-reduced-motion` in a live browser (the reduced branch is read but not
+rendered), and how the 2 MB wardrobe download behaves on a slow mobile connection — the
+procedural fallback is what covers that case, and it has not been exercised against a real
+throttled network.
+
+**The Browser pane's GPU wedged mid-session again** — every load landed on `#webgl-fail` with
+`BindToCurrentSequence failed`, new tabs included. The whole verification above ran through
+local headless Chrome over CDP with `--use-angle=swiftshader`, PIXEL pinned from `/404.html`
+first. → [[Gotchas]], and the memory note that already carried this recipe.
 
 **The voice got its axis** ([[Decisions]] "The voice stopped being five buttons"). Vocals was
 the last hard-coded instrument on the stage — five `data-vocal-freq` attributes in
@@ -17,7 +79,7 @@ pitch up and vowel across, in the same dock the two wheels share. **One dock, th
 exactly one shown**, asserted by `__ribbonDebug().docked`. New `js/play/voice.js` (the vowel
 table, zero imports) and `js/play/key.js` (the stage key, lifted out of `chord-wheel.js` so the
 ribbon and the wheel cannot disagree); `js/play/pads.js` keeps only the held-note capture the
-piano shares. 140 Node tests pass, 17 of them new.
+piano shares. 140 Node tests passed at the time, 17 of them new (the count is 142 now).
 
 What to remember:
 
@@ -92,15 +154,13 @@ then the vowel morph, and see which one takes the crackle with it. The breath is
 suspect: it is a looping white-noise buffer and the one thing added to a synth that was fine
 without it.
 
-`main` is on `11d9ef5`, the working tree is on **`20260813-09`**, and 140 Node tests pass.
-The ribbon commit and this label fix are both pushed; the deploy workflow runs on push, but
-**a green Actions run is not proof the CDN moved** — curl after it lands. The VPS preview
-`vibe2.ton.zone` is further behind again: it is pinned to release `20260812T135148Z` and needs
-its own release cut.
+The ribbon commit and this label fix are both pushed. **A green Actions run is not proof the
+CDN moved** — curl after it lands (the header of this note carries the current check). The VPS
+preview `vibe2.ton.zone` is further behind again: it is pinned to release `20260812T135148Z`
+and needs its own release cut.
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260813-09 once deployed
-curl -s https://vibe2.ton.zone/stage/  | grep -o 'v=[0-9-]*' | sort -u   # 20260813-06, behind
+curl -s https://vibe2.ton.zone/stage/ | grep -o 'v=[0-9-]*' | sort -u   # 20260813-06, behind
 ```
 
 A green Actions run is still not proof — the curl is, because the run can succeed while the
@@ -278,11 +338,16 @@ fault. → [[Dev workflows]]
 
 ## Recently landed
 
-Newest first (see [[Decisions]] for the reasoning). All live on `main` and on both surfaces.
+Newest first (see [[Decisions]] for the reasoning). All on `main` and live on GitHub Pages;
+the VPS preview is pinned to an older release and does **not** carry the recent ones.
 
 | Commit    | Change                                                        |
 | --------- | ------------------------------------------------------------- |
-| *(this)*  | The vocal pad becomes a continuous pitch × vowel ribbon        |
+| `4f92483` | The tier mark moves: rune ring, pulse ripple, rising embers   |
+| `408e43f` | The gift hatches out of a magic wardrobe instead of an egg    |
+| `720e452` | Rare's aura accent saturated so it reads blue, not as glare   |
+| `680d96e` | The tier is worn on stage, not only announced in the reveal   |
+| *(pre)*   | The vocal pad becomes a continuous pitch × vowel ribbon        |
 | `a3a8b50` | Drums get a groove wheel, dynamics, a hi-hat pedal and the kit row |
 | `685e383` | Falling off the stage hatches a new Вайбер instead of scolding |
 | `883273c` | Every character is a Вайбер; onboarding folded into the reveal |
@@ -360,6 +425,17 @@ The current milestone delivered **framing and pose only** ([[Focus framing]]). E
 Note that the guitar already has #2 and #3 done — its six-string event and raycast-proxy
 ownership are the working reference for what piano needs.
 
+### Mascot — deferred: a generated body
+
+Asked for and **not** done, deliberately. Replacing the procedural rig with a generated
+character is not an asset swap: every instrument pose, hand anchor, measured focus frame,
+walk cycle, dance, fall scaling and the aura's own attachment are authored against
+`buildMascot()`'s joints. A generated humanoid means auto-rigging, retargeting, and
+re-authoring the whole play layer — a project, not a feature, and the rig-validation notes in
+the `threejs-3d-generator` skill are blunt about auto-rigging being "80-90% of the way there"
+on hero characters. The affordable version of the same wish is what shipped instead: generated
+*props* (the wardrobe) and richer tier presence around the existing body.
+
 ### Later guitar enhancements
 
 Explicit **АКОРДИ / СОЛО** modes; true held fretting with separate plucks, slides, bends,
@@ -380,7 +456,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
 
 ## Health
 
-- Eleven test suites, 140 tests, all dependency-free: `node --test tests/*.test.mjs` →
+- Eleven test suites, 142 tests, all dependency-free: `node --test tests/*.test.mjs` →
   [[Dev workflows]]. Every one of them guards something that fails *silently* in a running
   app: `site-meta.test.mjs` covers a missing analytics tag, a `404.html` the deploy workflow
   forgets to copy, a funnel hook that stops being called, an unguarded `:hover`, and a
@@ -391,9 +467,11 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
   `tests/audio-lifecycle.test.mjs` imports it through a `data:` URL, which works only while the
   file imports nothing. Any reduction has to move data *out* to a caller, the way the vowel
   table went to `js/play/voice.js` → [[Module map]]
-- Cache stamps are **uniform**: 260 occurrences of `20260813-09` across `js/` and
+- Cache stamps are **uniform**: 265 occurrences of `20260813-14` across `js/` and
   `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
-  moves with the sweep). `prices.json` keeps its own, deliberately independent stamp — it
+  moves with the sweep). The vendored `GLTFLoader.js` / `BufferGeometryUtils.js` are
+  deliberately **unstamped** — they are pinned vendor files at three r160, imported through
+  the `three/addons/` import map like every other addon, and the sweep skips `vendor/`. `prices.json` keeps its own, deliberately independent stamp — it
   changes on a different cadence and a stale one only serves stale prices, not two versions
   of one module.
 

@@ -1170,6 +1170,12 @@ stage for as long as the character is kept:
   points and the whole cloud pops out at the top of an instrument close-up.
 - The trim glow is deliberately **not** registered with the «світло» dimmer: rarity should
   still read on a darkened stage.
+- **A tier's presence never adds a slot to the appearance vocabulary.** It is carried by the
+  aura, the trim glow and the weighting of traits the character already has — never by a new
+  wearable (a crown, a cape, a pet item) added for the tier alone. A new slot has to be drawn,
+  validated, persisted, fitted to every height / build extreme and checked against every
+  instrument pose, and it makes the tier a costume instead of a rarity. Upgrades go into what
+  is already there.
 
 ### Persistence
 
