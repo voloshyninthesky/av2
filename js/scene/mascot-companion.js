@@ -29,13 +29,41 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-16';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-17';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
 // instrument" flag into update() instead.
 
 const WHITE = new THREE.Color(0xffffff);
+
+// A soft accent halo on the boards under the birds' owner — the one piece of
+// the deleted aura that came back, by request, as an underline rather than a
+// ladder. One additive ring, deliberately quiet: the birds carry the tier,
+// the halo just says "marked" in the tier's colour. Intensities climb gently
+// with the tier but stay below where the old aura started competing with the
+// footlights.
+const HALO = { rare: 0.30, epic: 0.38, legendary: 0.48 };
+
+// Soft pool with a bright rim — one texture carries both, so the halo is a
+// single mesh / single draw call.
+function makeHaloTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const x = canvas.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, 'rgba(255,255,255,0.14)');
+  g.addColorStop(0.44, 'rgba(255,255,255,0.05)');
+  g.addColorStop(0.60, 'rgba(255,255,255,0.10)');
+  g.addColorStop(0.68, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.76, 'rgba(255,255,255,0.22)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
 // The rare solo flyer, told apart by timidity: low, brief flights — under
 // the resting hands — resting twice as long as it flies, flapping in a hurry
@@ -95,6 +123,22 @@ export function buildMascotCompanion() {
   const root = new THREE.Group();
   root.name = 'tier-companion';
 
+  // The halo. Additive over the boards eats saturation (the floor's red
+  // channel is near the top of the range), so the accent gets a saturation
+  // push before the intensity scale — gold and purple barely move, rare's
+  // denim blue survives instead of washing to white.
+  const haloGeo = new THREE.CircleGeometry(0.78, 40);
+  haloGeo.rotateX(-Math.PI / 2);
+  const haloMat = new THREE.MeshBasicMaterial({
+    map: makeHaloTexture(), transparent: true, opacity: 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+  });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  halo.position.y = 0.03;
+  root.add(halo);
+  const haloBase = new THREE.Color();
+  const scratchHSL = { h: 0, s: 0, l: 0 };
+
   // rare: the sparrow — no crest, four-fifths scale, a low flyer.
   const sparrow = buildBird({ crest: false });
   sparrow.bird.scale.setScalar(0.8);
@@ -153,6 +197,11 @@ export function buildMascotCompanion() {
       tint(birdB.plumage, lift, glow);
       if (state.active === 'trio') tint(birdC.plumage, lift, glow);
     }
+    haloBase.setHex(tier.accent).getHSL(scratchHSL);
+    haloBase
+      .setHSL(scratchHSL.h, Math.min(1, scratchHSL.s * 1.75), scratchHSL.l)
+      .multiplyScalar(HALO[tier.id] ?? 0.3);
+    haloMat.color.copy(haloBase);
   }
 
   // A solo flyer: circle the character at its own height, then land at its
@@ -230,8 +279,12 @@ export function buildMascotCompanion() {
     // resting bird stays on the floor. A fall (parentY < 0) rides the body
     // instead — the fall fade owns that exit.
     state.groundY = parentY > 0 ? -parentY / scaleY : 0;
+    halo.position.y = state.groundY + 0.03;
 
     const reduced = prefersReducedMotion.matches;
+    // The halo breathes, barely; under reduced motion it stands still.
+    haloMat.color.copy(haloBase);
+    if (!reduced) haloMat.color.multiplyScalar(1 + 0.08 * Math.sin(t * 1.6));
     if (state.active === 'sparrow') {
       updateFlyer(sparrow, SPARROW_FLIGHT, 'restSparrow', t, dt, reduced, hold);
     } else {

@@ -7,48 +7,48 @@
 // injected here through their init* functions so the graph stays a tree.
 // ============================================================
 import * as THREE from 'three';
-import './core/errlog.js?v=20260813-16';
-import './core/telegram.js?v=20260813-16';
-import { session, easeInOut } from './core/session.js?v=20260813-16';
-import { mascotMove, dance } from './mascot/state.js?v=20260813-16';
-import { play } from './play/state.js?v=20260813-16';
-import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260813-16';
-import './shell/qa-hooks.js?v=20260813-16';
+import './core/errlog.js?v=20260813-17';
+import './core/telegram.js?v=20260813-17';
+import { session, easeInOut } from './core/session.js?v=20260813-17';
+import { mascotMove, dance } from './mascot/state.js?v=20260813-17';
+import { play } from './play/state.js?v=20260813-17';
+import { raycaster, pointer, stageWalkPlane } from './view/pick.js?v=20260813-17';
+import './shell/qa-hooks.js?v=20260813-17';
 import {
   chipFor,
   queuePriceChip,
   flushPendingPriceChip,
   clearKeyboardJamChipTimer,
   initVibe,
-} from './play/vibe.js?v=20260813-16';
+} from './play/vibe.js?v=20260813-17';
 import {
   loop,
   updateLoopProgress,
   initLoopPedal,
-} from './play/loop.js?v=20260813-16';
+} from './play/loop.js?v=20260813-17';
 import {
   currentGuitarChordName,
   allGuitarPitches,
   initGuitarPlay,
-} from './play/guitar.js?v=20260813-16';
+} from './play/guitar.js?v=20260813-17';
 import {
   captureHeldVocalIntoLoop,
   finishHeldLoopCapture,
   initPads,
-} from './play/pads.js?v=20260813-16';
+} from './play/pads.js?v=20260813-17';
 import {
   showRibbon,
   hideRibbon,
   stopRibbonVoice,
   initRibbon,
-} from './play/ribbon.js?v=20260813-16';
+} from './play/ribbon.js?v=20260813-17';
 import {
   showChordWheel,
   hideChordWheel,
   clearGuitarInteractionState,
   markHeldTouchGuitarChordUsed,
   initChordWheel,
-} from './play/chord-wheel.js?v=20260813-16';
+} from './play/chord-wheel.js?v=20260813-17';
 import {
   showGrooveWheel,
   hideGrooveWheel,
@@ -57,7 +57,7 @@ import {
   grooveBarSeconds,
   grooveDownbeatAt,
   initGroove,
-} from './play/groove.js?v=20260813-16';
+} from './play/groove.js?v=20260813-17';
 import {
   beginHeldPianoNote,
   releaseHeldPianoNote,
@@ -66,7 +66,7 @@ import {
   captureHeldPianoIntoLoop,
   finalizeHeldPianoLoopCapture,
   initPianoNotes,
-} from './play/piano-notes.js?v=20260813-16';
+} from './play/piano-notes.js?v=20260813-17';
 import {
   composer,
   bloomPass,
@@ -74,7 +74,7 @@ import {
   updateMobileQualityProbe,
   qualityWarmup,
   initPostfx,
-} from './shell/postfx.js?v=20260813-16';
+} from './shell/postfx.js?v=20260813-17';
 import {
   FLY_DUR,
   shouldSkipIntro,
@@ -87,13 +87,13 @@ import {
   restoreAfterAudioContextRebuild,
   activateAudioForSound,
   initIntro,
-} from './shell/intro.js?v=20260813-16';
+} from './shell/intro.js?v=20260813-17';
 import {
   closeSoundMixer,
   releaseKeyboardVocal,
   beginKeyboardVocal,
   initMixer,
-} from './play/mixer.js?v=20260813-16';
+} from './play/mixer.js?v=20260813-17';
 import {
   giftCam,
   queueGiftRefit,
@@ -102,7 +102,7 @@ import {
   prepareGiftStage,
   giftApproachFraming,
   initMascotGift,
-} from './mascot/reveal.js?v=20260813-16';
+} from './mascot/reveal.js?v=20260813-17';
 import {
   params,
   isLowEndMobileGameMode,
@@ -111,8 +111,8 @@ import {
   prefersReducedMotion,
   stageAmbience,
   stageLightLevel,
-} from './core/quality.js?v=20260813-16';
-import { onCameraModeChange } from './core/camera-mode.js?v=20260813-16';
+} from './core/quality.js?v=20260813-17';
+import { onCameraModeChange } from './core/camera-mode.js?v=20260813-17';
 import {
   canvas,
   renderer,
@@ -123,7 +123,7 @@ import {
   CAM_START,
   CAM_END,
   TARGET,
-} from './view/rig.js?v=20260813-16';
+} from './view/rig.js?v=20260813-17';
 import {
   ui,
   audio,
@@ -141,25 +141,25 @@ import {
   addLabels,
   instruments,
   interactables,
-} from './core/studio.js?v=20260813-16';
-import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260813-16';
+} from './core/studio.js?v=20260813-17';
+import { spotHeads, applyLowMobileSceneBudget } from './scene/lighting.js?v=20260813-17';
 import {
   instrumentView,
-} from './view/instrument-presets.js?v=20260813-16';
+} from './view/instrument-presets.js?v=20260813-17';
 import {
   updateInstrumentViewCamera,
   initInstrumentView,
-} from './view/instrument-view.js?v=20260813-16';
+} from './view/instrument-view.js?v=20260813-17';
 import {
   setDancing,
-} from './mascot/pose.js?v=20260813-16';
+} from './mascot/pose.js?v=20260813-17';
 import {
   PHOTO_SLIDES_ENABLED,
   loadSlideTextures,
   updateSlideshow,
   updateSlideshowNavLayout,
-} from './scene/slideshow.js?v=20260813-16';
-import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260813-16';
+} from './scene/slideshow.js?v=20260813-17';
+import { hitPulse, bumpHitPulse } from './scene/effects.js?v=20260813-17';
 import {
   setGlow,
   isInstrumentCloseUp,
@@ -169,7 +169,7 @@ import {
   canPlayInstrument,
   canKeyboardJamPlay,
   syncOrbitZoom,
-} from './view/pointer.js?v=20260813-16';
+} from './view/pointer.js?v=20260813-17';
 import {
   syncViewportMeta,
   resetBrowserPageZoom,
@@ -177,7 +177,7 @@ import {
   eventInvolvesUiChrome,
   isLiveStageZoomLocked,
   initViewport,
-} from './view/viewport.js?v=20260813-16';
+} from './view/viewport.js?v=20260813-17';
 import {
   syncMobileInstrumentChrome,
   releaseMoveJoystick,
@@ -190,10 +190,10 @@ import {
   playNearestInstrument,
   updateMobilePlayAvailability,
   initMobileControls,
-} from './view/mobile-controls.js?v=20260813-16';
-import { updateMascot } from './mascot/update.js?v=20260813-16';
-import { initSigns, revealSigns } from './shell/signs.js?v=20260813-16';
-import { updateSigns } from './scene/signs.js?v=20260813-16';
+} from './view/mobile-controls.js?v=20260813-17';
+import { updateMascot } from './mascot/update.js?v=20260813-17';
+import { initSigns, revealSigns } from './shell/signs.js?v=20260813-17';
+import { updateSigns } from './scene/signs.js?v=20260813-17';
 
 
 // ============================================================

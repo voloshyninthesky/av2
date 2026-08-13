@@ -1148,6 +1148,11 @@ the **count** — legible from the back row:
 
 - One on the boards < two on your shoulders < three golden ones crowning you. The count is
   the ladder; gold and the head-perch are what keep legendary unmistakable at a glance.
+- Under the birds' owner sits a **soft accent halo** on the boards — one additive ring in
+  the tier colour, breathing barely (±8%), intensities 0.30 / 0.38 / 0.48. It is an
+  underline, not a ladder: the one piece of the deleted aura that came back, and it must
+  never regrow the runes, ripples, rays or trim that were removed with it. It follows the
+  floor in seated poses and is absent for common.
 - The companions appear **at the burst**, with the character — never before. The wardrobe's
   seam glow stays the sole tell during the strain.
 - **Budget rules.** All four birds (sparrow + the flock of three; epic and legendary share

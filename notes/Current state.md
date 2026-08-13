@@ -8,13 +8,13 @@ updated: 2026-08-13
 Snapshot as of **2026-08-13**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
-`main` is on **`ba852af`** plus the companion-flock commit, the tree is on stamp
-**`20260813-16`** (265 occurrences), 142 Node
+`main` is on **`c112273`** plus the halo commit, the tree is on stamp
+**`20260813-17`** (265 occurrences), 142 Node
 tests pass across 11 suites, and the working tree is clean. Both of the changes below are
 deployed and **verified live**, not just green in Actions:
 
 ```bash
-curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # expect 20260813-16
+curl -s https://artvibe.com.pl/stage/ | grep -o 'v=[0-9-]*' | sort -u          # expect 20260813-17
 curl -sI https://artvibe.com.pl/stage/assets/wardrobe.glb                       # 200, 2.0 MB ✓
 curl -sI https://artvibe.com.pl/vendor/three/examples/jsm/loaders/GLTFLoader.js # 200 ✓
 ```
@@ -49,7 +49,10 @@ legendary share the same two flock birds recoloured; measured against common the
 Verified in the pane at 1280×720: all four tiers, the wider epic orbit clearing the resting
 hands, the head perch, and zero allocations across tier switches. Generation was declined
 for both the birds and a regenerated mascot body under the user's "don't use if it makes no
-sense" rule — reasoning in the [[Decisions]] entry.
+sense" rule — reasoning in the [[Decisions]] entry. A **quiet accent halo** then returned
+under the birds' owner by request (one additive ring, 0.30 / 0.38 / 0.48 by tier, breathing
+±8%) — an underline, not a ladder; the count of birds stays the tier. Verified on all three
+marked tiers; common stays bare.
 
 What to remember:
 
@@ -477,7 +480,7 @@ A game-like background soundtrack. If it ever ships it must be an explicit, pers
   `tests/audio-lifecycle.test.mjs` imports it through a `data:` URL, which works only while the
   file imports nothing. Any reduction has to move data *out* to a caller, the way the vowel
   table went to `js/play/voice.js` → [[Module map]]
-- Cache stamps are **uniform**: 265 occurrences of `20260813-16` across `js/` and
+- Cache stamps are **uniform**: 265 occurrences of `20260813-17` across `js/` and
   `stage/index.html`, `css/style.css` included (it is stamped from `stage/index.html`, so it
   moves with the sweep). The vendored `GLTFLoader.js` / `BufferGeometryUtils.js` are
   deliberately **unstamped** — they are pinned vendor files at three r160, imported through

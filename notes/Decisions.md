@@ -29,6 +29,11 @@ shoulders for epic; a golden trio for legendary, the third and smallest bird per
 crown of the head. Count is legible from the back row; gold and the head-perch keep
 legendary unmistakable. Epic and legendary share the same two flock birds, recoloured.
 
+**A sliver of the aura came back the same day, by request** — one quiet accent halo on the
+boards under the birds' owner (0.30 / 0.38 / 0.48 by tier, breathing ±8%). It is an
+underline, not a ladder: the count of birds still carries the tier, and the halo must not
+regrow the runes, ripple, rays or trim it once had. [[SPEC]] §13 now says so.
+
 **Generation was declined twice here, under the user's own rule ("don't use if it makes no
 sense").** A Tripo bird is a fused mesh whose wings cannot hinge, and the avian auto-rig has
 no flight preset to retarget — ~2 MB per palm-sized bird, animated worse than nine
