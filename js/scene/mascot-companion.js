@@ -29,7 +29,7 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-23';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-24';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -228,12 +228,22 @@ export function buildMascotCompanion() {
     swallow.bird.visible = bird === swallow;
     songbird.bird.visible = bird === songbird;
     if (!bird) return;
-    // Lit geometry, not additive, so the plain accent already survives the
-    // stage light; the lift keeps small birds from turning into dark blobs
-    // and the emissive is what climbs with the tier.
-    bird.plumage.color.setHex(tier.accent).lerp(WHITE, state.tierId === 'rare' ? 0.4 : 0.28);
-    bird.plumage.emissive.setHex(tier.accent);
-    bird.plumage.emissiveIntensity = PLUMAGE_GLOW[tier.id] ?? 0.1;
+    // The birds climb a METAL ladder — pewter, silver, gold — while the tier
+    // accent stays on the halo, which is where the accent belongs. A violet
+    // swallow read as a toy; silver stands beside the pewter sparrow as
+    // plainly one rank finer, and leaves gold alone at the top.
+    if (state.tierId === 'epic') {
+      bird.plumage.color.setHex(0xdde6ee);
+      bird.plumage.emissive.setHex(0x9fb6cc);
+      bird.plumage.emissiveIntensity = PLUMAGE_GLOW.epic;
+    } else {
+      // Lit geometry, not additive, so the plain accent already survives the
+      // stage light; the lift keeps small birds from turning into dark blobs
+      // and the emissive is what climbs with the tier.
+      bird.plumage.color.setHex(tier.accent).lerp(WHITE, state.tierId === 'rare' ? 0.4 : 0.28);
+      bird.plumage.emissive.setHex(tier.accent);
+      bird.plumage.emissiveIntensity = PLUMAGE_GLOW[tier.id] ?? 0.1;
+    }
     haloBase.setHex(tier.accent).getHSL(scratchHSL);
     haloBase
       .setHSL(scratchHSL.h, Math.min(1, scratchHSL.s * 1.75), scratchHSL.l)

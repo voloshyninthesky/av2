@@ -1142,8 +1142,8 @@ the **count** — legible from the back row:
 | Tier            | Companions                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **ЗВИЧАЙНИЙ**   | Nobody — the unmarked bottom rung is what makes the ladder read                             |
-| **РІДКІСНИЙ**   | A small crestless **sparrow**: brief, timid flights at waist height and wide of the arms, resting on the **boards** twice as long as it flies, over a faint halo |
-| **ЕПІЧНИЙ**     | A slim forked-tail **swallow**: confident chest-high circles, landing on the character's **shoulder**, over a brighter halo |
+| **РІДКІСНИЙ**   | A small crestless **sparrow in pewter blue-grey**: brief, timid flights at waist height and wide of the arms, resting on the **boards** twice as long as it flies, over a faint halo |
+| **ЕПІЧНИЙ**     | A slim forked-tail **swallow in silver**: confident chest-high circles, landing on the character's **shoulder**, over a brighter halo |
 | **ЛЕГЕНДАРНИЙ** | The crested **songbird** in gold, lit from inside: the highest flight, perching on the **crown of the head**, over the brightest halo |
 
 **Exactly one bird per tier.** Two and three were tried and pulled: a flock made the stage
@@ -1155,7 +1155,11 @@ epic and legendary read as marked from the back row, rare stays the quiet rung).
 
 The three birds come from **one builder with authored silhouette options** (crest, tail
 long / forked / fan, slimness, a dark cap) — the differences that carry at stage distance.
-Keep new variety in that vocabulary rather than new meshes.
+Keep new variety in that vocabulary rather than new meshes. Their colours climb a **metal
+ladder — pewter, silver, gold —** while the tier accent stays on the halo, which is where
+the accent belongs: an accent-coloured bird (the violet swallow was tried) reads as a toy,
+and silver stands beside pewter as plainly one rank finer while leaving gold alone at the
+top.
 
 - Beside you on the boards < on your shoulder < on your head. The landing spot is the
   clearest rung; gold plus the head-perch is what keeps legendary unmistakable at a glance.

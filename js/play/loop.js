@@ -7,13 +7,13 @@
 // `playMusicalEvent` is the one road every note takes — pointer, ribbon,
 // keyboard and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260813-23';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-23';
-import { mascotMove } from '../mascot/state.js?v=20260813-23';
-import { play, heldPianoNotes } from './state.js?v=20260813-23';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260813-23';
-import { freqFromMidi } from './harmony.js?v=20260813-23';
-import { vowelAt } from './voice.js?v=20260813-23';
+import { session } from '../core/session.js?v=20260813-24';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-24';
+import { mascotMove } from '../mascot/state.js?v=20260813-24';
+import { play, heldPianoNotes } from './state.js?v=20260813-24';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260813-24';
+import { freqFromMidi } from './harmony.js?v=20260813-24';
+import { vowelAt } from './voice.js?v=20260813-24';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');

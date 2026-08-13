@@ -33,6 +33,11 @@ In the same pass the marked tiers got one visibility step — halo 0.55 / 0.80 a
 the elite rungs were reading too close to rare at stage distance. Rare is untouched: the
 quiet rung is the reference the others are measured against.
 
+**And the swallow went from violet to silver** right after: an accent-coloured bird reads as
+a toy, so the accent stays on the halo and the birds climb a metal ladder instead — pewter
+blue-grey sparrow, silver swallow, golden songbird. Silver stands beside pewter as plainly
+one rank finer, and leaves gold alone at the top.
+
 ---
 
 ## The draw got looser, and the rare bird got off the floor — 2026-08-13
