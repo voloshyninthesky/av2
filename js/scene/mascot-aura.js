@@ -18,7 +18,7 @@
 // would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-13';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-14';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -45,6 +45,7 @@ const AURA_TIERS = {
   legendary: { ring: 0.9, ringPulse: 2.3, rays: 0.5, sparks: 44, sparkSize: 0.068, spin: 0.9, bird: true },
 };
 const MAX_SPARKS = 44;
+const WHITE = new THREE.Color(0xffffff);
 
 function makeAuraTexture(size, paint) {
   const canvas = document.createElement('canvas');
@@ -211,6 +212,20 @@ export function buildMascotAura() {
     perchBlend: 1,
   };
 
+  // Additive blending over the warm wood floor is an uphill fight for anything
+  // that isn't already warm: the floor's own red channel is near the top of the
+  // range, so adding a half-saturated colour lands on white and the tier reads
+  // as "a glow" rather than as its accent. Rare's denim blue is the case that
+  // proves it. Pushing saturation before the intensity scale keeps the hue
+  // legible against the boards; gold and purple barely move, blue survives.
+  const scratchHSL = { h: 0, s: 0, l: 0 };
+  function accentTint(out, hex, scale) {
+    out.setHex(hex).getHSL(scratchHSL);
+    return out
+      .setHSL(scratchHSL.h, Math.min(1, scratchHSL.s * 1.75), scratchHSL.l)
+      .multiplyScalar(scale);
+  }
+
   // `tier` is a GIFT_TIERS entry ({ id, accent }) or null. Only recolours and
   // toggles — nothing is created, so a reroll costs no allocation and no
   // program link.
@@ -219,17 +234,22 @@ export function buildMascotAura() {
     state.params = params || null;
     root.visible = Boolean(params);
     if (!params) return;
-    state.ringBase.setHex(tier.accent).multiplyScalar(params.ring);
+    accentTint(state.ringBase, tier.accent, params.ring);
     ringMat.color.copy(state.ringBase);
     rays.visible = params.rays > 0;
-    raysMat.color.setHex(tier.accent).multiplyScalar(params.rays);
-    state.sparkBase.setHex(tier.accent).lerp(new THREE.Color(0xffffff), 0.35);
+    accentTint(raysMat.color, tier.accent, params.rays);
+    // Sparks keep a lift toward white — they read as glints rather than as
+    // coloured dots, and at 6 cm they are too small to carry a hue on their own.
+    accentTint(state.sparkBase, tier.accent, 1).lerp(WHITE, 0.35);
     sparkMat.color.copy(state.sparkBase);
     sparkMat.size = params.sparkSize;
     sparkGeo.setDrawRange(0, params.sparks);
     sparks.visible = params.sparks > 0;
     bird.visible = params.bird;
-    plumage.color.setHex(tier.accent).lerp(new THREE.Color(0xffffff), 0.3);
+    // The bird is lit geometry, not additive, so it keeps the plain accent —
+    // the saturation push exists to survive additive blending and would only
+    // make the plumage garish here.
+    plumage.color.setHex(tier.accent).lerp(WHITE, 0.3);
     plumage.emissive.setHex(tier.accent);
   }
 

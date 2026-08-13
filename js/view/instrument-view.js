@@ -7,22 +7,22 @@
 // this module stays downstream of the features it interrupts.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260813-13';
-import { isMobileGameMode, prefersReducedMotion } from '../core/quality.js?v=20260813-13';
+import { session, easeInOut } from '../core/session.js?v=20260813-14';
+import { isMobileGameMode, prefersReducedMotion } from '../core/quality.js?v=20260813-14';
 import {
   camera,
   controls,
   FOCUSED_MIN_DISTANCE,
   applyMobileOrbitPolicy,
-} from './rig.js?v=20260813-13';
-import { ui, audio, mascot, guitar } from '../core/studio.js?v=20260813-13';
+} from './rig.js?v=20260813-14';
+import { ui, audio, mascot, guitar } from '../core/studio.js?v=20260813-14';
 import {
   INSTRUMENT_VIEW_PRESETS,
   instrumentView,
   instrumentLocalToWorld,
-} from './instrument-presets.js?v=20260813-13';
-import { instrumentViewFrame } from './focus-frame.js?v=20260813-13';
-import { mascotMove } from '../mascot/state.js?v=20260813-13';
+} from './instrument-presets.js?v=20260813-14';
+import { instrumentViewFrame } from './focus-frame.js?v=20260813-14';
+import { mascotMove } from '../mascot/state.js?v=20260813-14';
 import {
   resetMascotPose,
   captureMascotInstrumentPose,
@@ -32,12 +32,12 @@ import {
   createGuitarMascotPose,
   setDancing,
   poseMascotAtInstrument,
-} from '../mascot/pose.js?v=20260813-13';
+} from '../mascot/pose.js?v=20260813-14';
 import {
   projectMascotToWalkablePoint,
   planMascotWalkRoute,
   nearestInstrumentWalkPoint,
-} from '../mascot/walk.js?v=20260813-13';
+} from '../mascot/walk.js?v=20260813-14';
 
 
 // Entering or leaving a close-up interrupts whatever else was mid-gesture.
