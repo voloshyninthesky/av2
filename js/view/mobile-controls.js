@@ -7,10 +7,10 @@
 // the fade, and the respawn.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-12';
-import { isMobileGameMode } from '../core/quality.js?v=20260813-12';
-import { swallowNextClick } from '../core/gesture-guards.js?v=20260813-12';
-import { camera, controls } from './rig.js?v=20260813-12';
+import { session } from '../core/session.js?v=20260813-13';
+import { isMobileGameMode } from '../core/quality.js?v=20260813-13';
+import { swallowNextClick } from '../core/gesture-guards.js?v=20260813-13';
+import { camera, controls } from './rig.js?v=20260813-13';
 import {
   ui,
   stage,
@@ -20,13 +20,13 @@ import {
   applyMascotScale,
   mascotFallMeshes,
   mascotFallMaterialStates,
-} from '../core/studio.js?v=20260813-12';
-import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260813-12';
-import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260813-12';
-import { mascotMove } from '../mascot/state.js?v=20260813-12';
-import { setDancing } from '../mascot/pose.js?v=20260813-12';
-import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260813-12';
-import { resyncLoopPlayback } from '../play/loop.js?v=20260813-12';
+} from '../core/studio.js?v=20260813-13';
+import { instrumentGroups, instrumentWorldPositions, instrumentView } from './instrument-presets.js?v=20260813-13';
+import { leaveInstrumentView, requestInstrumentView } from './instrument-view.js?v=20260813-13';
+import { mascotMove } from '../mascot/state.js?v=20260813-13';
+import { setDancing } from '../mascot/pose.js?v=20260813-13';
+import { configureWalkColliders, planMascotWalkRoute } from '../mascot/walk.js?v=20260813-13';
+import { resyncLoopPlayback } from '../play/loop.js?v=20260813-13';
 
 const mobileControls = document.getElementById('mobile-controls');
 const moveZone = document.getElementById('move-zone');

@@ -18,24 +18,24 @@
 // rather than tracks. See notes/Decisions.md.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260813-12';
-import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-12';
-import { trackOnce } from '../core/analytics.js?v=20260813-12';
-import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-12';
+import { session, easeInOut } from '../core/session.js?v=20260813-13';
+import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-13';
+import { trackOnce } from '../core/analytics.js?v=20260813-13';
+import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-13';
 import {
   ui, mascot, mascotLabel, audio, fireworks, giftEgg,
   applyMascotConfig, applyMascotScale,
-} from '../core/studio.js?v=20260813-12';
-import { bumpHitPulse } from '../scene/effects.js?v=20260813-12';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-12';
-import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-12';
-import { settleOnFollowCamera } from '../view/mobile-controls.js?v=20260813-12';
-import { resetMascotPose, setDancing } from './pose.js?v=20260813-12';
-import { mascotMove } from './state.js?v=20260813-12';
+} from '../core/studio.js?v=20260813-13';
+import { bumpHitPulse } from '../scene/effects.js?v=20260813-13';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-13';
+import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-13';
+import { settleOnFollowCamera } from '../view/mobile-controls.js?v=20260813-13';
+import { resetMascotPose, setDancing } from './pose.js?v=20260813-13';
+import { mascotMove } from './state.js?v=20260813-13';
 import {
   validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot,
-} from './appearance.js?v=20260813-12';
-import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-12';
+} from './appearance.js?v=20260813-13';
+import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260813-13';
 
 // Opening the gift borrows the camera and has to quiet whatever else was using
 // it. The bloom pass lives in shell/, above this module, so main.js injects it

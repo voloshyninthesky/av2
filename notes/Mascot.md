@@ -67,7 +67,17 @@ more often than this note will.
 **The ceremony does not vary by tier.** Everyone gets the full ~7 s version — the one that
 used to be reserved for a legendary. You receive one gift in your life; grading the spectacle
 to the roll would mean most visitors never see the good version of the only reveal they get.
-The tier shows up in the glow colour and on the card, nowhere else.
+During the ceremony the tier shows up in the glow colour and on the card, nowhere else.
+
+**After the ceremony the tier is worn on stage.** `js/scene/mascot-aura.js` owns the
+persistent mark — ring for rare, + sparks and trim glow for epic, + rays and the golden
+companion bird for legendary; common stays bare. Everything is built once at boot and
+toggled/recoloured from `applyMascotConfig()`, so the no-allocation-per-pull rule below
+covers it. Exact ladder and budget rules: [[SPEC]] §13 "The tier on stage". One wiring
+gotcha: the aura module is loaded by `core/studio.js`, so it must not import any `view/`
+module that imports studio back (`instrument-presets` does) — the cycle is a TDZ error at
+boot. `main.js` passes the "visitor is at an instrument" flag into `mascotAura.update()`
+instead.
 
 ### Why the tier is drawn first
 

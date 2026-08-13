@@ -6,29 +6,30 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260813-12';
-import { buildDrumKit } from '../instruments/drums.js?v=20260813-12';
-import { buildPiano } from '../instruments/piano.js?v=20260813-12';
-import { buildGuitar } from '../instruments/guitar.js?v=20260813-12';
-import { buildMic } from '../instruments/mic.js?v=20260813-12';
-import { UI } from '../ui.js?v=20260813-12';
-import { scene, renderer } from '../view/rig.js?v=20260813-12';
+import { AudioEngine } from '../audio.js?v=20260813-13';
+import { buildDrumKit } from '../instruments/drums.js?v=20260813-13';
+import { buildPiano } from '../instruments/piano.js?v=20260813-13';
+import { buildGuitar } from '../instruments/guitar.js?v=20260813-13';
+import { buildMic } from '../instruments/mic.js?v=20260813-13';
+import { UI } from '../ui.js?v=20260813-13';
+import { scene, renderer } from '../view/rig.js?v=20260813-13';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260813-12';
-import { buildStage } from '../scene/stage.js?v=20260813-12';
-import { buildSigns } from '../scene/signs.js?v=20260813-12';
+} from './quality.js?v=20260813-13';
+import { buildStage } from '../scene/stage.js?v=20260813-13';
+import { buildSigns } from '../scene/signs.js?v=20260813-13';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260813-12';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-12';
-import { buildGiftEgg } from '../scene/gift-egg.js?v=20260813-12';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-12';
+} from '../scene/lighting.js?v=20260813-13';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-13';
+import { buildMascotAura, MASCOT_TIER_TRIM } from '../scene/mascot-aura.js?v=20260813-13';
+import { buildGiftEgg } from '../scene/gift-egg.js?v=20260813-13';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-13';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -40,7 +41,8 @@ import {
   MASCOT_OUTFIT_COLORS,
   MASCOT_SMILES,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260813-12';
+} from '../mascot/appearance.js?v=20260813-13';
+import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260813-13';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
@@ -112,6 +114,14 @@ export const noteBursts = new NoteBursts(scene);
 }
 
 export const mascot = buildMascot();
+// The tier's persistent mark (ring / sparks / rays / companion bird). A child
+// of mascot.group: it rides walks, poses and the fall fade for free, and the
+// reveal's group-hide keeps it from spoiling the egg. Attached before the
+// fall-material traverse below so its materials restore on respawn like any
+// other part of the body. Built now — before the first renderer.compile — so
+// no program links mid-ceremony.
+export const mascotAura = buildMascotAura();
+mascot.group.add(mascotAura.group);
 
 // Height/width come from the saved customization; fallFactor shrinks during a stage fall.
 export function applyMascotScale(fallFactor = 1) {
@@ -186,6 +196,16 @@ export function applyMascotConfig() {
   cu.headphoneMats.detail.color.setHex(accent ?? outfit.stripes);
   for (const [name, accessory] of Object.entries(cu.accessoryGroups)) {
     accessory.visible = name === mascotCfg.accessory;
+  }
+  // The rarity's persistent presence: aura pieces per tier, plus a trim glow
+  // (stripes + collar slots) in the tier accent on epic and legendary. Reset
+  // to black on the way down — a reroll can lower the tier.
+  const tier = GIFT_TIERS_BY_ID[mascotCfg.tier] ?? GIFT_TIERS_BY_ID.common;
+  mascotAura.setTier(tier);
+  const trim = MASCOT_TIER_TRIM[tier.id] ?? 0;
+  for (const slot of ['stripes', 'collar']) {
+    cu.mats[slot].emissive.setHex(trim ? tier.accent : 0x000000);
+    cu.mats[slot].emissiveIntensity = trim || 1;
   }
   applyMascotScale();
 }

@@ -12,6 +12,29 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## A tier is worn, not just announced — 2026-08-13
+
+The rarity used to exist for one sentence: the glow took the accent colour, the card named
+the tier, and after ГОТОВО a legendary stood on stage indistinguishable from a common. A tier
+you cannot see on sight, holding the thing, is not a tier.
+
+The fix is a persistent mark rather than a bigger ceremony (the ceremony stays identical for
+everyone — that decision from 2026-08-12 holds): a ground ring for rare, sparks and a trim
+glow for epic, light rays plus a golden companion bird for legendary. Common deliberately
+gets nothing; the unmarked bottom rung is what makes the ladder legible.
+
+A **full species swap** for high tiers (epic/legendary hatching as an animal instead of a
+Вайбер) was considered and deferred: every instrument pose, hand anchor, focus frame and the
+whole draw vocabulary are authored against the one humanoid rig, so a second body is a
+project, not a feature. The companion bird delivers the "it's alive" beat at a fraction of
+the cost and stacks with the aura.
+
+Constraints inherited from the gift: built once at boot, recoloured in place (no allocation
+per pull), no new lights, no new post passes, and the aura never writes material opacity —
+the stage-fall fade owns that channel. Legendary costs ~12 draw calls over common. → [[Mascot]]
+
+---
+
 ## The mixer's balance is a measured trim, not four hand-picked defaults — 2026-08-13
 
 Rendered each instrument's own phrase offline through the real chain (master → compressor)

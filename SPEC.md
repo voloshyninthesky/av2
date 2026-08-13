@@ -1098,7 +1098,7 @@ The gift should feel like being handed someone, not like filling in a form. The 
 | **ЕПІЧНИЙ**     | 11%    | purple `0x9E33CA` |
 | **ЛЕГЕНДАРНИЙ** | 4%     | gold `0xD1A13B`   |
 
-- **The ceremony is identical at every tier** — the same ~7 s timeline, five thumps, five bursts, bloom ramp and closing spin that used to be reserved for a legendary. A visitor receives one gift in their life, so scaling the spectacle to the roll would mean most people never see the good version of the only reveal they will ever get. A tier carries **only** a label and an accent colour, and must never grow timing or intensity fields again.
+- **The ceremony is identical at every tier** — the same ~7 s timeline, five thumps, five bursts, bloom ramp and closing spin that used to be reserved for a legendary. A visitor receives one gift in their life, so scaling the spectacle to the roll would mean most people never see the good version of the only reveal they will ever get. A `GIFT_TIERS` entry carries **only** a label and an accent colour, and must never grow timing or intensity fields again; the persistent on-stage presence below is keyed off the tier *id* elsewhere (`js/scene/mascot-aura.js`) and never feeds back into the ceremony.
 - **The card is the whole of the first run.** It introduces the character and says what the stage lets you do with it — «Вайбери люблять ходити по сцені та грати на інструментах.» — and its **ЗРОЗУМІЛО** writes `av2.onboard.v2`. Two cards in a row, the second restating the first, was one beat too many for a visitor who has not touched anything yet. The standalone tip survives only for the visitor who has a character but never acknowledged the text (closed with ✕ or Esc), which is why the two gates stay separate.
 
 - The card shows the tier inside the sentence and nothing else — no name, no trait list. Higher tiers weight toward the traits that read as distinctive at stage distance — `bald`, the `night` palette, `headphones`, the pink hair swatch, `gold` overrides, wider height / build ladders. Common keeps the whole vocabulary so the ordinary population stays varied.
@@ -1129,6 +1129,37 @@ Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 H
 - A tap outside the card, or Enter / Space, skips to the reveal after a 400 ms grace so the opening tap cannot also skip it.
 - The egg is **built once at boot** and kept invisible: three meshes, two materials, ~1.7k triangles, **no lights**. A light added lazily would relink every lit program mid-ceremony. Both shell halves are generated from one surface function so the jagged seam interlocks; a clean equatorial cut reads as a sliced egg rather than a hatched one.
 
+### The tier on stage
+
+The reveal used to be the only place a tier existed; after ГОТОВО every character looked
+common. Rare and above now carry a **persistent mark** in the tier's accent colour, worn on
+stage for as long as the character is kept:
+
+| Tier            | Presence                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| **ЗВИЧАЙНИЙ**   | Nothing — the unmarked bottom rung is what makes the ladder read                            |
+| **РІДКІСНИЙ**   | A soft pulsing ground ring                                                                  |
+| **ЕПІЧНИЙ**     | Brighter ring + a small orbiting spark cloud + a faint emissive tint on the outfit trim     |
+| **ЛЕГЕНДАРНИЙ** | Gold ring + slowly rotating light-rays disc + denser sparks + stronger trim glow + a **golden companion bird** that circles the character and rests on the right shoulder |
+
+- The mark appears **at the burst**, with the character — never before. The egg and its glow
+  stay the sole tell during the strain.
+- **Budget rules.** Everything is built once at boot (in the scene before the first
+  `renderer.compile`), then only toggled and recoloured per tier: a reroll allocates no
+  geometry, no texture, no program link. No new lights; no new post passes — the additive
+  sprites read bare on the low tier, and the existing bloom dresses them on the high tier.
+  Legendary, the most expensive tier, costs about a dozen extra draw calls and ~650
+  triangles over common; epic three; rare one.
+- Per-frame animation is uniform-level only (rotations, colour scale, point size). Material
+  **opacity is never written** by the aura — the stage-fall fade owns opacity for everything
+  under `mascot.group` and restores it on respawn.
+- The ground pieces counter the group's lift in seated poses and the dance bounce so the
+  ring stays on the boards; in a fall the aura rides the body and fades with it.
+- The bird perches while the visitor is at an instrument (it must not orbit through a piano
+  cabinet) and under `prefers-reduced-motion`, where the whole aura holds still.
+- The trim glow is deliberately **not** registered with the «світло» dimmer: rarity should
+  still read on a darkened stage.
+
 ### Persistence
 
 - `av2.mascot.v4` is the source contract (§7). Prior mascot keys are not migrated. A malformed field falls back independently and never invalidates the whole look.
@@ -1157,6 +1188,7 @@ Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 H
 - Reload after a reveal restores the same character. **Esc** mid-strain leaves storage untouched, restores the previous look, and returns bloom to its base — an abandoned ramp must never leave the stage permanently over-bloomed.
 - The first-run gift creates **no `AudioContext`** (no user gesture has happened yet) and still completes normally.
 - Every tier is reachable via `?gift=`, renders its accent, is named, and reports `stage-gift-<tier>` into `window.__av2Events`. A common draw runs the same ~7 s ceremony as a legendary.
+- The tier mark is visible on stage after the card closes for rare and above, absent for common, and never visible before the burst. Switching tier via `applyMascotConfig()` adds **zero** geometries and textures to `__THREE_GAME_DIAGNOSTICS__.renderer`.
 - All drawn combinations stay readable at the height / build extremes and do not detach hands, pointer label, fall scaling, or instrument poses. Test idle, walk, dance, fall, and each instrument focus pose.
 - Keyboard-only and screen-reader passes can identify the dialog, the tier, the character, and both actions. Focus never escapes behind the dialog.
 
