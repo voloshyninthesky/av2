@@ -12,6 +12,27 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The tier mark had to move, not just glow — 2026-08-13
+
+The first cut of the aura was a soft pool on the floor with sparks over it, and at rest it
+read as a *decal*: something painted on the boards under the character rather than something
+the character was emitting. Three additions fixed that without a single new asset, a new
+light, or a post pass:
+
+- a **rune ring** of ticks and broken arcs that turns slowly, deliberately *against* the
+  sparks, so pool, runes and embers never lock into one rotation;
+- a **pulse ripple** — one mesh re-scaled from the centre on a period, not a spawned pool,
+  because only ever one is in flight and a pool would allocate;
+- **rising embers**: a shared upward offset walked across the spark buffer (44 floats a
+  frame) so the glints climb and wrap instead of orbiting at a fixed height.
+
+Cost, measured against common: legendary +14 draw calls, epic +4, rare +3, with geometry and
+texture counts identical at every tier and across a 20-pull stress. One trap worth naming —
+the drift walks points above the authored heights, so the **bounding sphere has to be grown
+at build time** or the frustum test culls the whole cloud in a close-up. → [[Mascot]]
+
+---
+
 ## The egg became a magic wardrobe — 2026-08-13
 
 The hatching egg was a fine gacha prop and a poor fit for this stage: a music school's

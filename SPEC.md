@@ -1141,9 +1141,9 @@ stage for as long as the character is kept:
 | Tier            | Presence                                                                                   |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **ЗВИЧАЙНИЙ**   | Nothing — the unmarked bottom rung is what makes the ladder read                            |
-| **РІДКІСНИЙ**   | A soft pulsing ground ring                                                                  |
-| **ЕПІЧНИЙ**     | Brighter ring + a small orbiting spark cloud + a faint emissive tint on the outfit trim     |
-| **ЛЕГЕНДАРНИЙ** | Gold ring + slowly rotating light-rays disc + denser sparks + stronger trim glow + a **golden companion bird** that circles the character and rests on the right shoulder |
+| **РІДКІСНИЙ**   | A soft pulsing ground pool + a slowly counter-turning rune ring + a pulse ripple that leaves the mark every few seconds |
+| **ЕПІЧНИЙ**     | Brighter pool and runes, a faster ripple, an orbiting cloud of rising ember sparks, and a faint emissive tint on the outfit trim |
+| **ЛЕГЕНДАРНИЙ** | Gold pool, densest runes, fastest ripple, a slowly rotating light-rays disc, densest embers, stronger trim glow, and a **golden companion bird** that circles the character and rests on the right shoulder |
 
 - The mark appears **at the burst**, with the character — never before. The wardrobe's seam
   glow stays the sole tell during the strain.
@@ -1151,15 +1151,23 @@ stage for as long as the character is kept:
   `renderer.compile`), then only toggled and recoloured per tier: a reroll allocates no
   geometry, no texture, no program link. No new lights; no new post passes — the additive
   sprites read bare on the low tier, and the existing bloom dresses them on the high tier.
-  Legendary, the most expensive tier, costs about a dozen extra draw calls and ~650
-  triangles over common; epic three; rare one.
-- Per-frame animation is uniform-level only (rotations, colour scale, point size). Material
-  **opacity is never written** by the aura — the stage-fall fade owns opacity for everything
+  Measured against common: legendary +14 draw calls / +717 triangles, epic +4 / +104,
+  rare +3 / +104. Geometry and texture counts are identical at every tier and across a
+  20-pull stress.
+- Per-frame animation is uniform-level only — rotations, colour scale, point size, one
+  scale on the ripple, and a shared upward offset walked across the spark buffer (44 floats,
+  no allocation). The rune ring turns *against* the sparks so pool, runes and embers never
+  lock into one rotation. Material **opacity is never written** by the aura — the stage-fall fade owns opacity for everything
   under `mascot.group` and restores it on respawn.
 - The ground pieces counter the group's lift in seated poses and the dance bounce so the
   ring stays on the boards; in a fall the aura rides the body and fades with it.
 - The bird perches while the visitor is at an instrument (it must not orbit through a piano
-  cabinet) and under `prefers-reduced-motion`, where the whole aura holds still.
+  cabinet) and under `prefers-reduced-motion`, where the whole aura holds still: the ripple
+  is suppressed and the runes stop, because every one of those motions is ambient shimmer.
+  The tier still reads from the mark's shape and colour, standing still.
+- The spark cloud's bounding sphere is **grown by the drift height at build time**. Left at
+  the authored radius, the frustum test is against a sphere that no longer contains the
+  points and the whole cloud pops out at the top of an instrument close-up.
 - The trim glow is deliberately **not** registered with the «світло» dimmer: rarity should
   still read on a darkened stage.
 

@@ -37,12 +37,25 @@ export const MASCOT_TIER_TRIM = {
 // blending, colour scale is visually identical to opacity — and unlike opacity
 // it is not captured by the fall-fade material map). Sparks are a draw range
 // into one prebuilt buffer.
+// `glyph` is the rotating rune ring's intensity and `glyphSpin` its rate (a
+// counter-turn to the sparks, so the two never look locked together). `ripple`
+// is the expanding pulse that leaves the mark every `rippleEvery` seconds —
+// what turns a static decal into something the character is *emitting*.
 const AURA_TIERS = {
   // Rare's denim sits over the warm key-light pool, which eats saturation —
   // it runs a little hotter than the ladder position alone would suggest.
-  rare: { ring: 0.68, ringPulse: 1.4, rays: 0, sparks: 0, sparkSize: 0, spin: 0, bird: false },
-  epic: { ring: 0.75, ringPulse: 1.9, rays: 0, sparks: 26, sparkSize: 0.058, spin: 0.7, bird: false },
-  legendary: { ring: 0.9, ringPulse: 2.3, rays: 0.5, sparks: 44, sparkSize: 0.068, spin: 0.9, bird: true },
+  rare: {
+    ring: 0.68, ringPulse: 1.4, rays: 0, sparks: 0, sparkSize: 0, spin: 0, bird: false,
+    glyph: 0.32, glyphSpin: -0.10, ripple: 0.5, rippleEvery: 3.6, drift: 0,
+  },
+  epic: {
+    ring: 0.75, ringPulse: 1.9, rays: 0, sparks: 26, sparkSize: 0.058, spin: 0.7, bird: false,
+    glyph: 0.5, glyphSpin: -0.16, ripple: 0.7, rippleEvery: 2.8, drift: 0.5,
+  },
+  legendary: {
+    ring: 0.9, ringPulse: 2.3, rays: 0.5, sparks: 44, sparkSize: 0.068, spin: 0.9, bird: true,
+    glyph: 0.72, glyphSpin: -0.22, ripple: 0.9, rippleEvery: 2.2, drift: 0.8,
+  },
 };
 const MAX_SPARKS = 44;
 const WHITE = new THREE.Color(0xffffff);
@@ -91,6 +104,51 @@ function makeRaysTexture() {
       x.closePath();
       x.fill();
     }
+  });
+}
+
+// The rune ring: a broken circle of ticks and arc segments that turns slowly
+// under the soft pool. Rotation is what sells it — a static decal reads as a
+// texture on the floor, a turning one reads as something being *held* there.
+function makeGlyphTexture() {
+  return makeAuraTexture(256, (x, size) => {
+    const c = size / 2;
+    x.translate(c, c);
+    x.strokeStyle = 'rgba(255,255,255,0.85)';
+    x.lineWidth = 3;
+    // Two concentric hairlines, the inner one broken into quadrant arcs.
+    x.beginPath();
+    x.arc(0, 0, c * 0.86, 0, Math.PI * 2);
+    x.stroke();
+    x.lineWidth = 5;
+    for (let i = 0; i < 4; i++) {
+      const start = i * (Math.PI / 2) + 0.22;
+      x.beginPath();
+      x.arc(0, 0, c * 0.62, start, start + Math.PI / 2 - 0.44);
+      x.stroke();
+    }
+    // Ticks: long on the quarters, short between, so the turn has a beat.
+    for (let i = 0; i < 24; i++) {
+      const long = i % 6 === 0;
+      x.save();
+      x.rotate((i / 24) * Math.PI * 2);
+      x.fillStyle = long ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.45)';
+      x.fillRect(-2, -c * 0.86, 4, long ? c * 0.16 : c * 0.07);
+      x.restore();
+    }
+  });
+}
+
+// A soft-edged annulus, scaled outward and faded to make the pulse ripple.
+function makeRippleTexture() {
+  return makeAuraTexture(128, (x, size) => {
+    const g = x.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.72, 'rgba(255,255,255,0)');
+    g.addColorStop(0.86, 'rgba(255,255,255,0.9)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g;
+    x.fillRect(0, 0, size, size);
   });
 }
 
@@ -171,6 +229,29 @@ export function buildMascotAura() {
   ring.position.y = 0.03;
   ground.add(ring);
 
+  // Rune ring, just above the soft pool and just under the rays.
+  const glyphGeo = new THREE.CircleGeometry(0.70, 36);
+  glyphGeo.rotateX(-Math.PI / 2);
+  const glyphMat = new THREE.MeshBasicMaterial({
+    map: makeGlyphTexture(), transparent: true, opacity: 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+  });
+  const glyph = new THREE.Mesh(glyphGeo, glyphMat);
+  glyph.position.y = 0.038;
+  ground.add(glyph);
+
+  // Pulse ripple: one mesh re-scaled from the centre on a period rather than a
+  // spawned pool, because only ever one is in flight and a pool would allocate.
+  const rippleGeo = new THREE.CircleGeometry(1, 28);
+  rippleGeo.rotateX(-Math.PI / 2);
+  const rippleMat = new THREE.MeshBasicMaterial({
+    map: makeRippleTexture(), transparent: true, opacity: 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+  });
+  const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+  ripple.position.y = 0.034;
+  ground.add(ripple);
+
   const raysGeo = new THREE.CircleGeometry(0.62, 32);
   raysGeo.rotateX(-Math.PI / 2);
   const raysMat = new THREE.MeshBasicMaterial({
@@ -205,9 +286,24 @@ export function buildMascotAura() {
   bird.position.set(0.34, 1.46, 0.02);
   root.add(bird);
 
+  // Sparks drift upward from their authored height and wrap, so the ring of
+  // glints reads as embers coming off the character rather than as a fixed
+  // constellation turning with them. The base heights are kept because the
+  // wrap has to return to them exactly.
+  const sparkBaseY = new Float32Array(MAX_SPARKS);
+  for (let i = 0; i < MAX_SPARKS; i++) sparkBaseY[i] = sparkPositions[i * 3 + 1];
+  const SPARK_RISE = 0.55;
+  // The bounding sphere was computed from the authored heights, and the drift
+  // walks points above them. Left alone, the whole cloud pops out at the top
+  // of the frame in a close-up — the frustum test is against a sphere that no
+  // longer contains it. Grown once, here, rather than recomputed per frame.
+  sparkGeo.boundingSphere.radius += SPARK_RISE;
+
   const state = {
     params: null,
     ringBase: new THREE.Color(),
+    glyphBase: new THREE.Color(),
+    rippleBase: new THREE.Color(),
     sparkBase: new THREE.Color(),
     perchBlend: 1,
   };
@@ -236,6 +332,14 @@ export function buildMascotAura() {
     if (!params) return;
     accentTint(state.ringBase, tier.accent, params.ring);
     ringMat.color.copy(state.ringBase);
+    // The rune ring and the ripple carry more white than the pool: at these
+    // line widths a saturated accent turns to mud against the boards, and the
+    // hue is already established by the pool underneath them.
+    accentTint(state.glyphBase, tier.accent, params.glyph).lerp(WHITE, 0.25);
+    glyphMat.color.copy(state.glyphBase);
+    glyph.visible = params.glyph > 0;
+    accentTint(state.rippleBase, tier.accent, params.ripple).lerp(WHITE, 0.2);
+    ripple.visible = params.ripple > 0;
     rays.visible = params.rays > 0;
     accentTint(raysMat.color, tier.accent, params.rays);
     // Sparks keep a lift toward white — they read as glints rather than as
@@ -302,16 +406,46 @@ export function buildMascotAura() {
 
     const reduced = prefersReducedMotion.matches;
     if (reduced) {
+      // Every motion here is ambient shimmer, which reduced motion culls — the
+      // tier still reads from the mark's shape and colour, standing still.
       ringMat.color.copy(state.ringBase);
+      glyph.rotation.y = 0.3;
+      glyphMat.color.copy(state.glyphBase);
+      ripple.visible = false;
       rays.rotation.y = 0.4;
       sparks.rotation.y = 0;
       sparkMat.size = params.sparkSize;
     } else {
       const pulse = 1 + 0.15 * Math.sin(t * params.ringPulse);
       ringMat.color.copy(state.ringBase).multiplyScalar(pulse);
+      // Counter-turn, so pool, runes and sparks never lock into one rotation.
+      glyph.rotation.y = t * params.glyphSpin;
+      glyphMat.color.copy(state.glyphBase).multiplyScalar(1 + 0.1 * Math.sin(t * params.ringPulse * 0.7));
       rays.rotation.y = t * 0.3;
       sparks.rotation.y = t * params.spin;
       sparkMat.size = params.sparkSize * (1 + 0.22 * Math.sin(t * 3.7));
+
+      // One ripple in flight: phase 0→1 over its period, scaling out and
+      // fading. Driven off `t` rather than accumulated, so it cannot drift.
+      if (params.ripple > 0) {
+        const phase = (t % params.rippleEvery) / params.rippleEvery;
+        const eased = phase * (2 - phase);
+        ripple.visible = true;
+        ripple.scale.setScalar(0.42 + eased * 0.72);
+        rippleMat.color.copy(state.rippleBase).multiplyScalar(Math.max(0, 1 - phase) ** 1.6);
+      }
+
+      // Rising embers: a shared offset walks every spark up its own column and
+      // wraps. 44 floats a frame, no allocation, and it is what makes the
+      // orbit feel like it is coming off the character.
+      if (params.drift > 0 && params.sparks > 0) {
+        const array = sparkGeo.attributes.position.array;
+        for (let i = 0; i < params.sparks; i++) {
+          const rise = (t * params.drift * 0.42 + i * 0.137) % 1;
+          array[i * 3 + 1] = sparkBaseY[i] + rise * SPARK_RISE;
+        }
+        sparkGeo.attributes.position.needsUpdate = true;
+      }
     }
     sparks.visible = params.sparks > 0 && parentY >= -0.02;
     if (bird.visible) updateBird(t, dt, reduced, holdPerch);

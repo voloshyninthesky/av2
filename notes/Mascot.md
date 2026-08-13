@@ -71,8 +71,9 @@ to the roll would mean most visitors never see the good version of the only reve
 During the ceremony the tier shows up in the glow colour and on the card, nowhere else.
 
 **After the ceremony the tier is worn on stage.** `js/scene/mascot-aura.js` owns the
-persistent mark — ring for rare, + sparks and trim glow for epic, + rays and the golden
-companion bird for legendary; common stays bare. Everything is built once at boot and
+persistent mark — a ground pool, a counter-turning rune ring and a pulse ripple from rare
+up, + rising ember sparks and trim glow for epic, + light rays and the golden companion
+bird for legendary; common stays bare. Everything is built once at boot and
 toggled/recoloured from `applyMascotConfig()`, so the no-allocation-per-pull rule below
 covers it. Exact ladder and budget rules: [[SPEC]] §13 "The tier on stage". One wiring
 gotcha: the aura module is loaded by `core/studio.js`, so it must not import any `view/`
