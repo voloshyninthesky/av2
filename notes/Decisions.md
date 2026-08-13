@@ -12,6 +12,34 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The aura became a flock — 2026-08-13
+
+The aura was built, tuned loud, tuned quiet, and then deleted whole — because the companion
+bird that shipped alongside it kept outperforming it. An additive glow on the boards fights
+the stage's own lighting (the footlights, the bloom, the key pool) and at any distance reads
+as a *decal*; a small creature moving with intent reads as *someone's* in one glance. The
+user's own words: the bird "works super cool." So the creatures became the whole mark:
+`js/scene/mascot-aura.js` is gone, `js/scene/mascot-companion.js` replaced it, and the trim
+glow went with the aura — the character's own costume is tier-neutral again.
+
+**All birds, and the ladder is the count.** A mouse-and-cat draft existed for about an hour;
+one family in three voices beats a menagerie because the comparison is instant — one small
+sparrow making low, timid flights for rare; a pair on opposite orbits that lands on the
+shoulders for epic; a golden trio for legendary, the third and smallest bird perching on the
+crown of the head. Count is legible from the back row; gold and the head-perch keep
+legendary unmistakable. Epic and legendary share the same two flock birds, recoloured.
+
+**Generation was declined twice here, under the user's own rule ("don't use if it makes no
+sense").** A Tripo bird is a fused mesh whose wings cannot hinge, and the avian auto-rig has
+no flight preset to retarget — ~2 MB per palm-sized bird, animated worse than nine
+procedural meshes. Regenerating the *mascot* itself fell to the same test, harder: every
+instrument pose, hand anchor, focus frame and the whole draw vocabulary are authored against
+the procedural rig, and no retarget preset will ever land hands on a keybed (the full
+reasoning already lives in [[Current state]] "Mascot — deferred: a generated body"). The
+generated-asset budget belongs to static hero props — the wardrobe. → [[Mascot]]
+
+---
+
 ## The tier mark had to move, not just glow — 2026-08-13
 
 The first cut of the aura was a soft pool on the floor with sparks over it, and at rest it

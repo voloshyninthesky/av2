@@ -6,30 +6,30 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260813-15';
-import { buildDrumKit } from '../instruments/drums.js?v=20260813-15';
-import { buildPiano } from '../instruments/piano.js?v=20260813-15';
-import { buildGuitar } from '../instruments/guitar.js?v=20260813-15';
-import { buildMic } from '../instruments/mic.js?v=20260813-15';
-import { UI } from '../ui.js?v=20260813-15';
-import { scene, renderer } from '../view/rig.js?v=20260813-15';
+import { AudioEngine } from '../audio.js?v=20260813-16';
+import { buildDrumKit } from '../instruments/drums.js?v=20260813-16';
+import { buildPiano } from '../instruments/piano.js?v=20260813-16';
+import { buildGuitar } from '../instruments/guitar.js?v=20260813-16';
+import { buildMic } from '../instruments/mic.js?v=20260813-16';
+import { UI } from '../ui.js?v=20260813-16';
+import { scene, renderer } from '../view/rig.js?v=20260813-16';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260813-15';
-import { buildStage } from '../scene/stage.js?v=20260813-15';
-import { buildSigns } from '../scene/signs.js?v=20260813-15';
+} from './quality.js?v=20260813-16';
+import { buildStage } from '../scene/stage.js?v=20260813-16';
+import { buildSigns } from '../scene/signs.js?v=20260813-16';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260813-15';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-15';
-import { buildMascotAura, MASCOT_TIER_TRIM } from '../scene/mascot-aura.js?v=20260813-15';
-import { buildGiftWardrobe, loadGiftWardrobeModel } from '../scene/gift-wardrobe.js?v=20260813-15';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-15';
+} from '../scene/lighting.js?v=20260813-16';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-16';
+import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260813-16';
+import { buildGiftWardrobe, loadGiftWardrobeModel } from '../scene/gift-wardrobe.js?v=20260813-16';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-16';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -41,8 +41,8 @@ import {
   MASCOT_OUTFIT_COLORS,
   MASCOT_SMILES,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260813-15';
-import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260813-15';
+} from '../mascot/appearance.js?v=20260813-16';
+import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260813-16';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
@@ -117,14 +117,14 @@ export const noteBursts = new NoteBursts(scene);
 }
 
 export const mascot = buildMascot();
-// The tier's persistent mark (ring / sparks / rays / companion bird). A child
-// of mascot.group: it rides walks, poses and the fall fade for free, and the
-// reveal's group-hide keeps it from spoiling the egg. Attached before the
+// The tier's companion creature (mouse / cat / golden bird). A child of
+// mascot.group: it rides walks, poses and the fall fade for free, and the
+// reveal's group-hide keeps it from spoiling the wardrobe. Attached before the
 // fall-material traverse below so its materials restore on respawn like any
 // other part of the body. Built now — before the first renderer.compile — so
 // no program links mid-ceremony.
-export const mascotAura = buildMascotAura();
-mascot.group.add(mascotAura.group);
+export const mascotCompanion = buildMascotCompanion();
+mascot.group.add(mascotCompanion.group);
 
 // Height/width come from the saved customization; fallFactor shrinks during a stage fall.
 export function applyMascotScale(fallFactor = 1) {
@@ -204,12 +204,7 @@ export function applyMascotConfig() {
   // (stripes + collar slots) in the tier accent on epic and legendary. Reset
   // to black on the way down — a reroll can lower the tier.
   const tier = GIFT_TIERS_BY_ID[mascotCfg.tier] ?? GIFT_TIERS_BY_ID.common;
-  mascotAura.setTier(tier);
-  const trim = MASCOT_TIER_TRIM[tier.id] ?? 0;
-  for (const slot of ['stripes', 'collar']) {
-    cu.mats[slot].emissive.setHex(trim ? tier.accent : 0x000000);
-    cu.mats[slot].emissiveIntensity = trim || 1;
-  }
+  mascotCompanion.setTier(tier);
   applyMascotScale();
 }
 

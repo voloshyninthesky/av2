@@ -4,19 +4,19 @@
 // fader is also the app's "sound is broken, fix it" affordance: it can rebuild
 // a stalled audio context and restore what was playing.
 // ============================================================
-import { AudioEngine } from '../audio.js?v=20260813-15';
-import { ui, audio, mic } from '../core/studio.js?v=20260813-15';
-import { play } from './state.js?v=20260813-15';
-import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260813-15';
+import { AudioEngine } from '../audio.js?v=20260813-16';
+import { ui, audio, mic } from '../core/studio.js?v=20260813-16';
+import { play } from './state.js?v=20260813-16';
+import { addVibe, queuePriceChip, noteKeyboardJamActivity } from './vibe.js?v=20260813-16';
 import {
   stampHeldLoopCaptureDuration,
   beginHeldLoopCapture,
   finishHeldLoopCapture,
-} from './pads.js?v=20260813-15';
-import { degreeMidi, freqFromMidi } from './harmony.js?v=20260813-15';
-import { stageKey } from './key.js?v=20260813-15';
-import { VOICE_LOW_MIDI, axisAtPitch, vowelAt } from './voice.js?v=20260813-15';
-import { VOCAL_KEYS } from './piano-notes.js?v=20260813-15';
+} from './pads.js?v=20260813-16';
+import { degreeMidi, freqFromMidi } from './harmony.js?v=20260813-16';
+import { stageKey } from './key.js?v=20260813-16';
+import { VOICE_LOW_MIDI, axisAtPitch, vowelAt } from './voice.js?v=20260813-16';
+import { VOCAL_KEYS } from './piano-notes.js?v=20260813-16';
 
 // Recovering audio has to re-arm whatever the visit had going; the intro flow
 // owns those snapshots and main.js owns the jam gate.

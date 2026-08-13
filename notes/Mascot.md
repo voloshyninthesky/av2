@@ -70,16 +70,17 @@ used to be reserved for a legendary. You receive one gift in your life; grading 
 to the roll would mean most visitors never see the good version of the only reveal they get.
 During the ceremony the tier shows up in the glow colour and on the card, nowhere else.
 
-**After the ceremony the tier is worn on stage.** `js/scene/mascot-aura.js` owns the
-persistent mark — a ground pool, a counter-turning rune ring and a pulse ripple from rare
-up, + rising ember sparks and trim glow for epic, + light rays and the golden companion
-bird for legendary; common stays bare. Everything is built once at boot and
-toggled/recoloured from `applyMascotConfig()`, so the no-allocation-per-pull rule below
-covers it. Exact ladder and budget rules: [[SPEC]] §13 "The tier on stage". One wiring
-gotcha: the aura module is loaded by `core/studio.js`, so it must not import any `view/`
-module that imports studio back (`instrument-presets` does) — the cycle is a TDZ error at
-boot. `main.js` passes the "visitor is at an instrument" flag into `mascotAura.update()`
-instead.
+**After the ceremony the tier walks out with company.** `js/scene/mascot-companion.js` owns
+the persistent mark — companion birds, and the ladder is the *count*: one timid sparrow for
+rare, a pair that lands on the shoulders for epic, a golden trio that also crowns the head
+for legendary; common stays alone. (This replaced the additive aura: a glow on the boards
+fought the stage lighting and read as a decal; a creature moving with intent reads in one
+glance.) All four birds are built once at boot and toggled/recoloured from
+`applyMascotConfig()`, so the no-allocation-per-pull rule below covers it. Exact ladder and
+budget rules: [[SPEC]] §13 "The tier on stage". One wiring gotcha: the companion module is
+loaded by `core/studio.js`, so it must not import any `view/` module that imports studio
+back (`instrument-presets` does) — the cycle is a TDZ error at boot. `main.js` passes the
+"visitor is at an instrument" flag into `mascotCompanion.update()` instead.
 
 ### Why the tier is drawn first
 

@@ -1135,47 +1135,47 @@ Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 H
 ### The tier on stage
 
 The reveal used to be the only place a tier existed; after ГОТОВО every character looked
-common. Rare and above now carry a **persistent mark** in the tier's accent colour, worn on
-stage for as long as the character is kept:
+common. Rare and above are now accompanied by **companion birds** in the tier's accent
+colour, with the character for as long as they are kept. One bird family, and the ladder is
+the **count** — legible from the back row:
 
-| Tier            | Presence                                                                                   |
+| Tier            | Companions                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------ |
-| **ЗВИЧАЙНИЙ**   | Nothing — the unmarked bottom rung is what makes the ladder read                            |
-| **РІДКІСНИЙ**   | A soft pulsing ground pool + a slowly counter-turning rune ring + a pulse ripple that leaves the mark every few seconds |
-| **ЕПІЧНИЙ**     | Brighter pool and runes, a faster ripple, an orbiting cloud of rising ember sparks, and a faint emissive tint on the outfit trim |
-| **ЛЕГЕНДАРНИЙ** | Gold pool, densest runes, fastest ripple, a slowly rotating light-rays disc, densest embers, stronger trim glow, and a **golden companion bird** that circles the character and rests on the right shoulder |
+| **ЗВИЧАЙНИЙ**   | Nobody — the unmarked bottom rung is what makes the ladder read                             |
+| **РІДКІСНИЙ**   | **One** small crestless sparrow: low, timid flights under the resting hands, resting on the boards twice as long as it flies |
+| **ЕПІЧНИЙ**     | **Two** crested birds on opposite orbits that land on the character — one shoulder each while they play |
+| **ЛЕГЕНДАРНИЙ** | **Three, in gold**: the pair plus a third, smallest bird whose perch is the **crown of the head** — shoulders and head occupied while they play |
 
-- The mark appears **at the burst**, with the character — never before. The wardrobe's seam
-  glow stays the sole tell during the strain.
-- **Budget rules.** Everything is built once at boot (in the scene before the first
-  `renderer.compile`), then only toggled and recoloured per tier: a reroll allocates no
-  geometry, no texture, no program link. No new lights; no new post passes — the additive
-  sprites read bare on the low tier, and the existing bloom dresses them on the high tier.
-  Measured against common: legendary +14 draw calls / +717 triangles, epic +4 / +104,
-  rare +3 / +104. Geometry and texture counts are identical at every tier and across a
-  20-pull stress.
-- Per-frame animation is uniform-level only — rotations, colour scale, point size, one
-  scale on the ripple, and a shared upward offset walked across the spark buffer (44 floats,
-  no allocation). The rune ring turns *against* the sparks so pool, runes and embers never
-  lock into one rotation. Material **opacity is never written** by the aura — the stage-fall fade owns opacity for everything
-  under `mascot.group` and restores it on respawn.
-- The ground pieces counter the group's lift in seated poses and the dance bounce so the
-  ring stays on the boards; in a fall the aura rides the body and fades with it.
-- The bird perches while the visitor is at an instrument (it must not orbit through a piano
-  cabinet) and under `prefers-reduced-motion`, where the whole aura holds still: the ripple
-  is suppressed and the runes stop, because every one of those motions is ambient shimmer.
-  The tier still reads from the mark's shape and colour, standing still.
-- The spark cloud's bounding sphere is **grown by the drift height at build time**. Left at
-  the authored radius, the frustum test is against a sphere that no longer contains the
-  points and the whole cloud pops out at the top of an instrument close-up.
-- The trim glow is deliberately **not** registered with the «світло» dimmer: rarity should
-  still read on a darkened stage.
+- One on the boards < two on your shoulders < three golden ones crowning you. The count is
+  the ladder; gold and the head-perch are what keep legendary unmistakable at a glance.
+- The companions appear **at the burst**, with the character — never before. The wardrobe's
+  seam glow stays the sole tell during the strain.
+- **Budget rules.** All four birds (sparrow + the flock of three; epic and legendary share
+  the same two flock birds, recoloured) are built once at boot in the scene before the first
+  `renderer.compile`, then only toggled and recoloured per tier: a reroll allocates no
+  geometry, no texture, no program link. No new lights, no post passes, no shadow casters
+  (the curated shadow rule). Measured against common: legendary +27 draw calls / +1743
+  triangles, epic +18, rare +8. Geometry and texture counts are identical at every tier and
+  across a 20-pull stress. Replacing the additive aura with creatures *removed* four
+  full-screen-blended ground layers.
+- Per-frame animation is transform-level only — positions, rotations, wing pivots. Material
+  **opacity is never written** by the companion — the stage-fall fade owns opacity for
+  everything under `mascot.group` and restores it on respawn.
+- The sparrow's floor rest counters the group's lift in seated poses and the dance bounce so
+  its feet stay on the boards; in a fall the companions ride the body and fade with it.
+- Companions settle while the visitor is at an instrument (nothing may orbit through a piano
+  cabinet): the sparrow lands beside them, the flock lands **on** them — shoulders, and for
+  the trio the head. Under `prefers-reduced-motion` they hold those same settled poses.
+- Companions are **procedural, not generated**: a generated bird is a fused mesh whose wings
+  cannot hinge, and the avian auto-rig has no flight preset to retarget — the
+  generated-asset budget belongs to static hero props like the wardrobe.
 - **A tier's presence never adds a slot to the appearance vocabulary.** It is carried by the
-  aura, the trim glow and the weighting of traits the character already has — never by a new
-  wearable (a crown, a cape, a pet item) added for the tier alone. A new slot has to be drawn,
+  companion and the weighting of traits the character already has — never by a new wearable
+  (a crown, a cape, a pet *item*) added for the tier alone. A new slot has to be drawn,
   validated, persisted, fitted to every height / build extreme and checked against every
   instrument pose, and it makes the tier a costume instead of a rarity. Upgrades go into what
-  is already there.
+  is already there. (The companion is scenery attached to the character, not a drawn,
+  persisted trait — the saved config still carries only `tier`.)
 
 ### Persistence
 
