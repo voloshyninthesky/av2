@@ -29,7 +29,7 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-22';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-23';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -39,12 +39,14 @@ const WHITE = new THREE.Color(0xffffff);
 
 // A soft accent halo on the boards under the bird's owner. With one bird per
 // tier the halo carries more of the ladder than it used to, so it steps up
-// more decisively — but the top rung still sits below where the old aura
-// started competing with the footlights.
-const HALO = { rare: 0.30, epic: 0.46, legendary: 0.66 };
+// decisively in both brightness and reach — rare stays the quiet rung, and
+// the top rung still sits below where the old aura started competing with
+// the footlights.
+const HALO = { rare: 0.30, epic: 0.55, legendary: 0.80 };
+const HALO_SCALE = { rare: 1.0, epic: 1.1, legendary: 1.22 };
 // The bird's own emissive climbs with it: the legendary one is lit from
 // inside, the rare one barely.
-const PLUMAGE_GLOW = { rare: 0.10, epic: 0.20, legendary: 0.34 };
+const PLUMAGE_GLOW = { rare: 0.10, epic: 0.26, legendary: 0.45 };
 
 // Soft pool with a bright rim — one texture carries both, so the halo is a
 // single mesh / single draw call.
@@ -206,6 +208,9 @@ export function buildMascotCompanion() {
     flight: null,
     rest: 1,
     groundY: 0,
+    lastOwnerX: null,
+    lastOwnerZ: null,
+    ownerMoving: 0,
   };
 
   // `tier` is a GIFT_TIERS entry ({ id, accent }) or null. Only recolours and
@@ -234,19 +239,25 @@ export function buildMascotCompanion() {
       .setHSL(scratchHSL.h, Math.min(1, scratchHSL.s * 1.75), scratchHSL.l)
       .multiplyScalar(HALO[tier.id] ?? 0.3);
     haloMat.color.copy(haloBase);
+    halo.scale.setScalar(HALO_SCALE[tier.id] ?? 1);
   }
 
-  // A solo flyer: circle the character at its own height, then land at its
-  // rest spot on the boards. The rest y takes the ground offset, so a bird
-  // resting beside a seated pianist still stands on the floor.
   // The one flight path, shared by all three birds and differentiated by
   // their FLIGHT entry: circle the character, then land at the tier's rest
   // spot — the boards for rare, the shoulder for epic, the crown of the head
   // for legendary. A floor rest takes the ground offset, so a bird resting
   // beside a seated pianist still stands on the boards.
+  //
+  // `ownerMoving` sends a FLOOR-rester back into the air: its rest spot is
+  // body-relative (the whole companion rides mascot.group), so a walking
+  // owner would drag a sitting bird across the boards — a bird sliding on
+  // its feet reads as a glitch where a perched bird riding a shoulder reads
+  // as a perch. Birds take off when their person walks; they land again when
+  // the person stops.
   function updateFlyer(b, params, t, dt, reduced, hold) {
     const cycle = t % params.period;
-    const wantsRest = reduced || hold || cycle >= params.flyFor;
+    const grounded = params.onFloor && state.ownerMoving > 0.5;
+    const wantsRest = !grounded && (reduced || hold || cycle >= params.flyFor);
     state.rest += ((wantsRest ? 1 : 0) - state.rest) * Math.min(1, dt * 2.2);
     const blend = THREE.MathUtils.smoothstep(state.rest, 0.02, 0.98);
 
@@ -285,6 +296,20 @@ export function buildMascotCompanion() {
     // instead — the fall fade owns that exit.
     state.groundY = parentY > 0 ? -parentY / scaleY : 0;
     halo.position.y = state.groundY + 0.03;
+
+    // Owner motion, from the parent's own XZ delta — no upward import needed.
+    // Smoothed, and speed-capped so a respawn teleport cannot latch "moving";
+    // the smoothing also keeps the takeoff/landing from flickering at the
+    // start and end of a walk.
+    if (parent) {
+      const dx = parent.position.x - (state.lastOwnerX ?? parent.position.x);
+      const dz = parent.position.z - (state.lastOwnerZ ?? parent.position.z);
+      state.lastOwnerX = parent.position.x;
+      state.lastOwnerZ = parent.position.z;
+      const speed = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
+      const moving = speed > 0.15 && speed < 20 ? 1 : 0;
+      state.ownerMoving += (moving - state.ownerMoving) * Math.min(1, dt * 6);
+    }
 
     const reduced = prefersReducedMotion.matches;
     // The halo breathes, barely; under reduced motion it stands still.

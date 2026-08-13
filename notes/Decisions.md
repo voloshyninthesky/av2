@@ -12,6 +12,29 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## A sitting bird must not slide — 2026-08-13
+
+The companion rides `mascot.group`, which is what makes perches free: a bird on the shoulder
+follows every walk and pose with zero bookkeeping. The same free ride is a bug one tier
+down — the rare sparrow rests on the *boards*, and when its owner walked, the "sitting" bird
+slid across the stage on its feet. A perched bird riding a shoulder reads as a perch; a
+floor bird gliding along the planks reads as a glitch.
+
+The fix is behavioural, not positional: **birds take off when their person walks.** Pinning
+the rest spot in world space was the alternative and loses twice — it needs per-frame
+parent-inverse bookkeeping, and it strands the bird behind a walking owner until some
+teleport reunites them. Owner motion is detected inside the companion from the parent's own
+XZ delta (no upward import), smoothed so takeoff/landing cannot flicker, and speed-capped so
+a respawn teleport reads as "not moving" rather than latching flight. Verified by sampling:
+airborne at 0.76–0.82 while the owner walked, landed at 0.01 within two beats of arrival.
+
+In the same pass the marked tiers got one visibility step — halo 0.55 / 0.80 at radius
+1.1 / 1.22 (rare stays 0.30), plumage emissive 0.26 / 0.45 — because with one bird per tier
+the elite rungs were reading too close to rare at stage distance. Rare is untouched: the
+quiet rung is the reference the others are measured against.
+
+---
+
 ## The draw got looser, and the rare bird got off the floor — 2026-08-13
 
 Two nudges to the same complaint: a marked character is the interesting one to receive, and

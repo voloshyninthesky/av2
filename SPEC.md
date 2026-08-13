@@ -1149,8 +1149,9 @@ the **count** — legible from the back row:
 **Exactly one bird per tier.** Two and three were tried and pulled: a flock made the stage
 busy, and the count was doing work the glow does more quietly. The ladder is now *species +
 landing spot + glow* — where the bird lands is its loudest rung (boards → shoulder → head),
-and the halo and the bird's own emissive both climb with the tier (halo 0.30 / 0.46 / 0.66,
-plumage emissive 0.10 / 0.20 / 0.34).
+and the halo and the bird's own emissive both climb with the tier (halo intensity
+0.30 / 0.55 / 0.80 at radius scale 1.0 / 1.1 / 1.22, plumage emissive 0.10 / 0.26 / 0.45 —
+epic and legendary read as marked from the back row, rare stays the quiet rung).
 
 The three birds come from **one builder with authored silhouette options** (crest, tail
 long / forked / fan, slimness, a dark cap) — the differences that carry at stage distance.
@@ -1180,6 +1181,12 @@ Keep new variety in that vocabulary rather than new meshes.
 - The companion settles while the visitor is at an instrument (nothing may orbit through a
   piano cabinet): the sparrow lands beside them, the swallow on the shoulder, the songbird on
   the head. Under `prefers-reduced-motion` it holds that same settled pose.
+- **A floor-resting bird takes off while its owner walks.** Its rest spot is body-relative
+  (the whole companion rides `mascot.group`), so a walking owner would drag a sitting bird
+  across the boards — a bird sliding on its feet is a glitch where a perched bird riding a
+  shoulder is a perch. Owner motion is detected from the parent's own XZ delta (smoothed,
+  and speed-capped so a respawn teleport cannot latch it); the bird lands again when the
+  owner stops.
 - The companion is **procedural, not generated**: a generated bird is a fused mesh whose wings
   cannot hinge, and the avian auto-rig has no flight preset to retarget — the
   generated-asset budget belongs to static hero props like the wardrobe.

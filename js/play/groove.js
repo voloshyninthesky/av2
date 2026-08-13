@@ -30,8 +30,8 @@
 //
 // The theory is all in rhythm.js; this file is geometry, pointers and state.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260813-22';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-22';
+import { audio } from '../core/studio.js?v=20260813-23';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-23';
 import {
   LOOP_LOOKAHEAD,
   LOOP_TICK_MS,
@@ -39,7 +39,7 @@ import {
   playMusicalEvent,
   positiveModulo,
   runMusicalVisual,
-} from './loop.js?v=20260813-22';
+} from './loop.js?v=20260813-23';
 import {
   GROOVES,
   GROOVE_COUNT,
@@ -52,8 +52,8 @@ import {
   stepGroove,
   stepSeconds,
   stepTempo,
-} from './rhythm.js?v=20260813-22';
-import { syncPadsOpenClass } from './pads.js?v=20260813-22';
+} from './rhythm.js?v=20260813-23';
+import { syncPadsOpenClass } from './pads.js?v=20260813-23';
 
 // Choosing a groove must not wake audio, and stepping it from the keyboard is
 // the drums close-up's alone. main.js owns both answers.
