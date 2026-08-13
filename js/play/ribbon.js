@@ -21,9 +21,9 @@
 // The theory is all in voice.js and harmony.js; this file is geometry,
 // pointers and state.
 // ============================================================
-import { audio, mic, setMascotMouth } from '../core/studio.js?v=20260813-20';
-import { play } from './state.js?v=20260813-20';
-import { addVibe } from './vibe.js?v=20260813-20';
+import { audio, mic, setMascotMouth } from '../core/studio.js?v=20260813-21';
+import { play } from './state.js?v=20260813-21';
+import { addVibe } from './vibe.js?v=20260813-21';
 import {
   degreeMidi,
   freqFromMidi,
@@ -31,14 +31,14 @@ import {
   midiFromFreq,
   scaleDegreeMidis,
   snapToScale,
-} from './harmony.js?v=20260813-20';
+} from './harmony.js?v=20260813-21';
 import {
   onStageKeyChange,
   setStageSevenths,
   stageKey,
   stepStageKey,
   toggleStageMode,
-} from './key.js?v=20260813-20';
+} from './key.js?v=20260813-21';
 import {
   GLIDE_SECONDS,
   PITCH_DETENT,
@@ -50,13 +50,13 @@ import {
   pitchAt,
   vowelAt,
   vowelOpenness,
-} from './voice.js?v=20260813-20';
+} from './voice.js?v=20260813-21';
 import {
   beginHeldLoopCapture,
   finishHeldLoopCapture,
   stampHeldLoopCaptureDuration,
   syncPadsOpenClass,
-} from './pads.js?v=20260813-20';
+} from './pads.js?v=20260813-21';
 
 // Ribbon gestures compete with the stage's own pointer handling, and a press
 // has to know the mic is the instrument listening; main.js supplies both.

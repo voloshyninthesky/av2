@@ -555,33 +555,74 @@ export class AudioEngine {
   startPiano(freq, vel = 1, at = null) {
     if (this._silent()) return null;
     const t = this._at(at);
-    const peak = Math.max(0.0001, 0.5 * vel);
+    const velocity = Math.max(0.05, Math.min(1.4, vel));
+    const peak = 0.42 * velocity;
     const out = this.ctx.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+    out.gain.exponentialRampToValueAtTime(peak, t + 0.0035);
     const lp = this.ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(Math.min(4200, freq * 6), t);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(600, freq * 1.5), t + 1.1);
-    out.connect(lp).connect(this._bus('piano'));
+    // A harder key strike exposes more of the hammer/string attack. Unlike the
+    // old closing filter (the familiar e-piano "bloom"), this stays put while
+    // the individual string partials lose energy at their own rates.
+    lp.frequency.setValueAtTime(Math.min(10500, Math.max(3000, freq * (12 + velocity * 8))), t);
+    lp.Q.value = 0.55;
+    const soundboard = this.ctx.createBiquadFilter();
+    soundboard.type = 'peaking';
+    soundboard.frequency.value = 230;
+    soundboard.Q.value = 0.8;
+    soundboard.gain.value = 2.8;
+    out.connect(lp).connect(soundboard).connect(this._bus('piano'));
 
+    // Approximate the three strings of a middle-register acoustic piano. Their
+    // tiny tuning differences create the slow, irregular unison movement that
+    // a single electronic oscillator cannot make.
+    const unisonCents = freq < 165 ? [-0.7, 0.8] : [-1.8, 0, 2.1];
+    const baseDecay = Math.max(4.2, Math.min(8.5, 6.6 * Math.pow(261.63 / freq, 0.22)));
     const partials = [
-      { mult: 1, type: 'triangle', gain: 1 },
-      { mult: 2, type: 'sine', gain: 0.32 },
-      { mult: 3.01, type: 'sine', gain: 0.1 },
+      ...unisonCents.map((detune, index) => ({
+        harmonic: 1,
+        detune,
+        gain: (unisonCents.length === 2 ? [0.47, 0.44] : [0.32, 0.3, 0.29])[index],
+        decay: baseDecay,
+      })),
+      { harmonic: 2, detune: 0.4, gain: 0.24, decay: baseDecay * 0.55 },
+      { harmonic: 3, detune: -0.8, gain: 0.115, decay: baseDecay * 0.36 },
+      { harmonic: 4, detune: 1.1, gain: 0.062, decay: baseDecay * 0.25 },
+      { harmonic: 5, detune: -1.4, gain: 0.032, decay: baseDecay * 0.18 },
+      { harmonic: 6, detune: 1.7, gain: 0.017, decay: baseDecay * 0.13 },
     ];
     const sources = [];
     for (const p of partials) {
       const o = this.ctx.createOscillator();
       const og = this.ctx.createGain();
-      o.type = p.type;
-      o.frequency.value = freq * p.mult;
-      o.detune.value = (Math.random() - 0.5) * 4;
-      og.gain.value = p.gain;
+      const stiffness = 0.000055 * Math.pow(freq / 261.63, 0.35);
+      const ratio = p.harmonic * Math.sqrt(1 + stiffness * p.harmonic * p.harmonic);
+      o.type = 'sine';
+      o.frequency.value = freq * ratio;
+      o.detune.value = p.detune;
+      og.gain.setValueAtTime(0.0001, t);
+      og.gain.exponentialRampToValueAtTime(
+        Math.max(0.0001, p.gain * (p.harmonic === 1 ? 1 : 0.42 + velocity * 0.58)),
+        t + 0.0025 + p.harmonic * 0.00035,
+      );
+      og.gain.exponentialRampToValueAtTime(0.0001, t + p.decay);
       o.connect(og).connect(out);
       o.start(t);
+      o.stop(t + p.decay + 0.08);
       sources.push(o);
     }
+
+    // Felt-covered hammer: a very short, velocity-sensitive knock supplies
+    // the broadband onset that makes the ear identify a struck piano string.
+    const hammer = this._noiseSrc(t, 0.028);
+    const hammerBand = this.ctx.createBiquadFilter();
+    hammerBand.type = 'bandpass';
+    hammerBand.frequency.value = Math.min(5200, 1300 + freq * 4.2);
+    hammerBand.Q.value = 0.7;
+    const hammerGain = this.ctx.createGain();
+    this._env(hammerGain, t, 0.055 + velocity * 0.085, 0.001, 0.025);
+    hammer.connect(hammerBand).connect(hammerGain).connect(out);
 
     const voice = {
       released: false,
@@ -623,6 +664,7 @@ export class AudioEngine {
           out.gain.setValueAtTime(Math.max(0.0001, out.gain.value || 0.0001), now);
           out.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
           for (const source of sources) source.stop(now + 0.06);
+          hammer.stop(now + 0.06);
         } catch (_) { /* oscillator may already be stopped */ }
         this._activePianoVoices.delete(voice);
       },

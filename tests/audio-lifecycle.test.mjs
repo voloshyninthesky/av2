@@ -151,6 +151,17 @@ test('the fader is scaled by the bus loudness trim', () => {
   assert.equal(written.at(-1), 0.5 * AudioEngine.BUS_TRIM.mic);
 });
 
+test('the piano voice is a struck acoustic string model, not a sustained e-piano oscillator', () => {
+  const start = audioSource.indexOf('  startPiano(');
+  const end = audioSource.indexOf('  mutePiano(', start);
+  const pianoSource = audioSource.slice(start, end);
+
+  assert.match(pianoSource, /const hammer = this\._noiseSrc/);
+  assert.match(pianoSource, /const unisonCents =/);
+  assert.match(pianoSource, /og\.gain\.exponentialRampToValueAtTime\(0\.0001, t \+ p\.decay\)/);
+  assert.doesNotMatch(pianoSource, /type: 'triangle'/);
+});
+
 test('an advancing context clock remains healthy', () => {
   const engine = new AudioEngine();
   engine.ctx = { state: 'running', currentTime: 5 };
