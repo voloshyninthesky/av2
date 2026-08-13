@@ -6,19 +6,19 @@
 // otherwise freeze before the inspector could drive anything.
 // ============================================================
 import * as THREE from 'three';
-import { params } from '../core/quality.js?v=20260813-19';
-import { session } from '../core/session.js?v=20260813-19';
-import { renderer, scene, camera, controls } from '../view/rig.js?v=20260813-19';
-import { ui, mascot, guitar, interactables } from '../core/studio.js?v=20260813-19';
-import { INSTRUMENT_VIEW_PRESETS, instrumentView } from '../view/instrument-presets.js?v=20260813-19';
-import { raycaster } from '../view/pick.js?v=20260813-19';
-import { mascotMove } from '../mascot/state.js?v=20260813-19';
-import { setDancing } from '../mascot/pose.js?v=20260813-19';
-import { leaveInstrumentView, requestInstrumentView } from '../view/instrument-view.js?v=20260813-19';
-import { addVibe, VIBE_NOTE_GAIN } from '../play/vibe.js?v=20260813-19';
-import { giftReveal, skipGiftCeremony, forceGiftTier } from '../mascot/reveal.js?v=20260813-19';
-import { drawMascotGift } from '../mascot/gift.js?v=20260813-19';
-import { composer } from './postfx.js?v=20260813-19';
+import { params } from '../core/quality.js?v=20260813-20';
+import { session } from '../core/session.js?v=20260813-20';
+import { renderer, scene, camera, controls } from '../view/rig.js?v=20260813-20';
+import { ui, mascot, guitar, interactables } from '../core/studio.js?v=20260813-20';
+import { INSTRUMENT_VIEW_PRESETS, instrumentView } from '../view/instrument-presets.js?v=20260813-20';
+import { raycaster } from '../view/pick.js?v=20260813-20';
+import { mascotMove } from '../mascot/state.js?v=20260813-20';
+import { setDancing } from '../mascot/pose.js?v=20260813-20';
+import { leaveInstrumentView, requestInstrumentView } from '../view/instrument-view.js?v=20260813-20';
+import { addVibe, VIBE_NOTE_GAIN } from '../play/vibe.js?v=20260813-20';
+import { giftReveal, skipGiftCeremony, forceGiftTier } from '../mascot/reveal.js?v=20260813-20';
+import { drawMascotGift } from '../mascot/gift.js?v=20260813-20';
+import { composer } from './postfx.js?v=20260813-20';
 
 // ============================================================
 if (params.has('testhooks')) {

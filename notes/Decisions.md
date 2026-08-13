@@ -735,6 +735,10 @@ one tap away for whoever goes looking for it. `av2.camera.v1` still defaults to 
 existing `free` preferences already saved in a visitor's `localStorage` are untouched — this
 only changes what a visitor with no saved preference gets.
 
+**Third addendum, 2026-08-13: Вільна is the default again.** The studio revisited the
+preference call after using both modes in the finished stage. `av2.camera.v1` now falls back
+to `free`; existing saved choices and the one-load `?camera=` override remain authoritative.
+
 → [[SPEC]] § Камера
 
 ---

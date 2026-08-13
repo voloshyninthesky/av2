@@ -5,30 +5,30 @@
 // browsers can tear an audio context down while backgrounded, so a rebuild
 // captures what was sounding and restores it afterwards.
 // ============================================================
-import { session, easeInOut } from '../core/session.js?v=20260813-19';
-import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-19';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260813-19';
-import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-19';
-import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-19';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-19';
-import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-19';
-import { mobileFollow } from '../view/mobile-controls.js?v=20260813-19';
-import { mascotMove } from '../mascot/state.js?v=20260813-19';
-import { giftPending } from '../mascot/reveal.js?v=20260813-19';
-import { play } from '../play/state.js?v=20260813-19';
-import { vowelAt } from '../play/voice.js?v=20260813-19';
+import { session, easeInOut } from '../core/session.js?v=20260813-20';
+import { params, prefersReducedMotion } from '../core/quality.js?v=20260813-20';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260813-20';
+import { camera, controls, CAM_START, CAM_END, TARGET } from '../view/rig.js?v=20260813-20';
+import { ui, audio, mic, mascot } from '../core/studio.js?v=20260813-20';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-20';
+import { glowMesh, unglowMesh } from '../view/emissive.js?v=20260813-20';
+import { mobileFollow } from '../view/mobile-controls.js?v=20260813-20';
+import { mascotMove } from '../mascot/state.js?v=20260813-20';
+import { giftPending } from '../mascot/reveal.js?v=20260813-20';
+import { play } from '../play/state.js?v=20260813-20';
+import { vowelAt } from '../play/voice.js?v=20260813-20';
 import {
   LOOP_MAX_SECONDS,
   loop,
   positiveModulo,
   resyncLoopPlayback,
   finishBaseLoopRecording,
-} from '../play/loop.js?v=20260813-19';
-import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-19';
-import { resyncGroove } from '../play/groove.js?v=20260813-19';
-import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-19';
-import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-19';
-import { trackOnce } from '../core/analytics.js?v=20260813-19';
+} from '../play/loop.js?v=20260813-20';
+import { clearGuitarInteractionState } from '../play/chord-wheel.js?v=20260813-20';
+import { resyncGroove } from '../play/groove.js?v=20260813-20';
+import { releaseAllHeldPianoNotes } from '../play/piano-notes.js?v=20260813-20';
+import { releaseKeyboardVocal } from '../play/mixer.js?v=20260813-20';
+import { trackOnce } from '../core/analytics.js?v=20260813-20';
 
 const mobileControls = document.getElementById('mobile-controls');
 
@@ -295,4 +295,3 @@ controls.addEventListener('end', () => {
   const unit = 'СЦЕНА • МУЗИКА • ВАЙБ • ВОКАЛ • ГІТАРА • БАРАБАНИ • ФОРТЕПІАНО • ';
   document.getElementById('ticker-track').textContent = unit.repeat(8);
 })();
-

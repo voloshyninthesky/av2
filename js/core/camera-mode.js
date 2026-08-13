@@ -1,10 +1,10 @@
 // ============================================================
 // CAMERA MODE PREFERENCE
-// Two ways to watch the stage. **Не дуже** is the default: the original
-// framed pursuit camera, which on a phone pans on one finger and scouts back
-// to the mascot. **Вільна** is the opt-in — one pointer rotates on every
-// device and the pitch opens far enough to read the stage from overhead and
-// from behind the backdrop. Both keep the mascot in frame: the follow spring
+// Two ways to watch the stage. **Вільна** is the default: one pointer rotates
+// on every device and the pitch opens far enough to read the stage from
+// overhead and from behind the backdrop. **Не дуже** is the calmer option —
+// the original framed pursuit camera, which on a phone pans on one finger and
+// scouts back to the mascot. Both keep the mascot in frame: the follow spring
 // only translates the rig, so it never disturbs an orbit, and cutting it
 // would strand a walking visitor off-camera.
 //
@@ -21,9 +21,9 @@ try { savedCameraMode = localStorage.getItem(CAMERA_MODE_KEY); } catch (_) { /* 
 const queryCameraMode = new URLSearchParams(location.search).get('camera');
 export let cameraMode = CAMERA_MODES.has(queryCameraMode)
   ? queryCameraMode
-  : (CAMERA_MODES.has(savedCameraMode) ? savedCameraMode : 'follow');
+  : (CAMERA_MODES.has(savedCameraMode) ? savedCameraMode : 'free');
 
-/** The framed pursuit camera is the default; free orbit is opt-in and remembered. */
+/** Free orbit is the default; either explicit choice is remembered. */
 export const isFreeCamera = () => cameraMode === 'free';
 
 const listeners = new Set();

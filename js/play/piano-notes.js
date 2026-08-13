@@ -16,12 +16,12 @@
 // digits, where they play *piano* chords through the wheel's own route.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-19';
-import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-19';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-19';
-import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-19';
-import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-19';
-import { noteKeyboardJamActivity } from './vibe.js?v=20260813-19';
+import { session } from '../core/session.js?v=20260813-20';
+import { ui, audio, drums, piano, whiteKeys, blackKeys } from '../core/studio.js?v=20260813-20';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-20';
+import { raycaster, stageWalkPlane } from '../view/pick.js?v=20260813-20';
+import { play, heldPianoNotes, keyboardPianoNotes } from './state.js?v=20260813-20';
+import { noteKeyboardJamActivity } from './vibe.js?v=20260813-20';
 import {
   LOOP_MAX_SECONDS,
   loop,
@@ -30,24 +30,24 @@ import {
   runMusicalVisual,
   clearRecordedLoop,
   toggleLoopRecording,
-} from './loop.js?v=20260813-19';
-import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-19';
+} from './loop.js?v=20260813-20';
+import { GUITAR_KEY_CHORDS, keyChordNames, fireGuitarStrum } from './guitar.js?v=20260813-20';
 import {
   syncChordWheelHeld,
   pressPianoChordFromKeyboard,
   releasePianoChordFromKeyboard,
-} from './chord-wheel.js?v=20260813-19';
-import { deferHeldLoopEventPlayback } from './pads.js?v=20260813-19';
-import { degreeMidi, freqFromMidi } from './harmony.js?v=20260813-19';
-import { stageKey } from './key.js?v=20260813-19';
-import { VOICE_LOW_MIDI } from './voice.js?v=20260813-19';
+} from './chord-wheel.js?v=20260813-20';
+import { deferHeldLoopEventPlayback } from './pads.js?v=20260813-20';
+import { degreeMidi, freqFromMidi } from './harmony.js?v=20260813-20';
+import { stageKey } from './key.js?v=20260813-20';
+import { VOICE_LOW_MIDI } from './voice.js?v=20260813-20';
 import {
   glideRibbonDegree,
   pressRibbonDegree,
   releaseRibbonDegree,
   ribbonHasKeyboardNote,
-} from './ribbon.js?v=20260813-19';
-import { drumHitVelocity } from './rhythm.js?v=20260813-19';
+} from './ribbon.js?v=20260813-20';
+import { drumHitVelocity } from './rhythm.js?v=20260813-20';
 
 // Routing a key or a click needs to know what the stage will allow right now,
 // and can move the mascot; main.js owns both and wires them in at boot.
