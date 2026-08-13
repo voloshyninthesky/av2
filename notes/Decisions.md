@@ -12,6 +12,35 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The egg became a magic wardrobe — 2026-08-13
+
+The hatching egg was a fine gacha prop and a poor fit for this stage: a music school's
+spotlight is a theatre, and what belongs in a theatre is a wardrobe someone steps out of.
+The beats survive unchanged — settle, strain, burst, pose, card, and the one rate scalar
+that owns every time distortion — but the strain is now a rattling cabinet with light
+forcing its way through the door seam, and the burst is the doors flinging open.
+
+The prop is deliberately **two layers**. A procedural cabinet is built synchronously at boot
+and the ceremony always runs on it, so the reveal never waits on a download and works
+offline. A generated GLB (`threejs-3d-generator` / Tripo, ~10.7k tris, one material) dresses
+it when it lands. Three things that cost time and are now baked in:
+
+- **A generated mesh is fused, so its doors cannot hinge.** The shell therefore owns every
+  shut state and hands back to the procedural carcass on the burst frame, under the flash.
+  Two alternatives were built and rejected: swinging additive "light doors" out of a sealed
+  cabinet (read as the hack it was — this is what "looks very strange" was), and cutting to
+  a second generated model with its doors modelled open (different silhouette, nearly
+  double the depth, and door knobs looming into frame like gold eggs).
+- **The generator ignores "front facing".** The shell came out with its doors on local −x,
+  and the second one on −z. The facing is a measured constant, verified by rendering the
+  asset at four yaws under the stage lights, and the shell is scaled per axis into the
+  procedural box so the burst-frame cut cannot jump size or footprint.
+- **The dress-up window closes at the strain, not at ceremony start.** A first-run gift
+  opens straight out of the boot fly-in, so gating on "is it visible" meant the only visitor
+  who ever watches a ceremony always got the procedural prop. → [[Mascot]]
+
+---
+
 ## A tier is worn, not just announced — 2026-08-13
 
 The rarity used to exist for one sentence: the glow took the accent colour, the card named

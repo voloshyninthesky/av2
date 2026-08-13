@@ -28,7 +28,7 @@ import {
 } from '../scene/lighting.js?v=20260813-14';
 import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260813-14';
 import { buildMascotAura, MASCOT_TIER_TRIM } from '../scene/mascot-aura.js?v=20260813-14';
-import { buildGiftEgg } from '../scene/gift-egg.js?v=20260813-14';
+import { buildGiftWardrobe, loadGiftWardrobeModel } from '../scene/gift-wardrobe.js?v=20260813-14';
 import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260813-14';
 import {
   MASCOT_BASE_SCALE,
@@ -63,10 +63,13 @@ scene.add(dust);
 export const fireworks = new Fireworks(scene);
 // Added invisible at boot for the same reason as the sign boards: renderer.compile
 // only sees what is already in the scene, and a first gift that had to link its
-// programs mid-ceremony would stall on the frame it matters most.
-export const giftEgg = buildGiftEgg();
-giftEgg.group.visible = false;
-scene.add(giftEgg.group);
+// programs mid-ceremony would stall on the frame it matters most. The generated
+// shell dresses the procedural base whenever its download lands — the ceremony
+// never waits on it.
+export const giftWardrobe = buildGiftWardrobe();
+giftWardrobe.group.visible = false;
+scene.add(giftWardrobe.group);
+loadGiftWardrobeModel(giftWardrobe, '/stage/assets/wardrobe.glb');
 
 // instruments
 export const drums = buildDrumKit();

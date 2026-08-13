@@ -50,8 +50,9 @@ HUD person icon → `#modal-gift`. `js/mascot/gift.js` (the draw) and `js/mascot
 
 The editor asked visitors to author a mascot before they had any reason to care about one,
 and the median first run cost half a minute of form-filling to land somewhere near the
-default. The gift inverts the order: an egg lands in the spotlight, rocks, cracks open,
-and hands you someone — with a rarity tier attached — in about four seconds. *Then* you can
+default. The gift inverts the order: a magic wardrobe stands in the spotlight, rattles,
+light forces its way out of the door seam, the doors fling open — and someone steps out,
+with a rarity tier attached, in about four seconds. *Then* you can
 keep them. There is no HUD button to reopen it; the one way to a different character is to
 walk off the stage edge, which hatches a new one and costs you the one you had. A tier means
 something because rerolling it has a price, not because it is impossible.
@@ -103,8 +104,8 @@ rarity signal.** There is a test for it.
 
 Three constraints worth protecting in any edit here:
 
-1. **No allocation per pull.** Procedural parts — the mascot's and the egg's — are created
-   once and toggled or recoloured in place. A 20-pull stress pass must add no geometries or
+1. **No allocation per pull.** Procedural parts — the mascot's and the wardrobe's — are
+   created once and toggled or recoloured in place. A 20-pull stress pass must add no geometries or
    textures and cause no frame hitch.
 2. **Per-field fallback on load.** A malformed `av2.mascot.v4` field falls back
    independently and never invalidates the whole look. Removed legacy values (`buzz`,
@@ -117,7 +118,7 @@ Three constraints worth protecting in any edit here:
    the synth calls find no context and no-op harmlessly.
 4. **The stage is prepared before the first frame.** `prepareGiftStage()` runs in `main.js`
    between `addLabels()` and `animate()`: with no character saved it hides the mascot and its
-   label and stands the egg in their place. Do this any later and the visitor watches the
+   label and stands the wardrobe in their place. Do this any later and the visitor watches the
    *default* mascot through the whole 2.6 s approach, which gives the whole thing away.
    It also locks the viewing angle and resolves the framing the approach flies to, so the
    ceremony inherits the camera without moving it — approach and reveal are one move. Two
@@ -159,6 +160,13 @@ camera. That angle is session-only — not part of the saved appearance.
 
 Two more things that are easy to break:
 
+- The wardrobe (`js/scene/gift-wardrobe.js`) is **two layers**: a procedural cabinet built at
+  boot that the ceremony always runs on, and a generated GLB shell that dresses it when the
+  download lands. The generated mesh is fused, so it cannot hinge — it owns the shut states
+  and hands back to the procedural carcass on the burst frame, under the flash. Both are
+  fitted to the same box, and the dress-up waits out a running ceremony rather than
+  repainting the prop mid-reveal. The asset was made with the `threejs-3d-generator` skill;
+  its front axis is baked as a constant because the generator ignores "front facing".
 - `js/mascot/gift.js` **imports nothing**, deliberately — that is what lets
   `tests/mascot-gift.test.mjs` import it under plain `node`. It therefore spells the
   appearance vocabulary a second time, and a test reads `appearance.js` as text to keep the

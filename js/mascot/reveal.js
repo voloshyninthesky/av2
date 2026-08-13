@@ -1,7 +1,8 @@
 // ============================================================
 // MASCOT GIFT — THE REVEAL (ПОДАРУНОК modal)
-// An egg lands in the spotlight, rocks and strains for a few seconds, then
-// cracks open along its seam to reveal the character the visitor was given. The suspense is the point:
+// A magic wardrobe stands in the spotlight, rattles and strains for a few
+// seconds — light leaking through the door seam — then its doors fling open to
+// reveal the character the visitor was given. The suspense is the point:
 // nothing about the drawn look is legible until the glow takes the tier's
 // colour, late in the strain.
 //
@@ -23,9 +24,10 @@ import { prefersReducedMotion, params } from '../core/quality.js?v=20260813-14';
 import { trackOnce } from '../core/analytics.js?v=20260813-14';
 import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260813-14';
 import {
-  ui, mascot, mascotLabel, audio, fireworks, giftEgg,
+  ui, mascot, mascotLabel, audio, fireworks, giftWardrobe,
   applyMascotConfig, applyMascotScale,
 } from '../core/studio.js?v=20260813-14';
+import { WARDROBE_AJAR, WARDROBE_DOOR_MAX } from '../scene/gift-wardrobe.js?v=20260813-14';
 import { bumpHitPulse } from '../scene/effects.js?v=20260813-14';
 import { instrumentView } from '../view/instrument-presets.js?v=20260813-14';
 import { leaveInstrumentView } from '../view/instrument-view.js?v=20260813-14';
@@ -72,15 +74,25 @@ const T_POSE_AFTER_BURST = 1.40;
 // reveal they will ever get. The tier is carried by the glow colour and the
 // card, not by how much show you are allowed.
 const STRAIN = 3.8;
-const WOBBLE_AMP = 0.14;
+// A tall cabinet tilts far less than an egg before it reads as falling over —
+// the rattle is in the doors and the hop, not the lean.
+const WOBBLE_AMP = 0.05;
 const WOBBLE_OMEGA = 30;
 const THUMPS = 5;
 const BURSTS = 5;
 const BLOOM_RAMP = 0.48;
 const HIT_PULSE = 1.35;
 const T_LANDING = 0.45;
-const T_SHELL_FADE = 0.25;
-const T_LID_FLIGHT = 0.60;
+// Doors fling open first; the emptied wardrobe then sinks away behind the
+// character. The fade waits until the fling has mostly played.
+const T_DOOR_FLING = 0.50;
+const T_FADE_START = 0.35;
+const T_FADE_DUR = 0.35;
+// Clearance between the wardrobe's front face and the character's spot. The
+// setback itself is measured from the prop (giftWardrobe.frontZ), because the
+// open shell reaches much further forward than the shut one — a fixed number
+// tuned on the shut wardrobe puts the open one's doors around the character.
+const WARDROBE_GAP = 0.14;
 // A skip that fires on the same tap that opened the gift would eat the whole
 // ceremony; the visitor has to have seen something first.
 const SKIP_GRACE = 0.40;
@@ -101,7 +113,6 @@ export const giftReveal = {
   preplaced: false,
   posePushed: false,
   wobblePhase: 0,
-  lidVelocity: 0,
   bloomBase: null,
   burstTimes: [],
   burstIndex: 0,
@@ -161,21 +172,31 @@ export function prepareGiftStage() {
   mascot.group.visible = false;
   if (mascotLabel) mascotLabel.visible = false;
   giftReveal.preplaced = true;
-  // Reset the shell too, not just the group: the lid, the body scale and the
-  // glow all live on after a ceremony, and showing the egg without clearing them
-  // would present a half-hatched shell as if it were sealed.
-  resetEggVisuals();
-  giftEgg.group.position.copy(mascot.group.position);
-  giftEgg.group.visible = true;
   // Lock the viewing angle now, from where the approach ends, and keep it for
   // the ceremony. Recomputing it later from the live camera would shift the
-  // framing and show up as a jolt exactly when the ceremony takes over.
+  // framing and show up as a jolt exactly when the ceremony takes over. The
+  // wardrobe placement needs this angle, so it is resolved first.
   giftReveal.viewDirection.copy(CAM_END).sub(TARGET);
   giftReveal.viewDirection.y = 0;
   if (giftReveal.viewDirection.lengthSq() < 0.01) giftReveal.viewDirection.set(0, 0, 1);
   giftReveal.viewDirection.normalize();
   giftReveal.baseYaw = Math.atan2(giftReveal.viewDirection.x, giftReveal.viewDirection.z);
-  giftApproach.ok = computeGiftFraming(giftEgg.group, giftApproach.pos, giftApproach.tgt);
+  // Reset the prop too, not just the group: the doors, the glow and the scale
+  // all live on after a ceremony, and showing the wardrobe without clearing
+  // them would present it mid-fling as if it were shut.
+  resetWardrobeVisuals();
+  placeWardrobe();
+  giftWardrobe.group.visible = true;
+  giftApproach.ok = computeGiftFraming(giftWardrobe.group, giftApproach.pos, giftApproach.tgt);
+}
+
+// The wardrobe faces the ceremony camera and stands behind the character's
+// spot, so the doorway — not the cabinet — is where the character lands.
+function placeWardrobe() {
+  giftWardrobe.group.position
+    .copy(mascot.group.position)
+    .addScaledVector(giftReveal.viewDirection, -(giftWardrobe.frontZ + WARDROBE_GAP));
+  giftWardrobe.group.rotation.y = giftReveal.baseYaw;
 }
 
 // Where the intro fly-in should end so the ceremony can pick the camera up
@@ -190,7 +211,7 @@ export function giftApproachFraming(outPos, outTgt) {
   // remove. computeGiftFraming() bails before touching the DOM while the
   // viewport is degenerate, so retrying costs nothing until it can succeed.
   if (!giftApproach.ok) {
-    giftApproach.ok = computeGiftFraming(giftEgg.group, giftApproach.pos, giftApproach.tgt);
+    giftApproach.ok = computeGiftFraming(giftWardrobe.group, giftApproach.pos, giftApproach.tgt);
   }
   if (!giftApproach.ok) return false;
   outPos.copy(giftApproach.pos);
@@ -355,7 +376,7 @@ function frameGiftSubject(root) {
 }
 
 function currentSubject() {
-  return giftReveal.bursted ? mascot.group : giftEgg.group;
+  return giftReveal.bursted ? mascot.group : giftWardrobe.group;
 }
 
 export function queueGiftRefit() {
@@ -387,19 +408,16 @@ function scheduleGiftAudio() {
 }
 
 // ---- ceremony ----
-function resetEggVisuals() {
-  const { group, body, lid, glow, mats, lidRestY } = giftEgg;
-  // A pre-placed egg has been on stage through the whole fly-in; scaling it back
-  // to nothing so the ceremony can pop it in would read as a glitch.
+function resetWardrobeVisuals() {
+  const { group, glow, mats } = giftWardrobe;
+  // A pre-placed wardrobe has been on stage through the whole fly-in; scaling
+  // it back to nothing so the ceremony can pop it in would read as a glitch.
   group.scale.setScalar(giftReveal.preplaced ? 1 : 0.001);
   group.rotation.set(0, 0, 0);
   group.position.y = 0;
   group.visible = true;
-  body.scale.setScalar(1);
+  giftWardrobe.setDoorAngle(0);
   glow.visible = true;
-  lid.position.set(0, lidRestY, 0);
-  lid.rotation.set(0, 0, 0);
-  lid.visible = true;
   mats.glow.opacity = 0;
   mats.glow.color.copy(COLOR_NEUTRAL);
 }
@@ -427,19 +445,18 @@ function beginPull() {
   giftReveal.cardShown = false;
   giftReveal.posePushed = false;
   giftReveal.wobblePhase = 0;
-  giftReveal.lidVelocity = 0;
   giftReveal.burstIndex = 0;
   COLOR_TIER.setHex(giftReveal.tier.accent);
 
   if (giftCard) giftCard.hidden = true;
   if (giftStatus) giftStatus.textContent = 'Відкриваємо подарунок…';
   mascot.group.visible = false;
-  giftEgg.group.position.copy(mascot.group.position);
-  resetEggVisuals();
+  resetWardrobeVisuals();
+  placeWardrobe();
   // Captured before the ramp starts, so an abandoned ceremony can put it back.
   if (giftReveal.bloomBase === null) giftReveal.bloomBase = hooks.bloomBaseStrength();
   scheduleGiftAudio();
-  frameGiftSubject(giftEgg.group);
+  frameGiftSubject(giftWardrobe.group);
 }
 
 function beginGiftCeremony() {
@@ -479,7 +496,9 @@ function beginGiftCeremony() {
 function fireBurst() {
   giftReveal.bursted = true;
   giftReveal.phase = 'pose';
-  giftReveal.lidVelocity = 2.6;
+  // A skip can jump here straight from the settle, so the window is shut on
+  // this path too rather than only on the strain's.
+  giftWardrobe.ceremonyRunning = true;
 
   // The character becomes real here: validated, applied, and written to storage
   // in the same frame the visitor first sees it.
@@ -489,8 +508,8 @@ function fireBurst() {
   mascot.group.visible = true;
   applyMascotScale(0.35);
 
-  scratchBurstOrigin.copy(giftEgg.group.position);
-  scratchBurstOrigin.y += giftEgg.topY;
+  scratchBurstOrigin.copy(giftWardrobe.group.position);
+  scratchBurstOrigin.y += giftWardrobe.topY;
   giftReveal.burstTimes.length = 0;
   const bursts = prefersReducedMotion.matches ? 1 : BURSTS;
   for (let i = 0; i < bursts; i++) giftReveal.burstTimes.push(i * 0.09);
@@ -524,7 +543,8 @@ function showGiftCard() {
 function applyCeremonyEndState() {
   if (!giftReveal.bursted) fireBurst();
   giftReveal.burstIndex = giftReveal.burstTimes.length;
-  giftEgg.group.visible = false;
+  giftWardrobe.setDoorAngle(WARDROBE_DOOR_MAX);
+  giftWardrobe.group.visible = false;
   mascot.group.visible = true;
   applyMascotScale(1);
   mascot.armL.rotation.z = -ARM_REST_Z;
@@ -559,12 +579,14 @@ function relaxMascotToStanding(dt) {
 }
 
 function updateStrain(progress) {
-  const { group, lid, mats, lidRestY } = giftEgg;
+  const { group, mats } = giftWardrobe;
   const amp = WOBBLE_AMP * progress;
   group.rotation.z = Math.sin(giftReveal.wobblePhase) * amp;
-  group.position.y = Math.abs(Math.sin(giftReveal.wobblePhase * 2)) * 0.02 * progress;
-  // The cap lifts off the jagged seam so the glow leaks out through the crack.
-  lid.position.y = lidRestY + progress * 0.05 + Math.sin(giftReveal.wobblePhase * 1.7) * 0.008 * progress;
+  group.position.y = Math.abs(Math.sin(giftReveal.wobblePhase * 2)) * 0.018 * progress;
+  // The doors crack ajar and shudder, so the glow leaks out through the seam.
+  const ajar = WARDROBE_AJAR * progress
+    + Math.abs(Math.sin(giftReveal.wobblePhase * 1.7)) * 0.02 * progress;
+  giftWardrobe.setDoorAngle(ajar);
   mats.glow.opacity = progress;
   // The tier's colour only leaks out late — early enough to build, late enough
   // that it lands as a payoff rather than a spoiler.
@@ -576,21 +598,19 @@ function updateStrain(progress) {
 }
 
 function updateAfterBurst(sinceBurst, scaledDt) {
-  const { group, body, lid, glow } = giftEgg;
+  const { group, mats } = giftWardrobe;
 
-  // The cap arcs away; the lower shell shrinks out behind it.
-  if (sinceBurst < T_LID_FLIGHT) {
-    giftReveal.lidVelocity -= 6.2 * scaledDt;
-    lid.position.y += giftReveal.lidVelocity * scaledDt;
-    lid.rotation.x += 3.4 * scaledDt;
-    lid.rotation.z += 1.1 * scaledDt;
-  } else {
-    lid.visible = false;
-  }
-  const fade = Math.min(1, sinceBurst / T_SHELL_FADE);
-  body.scale.setScalar(Math.max(0.001, 1 - fade));
-  glow.visible = false;
-  if (fade >= 1 && sinceBurst >= T_LID_FLIGHT) group.visible = false;
+  // The doors fling open — a springy overshoot, not a linear swing — and the
+  // light pours out of the doorway while the character lands in it.
+  const fling = Math.min(1, sinceBurst / T_DOOR_FLING);
+  giftWardrobe.setDoorAngle(
+    WARDROBE_AJAR + (WARDROBE_DOOR_MAX - WARDROBE_AJAR) * easeOutBack(fling),
+  );
+  // Then the emptied wardrobe sinks away behind the character.
+  const fade = Math.min(1, Math.max(0, (sinceBurst - T_FADE_START) / T_FADE_DUR));
+  group.scale.setScalar(Math.max(0.001, 1 - fade));
+  mats.glow.opacity = 1 - fade;
+  if (fade >= 1) group.visible = false;
 
   // Landing pop — through applyMascotScale, so it rides on top of the drawn
   // height/build rather than fighting it.
@@ -631,17 +651,27 @@ export function updateGiftReveal(dt) {
   const burstAt = strainEndTime();
 
   if (!giftReveal.bursted) {
+    // Re-placed every pre-burst frame rather than once: the generated shells
+    // can dress mid-fly, and a deeper shell needs a deeper setback. Runs
+    // before the phase logic, which owns the hop on position.y.
+    placeWardrobe();
     if (t < T_FLY_END) {
       giftReveal.phase = 'fly';
       if (!giftReveal.preplaced) {
-        giftEgg.group.scale.setScalar(Math.max(0.001, easeOutBack(t / T_FLY_END)));
+        giftWardrobe.group.scale.setScalar(Math.max(0.001, easeOutBack(t / T_FLY_END)));
       }
     } else if (t < T_SETTLE_END) {
       giftReveal.phase = 'settle';
-      giftEgg.group.scale.setScalar(1);
+      giftWardrobe.group.scale.setScalar(1);
     } else {
       giftReveal.phase = 'strain';
-      giftEgg.group.scale.setScalar(1);
+      // The dress-up window shuts here, not at ceremony start. A first-run
+      // gift opens straight out of the boot fly-in, so closing it any earlier
+      // would mean the one visitor who actually watches a ceremony never sees
+      // the generated wardrobe. Until the strain the prop is either off-camera
+      // or just landing; from here it is the thing being watched.
+      giftWardrobe.ceremonyRunning = true;
+      giftWardrobe.group.scale.setScalar(1);
       const progress = Math.min(1, (t - T_SETTLE_END) / STRAIN);
       // Phase is integrated rather than evaluated as sin(t·ω): ω itself ramps,
       // and evaluating it directly would jump the phase every frame.
@@ -674,7 +704,7 @@ export function updateGiftReveal(dt) {
     if (t >= ceremonyEndTime()) {
       applyMascotScale(1);
       giftReveal.phase = 'held';
-      giftEgg.group.visible = false;
+      giftWardrobe.group.visible = false;
     }
   }
 }
@@ -685,13 +715,14 @@ function endGiftCeremony() {
   giftReveal.refitFrame = 0;
   giftReveal.active = false;
   giftReveal.phase = 'idle';
+  giftWardrobe.ceremonyRunning = false;
   document.documentElement.classList.remove('gift-open');
   giftReveal.dragPointer = null;
   // Only the first-run egg is pre-placed by prepareGiftStage(); a gift that
   // follows a fall has to pop in like any other, so retire the flag with the
   // ceremony that earned it.
   giftReveal.preplaced = false;
-  giftEgg.group.visible = false;
+  giftWardrobe.group.visible = false;
   // A ceremony abandoned mid-ramp would otherwise leave the stage permanently
   // over-bloomed.
   if (giftReveal.bloomBase !== null) hooks.setBloomStrength(giftReveal.bloomBase);
