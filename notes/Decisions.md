@@ -27,7 +27,10 @@ one family in three voices beats a menagerie because the comparison is instant �
 sparrow making low, timid flights for rare; a pair on opposite orbits that lands on the
 shoulders for epic; a golden trio for legendary, the third and smallest bird perching on the
 crown of the head. Count is legible from the back row; gold and the head-perch keep
-legendary unmistakable. Epic and legendary share the same two flock birds, recoloured.
+legendary unmistakable. Epic and legendary share the same two flock birds, recoloured. The
+flock members are **three authored species-silhouettes out of one builder** — crested
+songbird, slim forked-tail swallow, round dark-capped tit — because a flock of clones reads
+as a rendering bug where a flock of species reads as an entourage.
 
 **A sliver of the aura came back the same day, by request** — one quiet accent halo on the
 boards under the birds' owner (0.30 / 0.38 / 0.48 by tier, breathing ±8%). It is an

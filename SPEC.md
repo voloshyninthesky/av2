@@ -1143,8 +1143,13 @@ the **count** — legible from the back row:
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **ЗВИЧАЙНИЙ**   | Nobody — the unmarked bottom rung is what makes the ladder read                             |
 | **РІДКІСНИЙ**   | **One** small crestless sparrow: low, timid flights under the resting hands, resting on the boards twice as long as it flies |
-| **ЕПІЧНИЙ**     | **Two** crested birds on opposite orbits that land on the character — one shoulder each while they play |
-| **ЛЕГЕНДАРНИЙ** | **Three, in gold**: the pair plus a third, smallest bird whose perch is the **crown of the head** — shoulders and head occupied while they play |
+| **ЕПІЧНИЙ**     | **Two different birds** — a crested songbird and a slim forked-tail swallow — on opposite orbits, landing on the character, one shoulder each while they play |
+| **ЛЕГЕНДАРНИЙ** | **Three different birds, in gold**: the pair plus a third, smallest — a round dark-capped tit — whose perch is the **crown of the head**; shoulders and head occupied while they play |
+
+The flock is **three authored species-silhouettes from one builder** (crest, tail shape —
+long / forked / fan — slimness, a dark cap), so it reads as a flock rather than clones. The
+differences are the ones that carry at stage distance; keep new variety in that vocabulary
+rather than new meshes.
 
 - One on the boards < two on your shoulders < three golden ones crowning you. The count is
   the ladder; gold and the head-perch are what keep legendary unmistakable at a glance.

@@ -14,9 +14,9 @@
 // is left is the capture lifecycle they all still run on, plus the one class
 // that says something is docked at the bottom of the screen.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260813-17';
-import { play } from './state.js?v=20260813-17';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent } from './loop.js?v=20260813-17';
+import { audio } from '../core/studio.js?v=20260813-18';
+import { play } from './state.js?v=20260813-18';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent } from './loop.js?v=20260813-18';
 
 // The zoom guard below has to know whether the stage is live; only main.js can
 // answer that, so it arrives as a hook like every other back-reference.

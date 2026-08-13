@@ -29,7 +29,7 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-17';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-18';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -73,19 +73,31 @@ const SPARROW_FLIGHT = {
   rest: { x: -0.38, z: 0.32 }, restYaw: -0.5, flapRate: 18,
 };
 
-// One songbird, three voices. The crest is what makes the higher tiers read
-// as "a finer bird" at stage distance; the sparrow goes without.
-function buildBird({ crest = true } = {}) {
+// One builder, four authored species-silhouettes, so a flock reads as a
+// flock rather than clones. The differences are the ones that carry at stage
+// distance: crest, tail shape, body slimness, a dark cap.
+// - crest: the "finer bird" tell on the flock's lead; the sparrow goes without
+// - tail 'long' | 'forked' | 'fan': songbird / swallow / little tit
+// - slim: the swallow's sleeker body and longer wings
+// - cap: the tit's dark head cap (shared ink material — never recoloured)
+function buildBird({ crest = true, tail = 'long', cap = false, slim = false } = {}) {
   const bird = new THREE.Group();
   const plumage = new THREE.MeshStandardMaterial({ color: 0xE8BE5B, roughness: 0.55, emissive: 0xD1A13B, emissiveIntensity: 0.2 });
   const inkMat = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.6 });
 
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), plumage);
-  body.scale.set(0.95, 0.85, 1.25);
+  if (slim) body.scale.set(0.85, 0.78, 1.38);
+  else body.scale.set(0.95, 0.85, 1.25);
   bird.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), plumage);
   head.position.set(0, 0.075, 0.085);
   bird.add(head);
+  if (cap) {
+    const capMesh = new THREE.Mesh(new THREE.SphereGeometry(0.054, 10, 8), inkMat);
+    capMesh.scale.set(1, 0.62, 1);
+    capMesh.position.set(0, 0.088, 0.083);
+    bird.add(capMesh);
+  }
   const beak = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 6), inkMat);
   beak.rotation.x = Math.PI / 2;
   beak.position.set(0, 0.07, 0.14);
@@ -101,16 +113,31 @@ function buildBird({ crest = true } = {}) {
     eye.position.set(side * 0.036, 0.088, 0.115);
     bird.add(eye);
   }
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.11), plumage);
-  tail.position.set(0, 0.02, -0.14);
-  tail.rotation.x = -0.35;
-  bird.add(tail);
+  if (tail === 'forked') {
+    for (const side of [-1, 1]) {
+      const streamer = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.01, 0.14), plumage);
+      streamer.position.set(side * 0.02, 0.02, -0.15);
+      streamer.rotation.set(-0.3, side * 0.3, 0);
+      bird.add(streamer);
+    }
+  } else if (tail === 'fan') {
+    const fan = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.012, 0.07), plumage);
+    fan.position.set(0, 0.03, -0.12);
+    fan.rotation.x = -0.5;
+    bird.add(fan);
+  } else {
+    const tailMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.11), plumage);
+    tailMesh.position.set(0, 0.02, -0.14);
+    tailMesh.rotation.x = -0.35;
+    bird.add(tailMesh);
+  }
   const wings = {};
   for (const side of [-1, 1]) {
     const pivot = new THREE.Group();
     pivot.position.set(side * 0.06, 0.02, -0.005);
     const wing = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), plumage);
-    wing.scale.set(0.28, 0.5, 1.5);
+    if (slim) wing.scale.set(0.26, 0.45, 1.75);
+    else wing.scale.set(0.28, 0.5, 1.5);
     wing.position.set(side * 0.05, 0, -0.02);
     pivot.add(wing);
     bird.add(pivot);
@@ -144,17 +171,18 @@ export function buildMascotCompanion() {
   sparrow.bird.scale.setScalar(0.8);
   root.add(sparrow.bird);
 
-  // The flock. A and B serve both epic (a purple pair) and legendary (gold);
-  // C flies only for legendary — the smallest of the three, because its perch
-  // is the crown of the head and a big bird up there reads as a hat.
-  const birdA = buildBird();
+  // The flock — three different birds, so it reads as a flock rather than
+  // clones. A and B serve both epic (a purple pair) and legendary (gold); C
+  // flies only for legendary — the smallest, a round capped tit, because its
+  // perch is the crown of the head and a big bird up there reads as a hat.
+  const birdA = buildBird(); // crested songbird, the lead
   birdA.bird.position.set(0.34, 1.46, 0.02);
   root.add(birdA.bird);
-  const birdB = buildBird();
+  const birdB = buildBird({ crest: false, tail: 'forked', slim: true }); // swallow
   birdB.bird.scale.setScalar(0.92);
   birdB.bird.position.set(-0.34, 1.46, 0.02);
   root.add(birdB.bird);
-  const birdC = buildBird();
+  const birdC = buildBird({ crest: false, tail: 'fan', cap: true }); // capped tit
   birdC.bird.scale.setScalar(0.85);
   birdC.bird.position.set(0, 1.96, 0.02);
   root.add(birdC.bird);

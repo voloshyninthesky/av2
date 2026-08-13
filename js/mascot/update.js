@@ -5,10 +5,10 @@
 // and the fall. The gift reveal owns the mascot outright while it runs.
 // ============================================================
 import * as THREE from 'three';
-import { session } from '../core/session.js?v=20260813-17';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-17';
-import { camera, controls } from '../view/rig.js?v=20260813-17';
-import { ui, mascot, mascotLabel, mascotLabelY, applyMascotScale, mascotFallMaterialStates } from '../core/studio.js?v=20260813-17';
+import { session } from '../core/session.js?v=20260813-18';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-18';
+import { camera, controls } from '../view/rig.js?v=20260813-18';
+import { ui, mascot, mascotLabel, mascotLabelY, applyMascotScale, mascotFallMaterialStates } from '../core/studio.js?v=20260813-18';
 import {
   joystickInput,
   cameraForwardXZ,
@@ -16,14 +16,14 @@ import {
   updateMobileFollowCamera,
   beginMascotFall,
   respawnMascot,
-} from '../view/mobile-controls.js?v=20260813-17';
-import { instrumentView } from '../view/instrument-presets.js?v=20260813-17';
-import { activateInstrumentView } from '../view/instrument-view.js?v=20260813-17';
-import { moveMascotWithColliders } from './walk.js?v=20260813-17';
-import { mascotMove, dance } from './state.js?v=20260813-17';
-import { giftReveal, giftCam } from './reveal.js?v=20260813-17';
-import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260813-17';
-import { play } from '../play/state.js?v=20260813-17';
+} from '../view/mobile-controls.js?v=20260813-18';
+import { instrumentView } from '../view/instrument-presets.js?v=20260813-18';
+import { activateInstrumentView } from '../view/instrument-view.js?v=20260813-18';
+import { moveMascotWithColliders } from './walk.js?v=20260813-18';
+import { mascotMove, dance } from './state.js?v=20260813-18';
+import { giftReveal, giftCam } from './reveal.js?v=20260813-18';
+import { GUITAR_STRUM_ARM_BASE, setDancing, updateMascotDance } from './pose.js?v=20260813-18';
+import { play } from '../play/state.js?v=20260813-18';
 
 // First-person guitar view (landscape): the focus camera sits where the
 // player's own eyes are, so the mascot's head — and, seen from inside, the
