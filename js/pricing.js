@@ -3,7 +3,7 @@
 // Every instrument carries its own prices, name and board theme in the data,
 // so this module never has to know which instruments happen to cost the same.
 // ============================================================
-import { loadPrices } from './core/prices.js?v=20260813-21';
+import { loadPrices } from './core/prices.js?v=20260813-22';
 
 /** Chip / close-up kinds that name an instrument differently than the data. */
 const ANCHOR_MAP = {

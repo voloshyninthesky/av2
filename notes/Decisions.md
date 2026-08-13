@@ -12,6 +12,29 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The draw got looser, and the rare bird got off the floor — 2026-08-13
+
+Two nudges to the same complaint: a marked character is the interesting one to receive, and
+the ladder was hiding at the bottom.
+
+**Weights.** 58 / 27 / 11 / 4 became **50 / 30 / 14 / 6**. At 58% common a clear majority of
+visitors met a Вайбер with no companion at all, which made the whole tier ladder something
+most people never saw. Every marked tier moved up a step and common paid for all of it.
+Legendary stays scarce enough to mean something — still the rarest thing on the stage by a
+factor of five, and still the one-shot rate a visitor actually faces, since there is no pity
+counter. The weight table in [[SPEC]] §13 is the contract; `tests/mascot-gift.test.mjs`
+derives from it (sum-to-one plus an empirical rate check) rather than hard-coding numbers, so
+retuning is a one-line change.
+
+**The rare sparrow flies at waist height now**, not ankle height (0.45 → 0.80), on a wider
+orbit (0.50 → 0.66). The low flight read as hopping and was half-hidden behind the shoes; the
+wider orbit is required at that altitude because the resting hands reach ~0.45 out and hang
+near 0.78 up, so a narrow circle would fly the bird straight through them. It still rests on
+the *boards* rather than on the character — that boundary is the tier ladder and did not
+move: rare cruises at 0.80, epic at 1.02, legendary at 1.28. → [[Mascot]]
+
+---
+
 ## The aura became a companion bird — 2026-08-13
 
 The aura was built, tuned loud, tuned quiet, and then deleted whole — because the companion

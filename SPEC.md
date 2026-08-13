@@ -1093,10 +1093,10 @@ The gift should feel like being handed someone, not like filling in a form. The 
 
 | Tier            | Weight | Accent            |
 | --------------- | ------ | ----------------- |
-| **ЗВИЧАЙНИЙ**   | 58%    | cream `0xFDFBF7`  |
-| **РІДКІСНИЙ**   | 27%    | denim `0x5B82A6`  |
-| **ЕПІЧНИЙ**     | 11%    | purple `0x9E33CA` |
-| **ЛЕГЕНДАРНИЙ** | 4%     | gold `0xD1A13B`   |
+| **ЗВИЧАЙНИЙ**   | 50%    | cream `0xFDFBF7`  |
+| **РІДКІСНИЙ**   | 30%    | denim `0x5B82A6`  |
+| **ЕПІЧНИЙ**     | 14%    | purple `0x9E33CA` |
+| **ЛЕГЕНДАРНИЙ** | 6%     | gold `0xD1A13B`   |
 
 - **The ceremony is identical at every tier** — the same ~7 s timeline, five thumps, five bursts, bloom ramp and closing spin that used to be reserved for a legendary. A visitor receives one gift in their life, so scaling the spectacle to the roll would mean most people never see the good version of the only reveal they will ever get. A `GIFT_TIERS` entry carries **only** a label and an accent colour, and must never grow timing or intensity fields again; the persistent on-stage presence below is keyed off the tier *id* elsewhere (`js/scene/mascot-aura.js`) and never feeds back into the ceremony.
 - **The card is the whole of the first run.** It introduces the character and says what the stage lets you do with it — «Вайбери люблять ходити по сцені та грати на інструментах.» — and its **ЗРОЗУМІЛО** writes `av2.onboard.v2`. Two cards in a row, the second restating the first, was one beat too many for a visitor who has not touched anything yet. The standalone tip survives only for the visitor who has a character but never acknowledged the text (closed with ✕ or Esc), which is why the two gates stay separate.
@@ -1104,7 +1104,7 @@ The gift should feel like being handed someone, not like filling in a form. The 
 - The card shows the tier inside the sentence and nothing else — no name, no trait list. Higher tiers weight toward the traits that read as distinctive at stage distance — `bald`, the `night` palette, `headphones`, the pink hair swatch, `gold` overrides, wider height / build ladders. Common keeps the whole vocabulary so the ordinary population stays varied.
 - **`skinTone` is drawn evenly at every tier and must never become a rarity signal.**
 - **Legendary is six authored looks**, picked uniformly, each carrying at least two signature traits and its own name. A tier a visitor cannot recognise on sight is not a tier.
-- There is **no pity counter and no repeat-guard**: both only made sense with rerolls. 4% is the true one-shot rate, and the draw is pure — same rng in, same character out.
+- There is **no pity counter and no repeat-guard**: both only made sense with rerolls. 6% is the true one-shot rate, and the draw is pure — same rng in, same character out.
 - Two identical characters never arrive back to back; an exact repeat is redrawn once.
 
 ### The reveal
@@ -1142,7 +1142,7 @@ the **count** — legible from the back row:
 | Tier            | Companions                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **ЗВИЧАЙНИЙ**   | Nobody — the unmarked bottom rung is what makes the ladder read                             |
-| **РІДКІСНИЙ**   | A small crestless **sparrow**: low, timid flights under the resting hands, resting on the **boards** twice as long as it flies, over a faint halo |
+| **РІДКІСНИЙ**   | A small crestless **sparrow**: brief, timid flights at waist height and wide of the arms, resting on the **boards** twice as long as it flies, over a faint halo |
 | **ЕПІЧНИЙ**     | A slim forked-tail **swallow**: confident chest-high circles, landing on the character's **shoulder**, over a brighter halo |
 | **ЛЕГЕНДАРНИЙ** | The crested **songbird** in gold, lit from inside: the highest flight, perching on the **crown of the head**, over the brightest halo |
 

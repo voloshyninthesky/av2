@@ -17,10 +17,10 @@
 //
 // The theory is all in harmony.js; this file is geometry, pointers and state.
 // ============================================================
-import { piano } from '../core/studio.js?v=20260813-21';
-import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-21';
-import { canvas } from '../view/rig.js?v=20260813-21';
-import { play, activePointers } from './state.js?v=20260813-21';
+import { piano } from '../core/studio.js?v=20260813-22';
+import { isQuickGuitarTap } from '../guitar-gestures.js?v=20260813-22';
+import { canvas } from '../view/rig.js?v=20260813-22';
+import { play, activePointers } from './state.js?v=20260813-22';
 import {
   GUITAR_CHORDS,
   fifthIndexOf,
@@ -32,16 +32,16 @@ import {
   wedgeChordName,
   wedgeDegree,
   wedgeLabel,
-} from './harmony.js?v=20260813-21';
+} from './harmony.js?v=20260813-22';
 import {
   onStageKeyChange,
   setStageSevenths,
   stageKey,
   stepStageKey,
   toggleStageMode,
-} from './key.js?v=20260813-21';
-import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-21';
-import { syncPadsOpenClass } from './pads.js?v=20260813-21';
+} from './key.js?v=20260813-22';
+import { degreeKeyLabel, setKeyChords } from './guitar.js?v=20260813-22';
+import { syncPadsOpenClass } from './pads.js?v=20260813-22';
 
 // Wheel gestures compete with the stage's own pointer handling, and a wedge
 // press has to know which instrument is listening; main.js supplies both, plus

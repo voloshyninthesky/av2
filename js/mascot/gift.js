@@ -23,11 +23,16 @@
 // `name` is sentence-case because it is read inside a sentence — «це Вайбер
 // Звичайний» — rather than shouted as a label. It parses as a species epithet,
 // which is the joke: every character is a Вайбер, and the tier says which kind.
+// Weights loosened once, deliberately: a marked character is the interesting
+// one to receive, and at 58% common a clear majority of visitors met a Вайбер
+// with no companion at all. Every marked tier moved up a step and common paid
+// for all of it. Legendary stays scarce enough to mean something — it is still
+// the rarest thing on the stage by a factor of five.
 export const GIFT_TIERS = [
-  { id: 'common', name: 'Звичайний', weight: 0.58, accent: 0xFDFBF7 },
-  { id: 'rare', name: 'Рідкісний', weight: 0.27, accent: 0x5B82A6 },
-  { id: 'epic', name: 'Епічний', weight: 0.11, accent: 0x9E33CA },
-  { id: 'legendary', name: 'Легендарний', weight: 0.04, accent: 0xD1A13B },
+  { id: 'common', name: 'Звичайний', weight: 0.50, accent: 0xFDFBF7 },
+  { id: 'rare', name: 'Рідкісний', weight: 0.30, accent: 0x5B82A6 },
+  { id: 'epic', name: 'Епічний', weight: 0.14, accent: 0x9E33CA },
+  { id: 'legendary', name: 'Легендарний', weight: 0.06, accent: 0xD1A13B },
 ];
 
 export const GIFT_TIERS_BY_ID = Object.fromEntries(GIFT_TIERS.map((tier) => [tier.id, tier]));

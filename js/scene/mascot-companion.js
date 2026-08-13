@@ -29,7 +29,7 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-21';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-22';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -67,14 +67,16 @@ function makeHaloTexture() {
 }
 
 // One bird per tier, each its own species and its own confidence. The rare
-// sparrow is timid — low, brief flights under the resting hands, resting on
-// the *boards* twice as long as it flies, flapping in a hurry the way small
-// birds do. The epic swallow owns the air and lands on the shoulder. The
-// legendary songbird flies highest and perches on the crown of the head,
-// which is the one landing spot no lesser bird gets.
+// sparrow is timid — brief flights, and the only bird that rests on the
+// *boards* rather than on the character, flapping in a hurry the way small
+// birds do. It flies at waist height and wide of the arms: the resting hands
+// reach ~0.45 out and hang near 0.78 up, so a narrower orbit at this height
+// would fly it straight through them. The epic swallow owns the air and lands
+// on the shoulder. The legendary songbird flies highest and perches on the
+// crown of the head, which is the one landing spot no lesser bird gets.
 const FLIGHT = {
   rare: {
-    radius: 0.50, height: 0.45, bobRate: 2.9, speed: 1.6, period: 16, flyFor: 7,
+    radius: 0.66, height: 0.80, bobRate: 2.9, speed: 1.6, period: 16, flyFor: 7,
     rest: { x: -0.38, y: 0, z: 0.32 }, onFloor: true, restYaw: -0.5, flapRate: 18,
   },
   epic: {
