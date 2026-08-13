@@ -12,6 +12,74 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## A genre carries its tempo — 2026-08-13
+
+Every groove now declares a `bpm`, and tapping its wedge moves the tempo there. A genre is
+its tempo as much as its pattern: the drum-and-bass break at 76 is the pattern with the style
+taken out of it, and nobody was going to find 172 by tapping a `+4` stepper twenty times. The
+stepper is unchanged and still overrides the genre's tempo afterwards — this sets the
+starting point, it does not take the control away.
+
+- **The loop's lock wins.** A recorded take is already whole bars of the old tempo, so with
+  loop content the wedge switches the pattern alone and the tempo does not move. Silently:
+  `setTempo` has already toasted that rule for anyone who reached for the stepper.
+- **One writer for `bpm`.** Both ways in go through `applyTempo`, which holds the bar's phase
+  across the change and re-pins the epoch. A tempo written straight to the variable makes the
+  beat jump under a groove that is merely paused — the failure the phase-holding exists to
+  prevent, re-introduced by a second door into the same state.
+- **`TEMPO_MAX` rose 160 → 176.** The ceiling exists for the fastest groove on the wheel, and
+  a genre the stepper cannot reach is one the wheel can only play wrong.
+- **ЛАТИНА became ЕЛЕКТРО**, because ТЕХНО and ДНБ replaced БОСА and САМБА and the family
+  label is read out in every wedge's `aria-label`. РЕҐЕТОН sits between them on both readings.
+  ТЕХНО's hats interleave — open on the "and", closed on the "a" — which is what keeps it from
+  being ДИСКО twice, since four-on-the-floor plus a backbeat is a groove both styles share.
+  The wedge says ДНБ rather than ДРАМ-Н-БЕЙС: eleven characters do not fit a 30° wedge, and
+  the label shrinks before it clips.
+- **ДЖАЗ became ХАУС** in the same pass, at the visitor's request — a third modern dance
+  style, alongside ТЕХНО and ДНБ. It stayed in СВІНҐ rather than moving to ЕЛЕКТРО, which was
+  already full at three, and that turned out to be the better home anyway: written on the
+  triplet grid it is *shuffled* house, four-on-the-floor answered by a swung open hat. The
+  straight version would have been ДИСКО with the hats moved, and the wheel already has one
+  of those. E(4,12) is the kick, so the family keeps its generated part too.
+
+## A switch that silently doesn't (drums groove wheel) — 2026-08-13
+
+Tapping a different wedge sometimes started nothing — fixed by tapping *some* wedge again,
+which is what made it look intermittent rather than broken. Root cause: `audioEpoch` is a
+reading of one `AudioContext`'s clock, taken once and then run against forever
+(`barPhase()` divides `ctx.currentTime - audioEpoch`). `audio.js` rebuilds that context —
+new object, clock back at zero — whenever one was marked for recovery: a tab backgrounded, a
+window blur, an interrupted mobile Audio Session. A groove already playing when that happens
+keeps an epoch from the *old* clock, now sitting in the new one's future. Every hit the
+scheduler computes lands on a bar that has not happened yet, gets skipped by the
+`at > now + LOOP_LOOKAHEAD` guard, and the wheel keeps turning while the kit stays silent.
+
+Why a second tap "fixed" it: `chooseGroove` on the *same* wedge routes through
+`stopPlaying` → `startPlaying`, and `startPlaying` called `hooks.activateAudioForSound()` —
+the only thing allowed to rebuild a marked context, since a look-ahead scheduled event
+deliberately passes `allowRecovery: false`. `chooseGroove` on a *different* wedge never called
+it at all, so switching directly from a stale groove to a new one carried the same dead clock
+forward silently.
+
+- **`pinBar()` replaces the three inline `audioEpoch = ...` writes.** It re-pins whenever the
+  epoch is unset *or* was read from a context generation that is no longer current
+  (`epochGeneration`, bumped alongside `audio.contextGeneration`), and clears `scheduled` in
+  the same breath — bar zero moved, so keys minted against the old one would collide with the
+  new bar zero and silence it. Called from `startPlaying`, `resyncGroove`, the top of
+  `scheduleAhead` (a rebuild can land between any two 25 ms ticks, not just at a tap), and now
+  `chooseGroove`.
+- **`chooseGroove` now calls `hooks.activateAudioForSound()` on every switch**, not just the
+  stop/start path. Every tap is a trusted gesture regardless of which wedge it lands on, so
+  every tap may repair the route.
+- **`chooseGroove` also calls `scheduleAhead()` immediately** rather than waiting for the next
+  tick. At ДНБ's 172 BPM a sixteenth is 87 ms — close enough to the 25 ms tick that a visitor
+  switching mid-tick could still read the new groove as late, even once it started audible.
+- `window.__grooveDebug().epochStale` makes the failure directly observable — true would mean
+  the bar is pinned to a clock that no longer exists — so a regression here fails loud instead
+  of going quiet again.
+
+---
+
 ## A sitting bird must not slide — 2026-08-13
 
 The companion rides `mascot.group`, which is what makes perches free: a bird on the shoulder

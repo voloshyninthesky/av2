@@ -179,6 +179,26 @@ test('the wheel is twelve grooves, four families of three', () => {
   });
 });
 
+test('every groove names a tempo the stepper can reach', () => {
+  // A genre carries its own tempo, so a value off the grid or outside the
+  // stepper's range would be one the visitor can never step back to after
+  // nudging it — and one the stepper silently clamps on the way in.
+  for (const groove of r.GROOVES) {
+    assert.ok(Number.isFinite(groove.bpm), `${groove.name}: no bpm`);
+    assert.equal(groove.bpm % r.TEMPO_STEP, 0,
+      `${groove.name}: ${groove.bpm} is off the ${r.TEMPO_STEP} BPM grid`);
+    assert.ok(groove.bpm >= r.TEMPO_MIN && groove.bpm <= r.TEMPO_MAX,
+      `${groove.name}: ${groove.bpm} is outside ${r.TEMPO_MIN}–${r.TEMPO_MAX}`);
+  }
+  // The wheel opens on the first wedge, so its tempo is the one the label shows
+  // before anything is chosen.
+  assert.equal(r.TEMPO_DEFAULT, r.GROOVES[0].bpm,
+    'TEMPO_DEFAULT and ПУЛЬС disagree about where the wheel opens');
+  // The ceiling exists for the fastest groove on the wheel; if that groove ever
+  // slows down, the ceiling is free to come back down with it.
+  assert.ok(Math.max(...r.GROOVES.map((g) => g.bpm)) <= r.TEMPO_MAX);
+});
+
 test('a family shares one grid, and a beat is whole steps', () => {
   for (const groove of r.GROOVES) {
     assert.ok(groove.beats > 0, `${groove.name}: no beats`);
@@ -370,6 +390,54 @@ test('nothing on the kit moves unless it is sounding', () => {
     'updateGroovePlayhead animates the kit directly — it would do so without sound');
   assert.match(body, /if \(!playing\) return;/,
     'updateGroovePlayhead must stand down entirely while stopped');
+});
+
+test('choosing a genre brings its tempo, unless the loop has locked it', () => {
+  const groove = code('../js/play/groove.js');
+  const fn = groove.slice(groove.indexOf('function chooseGroove'));
+  const body = fn.slice(0, fn.indexOf('\n}'));
+  assert.match(body, /if \(!hooks\.loopHasContent\(\)\) applyTempo\(grooveAt\(next\)\.bpm\);/,
+    'chooseGroove no longer carries the genre tempo, or no longer checks the lock');
+
+  // Both ways in must go through applyTempo: it is the only thing that holds
+  // the bar's phase across the change, and a tempo written straight to `bpm`
+  // makes the beat jump under a groove that is merely paused.
+  const apply = groove.slice(groove.indexOf('function applyTempo'));
+  assert.match(apply.slice(0, apply.indexOf('\n}')), /audioEpoch = audio\.ctx\.currentTime - phase \* currentBar\(\)/,
+    'applyTempo no longer re-pins the bar to hold the phase');
+  for (const name of ['chooseGroove', 'setTempo']) {
+    const start = groove.indexOf(`function ${name}`);
+    assert.doesNotMatch(groove.slice(start, groove.indexOf('\n}', start)), /\bbpm = /,
+      `${name} writes bpm directly instead of going through applyTempo`);
+  }
+});
+
+test('a switch repairs the audio route and never leaves the bar on a dead clock', () => {
+  const groove = code('../js/play/groove.js');
+  const body = (name) => {
+    const start = groove.indexOf(`function ${name}`);
+    assert.ok(start >= 0, `js/play/groove.js has no ${name}`);
+    return groove.slice(start, groove.indexOf('\n}', start));
+  };
+
+  // A wedge is a trusted gesture, and only a gesture may rebuild a context that
+  // was marked for recovery. Without this, every switch after a blur or a tab
+  // away schedules into a dead route and the wheel plays nothing.
+  assert.match(body('chooseGroove'), /hooks\.activateAudioForSound\(\)/,
+    'chooseGroove no longer recovers audio — a switch after a blur will be silent');
+  assert.match(body('chooseGroove'), /scheduleAhead\(\)/,
+    'a switch waits for the next tick, which can drop the first hit of the new groove');
+
+  // The epoch is a reading of one context's clock. A rebuilt context counts
+  // from zero, so an epoch from the old one is in the future of the new one and
+  // every hit is scheduled for a bar that never comes.
+  const pin = body('pinBar');
+  assert.match(pin, /epochGeneration !== audio\.contextGeneration/,
+    'pinBar no longer notices a rebuilt context');
+  assert.match(pin, /scheduled\.clear\(\)/,
+    're-pinning must drop keys minted against the old bar zero, or they silence the new one');
+  assert.match(body('scheduleAhead'), /pinBar\(\)/,
+    'the scheduler must re-pin, since a rebuild can land between any two ticks');
 });
 
 test('the loop locks to the groove bar when one is running', () => {

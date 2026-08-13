@@ -84,17 +84,24 @@ export function parseStepPattern(text) {
 // rewrite, since the same twelve wedges regrouped is a genuinely interesting
 // thing to watch happen.
 //
+// `bpm` is the tempo the style is played at, and choosing the wedge moves the
+// tempo there. A genre IS its tempo as much as its pattern: the ДНБ break at
+// 76 is a curiosity and БАЛАДА at 172 is a mistake, so the two travel together
+// rather than leaving the visitor to find the speed by tapping a stepper eight
+// times. Every value sits on the TEMPO_STEP grid so the stepper can still walk
+// away from it and back.
+//
 // `timeline` declares which parts are generated and from what. The pattern
 // strings below still spell those parts out, so the source shows the shape —
 // the test holds the two against each other, which is what catches a hand edit
 // that quietly breaks the evenness.
 // ============================================================
-export const GROOVE_FAMILIES = ['РІВНО', 'СВІНҐ', 'ЛАТИНА', 'ПОВІЛЬНО'];
+export const GROOVE_FAMILIES = ['РІВНО', 'СВІНҐ', 'ЕЛЕКТРО', 'ПОВІЛЬНО'];
 
 export const GROOVES = [
   // ---- РІВНО — the sixteenth grid, beats on steps 0 4 8 12 ----
   {
-    name: 'ПУЛЬС', family: 'РІВНО', steps: 16, beats: 4,
+    name: 'ПУЛЬС', family: 'РІВНО', steps: 16, beats: 4, bpm: 92,
     timeline: [{ part: 'hihat', onsets: 4, rotation: 0 }],
     parts: {
       hihat: 'x---x---x---x---',
@@ -103,7 +110,7 @@ export const GROOVES = [
     },
   },
   {
-    name: 'РОК', family: 'РІВНО', steps: 16, beats: 4,
+    name: 'РОК', family: 'РІВНО', steps: 16, beats: 4, bpm: 120,
     timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
     parts: {
       hihat: 'x-x-x-x-x-x-x-x-',
@@ -115,7 +122,7 @@ export const GROOVES = [
     // Closed hat on the beat, open hat on the "and" — the one groove whose
     // sound *is* the pedal lifting, and the reason audio.hihat's open branch
     // stopped being unreachable.
-    name: 'ДИСКО', family: 'РІВНО', steps: 16, beats: 4,
+    name: 'ДИСКО', family: 'РІВНО', steps: 16, beats: 4, bpm: 120,
     timeline: [{ part: 'hihat', onsets: 4, rotation: 0 }],
     parts: {
       hihat:     'x---x---x---x---',
@@ -128,7 +135,7 @@ export const GROOVES = [
   // ---- СВІНҐ — the triplet grid, beats on steps 0 3 6 9 ----
   {
     // E(8,12) is the shuffle exactly, with no rotation: long-short, long-short.
-    name: 'ШАФЛ', family: 'СВІНҐ', steps: 12, beats: 4,
+    name: 'ШАФЛ', family: 'СВІНҐ', steps: 12, beats: 4, bpm: 96,
     timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
     parts: {
       hihat: 'x-xx-xx-xx-x',
@@ -137,7 +144,7 @@ export const GROOVES = [
     },
   },
   {
-    name: 'БЛЮЗ', family: 'СВІНҐ', steps: 12, beats: 4,
+    name: 'БЛЮЗ', family: 'СВІНҐ', steps: 12, beats: 4, bpm: 76,
     timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
     parts: {
       hihat: 'x-xx-xx-xx-x',
@@ -146,33 +153,41 @@ export const GROOVES = [
     },
   },
   {
-    // Feathered kick under the ride, snare comping off the beat.
-    name: 'ДЖАЗ', family: 'СВІНҐ', steps: 12, beats: 4,
-    timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
+    // Shuffled house, which is why it is here and not next door with the
+    // machines: four-on-the-floor laid over the *triplet* grid, so the offbeat
+    // it answers with is a swung one. E(4,12) is that kick exactly — the same
+    // plain necklace as ТЕХНО's, drawn on the family's own circle. Closed hat
+    // with the kick, open hat on the last third of every beat: the long-short
+    // lilt is the whole difference between this and ДИСКО, which plays the same
+    // four beats straight.
+    name: 'ХАУС', family: 'СВІНҐ', steps: 12, beats: 4, bpm: 124,
+    timeline: [{ part: 'kick', onsets: 4, rotation: 0 }],
     parts: {
-      hihat: 'x-xx-xx-xx-x',
-      kick:  'X--o--X--o--',
-      snare: '--o--X--o--X',
+      hihat:     'x--x--x--x--',
+      hihatOpen: '--X--X--X--X',
+      kick:      'X--X--X--X--',
+      snare:     '---X-----X--',
     },
   },
 
-  // ---- ЛАТИНА ----
+  // ---- ЕЛЕКТРО ----
   {
-    // The cross-stick line is E(5,16) turned ten steps: the bossa clave, which
-    // is a Euclidean necklace and not a pattern anyone had to remember.
-    name: 'БОСА', family: 'ЛАТИНА', steps: 16, beats: 4,
-    timeline: [
-      { part: 'hihat', onsets: 8, rotation: 0 },
-      { part: 'snare', onsets: 5, rotation: 10 },
-    ],
+    // Four-on-the-floor is E(4,16) with no rotation — the plainest necklace on
+    // the circle, and the reason techno reads as a machine keeping time. The
+    // open hat answers it on every "and" and the closed hat lands on the "a",
+    // so the two hats interleave instead of striking together; that offbeat
+    // pair is what separates this from ДИСКО, whose hats sit on the beat.
+    name: 'ТЕХНО', family: 'ЕЛЕКТРО', steps: 16, beats: 4, bpm: 128,
+    timeline: [{ part: 'kick', onsets: 4, rotation: 0 }],
     parts: {
-      hihat: 'x-x-x-x-x-x-x-x-',
-      snare: 'X--x--x---x--x--',
-      kick:  'X-------X-------',
+      hihat:     '---x---x---x---x',
+      hihatOpen: '--X---X---X---X-',
+      kick:      'X---X---X---X---',
+      snare:     '----X-------X---',
     },
   },
   {
-    name: 'РЕҐЕТОН', family: 'ЛАТИНА', steps: 16, beats: 4,
+    name: 'РЕҐЕТОН', family: 'ЕЛЕКТРО', steps: 16, beats: 4, bpm: 96,
     timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
     parts: {
       hihat: 'x-x-x-x-x-x-x-x-',
@@ -181,18 +196,22 @@ export const GROOVES = [
     },
   },
   {
-    name: 'САМБА', family: 'ЛАТИНА', steps: 16, beats: 4,
+    // The two-step break: kick on one and on the "and" of three, snare on two
+    // and four, and E(12,16) riding over the top — which at 172 is sixteenths
+    // fast enough to blur into the roll the style is named for. The name is the
+    // abbreviation because "ДРАМ-Н-БЕЙС" does not fit a 30° wedge.
+    name: 'ДНБ', family: 'ЕЛЕКТРО', steps: 16, beats: 4, bpm: 172,
     timeline: [{ part: 'hihat', onsets: 12, rotation: 0 }],
     parts: {
       hihat: 'x-xxx-xxx-xxx-xx',
-      kick:  'X---x-X-x---X-x-',
-      snare: '--o---X---o---X-',
+      kick:  'X---------X-----',
+      snare: '----X-o-----X--o',
     },
   },
 
   // ---- ПОВІЛЬНО ----
   {
-    name: 'БАЛАДА', family: 'ПОВІЛЬНО', steps: 16, beats: 4,
+    name: 'БАЛАДА', family: 'ПОВІЛЬНО', steps: 16, beats: 4, bpm: 72,
     timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
     parts: {
       hihat: 'x-x-x-x-x-x-x-x-',
@@ -202,7 +221,7 @@ export const GROOVES = [
   },
   {
     // Half-time: one backbeat instead of two, and the ghosts carry the rest.
-    name: 'ТРІП-ХОП', family: 'ПОВІЛЬНО', steps: 16, beats: 4,
+    name: 'ТРІП-ХОП', family: 'ПОВІЛЬНО', steps: 16, beats: 4, bpm: 84,
     timeline: [{ part: 'hihat', onsets: 8, rotation: 0 }],
     parts: {
       hihat: 'x-x-x-x-x-x-x-x-',
@@ -211,7 +230,7 @@ export const GROOVES = [
     },
   },
   {
-    name: 'ХІП-ХОП', family: 'ПОВІЛЬНО', steps: 16, beats: 4,
+    name: 'ХІП-ХОП', family: 'ПОВІЛЬНО', steps: 16, beats: 4, bpm: 92,
     timeline: [{ part: 'hihat', onsets: 12, rotation: 0 }],
     parts: {
       hihat: 'x-xxx-xxx-xxx-xx',
@@ -244,10 +263,14 @@ export const grooveDensity = (groove) => grooveHits(groove).length;
 // ============================================================
 // TEMPO AND TIME
 // ============================================================
+// The ceiling is where it is because ДНБ lives at 172: a genre whose own tempo
+// the stepper cannot reach would be a groove the wheel can only play wrong. 176
+// is the next multiple of TEMPO_STEP above it, so the stepper can still walk one
+// notch past the fastest thing on the wheel.
 export const TEMPO_MIN = 60;
-export const TEMPO_MAX = 160;
+export const TEMPO_MAX = 176;
 export const TEMPO_STEP = 4;
-export const TEMPO_DEFAULT = 92;
+export const TEMPO_DEFAULT = 92;   // ПУЛЬС's own tempo — the wheel opens there
 
 export function stepTempo(bpm, direction) {
   const next = Math.round(bpm / TEMPO_STEP) * TEMPO_STEP + Math.sign(direction) * TEMPO_STEP;

@@ -6,21 +6,21 @@
 // guards let pinch work where it helps (inspecting an instrument) while
 // blocking the double-tap zoom that would otherwise eat a drum hit.
 // ============================================================
-import { session } from '../core/session.js?v=20260813-24';
-import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260813-24';
+import { session } from '../core/session.js?v=20260813-25';
+import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260813-25';
 import {
   renderer,
   camera,
   controls,
   fitCameraToViewport,
   applyMobileOrbitPolicy,
-} from './rig.js?v=20260813-24';
-import { ui } from '../core/studio.js?v=20260813-24';
-import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260813-24';
-import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260813-24';
-import { instrumentViewFrame } from './focus-frame.js?v=20260813-24';
-import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260813-24';
-import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260813-24';
+} from './rig.js?v=20260813-25';
+import { ui } from '../core/studio.js?v=20260813-25';
+import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260813-25';
+import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260813-25';
+import { instrumentViewFrame } from './focus-frame.js?v=20260813-25';
+import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260813-25';
+import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260813-25';
 
 // Resizing has to re-post the composer and re-sync chrome that main.js owns.
 // The gift reveal refit is a hook rather than an import: mascot/ sits *above*

@@ -30,8 +30,8 @@
 //
 // The theory is all in rhythm.js; this file is geometry, pointers and state.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260813-24';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-24';
+import { audio } from '../core/studio.js?v=20260813-25';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-25';
 import {
   LOOP_LOOKAHEAD,
   LOOP_TICK_MS,
@@ -39,7 +39,7 @@ import {
   playMusicalEvent,
   positiveModulo,
   runMusicalVisual,
-} from './loop.js?v=20260813-24';
+} from './loop.js?v=20260813-25';
 import {
   GROOVES,
   GROOVE_COUNT,
@@ -52,8 +52,8 @@ import {
   stepGroove,
   stepSeconds,
   stepTempo,
-} from './rhythm.js?v=20260813-24';
-import { syncPadsOpenClass } from './pads.js?v=20260813-24';
+} from './rhythm.js?v=20260813-25';
+import { syncPadsOpenClass } from './pads.js?v=20260813-25';
 
 // Choosing a groove must not wake audio, and stepping it from the keyboard is
 // the drums close-up's alone. main.js owns both answers.
@@ -264,17 +264,50 @@ function paintTempoLock() {
 // left on rather than the beat the room is on, and a whole second layer of
 // frame-clock bookkeeping existed to arrange that.
 //
-// `null` means not yet pinned. Only two things pin it: the first start of a
-// visit, which lands the groove on the downbeat, and a tempo change, which
-// re-pins to hold the phase across the new bar length.
+// `null` means not yet pinned. Three things pin it: the first start of a visit,
+// which lands the groove on the downbeat; a tempo change, which re-pins to hold
+// the phase across the new bar length; and a **new audio context**.
+//
+// That third one is not bookkeeping. The epoch is a reading of `ctx.currentTime`
+// and is therefore only as old as the context it was read from — and audio.js
+// rebuilds the context whenever one was marked for recovery (a blur, a tab
+// away, an interrupted mobile session, a stalled clock). A rebuilt context
+// starts counting from zero, so an epoch pinned twenty seconds into the old one
+// sits twenty seconds in the *future* of the new one, and every hit is
+// scheduled for a bar that has not happened yet. The wheel keeps turning and
+// says it is playing; the kit is silent. `pinBar` is what makes that
+// unrepresentable, and it is called from the scheduler rather than from one
+// clever place, because a rebuild can land at any moment.
 // ============================================================
-let audioEpoch = null;   // audio-clock time of bar zero
+let audioEpoch = null;        // audio-clock time of bar zero
+let epochGeneration = null;   // which context that reading came from
 let lastVisualStep = -1;
 const scheduled = new Set();
 const grooveVisualTimers = new Set();
 let schedulerTimer = null;
 
 const barPinned = () => Boolean(audio.ctx) && audioEpoch !== null;
+
+/**
+ * Pin the bar if it is not pinned to *this* context's clock. A no-op — two
+ * comparisons — whenever the bar is already good, which is the common case and
+ * why it can sit at the top of a 25 ms scheduler tick.
+ */
+function pinBar() {
+  if (!audio.ctx) return;
+  const stale = audioEpoch === null
+    || epochGeneration !== audio.contextGeneration
+    // Belt and braces: a clock that has moved backwards under the epoch is the
+    // same failure by another route.
+    || audioEpoch > audio.ctx.currentTime + 0.5;
+  if (!stale) return;
+  audioEpoch = audio.ctx.currentTime;
+  epochGeneration = audio.contextGeneration;
+  // Bar numbering restarts with the epoch, so keys minted against the old one
+  // would collide with the new bar zero and silence it.
+  scheduled.clear();
+  lastVisualStep = -1;
+}
 
 function barPhase() {
   if (!barPinned()) return 0;
@@ -293,6 +326,7 @@ function barPhase() {
 // ============================================================
 function scheduleAhead() {
   if (!audio.ctx || !playing || wheel.hidden) return;
+  pinBar();
   const groove = current();
   const bar = currentBar();
   const stepLength = stepSeconds(bpm, groove);
@@ -357,6 +391,7 @@ export function resyncGroove() {
   if (wheel.hidden || !playing) return;
   audio.init();
   audio.resume();
+  pinBar();
   scheduled.clear();
   if (!schedulerTimer) startScheduler();
   else scheduleAhead();
@@ -416,24 +451,51 @@ export function updateGroovePlayhead() {
 function chooseGroove(index) {
   const next = ((index % GROOVE_COUNT) + GROOVE_COUNT) % GROOVE_COUNT;
   if (playing && next === grooveIndex) { stopPlaying(); return; }
+  // Every tap on a wedge is a trusted gesture, so every tap may *repair* the
+  // audio route — not only the one that starts from stopped. A blur, a tab
+  // away or a mobile interruption marks the context for recovery, and only a
+  // gesture is allowed to rebuild one (the look-ahead events the scheduler
+  // sends carry `allowRecovery: false` on purpose). Without this the visitor
+  // switching between grooves gets silence from every wedge until they happen
+  // to tap the *same* one twice, whose stop-and-start went through startPlaying
+  // and recovered by accident. That is the "it fixes itself after another
+  // switch" bug, and it is why this line is not startPlaying's alone.
+  hooks.activateAudioForSound();
+  // ...and that call may have handed us a brand new clock, so the bar is put
+  // back on it before anything below reads a phase off the old one.
+  pinBar();
+  // The genre carries its tempo (rhythm.js, `bpm`): ДНБ at 76 is the pattern
+  // without the style, and nobody arrives at 172 by tapping a stepper twenty
+  // times. Applied before the index moves, so the phase is held against the bar
+  // that was actually running. The loop's tempo lock still wins — a take is
+  // already whole bars of the old tempo — and there the wedge switches the
+  // pattern alone, silently, since setTempo has already said why.
+  if (!hooks.loopHasContent()) applyTempo(grooveAt(next).bpm);
   grooveIndex = next;
   // A different grid means a different step count, so the crossing cursor and
   // everything queued against the old bar have to go.
   lastVisualStep = -1;
   scheduled.clear();
   storeGroove();
-  if (playing) paintWheel();
-  else startPlaying();
+  if (playing) {
+    // Fill the look-ahead window now rather than at the next 25 ms tick. At ДНБ
+    // a sixteenth is 87 ms, so a tick's wait can drop the first hit of the new
+    // groove — the switch lands a beat late, which is exactly what the visitor
+    // reads as "it did not start".
+    scheduleAhead();
+    paintWheel();
+  } else {
+    startPlaying();
+  }
 }
 
 function startPlaying() {
   if (playing) return;
   playing = true;
-  // The one place this module wakes audio, and only ever from a real gesture.
   hooks.activateAudioForSound();
-  // Pin the bar only if nothing has pinned it yet, so the first groove of a
-  // visit starts on the downbeat and every later one joins the bar in progress.
-  if (audio.ctx && audioEpoch === null) audioEpoch = audio.ctx.currentTime;
+  // Pins only an unpinned or stale bar, so the first groove of a visit starts on
+  // the downbeat and every later one joins the bar in progress.
+  pinBar();
   lastVisualStep = -1;
   startScheduler();
   paintWheel();
@@ -449,6 +511,19 @@ function stopPlaying() {
   paintWheel();
 }
 
+/**
+ * Move the tempo, keeping the phase where it is — or the bar jumps. That has to
+ * hold while stopped too, since the bar is still running then. Both ways in
+ * (the stepper, and choosing a genre) go through here; neither may skip it.
+ */
+function applyTempo(next) {
+  if (next === bpm || !Number.isFinite(next)) return;
+  const phase = barPhase();
+  bpm = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, next));
+  if (barPinned()) audioEpoch = audio.ctx.currentTime - phase * currentBar();
+  scheduled.clear();
+}
+
 function setTempo(direction) {
   if (hooks.loopHasContent()) {
     hooks.toast('Темп замкнено, поки є loop', 1700);
@@ -456,12 +531,7 @@ function setTempo(direction) {
   }
   const next = stepTempo(bpm, direction);
   if (next === bpm) return;
-  // Keep the phase where it is across the tempo change, or the bar jumps. This
-  // has to hold while stopped too, since the bar is still running then.
-  const phase = barPhase();
-  bpm = next;
-  if (barPinned()) audioEpoch = audio.ctx.currentTime - phase * currentBar();
-  scheduled.clear();
+  applyTempo(next);
   storeGroove();
   paintWheel();
 }
@@ -564,6 +634,7 @@ export function hideGrooveWheel() {
 export function stopGroove() {
   stopPlaying();
   audioEpoch = null;
+  epochGeneration = null;
 }
 
 // ---- what the loop pedal needs to know ----
@@ -595,6 +666,10 @@ window.__grooveDebug = () => ({
   hidden: wheel.hidden,
   scheduled: scheduled.size,
   barPinned: barPinned(),
+  // True would mean the bar is pinned to a clock that no longer exists — the
+  // silent-wheel-that-says-it-is-playing state. It must never be observed.
+  epochStale: Boolean(audio.ctx) && audioEpoch !== null
+    && epochGeneration !== audio.contextGeneration,
   // Two docked wheels at once would be a layout bug the eye catches late and a
   // headless run catches immediately.
   bothWheelsOpen: !wheel.hidden && !document.getElementById('chord-wheel')?.hidden,

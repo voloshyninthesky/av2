@@ -6,19 +6,19 @@
 // as plain joint snapshots so a focus transition can blend between them.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260813-24';
-import { ui, mascot, piano, guitar, mic, mascotLabel, mascotLabelY, applyMascotScale } from '../core/studio.js?v=20260813-24';
+import { session, easeInOut } from '../core/session.js?v=20260813-25';
+import { ui, mascot, piano, guitar, mic, mascotLabel, mascotLabelY, applyMascotScale } from '../core/studio.js?v=20260813-25';
 import {
   MASCOT_HIP_LOCAL_Y,
   INSTRUMENT_VIEW_PRESETS,
   instrumentView,
   instrumentGroups,
   instrumentLocalToWorld,
-} from '../view/instrument-presets.js?v=20260813-24';
-import { PIANO_HAND_ANCHORS } from '../view/focus-frame.js?v=20260813-24';
-import { guitarMascotStandoffZ } from '../instruments/guitar.js?v=20260813-24';
-import { mascotMove, dance } from './state.js?v=20260813-24';
-import { mascotCfg, MASCOT_HEIGHT_RANGE } from './appearance.js?v=20260813-24';
+} from '../view/instrument-presets.js?v=20260813-25';
+import { PIANO_HAND_ANCHORS } from '../view/focus-frame.js?v=20260813-25';
+import { guitarMascotStandoffZ } from '../instruments/guitar.js?v=20260813-25';
+import { mascotMove, dance } from './state.js?v=20260813-25';
+import { mascotCfg, MASCOT_HEIGHT_RANGE } from './appearance.js?v=20260813-25';
 
 const danceBtn = document.getElementById('logo-btn'); // HUD logo doubles as the dance toggle
 
