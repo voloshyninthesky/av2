@@ -30,8 +30,8 @@
 //
 // The theory is all in rhythm.js; this file is geometry, pointers and state.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260813-25';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-25';
+import { audio } from '../core/studio.js?v=20260813-26';
+import { prefersReducedMotion } from '../core/quality.js?v=20260813-26';
 import {
   LOOP_LOOKAHEAD,
   LOOP_TICK_MS,
@@ -39,7 +39,7 @@ import {
   playMusicalEvent,
   positiveModulo,
   runMusicalVisual,
-} from './loop.js?v=20260813-25';
+} from './loop.js?v=20260813-26';
 import {
   GROOVES,
   GROOVE_COUNT,
@@ -52,8 +52,8 @@ import {
   stepGroove,
   stepSeconds,
   stepTempo,
-} from './rhythm.js?v=20260813-25';
-import { syncPadsOpenClass } from './pads.js?v=20260813-25';
+} from './rhythm.js?v=20260813-26';
+import { syncPadsOpenClass } from './pads.js?v=20260813-26';
 
 // Choosing a groove must not wake audio, and stepping it from the keyboard is
 // the drums close-up's alone. main.js owns both answers.
@@ -81,19 +81,38 @@ const GROOVE_STORAGE = 'av2.groove.v1';
 let grooveIndex = 0;
 let bpm = TEMPO_DEFAULT;
 let playing = false;
+
+// A genre brings its own tempo, but only until the visitor disagrees. Stepping
+// the tempo is them saying "this style, at *this* speed", and that answer has
+// to outlive leaving the wedge and coming back — otherwise the stepper is a
+// control that undoes itself the moment it is used, and the genre tempo stops
+// being a starting point and becomes an override. One entry per groove, so
+// tuning ХАУС down does not drag ДНБ with it.
+const tempoByGroove = new Map();
+const tempoFor = (index) => tempoByGroove.get(index) ?? grooveAt(index).bpm;
+const validTempo = (value) => Number.isFinite(value) && value >= TEMPO_MIN && value <= TEMPO_MAX;
+
 try {
   const saved = JSON.parse(localStorage.getItem(GROOVE_STORAGE) || 'null');
   if (Number.isInteger(saved?.groove) && saved.groove >= 0 && saved.groove < GROOVE_COUNT) {
     grooveIndex = saved.groove;
   }
-  if (Number.isFinite(saved?.bpm) && saved.bpm >= TEMPO_MIN && saved.bpm <= TEMPO_MAX) {
-    bpm = saved.bpm;
+  if (validTempo(saved?.bpm)) bpm = saved.bpm;
+  // Absent in anything written before genres carried a tempo, which is why each
+  // field still falls back on its own rather than the record being all-or-none.
+  for (const [key, value] of Object.entries(saved?.tempos ?? {})) {
+    const index = Number(key);
+    if (Number.isInteger(index) && index >= 0 && index < GROOVE_COUNT && validTempo(value)) {
+      tempoByGroove.set(index, value);
+    }
   }
 } catch { /* storage is optional */ }
 
 function storeGroove() {
   try {
-    localStorage.setItem(GROOVE_STORAGE, JSON.stringify({ groove: grooveIndex, bpm }));
+    localStorage.setItem(GROOVE_STORAGE, JSON.stringify({
+      groove: grooveIndex, bpm, tempos: Object.fromEntries(tempoByGroove),
+    }));
   } catch { /* storage is optional */ }
 }
 
@@ -466,11 +485,13 @@ function chooseGroove(index) {
   pinBar();
   // The genre carries its tempo (rhythm.js, `bpm`): ДНБ at 76 is the pattern
   // without the style, and nobody arrives at 172 by tapping a stepper twenty
-  // times. Applied before the index moves, so the phase is held against the bar
+  // times. `tempoFor` is what keeps that a *default* — a genre the visitor has
+  // re-tuned comes back at their speed, not at ours, every time they return to
+  // it. Applied before the index moves, so the phase is held against the bar
   // that was actually running. The loop's tempo lock still wins — a take is
   // already whole bars of the old tempo — and there the wedge switches the
   // pattern alone, silently, since setTempo has already said why.
-  if (!hooks.loopHasContent()) applyTempo(grooveAt(next).bpm);
+  if (!hooks.loopHasContent()) applyTempo(tempoFor(next));
   grooveIndex = next;
   // A different grid means a different step count, so the crossing cursor and
   // everything queued against the old bar have to go.
@@ -532,6 +553,10 @@ function setTempo(direction) {
   const next = stepTempo(bpm, direction);
   if (next === bpm) return;
   applyTempo(next);
+  // This groove is now the visitor's tempo, not its own. Recorded even when the
+  // two agree: a step up and back down is them choosing the default, and a
+  // later edit to that default must not move a speed they settled on by hand.
+  tempoByGroove.set(grooveIndex, bpm);
   storeGroove();
   paintWheel();
 }
@@ -658,6 +683,9 @@ window.__grooveDebug = () => ({
   family: current().family,
   index: grooveIndex,
   bpm,
+  // Whether this groove is running at the visitor's tempo or at its own.
+  tempoIsCustom: tempoByGroove.has(grooveIndex),
+  grooveTempo: current().bpm,
   playing,
   steps: current().steps,
   beats: current().beats,

@@ -20,6 +20,13 @@ taken out of it, and nobody was going to find 172 by tapping a `+4` stepper twen
 stepper is unchanged and still overrides the genre's tempo afterwards — this sets the
 starting point, it does not take the control away.
 
+- **The genre tempo is a default, not an override.** A tempo the visitor stepped is recorded
+  against *that* groove (`tempoByGroove`, persisted as `tempos` in `av2.groove.v1`) and is
+  what the wedge brings back — after a stop and a start, after a tour of the other eleven,
+  after a reload. The first cut re-applied `grooveAt(next).bpm` unconditionally, which meant
+  stopping and restarting a groove silently undid the stepper: a control that reverts itself
+  the moment it is used is worse than no control. One entry per groove, so re-tuning one
+  style does not drag the rest with it.
 - **The loop's lock wins.** A recorded take is already whole bars of the old tempo, so with
   loop content the wedge switches the pattern alone and the tempo does not move. Silently:
   `setTempo` has already toasted that rule for anyone who reached for the stepper.

@@ -396,7 +396,7 @@ test('choosing a genre brings its tempo, unless the loop has locked it', () => {
   const groove = code('../js/play/groove.js');
   const fn = groove.slice(groove.indexOf('function chooseGroove'));
   const body = fn.slice(0, fn.indexOf('\n}'));
-  assert.match(body, /if \(!hooks\.loopHasContent\(\)\) applyTempo\(grooveAt\(next\)\.bpm\);/,
+  assert.match(body, /if \(!hooks\.loopHasContent\(\)\) applyTempo\(tempoFor\(next\)\);/,
     'chooseGroove no longer carries the genre tempo, or no longer checks the lock');
 
   // Both ways in must go through applyTempo: it is the only thing that holds
@@ -410,6 +410,31 @@ test('choosing a genre brings its tempo, unless the loop has locked it', () => {
     assert.doesNotMatch(groove.slice(start, groove.indexOf('\n}', start)), /\bbpm = /,
       `${name} writes bpm directly instead of going through applyTempo`);
   }
+});
+
+test('a tempo the visitor set outlives leaving the groove and coming back', () => {
+  const groove = code('../js/play/groove.js');
+  const body = (name) => {
+    const start = groove.indexOf(`function ${name}`);
+    assert.ok(start >= 0, `js/play/groove.js has no ${name}`);
+    return groove.slice(start, groove.indexOf('\n}', start));
+  };
+
+  // Stepping the tempo is the visitor saying "this style, at *this* speed".
+  // Without the record, choosing the wedge again — which is also how a stopped
+  // groove is restarted — would put the genre's own tempo straight back, and
+  // the stepper would be a control that undoes itself the moment it is used.
+  assert.match(body('setTempo'), /tempoByGroove\.set\(grooveIndex, bpm\)/,
+    'setTempo no longer remembers the visitor tempo for this groove');
+  assert.match(body('chooseGroove'), /applyTempo\(tempoFor\(next\)\)/,
+    'chooseGroove takes the genre tempo directly and would overwrite a chosen one');
+  assert.match(groove, /tempoByGroove\.get\(index\) \?\? grooveAt\(index\)\.bpm/,
+    'tempoFor must prefer the visitor tempo and fall back to the genre default');
+
+  // Per groove, or re-tuning one style would drag every other one with it.
+  assert.match(groove, /const tempoByGroove = new Map\(\)/);
+  assert.match(body('storeGroove'), /tempos: Object\.fromEntries\(tempoByGroove\)/,
+    'the chosen tempos are not persisted alongside the groove');
 });
 
 test('a switch repairs the audio route and never leaves the bar on a dead clock', () => {
