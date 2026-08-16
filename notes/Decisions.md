@@ -12,6 +12,53 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The tempo stepper re-times the take instead of refusing — 2026-08-16
+
+The lock («Темп замкнено, поки є loop») was always the interim answer — [[SPEC]]'s drums
+roadmap listed its replacement as item one. A take is whole bars of the old tempo, and moving
+the tempo underneath drifted the backbeat onto the "and" within two minutes; the lock closed
+that by refusing, `rescaleRecordedLoop` closes it by moving the take with the ruler. A step
+scales the loop's duration, every offset, every held duration and every glide point by the
+old/new ratio, then re-anchors the epoch.
+
+- **The re-anchor preserves the cycle count, not just the phase.** Restarting cycles at zero
+  (`epoch = now − fraction · duration`) looks equivalent and is not: `playFromCycle` gates
+  would strand every overdub layer, and the scheduler's `cycle:id` dedup keys would collide
+  with their old namesakes bars later. Keeping the count also means events already scheduled
+  into the look-ahead window keep their keys, so nothing double-fires at the seam.
+- **The downbeat snap is a float repair, not a quantiser** — capped at 10 ms. A take recorded
+  free and only joined by a groove later was never bar-aligned; yanking it up to half a bar
+  onto that grid would be a re-phrasing the visitor did not ask for.
+- **An open take still locks the stepper.** Captured offsets are distances in the old bar,
+  and re-ruling a bar someone is currently writing into bends them silently.
+- **The wedge still switches the pattern alone while a loop exists.** A genre tap is pattern
+  intent that merely carries a tempo default; the stepper is tempo intent. Browsing genres
+  must not re-time a take as a side effect.
+
+---
+
+## A take over a groove gets a count-in — 2026-08-16
+
+Roadmap item two, replacing the record press's snap-*back* to the previous downbeat. The
+snap-back made captured offsets bar-relative but could not put the visitor's entrance on
+beat one — their first note landed wherever the finger did. Now the press arms the pedal
+(**ВІДЛІК**), the LED pulses at the groove's beat, the meta counts down, and the take opens
+exactly on the next downbeat, never nearer than two beats — one beat of warning is a stumble,
+not a count-in.
+
+- **The flip is a timer *and* a frame check, and the open is idempotent.** `setTimeout` is
+  throttled in background tabs and headless panes while the pumped frame loop keeps running;
+  whichever arrives first opens the take, and clearing the timer inside the open is what
+  makes the pair safe.
+- **It flips ~60 ms early on purpose.** An eager entrance a hair before beat one meant beat
+  one, and `captureLoopEvent`'s `max(0, …)` clamp lands it at offset 0 exactly.
+- **Count-in notes sound but are not captured**, and that needed no code: capture already
+  no-ops outside recording / overdubbing, and `counting` is neither.
+- **No groove, no count-in.** A free take has no grid to count, so the standing "with no
+  groove sounding the pedal is unchanged" rule holds.
+
+---
+
 ## Pages gets minified JS; the repo keeps the readable kind — 2026-08-15
 
 `tools/minify.mjs` runs in the deploy workflow over the staged `_site` copy, not over the

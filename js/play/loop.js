@@ -7,13 +7,13 @@
 // `playMusicalEvent` is the one road every note takes — pointer, ribbon,
 // keyboard and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260813-26';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260813-26';
-import { mascotMove } from '../mascot/state.js?v=20260813-26';
-import { play, heldPianoNotes } from './state.js?v=20260813-26';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260813-26';
-import { freqFromMidi } from './harmony.js?v=20260813-26';
-import { vowelAt } from './voice.js?v=20260813-26';
+import { session } from '../core/session.js?v=20260816-01';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260816-01';
+import { mascotMove } from '../mascot/state.js?v=20260816-01';
+import { play, heldPianoNotes } from './state.js?v=20260816-01';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260816-01';
+import { freqFromMidi } from './harmony.js?v=20260816-01';
+import { vowelAt } from './voice.js?v=20260816-01';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');
@@ -35,10 +35,11 @@ let hooks = {
   captureHeldPianoIntoLoop: () => {},
   finishHeldPianoLoopCaptures: () => {},
   finalizeHeldPianoLoopCapture: () => {},
-  // The groove wheel sits above this module, so its bar arrives as a hook. Both
-  // return null whenever no groove is sounding, which is what leaves the loop
-  // free-running exactly as it was.
+  // The groove wheel sits above this module, so its bar arrives as a hook. All
+  // three return null whenever no groove is sounding, which is what leaves the
+  // loop free-running exactly as it was.
   grooveBarSeconds: () => null,
+  grooveBeatSeconds: () => null,
   grooveDownbeatAt: () => null,
 };
 export function initLoopPedal(next) {
@@ -47,6 +48,10 @@ export function initLoopPedal(next) {
 
 // ---- multi-instrument loop pedal ----
 export const LOOP_MAX_SECONDS = 12;
+// The least runway a count-in may give before the take opens. One beat of
+// warning is a stumble, not a count-in — and zero is the finger happening to
+// land on the downbeat, which is the luck the count-in exists to replace.
+const COUNT_IN_MIN_BEATS = 2;
 // The groove wheel runs its own scheduler against the same audio clock. Sharing
 // these two rather than copying them is what stops the pair drifting apart the
 // first time either is tuned.
@@ -64,6 +69,10 @@ export const loop = {
   activeLayer: 0,
   layerStartCount: 0,
   nextId: 1,
+  countdownStartedAt: 0,
+  countdownEndsAt: 0,
+  countdownBeat: 0,
+  countdownTimer: null,
   autoCloseTimer: null,
   schedulerTimer: null,
   scheduled: new Set(),
@@ -278,6 +287,7 @@ function renderLoopState(announce = true) {
   const layers = `${loop.layers} ${loopLayerWord(loop.layers)}`;
   const states = {
     empty: ['LOOP', 'ЗАПИСАТИ', 'Почати запис музичного циклу', 'Loop порожній'],
+    counting: ['ВІДЛІК', 'ГОТУЙСЯ', 'Скасувати відлік', 'Відлік до запису'],
     recording: ['ЗАПИС', 'ГРАЙ ЗАРАЗ', 'Завершити запис і відтворити loop', 'Запис першого шару'],
     playing: ['+ ШАР', layers, 'Записати новий шар поверх loop', `Loop грає, ${layers}`],
     overdubbing: ['ДУБЛЬ', 'ГРАЙ ПОВЕРХ', 'Завершити запис нового шару', `Запис нового шару, ${layers}`],
@@ -294,7 +304,21 @@ export function updateLoopProgress() {
   if (!audio.ctx || audio.ctx.currentTime - loop.lastUiAt < 0.08) return;
   loop.lastUiAt = audio.ctx.currentTime;
   let progress = 0;
-  if (loop.state === 'recording') {
+  if (loop.state === 'counting') {
+    const now = audio.ctx.currentTime;
+    if (now >= loop.countdownEndsAt - 0.06) {
+      // The count-in timer's frame-driven twin: setTimeout is throttled in
+      // background tabs while this loop keeps pumping (headless included), so
+      // whichever of the two arrives first opens the take. openBaseLoop-
+      // Recording clears the timer, which is what makes the pair idempotent.
+      openBaseLoopRecording(loop.countdownEndsAt);
+      return;
+    }
+    const total = loop.countdownEndsAt - loop.countdownStartedAt;
+    progress = total > 0 ? Math.min(1, (now - loop.countdownStartedAt) / total) : 0;
+    const beatsLeft = Math.max(1, Math.ceil((loop.countdownEndsAt - now) / loop.countdownBeat));
+    loopMeta.textContent = `${beatsLeft} · ГОТУЙСЯ`;
+  } else if (loop.state === 'recording') {
     const elapsed = Math.max(0, audio.ctx.currentTime - loop.recordStartedAt);
     progress = Math.min(1, elapsed / LOOP_MAX_SECONDS);
     loopMeta.textContent = `${elapsed.toFixed(1)} С · ГРАЙ`;
@@ -314,18 +338,69 @@ function startBaseLoopRecording() {
   hooks.activateAudioForSound();
   stopLoopScheduler();
   clearTimeout(loop.autoCloseTimer);
+  // Against a running groove the press ARMS rather than records: the beats
+  // count down and the take opens exactly on the next downbeat, so the first
+  // bar is the visitor's first bar, entered on beat one instead of wherever
+  // the finger landed. With no groove there is no grid to count, so the pedal
+  // records from the press exactly as it always did.
+  const beat = hooks.grooveBeatSeconds();
+  const bar = hooks.grooveBarSeconds();
+  if (beat && bar) {
+    let downbeat = hooks.grooveDownbeatAt(audio.ctx.currentTime);
+    if (downbeat - audio.ctx.currentTime < beat * COUNT_IN_MIN_BEATS) downbeat += bar;
+    beginLoopCountIn(downbeat, beat);
+    return;
+  }
+  openBaseLoopRecording(audio.ctx.currentTime);
+}
+
+function beginLoopCountIn(downbeat, beat) {
+  loop.state = 'counting';
+  loop.countdownStartedAt = audio.ctx.currentTime;
+  loop.countdownEndsAt = downbeat;
+  loop.countdownBeat = beat;
+  loopProgressBar.style.width = '0%';
+  // The LED pulses in the groove's own tempo — the count the visitor hears.
+  loopPedal.style.setProperty('--count-beat', `${beat.toFixed(3)}s`);
+  // Notes played during the count-in sound but are not captured; that needs no
+  // code here, because captureLoopEvent already no-ops outside recording /
+  // overdubbing and 'counting' is neither.
+  //
+  // The flip fires a hair EARLY on purpose: an eager entrance just before beat
+  // one meant beat one, and captureLoopEvent's max(0, …) clamp lands it at
+  // offset 0 exactly. updateLoopProgress carries a frame-driven twin of this
+  // timer, because timers are throttled in background tabs while the headless
+  // frame loop keeps pumping — whichever arrives first opens the take.
+  const wait = Math.max(0, (downbeat - audio.ctx.currentTime) * 1000 - 60);
+  loop.countdownTimer = setTimeout(() => {
+    if (loop.state === 'counting') openBaseLoopRecording(loop.countdownEndsAt);
+  }, wait);
+  renderLoopState();
+  navigator.vibrate?.(18);
+}
+
+function cancelLoopCountIn() {
+  clearTimeout(loop.countdownTimer);
+  loop.countdownTimer = null;
+  loop.state = 'empty';
+  loopProgressBar.style.width = '0%';
+  renderLoopState();
+  ui.toast('Відлік скасовано', 1400);
+}
+
+function openBaseLoopRecording(startAt) {
+  clearTimeout(loop.countdownTimer);
+  loop.countdownTimer = null;
   loop.state = 'recording';
   loop.events = [];
   loop.duration = 0;
   loop.layers = 0;
   loop.activeLayer = 1;
   loop.layerStartCount = 0;
-  // Snap the start BACK to the downbeat at or before the press when a groove is
-  // running. Every captured offset is measured from recordStartedAt, so this
-  // alone makes them bar-relative — and rounding backwards adds a little
-  // leading silence rather than clipping the visitor's first hit.
-  loop.recordStartedAt = hooks.grooveDownbeatAt(audio.ctx.currentTime, { before: true })
-    ?? audio.ctx.currentTime;
+  // Every captured offset is measured from here. After a count-in this is the
+  // downbeat itself — possibly a few ms in the future, which the offset clamp
+  // absorbs — so offsets are bar-relative with no snap-back needed.
+  loop.recordStartedAt = startAt;
   loopProgressBar.style.width = '0%';
   loop.autoCloseTimer = setTimeout(() => finishBaseLoopRecording(true), LOOP_MAX_SECONDS * 1000);
   hooks.captureHeldVocalIntoLoop();
@@ -428,7 +503,62 @@ function resumeLoop() {
   startLoopScheduler();
 }
 
+/**
+ * Re-time the recorded loop by `ratio` (new length / old length) — the groove
+ * wheel's tempo stepper calls this instead of locking itself while a loop has
+ * content. Duration, every event offset, every held note's duration and every
+ * glide point scale together, and the epoch is re-snapped so the note under
+ * the playhead stays under it.
+ */
+export function rescaleRecordedLoop(ratio) {
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio === 1) return;
+  // An open take never reaches here — the stepper stays locked while recording
+  // or overdubbing, because captured offsets are distances in the old bar and
+  // moving the ruler mid-measurement would bend them silently.
+  if ((loop.state !== 'playing' && loop.state !== 'paused') || !loop.duration) return;
+  const oldDuration = loop.duration;
+  loop.duration = oldDuration * ratio;
+  for (const event of loop.events) {
+    event.offset *= ratio;
+    if (event.duration != null) event.duration *= ratio;
+    // A sung line is a shape; its bend has to stretch with the bar it lives in.
+    if (event.glide) for (const point of event.glide) point[0] *= ratio;
+  }
+  if (loop.state === 'paused') {
+    loop.pausedOffset *= ratio;
+    return;
+  }
+  // Re-anchor keeping BOTH the phase and the cycle count. Restarting cycles at
+  // zero (epoch = now - fraction · duration) looks equivalent and is not:
+  // playFromCycle gates would strand every overdub layer, and the scheduler's
+  // `cycle:id` dedup keys would collide with their old namesakes bars later.
+  // Preserving the count means events already scheduled into the look-ahead
+  // window keep their keys, so nothing double-fires at the seam either.
+  const now = audio.ctx.currentTime;
+  const cycles = Math.floor((now - loop.epoch) / oldDuration);
+  const fraction = positiveModulo(now - loop.epoch, oldDuration) / oldDuration;
+  loop.epoch = now - (cycles + fraction) * loop.duration;
+  // Put bar one back on the groove's 12 o'clock *exactly* — but only as a
+  // float repair (the stepper and this call read the clock microseconds
+  // apart). A take recorded free and only joined by a groove later was never
+  // bar-aligned, and yanking it up to half a bar onto that grid would be a
+  // jump the visitor did not ask for — hence the 10 ms ceiling.
+  const bar = hooks.grooveBarSeconds();
+  if (bar) {
+    const cycleStart = loop.epoch + cycles * loop.duration;
+    const before = hooks.grooveDownbeatAt(cycleStart, { before: true });
+    if (before !== null) {
+      const snapped = cycleStart - before > bar / 2 ? before + bar : before;
+      if (Math.abs(snapped - cycleStart) < 0.01) loop.epoch += snapped - cycleStart;
+    }
+  }
+  renderLoopState(false);
+}
+
 export function clearRecordedLoop() {
+  // Mid-count-in there is nothing recorded to clear; the press means "stand
+  // down", and the cancel toast says what actually happened.
+  if (loop.state === 'counting') { cancelLoopCountIn(); return; }
   clearTimeout(loop.autoCloseTimer);
   hooks.finishHeldLoopCapture();
   for (const held of heldPianoNotes) hooks.finalizeHeldPianoLoopCapture(held, { cancel: true });
@@ -451,6 +581,7 @@ export function toggleLoopRecording() {
     return;
   }
   if (loop.state === 'empty') startBaseLoopRecording();
+  else if (loop.state === 'counting') cancelLoopCountIn();
   else if (loop.state === 'recording') finishBaseLoopRecording();
   else if (loop.state === 'playing') startLoopOverdub();
   else if (loop.state === 'overdubbing') finishLoopOverdub();

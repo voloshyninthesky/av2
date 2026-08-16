@@ -8,9 +8,9 @@ updated: 2026-08-13
 Snapshot as of **2026-08-13**. This is the one note that goes stale by design — update it or
 delete it, don't trust it blind. Check `git log` and `git status` first.
 
-`main` is on **`cdaf30d`** plus the silver-swallow commit, the tree is on stamp
-**`20260813-26`** (265 occurrences), 143 Node
-tests pass across 11 suites, and the working tree is clean. Both of the changes below are
+`main` carries the deploy-time minify pass and the loop-pedal count-in / tempo-rescale
+work; the tree is on stamp **`20260816-01`** (265 occurrences, swept 2026-08-16 with that
+loop-pedal change), 147 Node tests pass across 11 suites. Both of the changes below are
 deployed and **verified live**, not just green in Actions:
 
 ```bash
@@ -409,12 +409,18 @@ velocity from where a pointer lands on a head, a working hi-hat pedal, `1`–`7`
 in a close-up, head-only recoil, and a loop pedal that quantises to whole bars against a
 running groove and absorbs it into the take. → [[Decisions]]
 
-Still open, in the order [[SPEC]] lists them: rescale a loop on tempo change instead of locking
-the stepper; a count-in; the groove as a stage-wide backbone under the guitar and piano too
-(both their roadmaps already ask for a metronome and a backing groove); ride / rimshot / choke
-/ flam; and a measured `drumsFocusSafeRect()` if the framing ever needs to reserve rather than
-cap. Drums still uses the **raw camera preset** — that is deliberate, and the wheel's corner is
-verified by eye rather than derived.
+The first two roadmap items landed on **2026-08-16** ([[Decisions]] "The tempo stepper
+re-times the take instead of refusing" and "A take over a groove gets a count-in"): stepping
+the tempo now rescales an existing loop — duration, offsets, held durations, glide points —
+and re-snaps its epoch instead of locking with a toast (only an open take still locks), and
+pressing record over a running groove arms a count-in (**ВІДЛІК**) that opens the take on the
+next downbeat, never nearer than two beats.
+
+Still open, in the order [[SPEC]] lists them: the groove as a stage-wide backbone under the
+guitar and piano too (both their roadmaps already ask for a metronome and a backing groove);
+ride / rimshot / choke / flam; and a measured `drumsFocusSafeRect()` if the framing ever needs
+to reserve rather than cap. Drums still uses the **raw camera preset** — that is deliberate,
+and the wheel's corner is verified by eye rather than derived.
 
 ### Piano interaction — the biggest open area
 

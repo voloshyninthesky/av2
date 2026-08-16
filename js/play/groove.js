@@ -30,16 +30,17 @@
 //
 // The theory is all in rhythm.js; this file is geometry, pointers and state.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260813-26';
-import { prefersReducedMotion } from '../core/quality.js?v=20260813-26';
+import { audio } from '../core/studio.js?v=20260816-01';
+import { prefersReducedMotion } from '../core/quality.js?v=20260816-01';
 import {
   LOOP_LOOKAHEAD,
   LOOP_TICK_MS,
   captureLoopEvent,
   playMusicalEvent,
   positiveModulo,
+  rescaleRecordedLoop,
   runMusicalVisual,
-} from './loop.js?v=20260813-26';
+} from './loop.js?v=20260816-01';
 import {
   GROOVES,
   GROOVE_COUNT,
@@ -52,8 +53,8 @@ import {
   stepGroove,
   stepSeconds,
   stepTempo,
-} from './rhythm.js?v=20260813-26';
-import { syncPadsOpenClass } from './pads.js?v=20260813-26';
+} from './rhythm.js?v=20260816-01';
+import { syncPadsOpenClass } from './pads.js?v=20260816-01';
 
 // Choosing a groove must not wake audio, and stepping it from the keyboard is
 // the drums close-up's alone. main.js owns both answers.
@@ -253,14 +254,16 @@ function paintWheel() {
     : `Ґрув, ${bpm} уд/хв, зупинено`);
 }
 
-// Tempo is locked once a loop exists: loop.duration is already whole bars of
-// the old tempo, and moving it underneath would re-open the drift the bar
-// quantisation exists to close. The loop pedal is not ours to listen to, and it
-// changes state from four different places, so this is re-read from the frame
-// loop instead — guarded, so it writes only when the answer actually flips.
+// Tempo is only untouchable while a take is OPEN: captured offsets are already
+// distances in the old bar, and moving the ruler mid-measurement would bend
+// them silently. A loop that is merely playing no longer locks the stepper —
+// stepping re-times the whole take instead (setTempo below). The loop pedal is
+// not ours to listen to, and it changes state from four different places, so
+// this is re-read from the frame loop — guarded, so it writes only when the
+// answer actually flips.
 let tempoLocked = null;
 function paintTempoLock() {
-  const locked = hooks.loopHasContent();
+  const locked = hooks.loopIsRecording();
   if (locked === tempoLocked) return;
   tempoLocked = locked;
   for (const button of wheel.querySelectorAll('[data-tempo-step]')) {
@@ -488,9 +491,11 @@ function chooseGroove(index) {
   // times. `tempoFor` is what keeps that a *default* — a genre the visitor has
   // re-tuned comes back at their speed, not at ours, every time they return to
   // it. Applied before the index moves, so the phase is held against the bar
-  // that was actually running. The loop's tempo lock still wins — a take is
-  // already whole bars of the old tempo — and there the wedge switches the
-  // pattern alone, silently, since setTempo has already said why.
+  // that was actually running. While a loop has content the wedge still
+  // switches the pattern alone: a genre tap is pattern intent that merely
+  // carries a tempo default, and browsing genres must not re-time a recorded
+  // take as a side effect — only the deliberate stepper does that, through
+  // rescaleRecordedLoop.
   if (!hooks.loopHasContent()) applyTempo(tempoFor(next));
   grooveIndex = next;
   // A different grid means a different step count, so the crossing cursor and
@@ -546,13 +551,22 @@ function applyTempo(next) {
 }
 
 function setTempo(direction) {
-  if (hooks.loopHasContent()) {
-    hooks.toast('Темп замкнено, поки є loop', 1700);
+  if (hooks.loopIsRecording()) {
+    hooks.toast('Темп замкнено під час запису', 1700);
     return;
   }
   const next = stepTempo(bpm, direction);
   if (next === bpm) return;
+  const previous = bpm;
   applyTempo(next);
+  // A recorded loop is re-timed under the new tempo instead of locking the
+  // stepper: everything in it scales by the same ratio and its epoch is
+  // re-snapped, so the stepper reads as a speed control for the whole
+  // performance — groove and take together. The old lock closed a drift; the
+  // rescale closes the same drift by moving the take with the ruler. Ordered
+  // after applyTempo on purpose: the rescale's downbeat snap must read the
+  // NEW bar grid, not the one this press is replacing.
+  rescaleRecordedLoop(previous / bpm);
   // This groove is now the visitor's tempo, not its own. Recorded even when the
   // two agree: a step up and back down is them choosing the default, and a
   // later edit to that default must not move a speed they settled on by hand.
@@ -665,6 +679,9 @@ export function stopGroove() {
 // ---- what the loop pedal needs to know ----
 /** Null when no groove is sounding, which is what tells the loop to stay free. */
 export const grooveBarSeconds = () => (wheel.hidden || !playing ? null : currentBar());
+
+/** Beat length for the pedal's count-in — null exactly when grooveBarSeconds() is. */
+export const grooveBeatSeconds = () => (wheel.hidden || !playing ? null : currentBar() / current().beats);
 
 /**
  * The downbeat at or after `time`, or the one at or before it with
