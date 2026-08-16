@@ -6,6 +6,27 @@ tags: [gotchas, debugging]
 
 Traps that have actually cost time. Read this before debugging anything visual.
 
+## The VPS's `sites-enabled` is not symlinked to `sites-available`
+
+The standard Debian nginx layout — `sites-enabled/*` as symlinks into `sites-available/` — does
+not hold on the `vibe2.ton.zone` box. `nginx.conf` does `include /etc/nginx/sites-enabled/*.conf`,
+and `sites-enabled/vibe2.ton.zone.conf` there is a **real, independently-edited file**, not a
+symlink. `deploy/nginx/vibe2.ton.zone.conf` in this repo mirrors `sites-available/`, and the
+documented release step ("update all three `root` entries") was written assuming the standard
+layout. Editing and reloading against `sites-available/` passes `nginx -t` cleanly and changes
+nothing a visitor sees — the config nginx actually loaded still points at the old release.
+
+`readlink -f /etc/nginx/sites-enabled/vibe2.ton.zone.conf` prints its own path back rather than
+a `sites-available/…` target, which is the tell. The `current` symlink at
+`/var/www/vibe2.ton.zone/current` is *also* cosmetic — nginx never reads it — so it cannot be
+trusted to say what is actually live either; a stale `current` pointed at one release while
+`sites-enabled/` (and the site) served a different one entirely. Trust `curl -sI` and the
+`?v=` stamp / `Last-Modified` header over both files, the same rule [[Dev workflows]] already
+gives for the GitHub Pages side. Any future VPS release must rewrite the three root entries in
+`sites-enabled/vibe2.ton.zone.conf` specifically, keep `sites-available/` in sync afterward only
+so it stops lying to the next reader, and write `.previous-release-for-rollback` from what
+`sites-enabled/` actually pointed at — not from `current`.
+
 ## An SVG presentation attribute loses to any CSS rule
 
 `text.setAttribute('font-size', …)` on a chord-wheel label changed the number in the DOM and

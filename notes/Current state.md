@@ -170,12 +170,17 @@ suspect: it is a looping white-noise buffer and the one thing added to a synth t
 without it.
 
 The ribbon commit and this label fix are both pushed. **A green Actions run is not proof the
-CDN moved** — curl after it lands (the header of this note carries the current check). The VPS
-preview `vibe2.ton.zone` is further behind again: it is pinned to release `20260812T135148Z`
-and needs its own release cut.
+CDN moved** — curl after it lands (the header of this note carries the current check).
+
+**The VPS preview got its own release cut on 2026-08-16**, release `20260816T101502Z`, carrying
+the loop-pedal count-in + tempo-rescale work — SSH deploy of the uncommitted working tree at
+the time, not a `main` push. It surfaced a real trap: `sites-enabled/vibe2.ton.zone.conf` on
+that box is a real file, not a symlink to `sites-available/` as the documented process assumed,
+so the first attempt reloaded cleanly and changed nothing live. → [[Gotchas]] "The VPS's
+`sites-enabled` is not symlinked to `sites-available`"
 
 ```bash
-curl -s https://vibe2.ton.zone/stage/ | grep -o 'v=[0-9-]*' | sort -u   # 20260813-06, behind
+curl -s https://vibe2.ton.zone/stage/ | grep -o 'v=[0-9-]*' | sort -u   # expect 20260816-01
 ```
 
 A green Actions run is still not proof — the curl is, because the run can succeed while the
@@ -282,25 +287,38 @@ The signs backend has its own liveness check, separate from the stamp curls abov
 curl -s https://back.artvibe.com.pl/healthz   # {"ok":true,...} — verified, 67 signs
 ```
 
-**VPS rollback, as it stands:** `.previous-release-for-rollback` holds
-`20260812T133258Z` and the nginx conf it replaced is saved beside the live one as
-`.bak.20260812T135148Z`. Both are written by hand at deploy time, so they are only as true as
-the last person who remembered — check them, don't assume.
+**VPS rollback, as it stands (2026-08-16):** `.previous-release-for-rollback` holds
+`20260812T135148Z` — the release that was actually live before the current cut, confirmed by
+what `sites-enabled/vibe2.ton.zone.conf` pointed at, not by the `current` symlink (which had
+already drifted to a *different*, never-actually-served release — `current` is cosmetic and
+nginx never reads it). The nginx conf it replaced is saved beside the live one as
+`sites-enabled/vibe2.ton.zone.conf.bak.20260812T135148Z`. All three are written by hand at
+deploy time, so they are only as true as the last person who remembered — check them, don't
+assume.
 
-**A trap in that hand-written step.** The release pointer is rewritten with `sed` on
-`deploy/nginx/vibe2.ton.zone.conf`, matching the release it is replacing — and a `sed` that
-matches nothing exits `0`. Switching branches between deploys changes what that file holds,
-so the substitution silently no-ops and you upload a conf aimed at the *previous* release,
-which `nginx -t` happily passes. Rewrite by pattern and assert the count instead:
+**Two traps in that hand-written step**, one already known and one newly found:
 
-```bash
-python3 - <<'EOF'
-import re
-s = open('deploy/nginx/vibe2.ton.zone.conf').read()
-s, n = re.subn(r'/var/www/vibe2\.ton\.zone/releases/\d{8}T\d{6}Z', NEW_ROOT, s)
-assert n == 3, f'expected 3 root entries, rewrote {n}'
-EOF
-```
+1. **The release pointer is rewritten with `sed`-style substitution**, matching the release it
+   is replacing — and a substitution that matches nothing exits `0`. Switching branches between
+   deploys changes what the file holds, so it can silently no-op and leave a conf aimed at the
+   *previous* release, which `nginx -t` happily passes. Rewrite by pattern and assert the count:
+
+   ```bash
+   python3 - <<'EOF'
+   import re
+   s = open(path).read()
+   s, n = re.subn(r'/var/www/vibe2\.ton\.zone/releases/[0-9TZ]+', NEW_ROOT, s)
+   assert n == 3, f'expected 3 root entries, rewrote {n}'
+   EOF
+   ```
+
+2. **`path` above must be `/etc/nginx/sites-enabled/vibe2.ton.zone.conf` on the box, not
+   `deploy/nginx/vibe2.ton.zone.conf`'s twin in `sites-available/`.** This box's
+   `sites-enabled/` holds real, independently-edited files rather than symlinks into
+   `sites-available/` — the standard Debian layout does not hold here. The first 2026-08-16
+   deploy attempt rewrote `sites-available/`, passed `nginx -t`, reloaded clean, and changed
+   nothing a visitor saw, because `nginx.conf` only `include`s `sites-enabled/*.conf`. →
+   [[Gotchas]] "The VPS's `sites-enabled` is not symlinked to `sites-available`"
 
 **Resolved — analytics are no longer dark.** `count.artvibe.com.pl` used to serve a
 certificate for `goatcounter.com`, so every hit was dropped in silence while the pages
