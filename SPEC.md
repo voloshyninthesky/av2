@@ -948,6 +948,13 @@ Pinch / page-zoom guards must **skip** events that involve UI chrome so pedal + 
 
 - Workflow: `.github/workflows/deploy-pages.yml` on push to `main`.
 - Artifact: `css fonts img js pl stage uk uroky-*-lodz vendor index.html 404.html prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME`. The list is hand-written, so a new top-level file that is not added here simply never ships — `tests/site-meta.test.mjs` guards `404.html` and `pl` specifically.
+- **Minified JS ships, readable JS is committed.** After the artifact is staged, the workflow
+  runs `node tools/minify.mjs _site/js _site/vendor` (esbuild, pinned, fetched by `npx`), which
+  minifies every `.js` under the staging copy **in place** — same paths, same imports, same
+  `?v=` stamps, one file in and the same file out. The working tree is never touched, so
+  `python3 -m http.server` still serves the authored source and the tests still read it. Roughly
+  `js/` 713 KB → 311 KB and `vendor/` 2.6 MB → 1.7 MB. A file that minifies to nothing fails the
+  step rather than shipping a blank module.
 - **Paths are site-absolute** (`/js/…`, `/prices.json`, `/img/…`). The stage is served from
   `/stage/`, so a document-relative path resolves under that directory instead of the root.
 - Custom domain: `artvibe.com.pl` → GitHub Pages (`voloshyninthesky.github.io`).

@@ -113,7 +113,15 @@ From [[SPEC]] §14, and it is in that order for a reason:
 
 1. `node tools/sync-prices.mjs` — prices land in the pages *before* anything checks them
 2. `node --test tests/*.test.mjs`
-3. copy an **explicit file list** into `_site/`, then upload + deploy
+3. copy an **explicit file list** into `_site/`
+4. `node tools/minify.mjs _site/js _site/vendor` — minifies the staged JS in place, then
+   upload + deploy
+
+Step 4 is the only thing between the repo and production that is not a copy, and it is
+deliberately dull: same paths, same imports, same `?v=` stamps, one file in and the same file
+out. **Nothing you debug locally is minified** — the working tree is never touched — so a bug
+that only reproduces on `artvibe.com.pl` is worth checking against the staged copy first:
+`cp -R` the file list into a scratch `_site/`, run the same command, serve *that*.
 
 That list is explicit, which means **a new top-level directory does not ship unless you add
 it.** (Also why `notes/` and `.obsidian/` stay out of production automatically.) Current

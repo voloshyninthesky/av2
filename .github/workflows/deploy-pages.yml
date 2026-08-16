@@ -43,6 +43,12 @@ jobs:
           mkdir -p _site
           cp -R css fonts img js pl stage uk uroky-vokalu-lodz uroky-hitary-lodz uroky-fortepiano-lodz uroky-barabaniv-lodz vendor index.html 404.html favicon.ico favicon.svg apple-touch-icon.png prices.json piano-notes.json robots.txt sitemap.xml .nojekyll CNAME _site/
 
+      # Only the staged copy is minified — the repo keeps shipping readable
+      # source to a developer serving it locally. Paths, imports and the `?v=`
+      # stamps are untouched, so nothing above this step has to know it ran.
+      - name: Minify JavaScript
+        run: node tools/minify.mjs _site/js _site/vendor
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

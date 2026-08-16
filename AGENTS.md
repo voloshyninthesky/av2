@@ -3,7 +3,8 @@
 ## Cursor Cloud specific instructions
 
 This is a **static WebGL site** (Art Vibe Studio) — no build step, no package manager, and no lint
-config. Three.js is vendored under `vendor/three/`, loaded via an import map in `stage/index.html`.
+config. (The deploy workflow minifies the JS it stages into `_site/`, but that never touches the
+working tree: what you edit is what you serve.) Three.js is vendored under `vendor/three/`, loaded via an import map in `stage/index.html`.
 The dependency-free audio lifecycle tests use Node's built-in test runner. See `SPEC.md` for the
 full product/architecture spec.
 

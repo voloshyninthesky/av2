@@ -12,6 +12,32 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## Pages gets minified JS; the repo keeps the readable kind — 2026-08-15
+
+`tools/minify.mjs` runs in the deploy workflow over the staged `_site` copy, not over the
+working tree. That split is the whole decision: visitors download 713 KB of stage code as
+311 KB, and a developer still opens the file that was written.
+
+- **Staging-only, in place, file for file.** No bundling, no renamed outputs, no manifest —
+  every module keeps its path, its imports and its hand-bumped `?v=` stamp, so the import map
+  in `stage/index.html`, the site-absolute paths and the cache-busting rules in [[SPEC]] §11
+  all keep meaning what they meant. Nothing else in the pipeline had to learn about this step.
+- **The tests keep reading source.** Several of them assert on source *text* (`rhythm`,
+  `chord-wheel`) and run before the artifact is staged; minifying the working tree would have
+  broken them, which is a good reason not to want it in the first place.
+- **esbuild via `npx`, pinned.** A root `package.json` would give the repo a `node_modules`
+  and an install step it does not otherwise need — the point of "no build step" is that
+  checkout-and-serve works, and a CI-only fetch keeps that true.
+- **A file that minifies to nothing fails the build.** An empty module on this stage is a
+  silent `undefined` at import time, the same failure mode the layering rules exist to
+  prevent — worth an explicit check rather than a black canvas in production.
+- **Verified by A/B, not by inspection.** The minified build was driven through the QA hooks
+  next to the unminified one: the seeded gift draw came out identical, and every diff that
+  remained (mascot pose, particle hits, draw counts) also appeared between two runs of the
+  *same* build. → [[Gotchas]] for why that has to run in local Chrome.
+
+---
+
 ## A genre carries its tempo — 2026-08-13
 
 Every groove now declares a `bpm`, and tapping its wedge moves the tempo there. A genre is
@@ -1625,9 +1651,11 @@ price chips track instruments through their own `queuePriceChip(kind)`.
 
 ## Standing decisions (not from one commit)
 
-- **No build step.** Vendored Three.js, import maps, manual `?v=` cache stamps. What is in
-  the repo is what ships — which is why the layering rules in [[Architecture]] are conventions
-  enforced by review rather than by tooling.
+- **No build step.** Vendored Three.js, import maps, manual `?v=` cache stamps. Checkout and
+  serve is the whole development story — which is why the layering rules in [[Architecture]]
+  are conventions enforced by review rather than by tooling. The single exception is the
+  deploy-time minify pass above, which rewrites bytes in the staging copy and nothing else:
+  what is in the repo is still, structurally, what ships.
 - **Audio never pre-empts the visitor's music.** The whole of [[Audio]] follows from this.
 - **Mascot movement has no keyboard binding.** That frees the entire desktop keyboard to be a
   multi-instrument jam surface, which is product goal #2 in [[SPEC]] §1.
