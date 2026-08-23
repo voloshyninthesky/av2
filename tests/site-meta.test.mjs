@@ -13,8 +13,6 @@ import { fileURLToPath } from 'node:url';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const GOATCOUNTER = 'https://count.artvibe.com.pl/count';
-
 const UK_PAGES = [
   'index.html',
   'uroky-vokalu-lodz/index.html',
@@ -50,11 +48,10 @@ const COUNTERPARTS = [
   ['pl/polityka-prywatnosci/index.html', '/'],
 ];
 
-test('every page carries the analytics tag', async () => {
+test('no page loads a third-party analytics script', async () => {
   for (const page of ALL_PAGES) {
     const html = await read(page);
-    assert.ok(html.includes(`data-goatcounter="${GOATCOUNTER}"`), `${page} is missing the GoatCounter site code`);
-    assert.ok(html.includes('gc.zgo.at/count.js'), `${page} is missing the GoatCounter script`);
+    assert.doesNotMatch(html, /data-goatcounter=|gc\.zgo\.at/, `${page} still loads GoatCounter`);
   }
 });
 
@@ -217,14 +214,6 @@ test('the gift ceremony never creates an AudioContext', () => {
     'beginGiftCeremony must not touch the audio context directly');
   assert.doesNotMatch(source, /activateAudioForSound/,
     'the gift has no gesture-opened path left, so it must never unlock audio');
-});
-
-test('booking links never depend on analytics succeeding', async () => {
-  for (const file of ['js/core/analytics.js', 'js/lessons-analytics.js']) {
-    const source = await read(file);
-    assert.match(source, /try\s*\{[^}]*goatcounter/s, `${file} must not let a blocked beacon throw`);
-    assert.match(source, /catch/, `${file} must swallow analytics failures`);
-  }
 });
 
 // A latched :hover is the quietest bug the stage can ship. iOS applies :hover on

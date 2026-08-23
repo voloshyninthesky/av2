@@ -5,9 +5,10 @@
    conversion — pageviews alone cannot tell which page earns the bookings.
 
    Kept standalone (no stage imports) so the lesson pages stay two small
-   modules, and entirely best-effort: the beacon is blocked for plenty of
-   visitors, and an ad-blocker must never cost anyone a booking link. Events
-   are mirrored into window.__av2Events for headless checks. */
+   modules. There is no external analytics service (GoatCounter was removed —
+   see notes/Decisions.md): events only ever go into window.__av2Events, kept
+   local to the visitor's own browser, which is how headless checks assert
+   them. */
 
 /* The Polish pages carry their own slugs rather than folding into the Ukrainian
    ones: they are the same offer in another language, and whether that language
@@ -31,9 +32,6 @@ const ledger = window.__av2Events || (window.__av2Events = []);
 
 function track(path) {
   ledger.push({ path, sent: true });
-  try {
-    window.goatcounter?.count?.({ path, event: true });
-  } catch (_) { /* analytics is never worth an exception */ }
 }
 
 document.addEventListener('click', (e) => {

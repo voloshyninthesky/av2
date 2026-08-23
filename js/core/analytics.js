@@ -1,11 +1,12 @@
 // ============================================================
-// ANALYTICS (GoatCounter events)
+// ANALYTICS (internal event ledger)
 // The stage is a lead-gen toy, so the only numbers worth having are the funnel:
 // scene started → first note played → prices opened → booking link clicked.
-// Sending is best-effort by design — the beacon is blocked for plenty of
-// visitors, and nothing here may ever break the scene. QA runs record events
-// into `window.__av2Events` but never send them, so headless checks can assert
-// the funnel without writing to the dashboard.
+// There is no external analytics service (GoatCounter was removed — see
+// notes/Decisions.md): events only ever go into `window.__av2Events`, kept
+// local to the visitor's own browser. `sent` still marks whether a QA run
+// produced the event, so headless checks can tell a real funnel completion
+// from a driven one.
 // ============================================================
 import { params } from './quality.js?v=20260816-01';
 
@@ -15,12 +16,7 @@ const ledger = [];
 window.__av2Events = ledger;
 
 export function track(path) {
-  const sent = !QA_RUN;
-  ledger.push({ path, sent });
-  if (!sent) return;
-  try {
-    window.goatcounter?.count?.({ path, event: true });
-  } catch (_) { /* analytics is never worth an exception */ }
+  ledger.push({ path, sent: !QA_RUN });
 }
 
 const tracked = new Set();

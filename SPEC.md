@@ -131,7 +131,7 @@ prices, same 2007 skin — the studio is in Łódź and half the people who walk
 `/pl/polityka-prywatnosci/`, linked from every Polish page's footer. It names Art Vibe Studio,
 Łódź as administrator with the Instagram / Messenger DM as the contact route — the same channel
 the studio books through, and the only contact the site has — and covers, honestly, everything
-the pages actually do: cookieless GoatCounter statistics, the Open-Meteo request the visitor's
+the pages actually do: an in-browser-only event ledger (§11 Analytics), the Open-Meteo request the visitor's
 own browser makes, Meta as a separate administrator once a booking button is clicked, the
 stage's `localStorage` and its public signs, the visitor's rights and the PUODO complaint route.
 
@@ -899,9 +899,10 @@ The character the visitor was given, written on the reveal frame, merged over de
 | `giftfast`                                | With `testhooks` only: replays the same reveal timeline at ~40× so a headless run can drive many pulls                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `headless`                                | With `testhooks` only: pumps the frame loop from a worker interval so hidden/backgrounded QA tabs still simulate and render                                                                                                                                                                                                                                                                                                                                                                                                               |
 
-`testhooks`, `headless` and `shot` also stop analytics events being **sent** — QA
-runs drive the funnel deliberately and must not land in the dashboard. Events are
-still recorded into `window.__av2Events`, which is how headless checks assert them.
+`testhooks`, `headless` and `shot` also mark analytics events as **not sent** (§11
+Analytics) — QA runs drive the funnel deliberately and that is not a real visitor's
+event. Events are still recorded into `window.__av2Events`, which is how headless
+checks assert them.
 
 ---
 
@@ -969,24 +970,15 @@ http://127.0.0.1:8000/stage/ (3D stage)
 
 ### Analytics
 
-GoatCounter, site `stephan-geega` (dashboard: https://stephan-geega.goatcounter.com).
-Cookieless and storing no personal data, so the site needs **no consent banner** —
-that is the reason for the choice, and swapping in a cookie-based tool would
+There is no third-party analytics tool. GoatCounter was removed on 2026-08-23 (see
+`notes/Decisions.md`) and nothing replaced it — the site sends nothing to any external
+service, needs **no consent banner**, and swapping in a cookie-based tool later would
 change what the site owes its EU visitors.
 
-Hits are sent to the first-party endpoint `https://count.artvibe.com.pl/count`, a
-CNAME onto the GoatCounter site. **That domain needs a TLS certificate covering it**
-— GoatCounter must have the custom domain configured, not just the DNS record. If it
-serves the default `goatcounter.com` certificate the name will not match, browsers
-will refuse the connection, and every hit is lost silently while the pages still
-look fine. Verify with `curl -sI https://count.artvibe.com.pl/`; a certificate error
-there means the analytics are dark.
-
-The endpoint is one identical `data-goatcounter` string on every page; changing it is
-a find-and-replace across the HTML and `tests/site-meta.test.mjs`. Note the script
-itself still loads from `gc.zgo.at`, so blockers targeting that host stop collection
-regardless of the counting domain. Sending is best-effort everywhere: no analytics
-call may ever sit in the path of a booking link.
+Events still fire (`js/core/analytics.js` for the stage, `js/lessons-analytics.js` for
+the lesson pages) but only ever land in `window.__av2Events`, an array kept in the
+visitor's own browser and never transmitted anywhere. It exists for the headless QA
+harness to assert the funnel; nothing on the server side ever sees it.
 
 Events (`js/core/analytics.js` for the stage, `js/lessons-analytics.js` for the
 lesson pages):

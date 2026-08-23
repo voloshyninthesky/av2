@@ -320,18 +320,11 @@ assume.
    nothing a visitor saw, because `nginx.conf` only `include`s `sites-enabled/*.conf`. →
    [[Gotchas]] "The VPS's `sites-enabled` is not symlinked to `sites-available`"
 
-**Resolved — analytics are no longer dark.** `count.artvibe.com.pl` used to serve a
-certificate for `goatcounter.com`, so every hit was dropped in silence while the pages
-looked healthy; the custom domain is now registered and the endpoint answers over TLS. The
-check still belongs in any "why is the dashboard empty" investigation:
-
-```bash
-curl -sI https://count.artvibe.com.pl/   # a cert error here means analytics are dark again
-```
-
-A `405` is the healthy answer — GoatCounter refuses `HEAD` on `/`, which means the handshake
-succeeded. Note that the dashboard only starts counting from the fix, so the early weeks are
-genuinely empty rather than broken.
+**Moot as of 2026-08-23 — GoatCounter is gone.** This used to be about `count.artvibe.com.pl`
+serving the wrong TLS certificate and dropping every hit in silence; that got fixed, and then
+the tool itself was removed entirely rather than kept running. There is no dashboard to check
+and no endpoint to curl any more — see [[Decisions]] "GoatCounter is gone, and nothing
+replaced it".
 
 **Worth doing before it bites:** every action in `deploy-pages.yml` (`checkout@v4`,
 `setup-node@v4`, `upload-artifact@v4`, `configure-pages@v5`, `deploy-pages@v4`) targets the

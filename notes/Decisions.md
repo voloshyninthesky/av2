@@ -12,6 +12,25 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## GoatCounter is gone, and nothing replaced it — 2026-08-23
+
+Removed the `data-goatcounter` script tag from every page and the `window.goatcounter?.count?.()`
+calls in `js/core/analytics.js` and `js/lessons-analytics.js`. The funnel events themselves
+(`stage-enter`, `stage-first-play`, `stage-pricing-open`, `book-{channel}-{page}`,
+`stage-sign-left`) still fire — other stage modules (`js/shell/`, `js/mascot/`, `js/play/`)
+import `track`/`trackOnce` from `core/analytics.js` for reasons unrelated to which vendor
+received the beacon — but now land only in `window.__av2Events`, kept local to the visitor's
+own browser and never transmitted. The site is commercially blind again, same as before the
+GoatCounter decision below, only now on purpose rather than by omission.
+
+`pl/polityka-prywatnosci/` (the RODO notice) said the site counted visits with GoatCounter;
+that stopped being true, so §1 was rewritten to say so plainly rather than silently going
+stale — a notice that describes processing that no longer happens is exactly the kind of
+thing RODO's transparency principle exists to catch, even though only currently-active
+processing strictly requires disclosure. → [[SPEC]] §11, [[Lesson site]]
+
+---
+
 ## The tempo stepper re-times the take instead of refusing — 2026-08-16
 
 The lock («Темп замкнено, поки є loop») was always the interim answer — [[SPEC]]'s drums
