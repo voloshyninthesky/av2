@@ -1,7 +1,7 @@
 // ============================================================
 // ART VIBE — HUD & overlay UI manager
 // ============================================================
-import { swallowNextClick } from './core/gesture-guards.js?v=20260816-01';
+import { swallowNextClick } from './core/gesture-guards.js?v=20260831-01';
 
 // The stylesheet's phone breakpoint, verbatim. The chip's position is CSS on
 // phones and measured here on desktop, so the two have to agree on which is
@@ -15,7 +15,6 @@ export class UI {
     this.el = {
       hud: document.getElementById('hud'),
       keysHint: document.getElementById('keys-hint'),
-      dragHint: document.getElementById('drag-hint'),
       tooltip: document.getElementById('tooltip'),
       chip: document.getElementById('chip'),
       chipTitle: document.getElementById('chip-title'),
@@ -56,7 +55,7 @@ export class UI {
 
   async _ensurePricing() {
     if (!this._pricingPromise) {
-      this._pricingPromise = import('./pricing.js?v=20260816-01')
+      this._pricingPromise = import('./pricing.js?v=20260831-01')
         .then(({ PricingPicker }) => {
           this.pricing = new PricingPicker(this.modals.pricing);
           return this.pricing.init().then(() => this.pricing);
@@ -240,17 +239,14 @@ export class UI {
   showHUD() {
     this.el.hud.inert = false;
     this.el.hud.classList.remove('hidden');
-    // Phones / tablets use on-screen controls — keyboard & drag legends stay off.
+    // Phones / tablets use on-screen controls — the keyboard legend stays off.
     const touchUi = window.innerWidth <= 720
       || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     if (touchUi) {
       this.el.keysHint.classList.add('hidden');
-      this.el.dragHint.classList.add('hidden');
       return;
     }
     this.el.keysHint.classList.remove('hidden');
-    this.el.dragHint.classList.remove('hidden');
-    setTimeout(() => this.el.dragHint.classList.add('hidden'), 9000);
   }
 
   // ---- tooltip ----

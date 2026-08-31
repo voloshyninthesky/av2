@@ -12,6 +12,36 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The desktop drag hint is gone — 2026-08-31
+
+Removed `#drag-hint` («перетягуй — огляд сцени · коліщатко — зум») entirely: the element,
+its `ui.js` show/9s-auto-hide wiring, and every CSS rule that positioned or gated it
+(shared touch-action lists, the piano close-up override, the gift-open blackout, the
+phone/tablet hide). `#keys-hint` (the keyboard legend) is unaffected and still desktop-only.
+No replacement — orbit/zoom is left to be discovered rather than announced.
+
+---
+
+## The play surfaces scale with the screen, and a vocal tap lands in tune — 2026-08-31
+
+The chord wheel, groove wheel and voice ribbon were sized for phones and *capped* for
+everything else (`236px` landscape / `300px` portrait, groove `220px`) — on a desktop or a
+tablet the instrument you are meant to play read as furniture in a corner. The caps became
+affine-in-`vh` formulas: phones keep exactly the sizes that were verified against the ✕ /
+loop-pedal column and the centred drum kit, while bigger screens get the same *proportion* of
+the screen a phone always had. The fitter's twin constants in `focus-frame.js` moved in the
+same commit, which is the whole discipline those twins exist for. → [[SPEC]] § The groove
+wheel (dock bullet)
+
+Two singability changes rode along on the ribbon, both from the same observation: the surface
+knew which note you meant and kept it to itself. A **press now pulls to the key harder than a
+drag** (`PITCH_DETENT_PRESS` — a tap has stated no intention beyond "this note", a drag is
+steering and keeps its bend), and the **scale line nearest the voice lights while it sounds**,
+with a haptic tick on crossing lines — the detent made visible and tactile. Same curve, same
+fixed-point and monotonicity proofs, now asserted for both pulls in `tests/voice.test.mjs`.
+
+---
+
 ## GoatCounter is gone, and nothing replaced it — 2026-08-23
 
 Removed the `data-goatcounter` script tag from every page and the `window.goatcounter?.count?.()`

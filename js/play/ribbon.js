@@ -21,27 +21,29 @@
 // The theory is all in voice.js and harmony.js; this file is geometry,
 // pointers and state.
 // ============================================================
-import { audio, mic, setMascotMouth } from '../core/studio.js?v=20260816-01';
-import { play } from './state.js?v=20260816-01';
-import { addVibe } from './vibe.js?v=20260816-01';
+import { audio, mic, setMascotMouth } from '../core/studio.js?v=20260831-01';
+import { play } from './state.js?v=20260831-01';
+import { addVibe } from './vibe.js?v=20260831-01';
 import {
   degreeMidi,
   freqFromMidi,
   keyLabel,
   midiFromFreq,
+  nearestScaleMidi,
   scaleDegreeMidis,
   snapToScale,
-} from './harmony.js?v=20260816-01';
+} from './harmony.js?v=20260831-01';
 import {
   onStageKeyChange,
   setStageSevenths,
   stageKey,
   stepStageKey,
   toggleStageMode,
-} from './key.js?v=20260816-01';
+} from './key.js?v=20260831-01';
 import {
   GLIDE_SECONDS,
   PITCH_DETENT,
+  PITCH_DETENT_PRESS,
   VOICE_HIGH_MIDI,
   VOICE_LOW_MIDI,
   VOWELS,
@@ -50,13 +52,13 @@ import {
   pitchAt,
   vowelAt,
   vowelOpenness,
-} from './voice.js?v=20260816-01';
+} from './voice.js?v=20260831-01';
 import {
   beginHeldLoopCapture,
   finishHeldLoopCapture,
   stampHeldLoopCaptureDuration,
   syncPadsOpenClass,
-} from './pads.js?v=20260816-01';
+} from './pads.js?v=20260831-01';
 
 // Ribbon gestures compete with the stage's own pointer handling, and a press
 // has to know the mic is the instrument listening; main.js supplies both.
@@ -149,8 +151,16 @@ VOWELS.forEach((vowel, index) => {
 // ============================================================
 // PAINT
 // ============================================================
+// The line the voice is nearest right now, so the field can answer "which note
+// am I on" while the finger is still on it — the one question a singer asks
+// that the trail cannot answer until the note is over.
+let degreeGroupsByMidi = new Map();
+let soundingGroup = null;
+
 function paintDegrees() {
   degreeLines.replaceChildren();
+  degreeGroupsByMidi = new Map();
+  soundingGroup = null;
   for (const { midi, degree } of scaleDegreeMidis(VOICE_LOW_MIDI, VOICE_HIGH_MIDI, tonic(), mode())) {
     const y = yForMidi(midi);
     // The tonic is drawn heavier wherever it falls, in every octave it falls
@@ -161,6 +171,7 @@ function paintDegrees() {
     label.textContent = String(degree);
     group.append(label);
     degreeLines.append(group);
+    degreeGroupsByMidi.set(midi, group);
   }
 }
 
@@ -250,6 +261,25 @@ function syncMascotMouth(vowelX) {
   setMascotMouth(openness > 0.66 ? 'wide' : (openness > 0.3 ? 'soft' : 'neutral'));
 }
 
+// Light the scale line the voice is nearest. It answers "which note am I on"
+// *during* the note — the trail only says so afterwards — and it is what turns
+// the detent from a feel into something the eye can confirm: hold still and
+// exactly one line is lit. Crossing onto a new line also ticks the phone,
+// because a detent a finger can feel is the closest this glass gets to a fret.
+function syncSoundingDegree(midi) {
+  const group = degreeGroupsByMidi.get(nearestScaleMidi(midi, tonic(), mode())) ?? null;
+  if (group === soundingGroup) return;
+  soundingGroup?.classList.remove('sounding');
+  if (soundingGroup && group && held?.fromField) navigator.vibrate?.(8);
+  group?.classList.add('sounding');
+  soundingGroup = group;
+}
+
+function clearSoundingDegree() {
+  soundingGroup?.classList.remove('sounding');
+  soundingGroup = null;
+}
+
 function startVoice(midi, vowelX, { fromField = false } = {}) {
   // Order matters, and it is not the obvious one. `activateAudioForSound` can
   // *rebuild* the audio route, and the rebuild re-creates whatever `play`
@@ -268,6 +298,7 @@ function startVoice(midi, vowelX, { fromField = false } = {}) {
   addVibe(3);
   mic.sing(axisAtPitch(midi));
   syncMascotMouth(vowelX);
+  syncSoundingDegree(midi);
   held.pulseTimer = setInterval(() => {
     mic.sing(axisAtPitch(held.midi));
     // Stamp the sustain as it runs, so a pointer the browser cancels still
@@ -307,6 +338,7 @@ function moveVoice(midi, vowelX) {
   play.heldVocalNote = { freq, vowel: vowelX };
   if (!held.audioFrame) held.audioFrame = requestAnimationFrame(flushVoiceAudio);
   syncMascotMouth(vowelX);
+  syncSoundingDegree(midi);
   captureGlide(midi, vowelX);
   const x = xForVowel(vowelX);
   const y = yForMidi(midi);
@@ -331,6 +363,7 @@ function releaseVoice() {
   play.heldVocalPointer = null;
   play.heldVocalPulseTimer = null;
   setMascotMouth(null);
+  clearSoundingDegree();
   head.style.opacity = '0';
   // The line stays on the field for a moment after the finger leaves. It is
   // the only notation this surface has, and it is worth seeing what you just
@@ -346,9 +379,12 @@ export function stopRibbonVoice() {
 // ============================================================
 // POINTER
 // ============================================================
-function pitchFromPoint(point) {
+// The press pulls harder than the drag (voice.js explains why a tap and a
+// steer deserve different curves): a first touch lands on the note it meant,
+// and the moment the finger moves it is back on the bendable axis.
+function pitchFromPoint(point, pull = PITCH_DETENT) {
   const raw = pitchAt(axisForY(point.y));
-  return snapToScale(raw, tonic(), mode(), PITCH_DETENT);
+  return snapToScale(raw, tonic(), mode(), pull);
 }
 
 field?.addEventListener('pointerdown', (event) => {
@@ -362,7 +398,7 @@ field?.addEventListener('pointerdown', (event) => {
   if (held?.pointerId !== null && held?.pointerId !== undefined) return;
   keyboardDegree = null;
   keyboardCode = null;
-  const current = startVoice(pitchFromPoint(point), vowelForX(point.x), { fromField: true });
+  const current = startVoice(pitchFromPoint(point, PITCH_DETENT_PRESS), vowelForX(point.x), { fromField: true });
   current.pointerId = event.pointerId;
   play.heldVocalPointer = event.pointerId;
   // Capture is the last thing a press does and is allowed to fail: the note is
@@ -519,6 +555,10 @@ window.__ribbonDebug = () => ({
   singing: Boolean(held),
   midi: held?.midi ?? null,
   vowel: held?.vowelX ?? null,
+  // The lit line: the in-key note the voice is nearest, or null when silent.
+  // QA reads this instead of sniffing classLists.
+  nearestMidi: held ? nearestScaleMidi(held.midi, tonic(), mode()) : null,
+  soundingLit: Boolean(soundingGroup),
   keyboardDegree,
   range: [VOICE_LOW_MIDI, VOICE_HIGH_MIDI],
   degrees: scaleDegreeMidis(VOICE_LOW_MIDI, VOICE_HIGH_MIDI, tonic(), mode()),

@@ -4,7 +4,7 @@
 // the focus-view transitions, the mobile joystick and the dance routine.
 // Appearance lives in appearance.js; this is only the moment-to-moment part.
 // ============================================================
-import { MASCOT_START } from '../core/studio.js?v=20260816-01';
+import { MASCOT_START } from '../core/studio.js?v=20260831-01';
 
 export const mascotMove = {
   keys: new Set(), destination: null, destinationKind: null, waypoints: [], speed: 2.45, phase: 0,

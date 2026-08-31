@@ -415,7 +415,7 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 #### Focus framing — current
 
 - Drums keeps the **raw camera preset**: `instrumentViewFrame()` returns a measured fit for the piano and guitar only, so `playSurfaceReservedRects()` is never consulted here and there is nothing for the groove wheel to reserve into. This is a deliberate scope line, not an oversight — the drums close-up is the over-the-shoulder framing the piano's was copied _from_, and it works.
-- The consequence is that the wheel's footprint is **verified rather than derived**. It docks bottom-left at a cap of its own (`220px`, against the chord wheel's `300px`), because the kit is centred and runs to the bottom of a portrait frame where the guitar stands to the right and the keybed is a mid-screen strip. If it ever collides, the fix is a nudge to the drums camera preset or that cap — not a new fitter.
+- The consequence is that the wheel's footprint is **verified rather than derived**. It docks bottom-left with a size formula of its own — a phone still gets `220px` where the chord wheel gets `290px`, and its growth on bigger screens is shallower (§ The groove wheel's dock bullet) — because the kit is centred and runs to the bottom of a portrait frame where the guitar stands to the right and the keybed is a mid-screen strip. If it ever collides, the fix is a nudge to the drums camera preset or those numbers — not a new fitter.
 
 #### The kit
 
@@ -452,6 +452,7 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 - Wedges are `role="button"` with visible focus, `aria-pressed`, and an `aria-label` naming the groove **and its family**. Colour is never the only signal.
 - **No two wedge labels overlap**, in any of the twelve keys, in either mode, with sevenths on or off. Label size is derived from the straight-line gap to the neighbouring label on the same ring — not from a character count, which cannot see that the inner ring's gap is 62% of the outer's while a seventh's name is the same length in both.
 - The groove wheel, the chord wheel and the voice ribbon share their dock, their size tokens and their corner. **One dock, three surfaces, exactly one shown**: drums gets this one, guitar and piano the chord wheel, the mic the ribbon. `window.__ribbonDebug().docked` asserts it rather than trusting it.
+- **The dock scales with the viewport, on every class of screen.** A phone gives the surface roughly half its shorter side, and a tablet or desktop gets the same proportion rather than a phone-sized wheel marooned in a corner — the old fixed caps (`236px` landscape, `300px` portrait) read as furniture on anything larger. The formulas stay affine in `vh` so a landscape phone keeps its floor (the 32px ring thickness of §12), and a hard cap (`520px` shared, `420px` groove) exists only for screens where proportional stops meaning "an arm's-length surface". The groove wheel's slope is deliberately shallower — the kit sits centred and low where the guitar stands to the right — and squat landscape screens (aspect under 38/25: tablets, not desktops) flatten it further, because the height-fit kit leaves no side margin there and the shared slope buries the hi-hat. Phone sizes are unchanged everywhere: only tablets and desktops grew, each size verified against the kit's touch targets with an `elementFromPoint` probe rather than derived.
 
 #### The groove and the loop pedal
 
@@ -498,11 +499,21 @@ neither, which is the same objection that retired the six chord slots.
   quantising: flat where a singer means the note, steep between. It is monotonic (dragging up
   never lowers the pitch) and both an in-key note and the midpoint between two of them are
   fixed points, so no pitch becomes unreachable however hard it pulls. Strength is a _feel_
-  number, set by ear and asserted only to stay inside the window it was tuned in.
+  number, set by ear and asserted only to stay inside the window it was tuned in. **The press
+  pulls harder than the drag** (`PITCH_DETENT_PRESS`, same curve, steeper): a drag is steering
+  and has to keep room to bend, but a tap has stated no intention beyond "this note", and a
+  first touch that lands sour reads as the instrument being broken. The first move re-enters
+  the drag detent; both pulls carry the same monotonic / never-past-the-note proofs.
 - **Press starts a note where the finger lands** — never sliding in from a default, so the
   first touch is never wrong on its way somewhere right. Drag glides pitch and morphs vowel
   live; release stops. **One voice at a time**: a second finger is ignored, because a second
   throat is not a thing a singer has.
+- **The line the voice is nearest is lit while it sounds** — cream, the colour "sounding"
+  already means on this stage, and only ever one line, which is the detent made visible: hold
+  still and the lit line is the note you are on. It answers "which note am I on" _during_ the
+  note, where the trail can only answer afterwards. Crossing onto a new line ticks the phone
+  (a short vibration), because a detent a finger can feel is the closest this glass gets to a
+  fret; the keyboard glide moves the lit line too, but only a field drag ticks.
 - **The key is shared with the chord wheel** (§ The chord wheel), so a vocal line over a chord
   loop you just recorded is in tune. The two surfaces are never visible together, so the
   ribbon carries its own `‹ key ›` readout — which doubles as the major/minor control exactly
@@ -525,7 +536,7 @@ neither, which is the same objection that retired the six chord slots.
   matches the originating `code` — never "something is held". Inside the close-up the jam row
   (`N M , . /`) routes through the ribbon as well, so exactly one thing owns the voice.
 - **A drag binds to the window, not to the field.** Move, up, cancel and window `blur` are all
-  window-level and filtered by pointer id, because the finger leaves a 236px square constantly:
+  window-level and filtered by pointer id, because the finger leaves a palm-sized square constantly:
   bound to the element, a wandering drag stops tracking and its release never arrives, and the
   note sustains to the engine's safety timer. `setPointerCapture` is attempted and allowed to
   fail, so it can never be the only mechanism. A finger past an edge **clamps** to it rather
@@ -654,7 +665,7 @@ Rules:
 - **Pedal / pads + instrument multitouch:** one finger on loop pedal, chord wheel, voice ribbon, or other HUD chrome and another on the kit/keys/strings must both work. Wedge presses also claim their finger so they cannot drive orbit. Do **not** `preventDefault` multitouch `touchstart` when any finger is on UI chrome (that drops the second finger’s pointer events). Loop pedal binds **`pointerdown`**, not `click`.
 - Chord wheel while guitar- **or piano**-focused; voice ribbon while mic-focused.
 - HUD collapses to menu drawer on small screens.
-- Keyboard key legend (`#keys-hint`) and drag hint are **desktop-only** — hidden on phones and tablets (`max-width: 720px` or coarse pointer / no hover).
+- Keyboard key legend (`#keys-hint`) is **desktop-only** — hidden on phones and tablets (`max-width: 720px` or coarse pointer / no hover).
 
 ### VIBE meter
 

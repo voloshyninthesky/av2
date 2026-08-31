@@ -7,11 +7,11 @@
 // any aspect ratio, notch or browser chrome height.
 // ============================================================
 import * as THREE from 'three';
-import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260816-01';
-import { isMobileGameMode } from '../core/quality.js?v=20260816-01';
-import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260816-01';
-import { instrumentView } from './instrument-presets.js?v=20260816-01';
-import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260816-01';
+import { camera, controls, FOCUS_ZOOM_FACTOR, ZOOM_IN_STEP } from './rig.js?v=20260831-01';
+import { isMobileGameMode } from '../core/quality.js?v=20260831-01';
+import { stage, drums, piano, guitar, mascot } from '../core/studio.js?v=20260831-01';
+import { instrumentView } from './instrument-presets.js?v=20260831-01';
+import { instrumentLocalToWorld, instrumentViewCameraPoint } from './instrument-presets.js?v=20260831-01';
 
 const loopPedal = document.getElementById('loop-pedal');
 const mobileExit = document.getElementById('mobile-exit');
@@ -150,8 +150,8 @@ function focusSafeRect(reservedRects = []) {
 // know which surface is showing, and that is the point of sharing the tokens.
 const WHEEL_GAP = 12;
 const wheelSize = (portrait, width, height) => (portrait
-  ? Math.min(width - 100, 0.44 * height, 300)
-  : Math.min(0.3 * height + 120, 236));
+  ? Math.min(width - 100, 0.44 * height, 520)
+  : Math.min(0.3 * height + 120, 520));
 
 function playSurfaceReservedRects() {
   const vv = window.visualViewport;

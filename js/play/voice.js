@@ -104,6 +104,20 @@ export const axisAtPitch = (midi) => (
 export const PITCH_DETENT = 0.62;
 
 /**
+ * The pull for the *press*, and only the press. A drag earns its detent — the
+ * finger is steering, so the axis has to leave room to bend — but a tap has
+ * stated no intention beyond "this note", and the note it starts is the one
+ * thing the surface cannot afford to get wrong: a first touch that lands sour
+ * says the instrument is broken, not that the singer is early. Near 1 the
+ * curve still never quantises (midpoints stay fixed, the axis stays onto its
+ * range and monotonic), it just flattens hard enough that only a press exactly
+ * between two notes stays between them. The first move re-enters the drag
+ * detent; the step between the two curves peaks near a tenth of a semitone,
+ * which the glide time swallows whole.
+ */
+export const PITCH_DETENT_PRESS = 0.94;
+
+/**
  * How long a glide takes to reach a new pitch, in seconds. Not zero: an
  * instant jump clicks, and a voice that steps between notes is a synthesizer.
  * Short enough that a fast slide still tracks the finger.

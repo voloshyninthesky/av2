@@ -108,6 +108,11 @@ test('the axis clamps at both ends so a finger off the field cannot shout', () =
 
 test('the feel constants stay inside the range they were tuned in', () => {
   assert.ok(v.PITCH_DETENT > 0.4 && v.PITCH_DETENT < 0.8, 'detent left its tuned window');
+  // The press pulls harder than the drag — that ordering is the whole point of
+  // having two — and never past 1, where snapToScale's fixed-point guarantees
+  // are proven.
+  assert.ok(v.PITCH_DETENT_PRESS > v.PITCH_DETENT, 'a press must land truer than a drag');
+  assert.ok(v.PITCH_DETENT_PRESS <= 1, 'past 1 the detent maths is unproven');
   assert.ok(v.GLIDE_SECONDS > 0 && v.GLIDE_SECONDS < 0.12, 'a glide this long stops tracking the finger');
   assert.ok(v.VOWEL_GLIDE_SECONDS > v.GLIDE_SECONDS, 'a mouth is heavier than a pitch');
 });
@@ -153,35 +158,41 @@ test('nearestScaleMidi always returns an in-key note within a whole step', () =>
 test('the detent is monotonic — dragging up never lowers the pitch', () => {
   // The failure this catches is not a wrong note, it is a finger that moves up
   // the ribbon while the pitch dips. It would read as the surface being broken.
-  for (const mode of MODES) {
-    for (const tonicPc of ROOTS) {
-      let previous = -Infinity;
-      for (let midi = 60; midi <= 79; midi += 0.05) {
-        const snapped = h.snapToScale(midi, tonicPc, mode, v.PITCH_DETENT);
-        assert.ok(
-          snapped >= previous - 1e-9,
-          `${tonicPc} ${mode}: pitch fell from ${previous} to ${snapped} at ${midi}`,
-        );
-        previous = snapped;
+  // Both pulls in use get the same proof: the press curve is steeper, not
+  // different maths, and steeper is exactly where a fold would first appear.
+  for (const pull of [v.PITCH_DETENT, v.PITCH_DETENT_PRESS]) {
+    for (const mode of MODES) {
+      for (const tonicPc of ROOTS) {
+        let previous = -Infinity;
+        for (let midi = 60; midi <= 79; midi += 0.05) {
+          const snapped = h.snapToScale(midi, tonicPc, mode, pull);
+          assert.ok(
+            snapped >= previous - 1e-9,
+            `${tonicPc} ${mode} pull ${pull}: pitch fell from ${previous} to ${snapped} at ${midi}`,
+          );
+          previous = snapped;
+        }
       }
     }
   }
 });
 
 test('the detent bends towards the note and never past it', () => {
-  for (const mode of MODES) {
-    for (const tonicPc of ROOTS) {
-      for (let midi = 60.05; midi <= 79; midi += 0.1) {
-        const nearest = h.nearestScaleMidi(midi, tonicPc, mode);
-        const snapped = h.snapToScale(midi, tonicPc, mode, v.PITCH_DETENT);
-        const before = Math.abs(midi - nearest);
-        const after = Math.abs(snapped - nearest);
-        assert.ok(after <= before + 1e-9, `${midi} in ${tonicPc} ${mode}: detent pushed it away`);
-        // Crossing the note would mean the axis folds back on itself.
-        assert.ok(
-          Math.sign(snapped - nearest) === Math.sign(midi - nearest) || after < 1e-9,
-          `${midi} in ${tonicPc} ${mode}: detent overshot the note`,
-        );
+  for (const pull of [v.PITCH_DETENT, v.PITCH_DETENT_PRESS]) {
+    for (const mode of MODES) {
+      for (const tonicPc of ROOTS) {
+        for (let midi = 60.05; midi <= 79; midi += 0.1) {
+          const nearest = h.nearestScaleMidi(midi, tonicPc, mode);
+          const snapped = h.snapToScale(midi, tonicPc, mode, pull);
+          const before = Math.abs(midi - nearest);
+          const after = Math.abs(snapped - nearest);
+          assert.ok(after <= before + 1e-9, `${midi} in ${tonicPc} ${mode} pull ${pull}: detent pushed it away`);
+          // Crossing the note would mean the axis folds back on itself.
+          assert.ok(
+            Math.sign(snapped - nearest) === Math.sign(midi - nearest) || after < 1e-9,
+            `${midi} in ${tonicPc} ${mode} pull ${pull}: detent overshot the note`,
+          );
+        }
       }
     }
   }

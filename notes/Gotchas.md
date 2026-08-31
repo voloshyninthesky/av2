@@ -255,7 +255,7 @@ and `.obsidian/` stay out of production.)
 The lesson pages are generated from `prices.json`. Hand-edit a cell and the next deploy
 overwrites it. → [[Prices]]
 
-## `#keys-hint` and the drag hint are desktop-only
+## `#keys-hint` is desktop-only
 
 Hidden at `max-width: 720px` or coarse pointer / no hover. Mobile has no jam keyboard at
 all — pads plus focused multitouch only. If you're testing the keyboard map on a narrow

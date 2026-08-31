@@ -58,7 +58,7 @@ html, body {
   -webkit-touch-callout: none;
 }
 .panel { touch-action: pan-y; }
-#intro, #hud, #onboard, #toast, #chip, #keys-hint, #drag-hint,
+#intro, #hud, #onboard, #toast, #chip, #keys-hint,
 #loop-pedal, #voice-ribbon, #chord-wheel, #groove-wheel, .overlay,
 button, a, .pill-btn, .icon-btn {
   touch-action: manipulation;
@@ -70,7 +70,6 @@ html.stage-live #onboard,
 html.stage-live #toast,
 html.stage-live #chip,
 html.stage-live #keys-hint,
-html.stage-live #drag-hint,
 html.stage-live #loop-pedal,
 html.stage-live #voice-ribbon,
 html.stage-live #chord-wheel,
@@ -412,8 +411,8 @@ html.stage-live .icon-btn {
   gap: 14px; padding: 14px 18px;
   transition: transform .8s cubic-bezier(.2, .9, .25, 1), opacity .8s;
 }
-#hud.hidden, #keys-hint.hidden, #drag-hint.hidden { transform: translateY(-140%); opacity: 0; pointer-events: none; }
-#keys-hint, #drag-hint { transition: opacity .8s, transform .8s; }
+#hud.hidden, #keys-hint.hidden { transform: translateY(-140%); opacity: 0; pointer-events: none; }
+#keys-hint { transition: opacity .8s, transform .8s; }
 
 .hud-left { display: flex; align-items: center; }
 .logo-chip {
@@ -484,11 +483,6 @@ html.stage-live .icon-btn {
   color: var(--gold); border: 1px solid rgba(209, 161, 59, .5);
   border-radius: 5px; padding: 1px 6px; font-weight: 600;
 }
-#drag-hint {
-  position: fixed; bottom: 16px; right: 18px; z-index: 40;
-  font-size: 11px; letter-spacing: .08em; color: rgba(253, 251, 247, .4);
-}
-
 /* Super-simple first-run tip */
 #onboard {
   position: fixed; left: 50%; bottom: max(28px, env(safe-area-inset-bottom));
@@ -697,9 +691,13 @@ html.pads-open #onboard,
   /* Width is capped by what the right-hand control column needs, not by a flat
      vw fraction: the ✕ and the loop pedal live there, and on a 320px phone a
      78vw wheel reaches far enough across to collide with both. The vh cap is
-     the short-screen fallback, and together they keep the two rings above the
-     32px thickness floor at every supported size. */
-  --wheel-size: min(calc(100vw - 100px), 44vh, 300px);
+     what scales instead of a fixed ceiling: on a phone the vw term binds and
+     nothing changes, but a tablet held upright gets the same near-half-screen
+     surface a phone gets, not a phone-sized wheel marooned in a corner. The
+     520px cap only exists for screens where 44vh stops meaning "an arm's-length
+     surface" and starts meaning "a poster". Together they keep the two rings
+     above the 32px thickness floor at every supported size. */
+  --wheel-size: min(calc(100vw - 100px), 44vh, 520px);
   --wheel-gap: 12px;
   --wheel-bottom: 14px;
   /* Bottom-left in both orientations. On guitar that is the fretting-hand side
@@ -852,7 +850,12 @@ html.pads-open #onboard,
    width, which the fitter punishes cubically, so a corner it is. */
 @media (orientation: landscape) {
   #chord-wheel, #groove-wheel, #voice-ribbon {
-    --wheel-size: min(calc(30vh + 120px), 236px);
+    /* The affine form, not a flat vh fraction, so the two ends can disagree: a
+       landscape phone (390px tall) still gets its 237px wheel — 44vh there
+       would sink it under the 32px ring floor — while a desktop or tablet gets
+       a surface that grows with the screen instead of the old 236px cap, which
+       read as furniture on anything bigger than a phone. */
+    --wheel-size: min(calc(30vh + 120px), 520px);
     --wheel-bottom: 12px;
   }
 }
@@ -869,15 +872,40 @@ html.pads-open #onboard,
 
    Drums has no measured fitter — instrumentViewFrame() returns a raw preset for
    it, so playSurfaceReservedRects() is never consulted and there is nothing to
-   reserve into. This cap is therefore the whole answer, and 220px is its floor
-   as well as its ceiling: the groove ring is 31 of the 200 viewBox units, so
-   any smaller and the one touch target drops under the 32px thickness §12
-   requires (220 * 31/200 = 34px). Shrink this and you must widen that ring.
+   reserve into. These formulas are therefore the whole answer, and 220px is
+   the floor a phone holds in both orientations: the groove ring is 31 of the
+   200 viewBox units, so any smaller and the one touch target drops under the
+   32px thickness §12 requires (220 * 31/200 = 34px). Shrink these and you must
+   widen that ring.
 
-   Declared after the landscape override on purpose, so it caps both
-   orientations: the kit is centred in the frame either way, and the landscape
-   236px buys nothing a drummer can use. */
-#groove-wheel { --wheel-size: min(calc(100vw - 100px), 220px); }
+   Both are affine in vh rather than a flat cap, for the shared dock's reason:
+   a phone keeps exactly the wheel it had (22vh + 34px is 220px at 844 tall;
+   24vh + 130px is 224px at 390 tall), while tablets and desktops grow with the
+   screen instead of stopping at phone size. The slope is shallower than the
+   chord wheel's on purpose — the kit sits centred and low in the frame, and
+   the wheel has to grow toward it more carefully than toward a guitar that
+   stands to the right. Verified against the drums preset, not derived; if it
+   ever collides, nudge the preset or these numbers, not a new fitter.
+
+   Declared after the shared landscape override on purpose, so these two rules
+   are the groove wheel's whole size story in both orientations. */
+#groove-wheel { --wheel-size: min(calc(100vw - 100px), calc(22vh + 34px), 420px); }
+@media (orientation: landscape) {
+  #groove-wheel { --wheel-size: min(calc(24vh + 130px), 420px); }
+}
+/* Squat landscape — tablets, not desktops. The drums preset fits the kit by
+   height, so at 4:3 the kit takes most of the width too and the hi-hat and its
+   pedal land near this corner; at 16:9 the same kit floats in side margin and
+   the corner is free. Measured with an elementFromPoint probe over the
+   markInteract targets: at 1024×768 the shared slope (314px) buries the
+   hi-hat, this one (244px) clears it with margin, and at 1512×982 — a 1.54
+   MacBook, the narrowest aspect the gate admits to the wide branch — the wide
+   366px is verified clear. 38/25 = 1.52 splits the 3:2 Surface (squat, safe
+   side) from that MacBook. The 210px floor is the §12 ring-thickness floor
+   (200/31 × 32px ≈ 207) for odd little windows the aspect gate lets through. */
+@media (orientation: landscape) and (max-aspect-ratio: 38/25) {
+  #groove-wheel { --wheel-size: max(210px, min(calc(24vh + 60px), 380px)); }
+}
 
 /* Same quiet palette as the chord wheel, and the same rule: nothing gradients.
    The only thing that moves is the playhead, because the only thing that is
@@ -980,6 +1008,13 @@ html.pads-open #onboard,
 }
 #voice-ribbon-field .degree.tonic line { stroke: rgba(209, 161, 59, .58); stroke-width: 1.4; }
 #voice-ribbon-field .degree.tonic text { fill: var(--gold-light); }
+/* The note under the voice right now. Cream, because that is what "sounding"
+   already means everywhere else on this stage — and only ever one line, which
+   is the detent made visible: hold still and the lit line is the note you are
+   on. The trail answers this question only after the note is over. */
+#voice-ribbon-field .degree.sounding line { stroke: rgba(253, 251, 247, .72); stroke-width: 1.6; }
+#voice-ribbon-field .degree.sounding text { fill: var(--cream); }
+#voice-ribbon-field .degree.tonic.sounding line { stroke: var(--gold-light); }
 #voice-ribbon-field .vowel-guide { stroke: rgba(253, 251, 247, .08); stroke-width: .7; }
 #voice-ribbon-field .vowel-label {
   fill: rgba(253, 251, 247, .5); text-anchor: middle;
@@ -1141,15 +1176,10 @@ html[data-instrument-view="focused"][data-instrument="drums"] #keys-hint > [data
 html[data-instrument-view="entering"][data-instrument="mic"] #keys-hint > [data-keys="mic"],
 html[data-instrument-view="focused"][data-instrument="mic"] #keys-hint > [data-keys="mic"] { display: inline; }
 
-/* The drag hint is stage-level advice and has no place in a close-up. The
-   keys legend used to be hidden here too, but only ever because the long jam
-   list crossed the keybed in short landscape windows — the per-instrument
-   line is a fraction of its width, so it now stands down only there. */
-html[data-instrument="piano"][data-instrument-view="entering"] #drag-hint,
-html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
-  opacity: 0;
-  pointer-events: none;
-}
+/* The keys legend used to be hidden in a piano close-up too, but only ever
+   because the long jam list crossed the keybed in short landscape windows —
+   the per-instrument line is a fraction of its width, so it now stands down
+   only there. */
 @media (orientation: landscape) and (max-height: 620px) {
   html[data-instrument="piano"][data-instrument-view="entering"] #keys-hint,
   html[data-instrument="piano"][data-instrument-view="focused"] #keys-hint {
@@ -1161,7 +1191,6 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 @media (min-width: 721px) {
   #loop-pedal { right: 134px; bottom: 24px; }
   #keys-hint { bottom: 150px; }
-  #drag-hint { right: 142px; bottom: 30px; }
 }
 
 /* On full desktop, keep the controls discoverable without covering the stage. */
@@ -1172,7 +1201,6 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
     white-space: nowrap;
   }
   #keys-hint.hidden { transform: translate(-50%, -140%); }
-  #drag-hint { right: 142px; bottom: 140px; }
 }
 
 /* ============ OVERLAYS / PANELS ============ */
@@ -1733,7 +1761,6 @@ html[data-instrument="piano"][data-instrument-view="focused"] #drag-hint {
 /* The stage chrome would sit on top of the reveal and invite taps that the
    ceremony ignores. */
 html.gift-open #keys-hint,
-html.gift-open #drag-hint,
 html.gift-open #mobile-controls,
 html.gift-open #loop-pedal,
 html.gift-open #voice-ribbon,
@@ -1748,9 +1775,9 @@ html.gift-open #toast {
 #webgl-fail p { font-size: 15px; line-height: 1.6; }
 
 /* ============ RESPONSIVE ============ */
-/* Keyboard / drag legends are desktop-only — hide on phones and tablets. */
+/* The keyboard legend is desktop-only — hide on phones and tablets. */
 @media (max-width: 720px), (hover: none) and (pointer: coarse) {
-  #keys-hint, #drag-hint { display: none !important; }
+  #keys-hint { display: none !important; }
 }
 @media (max-width: 900px) {
   #modal-gift { align-items: flex-end; justify-content: center; padding: 0 max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left)); }

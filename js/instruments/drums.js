@@ -15,7 +15,7 @@ import {
   metal,
   sparkleWrapTexture,
   std,
-} from './shared.js?v=20260816-01';
+} from './shared.js?v=20260831-01';
 
 export function buildDrumKit() {
   const kit = new THREE.Group();
