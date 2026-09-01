@@ -96,6 +96,16 @@ function makeStrandTexture() {
   }, 3, 2);
 }
 
+// The masses a companion bird can land on, as named numbers: the songbird
+// perches on the crown and the swallow on a shoulder cap, and those heights
+// must come from the spheres that build the head — not from a copy that can
+// drift when the head is retuned. `perches` below is derived from these.
+const HEAD_Y = 1.56;
+const FACE_RADIUS = 0.27;
+const HAIR_CAP_RADIUS = 0.287;
+const HEADPHONE_BAND = { y: 0.015, radius: 0.305, tube: 0.026 };
+const SHOULDER_CAP = { x: 0.318, y: 1.312, radius: 0.095, scaleY: 0.68 };
+
 // ---- compact young stage mascot ----
 export function buildMascot() {
   const group = new THREE.Group();
@@ -180,9 +190,9 @@ export function buildMascot() {
   // shoulder slot and mask the pivot seam through every arm swing, so they
   // stay siblings of the arms (group space), not children of the torso.
   for (const side of [-1, 1]) {
-    const shoulderCap = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 12), mats.shoulder);
-    shoulderCap.scale.set(1.15, 0.68, 0.95);
-    shoulderCap.position.set(side * 0.318, 1.312, 0);
+    const shoulderCap = new THREE.Mesh(new THREE.SphereGeometry(SHOULDER_CAP.radius, 16, 12), mats.shoulder);
+    shoulderCap.scale.set(1.15, SHOULDER_CAP.scaleY, 0.95);
+    shoulderCap.position.set(side * SHOULDER_CAP.x, SHOULDER_CAP.y, 0);
     group.add(shoulderCap);
   }
   // neck fills the head/torso gap during walk and seated poses
@@ -191,15 +201,15 @@ export function buildMascot() {
   group.add(neck);
 
   const head = new THREE.Group();
-  head.position.y = 1.56;
+  head.position.y = HEAD_Y;
   const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), hairMat);
   hairBack.scale.set(1.08, 1.55, 0.82);
   hairBack.position.set(0, -0.13, -0.05);
   head.add(hairBack);
-  const face = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 18), skin);
+  const face = new THREE.Mesh(new THREE.SphereGeometry(FACE_RADIUS, 24, 18), skin);
   face.position.z = 0.035;
   head.add(face);
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.287, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(HAIR_CAP_RADIUS, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
   hairCap.position.set(0, 0.04, 0.05);
   head.add(hairCap);
   // Side locks. Each style places them itself (x/y/z) — long hair must fall
@@ -327,10 +337,10 @@ export function buildMascot() {
     accessoryGroups.glasses.add(temple);
   }
   const headphoneBand = new THREE.Mesh(
-    new THREE.TorusGeometry(0.305, 0.026, 7, 24, Math.PI),
+    new THREE.TorusGeometry(HEADPHONE_BAND.radius, HEADPHONE_BAND.tube, 7, 24, Math.PI),
     headphoneMats.shell,
   );
-  headphoneBand.position.set(0, 0.015, 0);
+  headphoneBand.position.set(0, HEADPHONE_BAND.y, 0);
   accessoryGroups.headphones.add(headphoneBand);
   const headphoneBandDetail = new THREE.Mesh(
     new THREE.TorusGeometry(0.305, 0.01, 5, 24, Math.PI),
@@ -431,6 +441,22 @@ export function buildMascot() {
     group, torso, head, armL, armR, legL, legR,
     handL: armL.userData.hand,
     handR: armR.userData.hand,
+    // Where a companion can land, in rig-local units (the group's height /
+    // build scale applies on top, so these hold at every draw). `crownY`
+    // takes the hair style's cap descriptor (null when bald) and the
+    // accessory: the top of the head is the hair cap when there is one, the
+    // bare face sphere when there is not, and the headphone band when it is
+    // worn — the companion never has to know how a head is built.
+    perches: {
+      shoulder: { x: SHOULDER_CAP.x, y: SHOULDER_CAP.y + SHOULDER_CAP.radius * SHOULDER_CAP.scaleY, z: 0 },
+      crownY(cap, accessory) {
+        const hair = cap ? HEAD_Y + cap.p[1] + HAIR_CAP_RADIUS * cap.s[1] : HEAD_Y + FACE_RADIUS;
+        const band = accessory === 'headphones'
+          ? HEAD_Y + HEADPHONE_BAND.y + HEADPHONE_BAND.radius + HEADPHONE_BAND.tube
+          : -Infinity;
+        return Math.max(hair, band);
+      },
+    },
     custom: {
       mats, hairMat, skinMat: skin, hairBack, hairCap, fringe, tail, locks, accessoryGroups, headphoneMats,
       eyeMat,

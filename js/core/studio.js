@@ -6,30 +6,30 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260831-01';
-import { buildDrumKit } from '../instruments/drums.js?v=20260831-01';
-import { buildPiano } from '../instruments/piano.js?v=20260831-01';
-import { buildGuitar } from '../instruments/guitar.js?v=20260831-01';
-import { buildMic } from '../instruments/mic.js?v=20260831-01';
-import { UI } from '../ui.js?v=20260831-01';
-import { scene, renderer } from '../view/rig.js?v=20260831-01';
+import { AudioEngine } from '../audio.js?v=20260901-01';
+import { buildDrumKit } from '../instruments/drums.js?v=20260901-01';
+import { buildPiano } from '../instruments/piano.js?v=20260901-01';
+import { buildGuitar } from '../instruments/guitar.js?v=20260901-01';
+import { buildMic } from '../instruments/mic.js?v=20260901-01';
+import { UI } from '../ui.js?v=20260901-01';
+import { scene, renderer } from '../view/rig.js?v=20260901-01';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260831-01';
-import { buildStage } from '../scene/stage.js?v=20260831-01';
-import { buildSigns } from '../scene/signs.js?v=20260831-01';
+} from './quality.js?v=20260901-01';
+import { buildStage } from '../scene/stage.js?v=20260901-01';
+import { buildSigns } from '../scene/signs.js?v=20260901-01';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260831-01';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260831-01';
-import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260831-01';
-import { buildGiftWardrobe, loadGiftWardrobeModel } from '../scene/gift-wardrobe.js?v=20260831-01';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260831-01';
+} from '../scene/lighting.js?v=20260901-01';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260901-01';
+import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260901-01';
+import { buildGiftWardrobe, loadGiftWardrobeModel } from '../scene/gift-wardrobe.js?v=20260901-01';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260901-01';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -41,8 +41,8 @@ import {
   MASCOT_OUTFIT_COLORS,
   MASCOT_SMILES,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260831-01';
-import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260831-01';
+} from '../mascot/appearance.js?v=20260901-01';
+import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260901-01';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
@@ -117,7 +117,7 @@ export const noteBursts = new NoteBursts(scene);
 }
 
 export const mascot = buildMascot();
-// The tier's companion creature (mouse / cat / golden bird). A child of
+// The tier's companion bird (one species per marked tier). A child of
 // mascot.group: it rides walks, poses and the fall fade for free, and the
 // reveal's group-hide keeps it from spoiling the wardrobe. Attached before the
 // fall-material traverse below so its materials restore on respawn like any
@@ -200,11 +200,16 @@ export function applyMascotConfig() {
   for (const [name, accessory] of Object.entries(cu.accessoryGroups)) {
     accessory.visible = name === mascotCfg.accessory;
   }
-  // The rarity's persistent presence: aura pieces per tier, plus a trim glow
-  // (stripes + collar slots) in the tier accent on epic and legendary. Reset
-  // to black on the way down — a reroll can lower the tier.
+  // The rarity's persistent presence: the companion bird and its halo. The
+  // bird lands on the character as actually built — the crown is the hair
+  // cap, the bare scalp or the headphone band — and keeps one world size
+  // whatever the height / build draw did to the body underneath it.
   const tier = GIFT_TIERS_BY_ID[mascotCfg.tier] ?? GIFT_TIERS_BY_ID.common;
-  mascotCompanion.setTier(tier);
+  mascotCompanion.setTier(tier, {
+    crownY: mascot.perches.crownY(style.cap, mascotCfg.accessory),
+    shoulder: mascot.perches.shoulder,
+    build: { width: mascotCfg.width / 100, height: mascotCfg.height / 100 },
+  });
   applyMascotScale();
 }
 

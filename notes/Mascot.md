@@ -76,9 +76,14 @@ the persistent mark — one companion bird per tier, and the ladder is *species 
 shoulder for epic, the crested golden songbird that perches on the head for legendary, each
 over a halo that brightens with the tier; common stays alone. (This replaced the additive aura: a glow on the boards
 fought the stage lighting and read as a decal; a creature moving with intent reads in one
-glance.) All four birds are built once at boot and toggled/recoloured from
-`applyMascotConfig()`, so the no-allocation-per-pull rule below covers it. Exact ladder and
-budget rules: [[SPEC]] §13 "The tier on stage". One wiring gotcha: the companion module is
+glance.) All three birds are built once at boot and toggled/recoloured/rescaled from
+`applyMascotConfig()`, so the no-allocation-per-pull rule below covers it. Two things that
+call passes in are easy to lose in a refactor: the **build**, which the bird divides back out
+so it is the same size on every character (it rides `mascot.group`, whose scale *is* the
+height / build draw), and the **perches**, which `buildMascot()` measures from its own head
+and shoulder geometry (bare scalp, hair cap or headphone band) so the songbird sits on a
+bald crown instead of hovering over it. Exact ladder and budget rules: [[SPEC]] §13 "The
+tier on stage". One wiring gotcha: the companion module is
 loaded by `core/studio.js`, so it must not import any `view/` module that imports studio
 back (`instrument-presets` does) — the cycle is a TDZ error at boot. `main.js` passes the
 "visitor is at an instrument" flag into `mascotCompanion.update()` instead.

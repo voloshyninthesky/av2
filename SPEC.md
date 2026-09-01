@@ -1114,7 +1114,7 @@ The gift should feel like being handed someone, not like filling in a form. The 
 | **ЕПІЧНИЙ**     | 14%    | purple `0x9E33CA` |
 | **ЛЕГЕНДАРНИЙ** | 6%     | gold `0xD1A13B`   |
 
-- **The ceremony is identical at every tier** — the same ~7 s timeline, five thumps, five bursts, bloom ramp and closing spin that used to be reserved for a legendary. A visitor receives one gift in their life, so scaling the spectacle to the roll would mean most people never see the good version of the only reveal they will ever get. A `GIFT_TIERS` entry carries **only** a label and an accent colour, and must never grow timing or intensity fields again; the persistent on-stage presence below is keyed off the tier *id* elsewhere (`js/scene/mascot-aura.js`) and never feeds back into the ceremony.
+- **The ceremony is identical at every tier** — the same ~7 s timeline, five thumps, five bursts, bloom ramp and closing spin that used to be reserved for a legendary. A visitor receives one gift in their life, so scaling the spectacle to the roll would mean most people never see the good version of the only reveal they will ever get. A `GIFT_TIERS` entry carries **only** a label and an accent colour, and must never grow timing or intensity fields again; the persistent on-stage presence below is keyed off the tier *id* elsewhere (`js/scene/mascot-companion.js`) and never feeds back into the ceremony.
 - **The card is the whole of the first run.** It introduces the character and says what the stage lets you do with it — «Вайбери люблять ходити по сцені та грати на інструментах.» — and its **ЗРОЗУМІЛО** writes `av2.onboard.v2`. Two cards in a row, the second restating the first, was one beat too many for a visitor who has not touched anything yet. The standalone tip survives only for the visitor who has a character but never acknowledged the text (closed with ✕ or Esc), which is why the two gates stay separate.
 
 - The card shows the tier inside the sentence and nothing else — no name, no trait list. Higher tiers weight toward the traits that read as distinctive at stage distance — `bald`, the `night` palette, `headphones`, the pink hair swatch, `gold` overrides, wider height / build ladders. Common keeps the whole vocabulary so the ordinary population stays varied.
@@ -1158,27 +1158,51 @@ the **count** — legible from the back row:
 | Tier            | Companions                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **ЗВИЧАЙНИЙ**   | Nobody — the unmarked bottom rung is what makes the ladder read                             |
-| **РІДКІСНИЙ**   | A small crestless **sparrow in pewter blue-grey**: brief, timid flights at waist height and wide of the arms, resting on the **boards** twice as long as it flies, over a faint halo |
-| **ЕПІЧНИЙ**     | A slim forked-tail **swallow in silver**: confident chest-high circles, landing on the character's **shoulder**, over a brighter halo |
-| **ЛЕГЕНДАРНИЙ** | The crested **songbird** in gold, lit from inside: the highest flight, perching on the **crown of the head**, over the brightest halo |
+| **РІДКІСНИЙ**   | A small crestless **sparrow in pewter blue-grey**, pale-breasted: brief, timid bounding flights at waist height and wide of the arms — a burst of flapping, then wings tucked for the dip — resting on the **boards** twice as long as it flies, over a faint halo |
+| **ЕПІЧНИЙ**     | A slim forked-tail **swallow in silver**, dark-capped with a white breast: confident chest-high circles on long spread-wing glides, landing on the character's **shoulder cap**, over a brighter halo |
+| **ЛЕГЕНДАРНИЙ** | The crested **songbird** in deep gold, lit from inside: a circle at eye level — the highest flight — perching on the **crown of the head**, over the brightest halo |
 
 **Exactly one bird per tier.** Two and three were tried and pulled: a flock made the stage
 busy, and the count was doing work the glow does more quietly. The ladder is now *species +
 landing spot + glow* — where the bird lands is its loudest rung (boards → shoulder → head),
 and the halo and the bird's own emissive both climb with the tier (halo intensity
-0.30 / 0.55 / 0.80 at radius scale 1.0 / 1.1 / 1.22, plumage emissive 0.10 / 0.26 / 0.45 —
+0.30 / 0.55 / 0.80 at radius scale 1.0 / 1.1 / 1.22, plumage emissive 0.10 / 0.22 / 0.30 —
 epic and legendary read as marked from the back row, rare stays the quiet rung).
 
 The three birds come from **one builder with authored silhouette options** (crest, tail
-long / forked / fan, slimness, a dark cap) — the differences that carry at stage distance.
-Keep new variety in that vocabulary rather than new meshes. Their colours climb a **metal
-ladder — pewter, silver, gold —** while the tier accent stays on the halo, which is where
-the accent belongs: an accent-coloured bird (the violet swallow was tried) reads as a toy,
-and silver stands beside pewter as plainly one rank finer while leaving gold alone at the
-top.
+long / forked / fan, slimness, a dark cap; every bird is two-tone, with a paler breast under
+the plumage, because a single-colour blob reads as a chick in the reveal portrait) — the
+differences that carry at stage distance. The wings are real spans: flattened ellipsoids on
+shoulder pivots that flap on one axis and fold back along the flank on the other when the
+bird lands. Keep new variety in that vocabulary rather than new meshes. Their colours climb
+a **metal ladder — pewter, silver, gold —** while the tier accent stays on the halo, which
+is where the accent belongs: an accent-coloured bird (the violet swallow was tried) reads
+as a toy, and silver stands beside pewter as plainly one rank finer while leaving gold
+alone at the top. The ladder is a **real finish, not a tint**: silver and gold carry
+metalness / roughness (0.55 / 0.30 and 0.70 / 0.30) under the stage environment map so the
+key light puts a highlight on them, pewter stays dull (0.18 / 0.62), and the gold plumage
+starts from a deeper base (`0xB88A1C`) than the accent — a reflective gold plus its own
+glow washes to cream under the key light unless it has somewhere darker to start from.
 
 - Beside you on the boards < on your shoulder < on your head. The landing spot is the
   clearest rung; gold plus the head-perch is what keeps legendary unmistakable at a glance.
+- **The bird is one creature on every character.** It rides `mascot.group`, whose scale *is*
+  the height / build draw, so `setTier` divides the build back out of the bird's own scale:
+  a bird is never taller on a tall character, never squashed on a wide one, and never a
+  giant on the giant. The stage-fall shrink still applies — the companion rides the body
+  down.
+- **Perches are measured from the rig, not authored.** `buildMascot()` returns `perches`:
+  the shoulder-cap top, and `crownY(cap, accessory)` — the hair cap when there is one, the
+  bare face sphere when bald, the headphone band when worn. `applyMascotConfig()` passes
+  them with the build into `setTier`, and the bird's belly line sits on that height plus
+  4 mm. Two of the six legendary looks are bald; before this the songbird floated ~6 cm over
+  their scalp.
+- **It reads as flight, not as an orbiting prop.** The bird banks into its own turn, its nose
+  follows the climb and the dip, it flaps in bursts (the sparrow's are phase-locked to its
+  bounding bob; the swallow and songbird glide spread-winged between them), and it flares —
+  nose up, wings spread — through the landing. Perched, the head snaps between looks and
+  holds each one, the tail flicks, and every so often the wings ruffle. Under
+  `prefers-reduced-motion` none of that runs: wings still, head forward.
 - Under the bird's owner sits a **soft accent halo** on the boards — one additive ring in
   the tier colour, breathing barely (±8%). It carries part of the ladder now that the count
   does not, but it must never regrow the runes, ripples, rays or trim that were removed with
@@ -1188,10 +1212,11 @@ top.
 - **Budget rules.** All three birds are built once at boot in the scene before the first
   `renderer.compile`, then only toggled and recoloured per tier: a reroll allocates no
   geometry, no texture, no program link. No new lights, no post passes, no shadow casters
-  (the curated shadow rule). Measured against common: **+10 draw calls / +621 triangles** at
-  legendary, and less below it — one bird plus one halo ring. Geometry and texture counts
-  are identical at every tier and across a 20-pull stress. Replacing the additive aura with
-  a creature *removed* four full-screen-blended ground layers.
+  (the curated shadow rule). Measured against common: **+10 / +12 / +11 draw calls** and
+  roughly +750 / +900 / +760 triangles at rare / epic / legendary — one bird plus one halo
+  ring (the swallow's dark cap is its extra mesh). Geometry, texture and program counts are
+  unchanged across a 20-pull stress; a metal finish is a uniform, not a relink. Replacing
+  the additive aura with a creature *removed* four full-screen-blended ground layers.
 - Per-frame animation is transform-level only — positions, rotations, wing pivots. Material
   **opacity is never written** by the companion — the stage-fall fade owns opacity for
   everything under `mascot.group` and restores it on respawn.

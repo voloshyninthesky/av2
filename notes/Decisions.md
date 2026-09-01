@@ -12,6 +12,38 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The bird got a body, a perch and one size — 2026-09-01
+
+Three things were wrong with the marked tiers, all visible in one close-up of a legendary
+bald look. **The bird scaled with the build.** It rides `mascot.group`, whose scale *is* the
+height / build draw, so a 134 / 78 «тінь» carried a bird stretched 1.7:1, an 84 / 136 epic
+carried a squashed one, and the 145 / 138 giant carried a giant bird — it read as drawn
+with the body rather than alighting on it. `setTier` now divides the build back out, so the
+bird is one creature on every character (the stage-fall shrink still applies; the bird
+rides the body down). **The songbird floated over a bald crown** — its perch was one
+authored height, the hair cap's; two of the six legendary looks are bald and showed ~6 cm of
+air under the bird. Perches are now measured from the rig: `buildMascot()` returns the
+shoulder-cap top and `crownY(cap, accessory)` (hair cap / bare face sphere / headphone
+band), and the belly line sits on that. **The "gold" bird read as a cream chick.** Gold
+lifted 28% toward white plus a 0.45 emissive under the key light is cream; the plumage now
+starts from a deeper base (`0xB88A1C`) with a real metal finish (metalness 0.7 / roughness
+0.3, silver 0.55 / 0.3, pewter dull) and a 0.30 glow, and every bird is two-tone with a
+paler breast — the second-strongest "bird" tell after the silhouette.
+
+The wings were the other half of the silhouette problem: they were fins along the flank
+that flapped by rolling. They are spans now — flattened ellipsoids out to the side on
+shoulder pivots, flap on one axis, fold back along the flank on the other. And a creature
+"moving with intent" needs more than an orbit: the bird banks into its turn, pitches with
+the bob, flaps in bursts and glides (the sparrow in bounding flight, phase-locked to its
+dip), flares nose-up through the landing, and perched it snaps its head between looks,
+flicks its tail and ruffles now and then. The legendary orbit rose to eye level so "flies
+highest" is literally true from the stalls. Budget after all of it: +10 / +12 / +11 draw
+calls over common; geometry, texture and program counts unchanged across a 20-pull stress
+(a metal finish is a uniform, not a relink). Everything stays inside the standing rules —
+no new slot, no lights, no shadows, no opacity writes, built once at boot. → [[Mascot]]
+
+---
+
 ## The desktop drag hint is gone — 2026-08-31
 
 Removed `#drag-hint` («перетягуй — огляд сцени · коліщатко — зум») entirely: the element,

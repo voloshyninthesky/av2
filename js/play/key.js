@@ -15,7 +15,7 @@
 // chosen a key keeps it, and the sevenths toggle still travels with the key it
 // applies to.
 // ============================================================
-import { keyLabel, stepKey } from './harmony.js?v=20260831-01';
+import { keyLabel, stepKey } from './harmony.js?v=20260901-01';
 
 const STORAGE_KEY = 'av2.chord-key.v1';
 
