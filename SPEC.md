@@ -173,8 +173,10 @@ Mute chosen before the context exists is honored when `init` runs.
 - Mascot walking uses convex X/Z footprints derived from the visible meshes of instruments and speaker stacks, expanded by the mascot's rounded clearance. Rotated and irregular objects keep silhouette-following borders instead of oversized axis-aligned boxes. Keyboard / stick movement slides along angled edges; click routes use expanded footprint corners; instrument approaches stop at the nearest clear silhouette edge before focus, and exiting a seated focus pose returns the mascot to clear floor.
 - Backdrop **slideshow** (shader crossfade + Ken Burns) with gold frame and brand plate. On the **reverse** of that wall, a maker's mark reading **made by @vadymbek** — the screen stack and the backdrop are all front-facing, so it is invisible from the audience side and only found by orbiting behind the stage.
 - Procedural dust; gentle idle motion on curtains / instruments (respects `prefers-reduced-motion`).
-- Start camera is pulled in by three “+” zoom steps (`START_ZOOM_FACTOR = 0.82³`). The game-style mascot-follow camera and temporary scout-on-drag behavior run on both mobile and desktop; focused instrument views retain their own cameras. Extra zoom-in headroom vs older builds.
+- Start camera gives an elevated audience view, pulled in by two “+” zoom steps on landscape (`0.82²`) and three on portrait (`0.82³`), so the stage layout is readable before choosing an instrument. The game-style mascot-follow camera and temporary scout-on-drag behavior run on both mobile and desktop; focused instrument views retain their own cameras. Extra zoom-in headroom vs older builds.
 - After Enter: `html.stage-live` — fixed layout, `touch-action` guards, `visualViewport` scale reset to fight Chrome iOS letterboxing from stuck page zoom.
+
+- Appearance: a woven drum rug and instanced acoustic slats ground the performance area; a muted teal upstage rim, desaturated drum light and softer spotlight edges preserve instrument detail. Decorative additions use four draw calls, with no new real lights or shadow casters.
 
 ### Signs («знаки на сцені»)
 
@@ -676,6 +678,13 @@ Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar s
 Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop. Must remain usable while another finger is playing an instrument. With a groove sounding, the record press arms a **count-in** and the take opens on the next downbeat (§ The groove and the loop pedal); without one it records from the press. A ribbon hold records its actual sustained duration, and its glide (§ The voice and the loop pedal); if a vocal is already held when the take opens — at the pedal press, or at the downbeat a count-in lands on — capture starts at that instant, from the note the voice is on, and continues until release or loop closure.
 
 ---
+
+### Instrument chooser
+
+- A named **Твоя сцена** chooser offers **Піаніно / Гітара / Барабани / Вокал** on the free stage. It uses the existing walk-and-focus route, without creating an AudioContext or playing a note.
+- Desktop: compact dock above the keyboard legend, between movement and play controls. Phone portrait: below the HUD, leaving the bottom controls free. Short landscape: a single compact row. Phone targets are at least 48 px tall.
+- The current destination is highlighted and announced politely while approaching. The chooser hides for instrument entry, focus, exit, intro and modal overlays; it is disabled during a fall. Existing modal isolation and multitouch chrome guards include it.
+- Keyboard focus moves from the chosen route to the close-up exit button, then returns to the chosen instrument on exit. Named buttons complement direct stage picking and keyboard play.
 
 ## 6. UI overlays
 

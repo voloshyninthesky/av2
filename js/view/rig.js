@@ -15,8 +15,8 @@ import {
   MOBILE_MAX_PIXEL_RATIO,
   LOW_END_MOBILE_MAX_PIXEL_RATIO,
   DESKTOP_MAX_PIXEL_RATIO,
-} from '../core/quality.js?v=20260901-01';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260901-01';
+} from '../core/quality.js?v=20260905-02';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260905-02';
 
 export const canvas = document.getElementById('scene');
 export let renderer;
@@ -67,8 +67,8 @@ export const CAM_START = new THREE.Vector3(0, 9.5, 18.5);
 export const CAM_END = new THREE.Vector3(0, 3.05, 10.45);
 export const TARGET = new THREE.Vector3(0, 1.45, -0.3);
 export const ZOOM_IN_STEP = 0.82;
-// Start two "+" presses closer than the original stage framing.
-const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 5;
+// Leave room to read the venue and choose an instrument before moving closer.
+const START_ZOOM_FACTOR = ZOOM_IN_STEP ** 2;
 // Focused piano / guitar open two "+" presses inside their measured fit, so
 // the play surface fills the screen instead of sitting in a safe-rect box.
 export const FOCUS_ZOOM_FACTOR = ZOOM_IN_STEP ** 2;
@@ -87,20 +87,20 @@ export function fitCameraToViewport() {
     // Portrait intentionally crops the far stage wings and brings the player
     // into the action, closer to a third-person mobile game camera.
     CAM_START.set(0, 7.8, 20);
-    CAM_END.set(0, 2.9, 14.6);
+    CAM_END.set(0, 5.8, 14.6);
     camera.fov = 62;
     controls.maxDistance = 22;
     renderer.toneMappingExposure = 0.92;
   } else {
     CAM_START.set(0, 9.5, 18.5);
-    CAM_END.set(0, 3.05, 10.45);
+    CAM_END.set(0, 4.4, 10.45);
     camera.fov = 55;
     controls.maxDistance = 16;
     renderer.toneMappingExposure = 1.02;
   }
   // A coarse-pointer phone stays capped in landscape as well as portrait.
   renderer.setPixelRatio(renderPixelRatio());
-  pullCameraTowardTarget(CAM_END);
+  pullCameraTowardTarget(CAM_END, portrait ? ZOOM_IN_STEP ** 3 : START_ZOOM_FACTOR);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 }

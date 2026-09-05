@@ -13,8 +13,9 @@ import {
   perforatedTexture,
   softDiscTexture,
   contactShadowTexture,
-} from './textures.js?v=20260901-01';
-import { buildScreen } from './screen.js?v=20260901-01';
+} from './textures.js?v=20260905-02';
+import { buildStageDetails } from './stage-details.js?v=20260905-02';
+import { buildScreen } from './screen.js?v=20260905-02';
 import {
   adaptiveQualityScene,
   stageAmbience,
@@ -22,7 +23,7 @@ import {
   registerDimmableEmissive,
   isLowEndMobileGameMode,
   canUpgradeMobileQuality,
-} from '../core/quality.js?v=20260901-01';
+} from '../core/quality.js?v=20260905-02';
 
 // ---- stage dressing: skirt, footlight hoods, proscenium, star drop,
 // upstage truss, monitor wedges, cable runs, contact shadows ----
@@ -312,6 +313,7 @@ function buildStageDressing(g, { curtainMaterial, curtainLegGeometry } = {}) {
 export function buildStage() {
   const g = new THREE.Group();
   g.userData.walkColliderRoots = [];
+  g.add(buildStageDetails());
 
   // venue floor
   const floor = new THREE.Mesh(

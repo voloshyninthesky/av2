@@ -24,7 +24,8 @@
 <meta name="twitter:image" content="https://artvibe.com.pl/img/stage-guitar.jpg">
 <meta name="twitter:image:alt" content="Гітаристка виступає на сцені Art Vibe Studio">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/style.css?v=20260901-01">
+<link rel="stylesheet" href="/css/style.css?v=20260905-02">
+<link rel="stylesheet" href="/css/stage-chrome.css?v=20260905-02">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -110,7 +111,7 @@
   <div class="hud-left">
     <button class="logo-chip" id="logo-btn" type="button" title="Танець — тектонік" aria-label="Art Vibe Studio — танець (тектонік)" aria-pressed="false">
       <span class="logo-av">AV</span>
-      <span class="logo-text mono">ART VIBE STUDIO</span>
+      <span class="logo-text mono">ART VIBE STUDIO<span class="studio-location">ВІРТУАЛЬНА СЦЕНА · ŁÓDŹ</span></span>
     </button>
   </div>
 
@@ -190,6 +191,17 @@
     </a>
   </nav>
 </header>
+
+<nav id="stage-nav" hidden aria-label="Обрати інструмент">
+  <div class="stage-nav-heading"><span class="stage-live-dot" aria-hidden="true"></span>Твоя сцена<span class="stage-nav-invite">Обери, на чому зіграєш</span></div>
+  <div class="stage-nav-instruments">
+    <button type="button" data-stage-instrument="piano" aria-label="Підійти до піаніно"><span class="instrument-number" aria-hidden="true">01</span><span>Піаніно<small>Знайди свою мелодію</small></span><span class="instrument-arrow" aria-hidden="true">↗</span></button>
+    <button type="button" data-stage-instrument="guitar" aria-label="Підійти до гітари"><span class="instrument-number" aria-hidden="true">02</span><span>Гітара<small>Відчуй кожен акорд</small></span><span class="instrument-arrow" aria-hidden="true">↗</span></button>
+    <button type="button" data-stage-instrument="drums" aria-label="Підійти до барабанів"><span class="instrument-number" aria-hidden="true">03</span><span>Барабани<small>Задай свій ритм</small></span><span class="instrument-arrow" aria-hidden="true">↗</span></button>
+    <button type="button" data-stage-instrument="mic" aria-label="Підійти до мікрофона"><span class="instrument-number" aria-hidden="true">04</span><span>Вокал<small>Дай голос музиці</small></span><span class="instrument-arrow" aria-hidden="true">↗</span></button>
+  </div>
+  <span class="sr-only" id="stage-nav-status" role="status"></span>
+</nav>
 
 <div id="keys-hint" class="mono hidden">
   <!-- One legend per keyboard mode, swapped by CSS off data-instrument: away
@@ -560,6 +572,6 @@
     });
   })();
 </script>
-  <script type="module" src="/js/main.js?v=20260901-01"></script>
+  <script type="module" src="/js/main.js?v=20260905-02"></script>
 </body>
 </html>

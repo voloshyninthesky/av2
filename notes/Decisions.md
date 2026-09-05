@@ -1793,3 +1793,5 @@ price chips track instruments through their own `queuePriceChip(kind)`.
 - **Measure the viewport, don't branch on breakpoints.** → [[Focus framing]]
 - **`av2.*` storage keys are versioned and deliberately not migrated.** A key bump (e.g.
   `av2.mascot.v4`) is the intended way to reset returning visitors.
+
+- 2026-09-05: Give the virtual stage a wider, elevated opening frame and a named instrument chooser. Visitors can discover all four routes without deciphering the keyboard legend or guessing proximity. The chooser delegates to existing silent walking/focus logic and yields its space to close-up play controls. Brass chrome, softened spots, a drum rug and acoustic slats reinforce the theatre without adding real lights.

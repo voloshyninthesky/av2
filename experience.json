@@ -1,0 +1,44 @@
+{
+  "name": "art-vibe-stage",
+  "title": "Art Vibe Studio — virtual stage",
+  "audience": "Visitors exploring music lessons in Łódź",
+  "goal": "Explore an instrument, then open lesson prices and contact the studio",
+  "theme": {
+    "id": "music-stage",
+    "mood": [
+      "intimate",
+      "theatrical",
+      "tactile"
+    ],
+    "palette": {
+      "bg": "#0a0612",
+      "fog": "#0a0612",
+      "key": "#ffe8c8",
+      "fill": "#867494",
+      "rim": "#71b8b0",
+      "accent": "#d1a13b"
+    }
+  },
+  "chain": {
+    "scene": "todo",
+    "objects": "done",
+    "mascot": "done",
+    "customization": "done",
+    "funnel": "done"
+  },
+  "scene": {
+    "signature": "Warm front light with a muted teal upstage rim and softly feathered visible beams",
+    "setPieces": [
+      "pleated velvet curtains",
+      "brass proscenium",
+      "woven drum rug",
+      "slatted acoustic wings",
+      "wooden stage with practical footlights"
+    ],
+    "atmosphere": "Existing drifting dust, reduced visual contrast in beam shells",
+    "camera": "Wider audience view at two zoom steps on landscape, three on portrait; retains orbit and character following"
+  },
+  "log": [
+    "2026-09-05 scene: existing experience documented; appearance and navigation refinement in progress. Existing instruments, gift customization and pricing funnel retained."
+  ]
+}

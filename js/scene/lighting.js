@@ -6,7 +6,7 @@
 // render probe pulls when the device cannot keep up.
 // ============================================================
 import * as THREE from 'three';
-import { softDiscTexture } from './textures.js?v=20260901-01';
+import { softDiscTexture } from './textures.js?v=20260905-02';
 import {
   adaptiveQualityScene,
   registerDimmableLight,
@@ -15,7 +15,7 @@ import {
   isLowEndMobileGameMode,
   usesLowMobileSceneBudget,
   canUpgradeMobileQuality,
-} from '../core/quality.js?v=20260901-01';
+} from '../core/quality.js?v=20260905-02';
 
 // ---- truss + spotlights + visible cones ----
 export const spotHeads = [];
@@ -25,9 +25,9 @@ export function visibleBeamMaterial(color, clipToStage = false) {
   const material = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
-    opacity: 0.06,
+    opacity: 0.035,
     blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     depthWrite: false,
     fog: false,
   });
@@ -117,7 +117,7 @@ export function installStageEnvironment(scene, renderer) {
 export function buildLights() {
   const g = new THREE.Group();
   // Soft sky/ground gradient instead of flat wash — spots keep their punch.
-  const hemi = new THREE.HemisphereLight(0x6a4a88, 0x1a0e22, 0.48);
+  const hemi = new THREE.HemisphereLight(0x867494, 0x21151c, 0.58);
   const ambient = new THREE.AmbientLight(0x584a74, 0.16);
   g.add(hemi);
   g.add(ambient);
@@ -127,7 +127,7 @@ export function buildLights() {
   // Cool rim from upstage separates performers/instruments from the backdrop
   // without lifting the overall exposure. Culled on the low mobile tier.
   if (!isLowEndMobileGameMode() || canUpgradeMobileQuality) {
-    const rim = new THREE.SpotLight(0x7a5cff, 185, 26, 0.72, 0.9, 1.5);
+    const rim = new THREE.SpotLight(0x71b8b0, 155, 26, 0.72, 0.9, 1.5);
     rim.position.set(0, 7.4, -5.2);
     rim.target.position.set(0, 1.1, 2.4);
     g.add(rim, rim.target);
@@ -143,12 +143,12 @@ export function buildLights() {
   g.add(bar);
 
   const spots = [
-    { x: -4.6, color: 0x9E33CA, intensity: 540, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025, sweep: 0.05 },
+    { x: -4.6, color: 0xb985c4, intensity: 390, target: new THREE.Vector3(-2.8, 1.0, -1.7), coneR: 1.7, coneFloorY: 0.025, sweep: 0.05 },
     { x: -1.55, color: 0xD1A13B, intensity: 450, target: new THREE.Vector3(-1.35, 0.8, 1.75), coneR: 1.3, coneFloorY: 0.025, lowPriority: true },
     // Key light: the only shadow caster, aimed at the downstage performer spot
     // so the mascot starts lit and grounded. Its pool also washes the mic.
     { x: 1.05, color: 0xfff0d8, intensity: 300, target: new THREE.Vector3(0.25, 1.15, 2.3), coneR: 1.55, coneFloorY: 0.025, shadow: true },
-    { x: 4.6, color: 0xD1A13B, intensity: 500, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025, sweep: -0.05 },
+    { x: 4.6, color: 0xffce91, intensity: 400, target: new THREE.Vector3(3.5, 1.0, -1.3), coneR: 1.7, coneFloorY: 0.025, sweep: -0.05 },
     { x: 0, color: 0x7a1fa2, intensity: 250, target: new THREE.Vector3(0, 5.35, -5.45), coneR: 2.6, y: 7.6, z: -2.5, lowPriority: true },
   ];
 
@@ -197,7 +197,7 @@ export function buildLights() {
     if (!isLowEndMobileGameMode() || !s.lowPriority || canUpgradeMobileQuality) {
       // Shadow-casting fixtures get a tighter cone: it reads more like a real
       // followspot and shrinks the shadow frustum to the performers in it.
-      const spot = new THREE.SpotLight(s.color, s.intensity, 30, s.shadow ? 0.4 : 0.47, 0.78, 1.6);
+      const spot = new THREE.SpotLight(s.color, s.intensity, 30, s.shadow ? 0.4 : 0.47, 0.94, 1.6);
       spot.position.set(0, 0, 0);
       spot.target.position.set(s.target.x - s.x, s.target.y - y, s.target.z - z);
       if (s.shadow) {

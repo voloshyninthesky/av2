@@ -1,0 +1,79 @@
+/* Quiet theatre chrome: warm brass, ink glass, readable instrument routes. */
+:root { --stage-glass: rgba(19, 15, 24, .9); --stage-border: rgba(228, 201, 147, .23); }
+#hud { padding: max(18px, env(safe-area-inset-top)) 24px 14px; }
+.logo-chip { border-color: var(--stage-border); background: var(--stage-glass); border-radius: 12px; padding: 8px 16px 8px 9px; }
+.logo-av { background: #d9b76c; color: #201428; box-shadow: none; }
+.logo-text { font-size: 10px; letter-spacing: .16em; }
+.studio-location { display: block; margin-top: 3px; color: #b7aab9; font-size: 8px; letter-spacing: .12em; }
+#vibe { border-color: var(--stage-border); background: var(--stage-glass); padding: 10px 15px; }
+.vibe-track { height: 4px; width: clamp(60px, 9vw, 130px); }
+.vibe-label { font-size: 9px; }
+#hud .icon-btn { min-width: 44px; min-height: 44px; background: var(--stage-glass); border-color: var(--stage-border); }
+#hud .icon-btn.gold { color: #f3d899; background: #392b25; }
+#stage-nav {
+  position: fixed; z-index: 42; left: 50%; bottom: max(48px, calc(env(safe-area-inset-bottom) + 24px));
+  transform: translateX(-50%); width: min(720px, calc(100vw - 390px));
+  padding: 14px; border: 1px solid var(--stage-border); border-radius: 18px;
+  color: #f6eee4; background: var(--stage-glass); backdrop-filter: blur(18px);
+  box-shadow: 0 16px 48px #0005, inset 0 1px 0 #fff06;
+}
+.stage-nav-heading { display: flex; align-items: center; gap: 8px; margin: 0 3px 11px; font-size: 12px; font-weight: 600; }
+.stage-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #9cc9b2; box-shadow: 0 0 8px #9cc9b233; }
+.stage-nav-invite { margin-left: auto; color: #b7aab9; font-size: 11px; font-weight: 400; }
+.stage-nav-instruments { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.stage-nav-instruments button {
+  display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 58px; padding: 10px;
+  text-align: left; font: 600 13px 'Manrope', sans-serif; color: #f6eee4;
+  border: 1px solid transparent; border-radius: 9px; background: #ffffff06;
+  cursor: pointer; transition: background .18s, border-color .18s, transform .18s;
+}
+.instrument-number { align-self: flex-start; padding-top: 2px; font: 9px 'JetBrains Mono', monospace; color: #c4a576; }
+.stage-nav-instruments small { display: block; margin-top: 5px; font-size: 9px; font-weight: 400; line-height: 1.35; color: #b7aab9; }
+.instrument-arrow { margin-left: auto; color: #c4a576; }
+.stage-nav-instruments button.is-approaching { background: #d9b76c20; border-color: #d9b76c70; }
+.stage-nav-instruments button:disabled { opacity: .45; cursor: default; }
+@media (hover: hover) {
+  .stage-nav-instruments button:hover { background: #d9b76c18; border-color: #d9b76c50; transform: translateY(-2px); }
+}
+#stage-nav button:focus-visible, #hud :is(button, a):focus-visible { outline: 2px solid #f3d899; outline-offset: 3px; }
+html:not([data-instrument-view]) #keys-hint,
+html[data-instrument-view="idle"] #keys-hint,
+html[data-instrument-view="approaching"] #keys-hint { font-size: 9px; background: transparent; color: #c2b8c5; padding: 3px; bottom: 16px; }
+html:not([data-instrument-view]) #keys-hint b,
+html[data-instrument-view="idle"] #keys-hint b,
+html[data-instrument-view="approaching"] #keys-hint b { border: none; padding: 0 2px; }
+@media (max-width: 1100px) and (min-width: 721px) {
+  #stage-nav { width: calc(100vw - 340px); }
+  .stage-nav-instruments small, .instrument-arrow { display: none; }
+  .stage-nav-instruments button { padding: 9px 6px; gap: 6px; font-size: 12px; }
+  .stage-nav-invite { font-size: 10px; }
+  html:not([data-instrument-view]) #keys-hint,
+html[data-instrument-view="idle"] #keys-hint,
+  html[data-instrument-view="approaching"] #keys-hint { display: none; }
+}
+@media (max-width: 720px) {
+  #hud { padding: max(9px, env(safe-area-inset-top)) 12px 8px; gap: 8px; }
+  .logo-chip { width: 44px; height: 44px; padding: 4px; }
+  .logo-av { width: 34px; height: 34px; }
+  #vibe { padding: 7px 9px; height: 36px; gap: 6px; }
+  .vibe-track { width: auto; }
+  #stage-nav { top: calc(max(9px, env(safe-area-inset-top)) + 61px); bottom: auto; width: calc(100vw - 24px); padding: 10px; border-radius: 14px; }
+  .stage-nav-heading { margin-bottom: 8px; font-size: 11px; }
+  .stage-nav-invite { font-size: 10px; }
+  .stage-nav-instruments { gap: 4px; }
+  .stage-nav-instruments button { min-height: 48px; padding: 8px 4px; gap: 5px; justify-content: center; font-size: 11px; }
+  .instrument-number { align-self: center; font-size: 8px; padding: 0; }
+  .stage-nav-instruments small, .instrument-arrow { display: none; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  #stage-nav { top: auto; bottom: 12px; width: min(520px, calc(100vw - 300px)); padding: 6px; }
+  .stage-nav-heading, .stage-nav-instruments small, .instrument-arrow, .instrument-number { display: none; }
+  .stage-nav-instruments button { min-height: 48px; justify-content: center; padding: 6px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-nav-instruments button { transition: none; }
+  .stage-nav-instruments button:hover { transform: none; }
+}
+@media (max-width: 360px) {
+  .stage-nav-instruments .instrument-number { display: none; }
+}

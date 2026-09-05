@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Local stage verification</title>
+<style>body{background:#17121c;color:#fff;font:14px monospace}iframe{width:1280px;height:720px;border:0}pre{white-space:pre-wrap}</style>
+<pre id="report">Waiting for first rendered frame…</pre><iframe id="stage" src="/stage/?testhooks=1&headless=1&nointro=1&skiponboard=1"></iframe>
+<script>
+const timer = setInterval(() => {
+ const w = document.querySelector('iframe').contentWindow;
+ if (!w.__sceneReady) return;
+ const by = {};
+ for (const entry of w.performance.getEntriesByType('resource')) {
+  if (!entry.name.includes('/js/') || !entry.name.includes('?v=')) continue;
+  const [path, version] = entry.name.split('?v='); (by[path] ??= new Set()).add(version);
+ }
+ const result={ready:w.__sceneReady,renderer:w.__THREE_GAME_DIAGNOSTICS__.renderer,audio:w.__audioDebug(),duplicateModules:Object.entries(by).filter(([,versions])=>versions.size>1).map(([path])=>path),versions:[...new Set(Object.values(by).flatMap(v=>[...v]))]};
+ document.getElementById('report').textContent=JSON.stringify(result,null,2); clearInterval(timer);
+},1000);
+</script></html>
