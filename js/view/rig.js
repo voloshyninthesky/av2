@@ -15,8 +15,8 @@ import {
   MOBILE_MAX_PIXEL_RATIO,
   LOW_END_MOBILE_MAX_PIXEL_RATIO,
   DESKTOP_MAX_PIXEL_RATIO,
-} from '../core/quality.js?v=20260905-02';
-import { isFreeCamera } from '../core/camera-mode.js?v=20260905-02';
+} from '../core/quality.js?v=20260905-05';
+import { isFreeCamera } from '../core/camera-mode.js?v=20260905-05';
 
 export const canvas = document.getElementById('scene');
 export let renderer;

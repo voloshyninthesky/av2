@@ -6,21 +6,21 @@
 // guards let pinch work where it helps (inspecting an instrument) while
 // blocking the double-tap zoom that would otherwise eat a drum hit.
 // ============================================================
-import { session } from '../core/session.js?v=20260905-02';
-import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260905-02';
+import { session } from '../core/session.js?v=20260905-05';
+import { prefersReducedMotion, isLowEndMobileGameMode } from '../core/quality.js?v=20260905-05';
 import {
   renderer,
   camera,
   controls,
   fitCameraToViewport,
   applyMobileOrbitPolicy,
-} from './rig.js?v=20260905-02';
-import { ui } from '../core/studio.js?v=20260905-02';
-import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260905-02';
-import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260905-02';
-import { instrumentViewFrame } from './focus-frame.js?v=20260905-02';
-import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260905-02';
-import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260905-02';
+} from './rig.js?v=20260905-05';
+import { ui } from '../core/studio.js?v=20260905-05';
+import { invalidateSlideshowNavLayout } from '../scene/slideshow.js?v=20260905-05';
+import { INSTRUMENT_VIEW_PRESETS, instrumentView } from './instrument-presets.js?v=20260905-05';
+import { instrumentViewFrame } from './focus-frame.js?v=20260905-05';
+import { applyFocusedControlLimits, syncControlsAtInstrumentFrame } from './instrument-view.js?v=20260905-05';
+import { syncMobileInstrumentChrome } from './mobile-controls.js?v=20260905-05';
 
 // Resizing has to re-post the composer and re-sync chrome that main.js owns.
 // The gift reveal refit is a hook rather than an import: mascot/ sits *above*
@@ -115,7 +115,7 @@ export function syncRendererToWindow() {
 // Pedal / pads / HUD sit above the canvas. preventDefault on a 2nd-finger
 // touchstart suppresses that finger's pointer events — so never claim multitouch
 // when any active touch is on UI chrome (loop pedal + drum must work together).
-const UI_TOUCH_CHROME = '#stage-nav, #loop-pedal, #voice-ribbon, #chord-wheel, #groove-wheel, #mobile-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
+const UI_TOUCH_CHROME = '#loop-pedal, #voice-ribbon, #chord-wheel, #groove-wheel, #mobile-controls, #mobile-exit, #hud, #onboard, #toast, #chip, .overlay';
 
 export function isUiChromeElement(el) {
   return Boolean(el?.closest?.(`${UI_TOUCH_CHROME}, .panel, input, textarea, [contenteditable="true"]`));
@@ -181,4 +181,3 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', resetBrowserPageZoom);
   window.visualViewport.addEventListener('scroll', () => hooks.onGiftRefit());
 }
-

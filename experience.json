@@ -20,7 +20,7 @@
     }
   },
   "chain": {
-    "scene": "todo",
+    "scene": "done",
     "objects": "done",
     "mascot": "done",
     "customization": "done",
@@ -39,6 +39,6 @@
     "camera": "Wider audience view at two zoom steps on landscape, three on portrait; retains orbit and character following"
   },
   "log": [
-    "2026-09-05 scene: existing experience documented; appearance and navigation refinement in progress. Existing instruments, gift customization and pricing funnel retained."
+    "2026-09-05 scene: widened and elevated the audience view, softened stage lighting, and added a woven drum rug plus acoustic wing details. Verified desktop and phone views in the browser; existing HUD and direct interaction retained after review."
   ]
 }

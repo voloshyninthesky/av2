@@ -19,25 +19,25 @@
 // rather than tracks. See notes/Decisions.md.
 // ============================================================
 import * as THREE from 'three';
-import { session, easeInOut } from '../core/session.js?v=20260905-02';
-import { prefersReducedMotion, params } from '../core/quality.js?v=20260905-02';
-import { trackOnce } from '../core/analytics.js?v=20260905-02';
-import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260905-02';
+import { session, easeInOut } from '../core/session.js?v=20260905-05';
+import { prefersReducedMotion, params } from '../core/quality.js?v=20260905-05';
+import { trackOnce } from '../core/analytics.js?v=20260905-05';
+import { camera, controls, CAM_END, TARGET } from '../view/rig.js?v=20260905-05';
 import {
   ui, mascot, mascotLabel, audio, fireworks, giftWardrobe,
   applyMascotConfig, applyMascotScale,
-} from '../core/studio.js?v=20260905-02';
-import { WARDROBE_AJAR, WARDROBE_DOOR_MAX } from '../scene/gift-wardrobe.js?v=20260905-02';
-import { bumpHitPulse } from '../scene/effects.js?v=20260905-02';
-import { instrumentView } from '../view/instrument-presets.js?v=20260905-02';
-import { leaveInstrumentView } from '../view/instrument-view.js?v=20260905-02';
-import { settleOnFollowCamera } from '../view/mobile-controls.js?v=20260905-02';
-import { resetMascotPose, setDancing } from './pose.js?v=20260905-02';
-import { mascotMove } from './state.js?v=20260905-02';
+} from '../core/studio.js?v=20260905-05';
+import { WARDROBE_AJAR, WARDROBE_DOOR_MAX } from '../scene/gift-wardrobe.js?v=20260905-05';
+import { bumpHitPulse } from '../scene/effects.js?v=20260905-05';
+import { instrumentView } from '../view/instrument-presets.js?v=20260905-05';
+import { leaveInstrumentView } from '../view/instrument-view.js?v=20260905-05';
+import { settleOnFollowCamera } from '../view/mobile-controls.js?v=20260905-05';
+import { resetMascotPose, setDancing } from './pose.js?v=20260905-05';
+import { mascotMove } from './state.js?v=20260905-05';
 import {
   validateMascotAppearance, mascotCfg, saveMascotConfig, hasSavedMascot,
-} from './appearance.js?v=20260905-02';
-import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260905-02';
+} from './appearance.js?v=20260905-05';
+import { drawMascotGift, GIFT_TIERS_BY_ID } from './gift.js?v=20260905-05';
 
 // Opening the gift borrows the camera and has to quiet whatever else was using
 // it. The bloom pass lives in shell/, above this module, so main.js injects it
@@ -89,9 +89,7 @@ const T_DOOR_FLING = 0.50;
 const T_FADE_START = 0.35;
 const T_FADE_DUR = 0.35;
 // Clearance between the wardrobe's front face and the character's spot. The
-// setback itself is measured from the prop (giftWardrobe.frontZ), because the
-// open shell reaches much further forward than the shut one — a fixed number
-// tuned on the shut wardrobe puts the open one's doors around the character.
+// setback is measured from the prop, including its projecting handles.
 const WARDROBE_GAP = 0.14;
 // A skip that fires on the same tap that opened the gift would eat the whole
 // ceremony; the visitor has to have seen something first.
@@ -418,7 +416,8 @@ function resetWardrobeVisuals() {
   group.visible = true;
   giftWardrobe.setDoorAngle(0);
   glow.visible = true;
-  mats.glow.opacity = 0;
+  mats.glow.opacity = 0.12;
+  giftWardrobe.updateMagic(0, 0, prefersReducedMotion.matches);
   mats.glow.color.copy(COLOR_NEUTRAL);
 }
 
@@ -496,9 +495,6 @@ function beginGiftCeremony() {
 function fireBurst() {
   giftReveal.bursted = true;
   giftReveal.phase = 'pose';
-  // A skip can jump here straight from the settle, so the window is shut on
-  // this path too rather than only on the strain's.
-  giftWardrobe.ceremonyRunning = true;
 
   // The character becomes real here: validated, applied, and written to storage
   // in the same frame the visitor first sees it.
@@ -587,7 +583,7 @@ function updateStrain(progress) {
   const ajar = WARDROBE_AJAR * progress
     + Math.abs(Math.sin(giftReveal.wobblePhase * 1.7)) * 0.02 * progress;
   giftWardrobe.setDoorAngle(ajar);
-  mats.glow.opacity = progress;
+  mats.glow.opacity = 0.12 + progress * 0.88;
   // The tier's colour only leaks out late — early enough to build, late enough
   // that it lands as a payoff rather than a spoiler.
   const tint = Math.max(0, (progress - 0.6) / 0.4);
@@ -649,11 +645,10 @@ export function updateGiftReveal(dt) {
   giftReveal.t += scaledDt;
   const t = giftReveal.t;
   const burstAt = strainEndTime();
+  giftWardrobe.updateMagic(t, Math.min(1, Math.max(0, (t - T_SETTLE_END) / STRAIN)), prefersReducedMotion.matches);
 
   if (!giftReveal.bursted) {
-    // Re-placed every pre-burst frame rather than once: the generated shells
-    // can dress mid-fly, and a deeper shell needs a deeper setback. Runs
-    // before the phase logic, which owns the hop on position.y.
+    // Restore the floor pose before the phase logic applies its hop.
     placeWardrobe();
     if (t < T_FLY_END) {
       giftReveal.phase = 'fly';
@@ -665,12 +660,6 @@ export function updateGiftReveal(dt) {
       giftWardrobe.group.scale.setScalar(1);
     } else {
       giftReveal.phase = 'strain';
-      // The dress-up window shuts here, not at ceremony start. A first-run
-      // gift opens straight out of the boot fly-in, so closing it any earlier
-      // would mean the one visitor who actually watches a ceremony never sees
-      // the generated wardrobe. Until the strain the prop is either off-camera
-      // or just landing; from here it is the thing being watched.
-      giftWardrobe.ceremonyRunning = true;
       giftWardrobe.group.scale.setScalar(1);
       const progress = Math.min(1, (t - T_SETTLE_END) / STRAIN);
       // Phase is integrated rather than evaluated as sin(t·ω): ω itself ramps,
@@ -715,7 +704,6 @@ function endGiftCeremony() {
   giftReveal.refitFrame = 0;
   giftReveal.active = false;
   giftReveal.phase = 'idle';
-  giftWardrobe.ceremonyRunning = false;
   document.documentElement.classList.remove('gift-open');
   giftReveal.dragPointer = null;
   // Only the first-run egg is pre-placed by prepareGiftStage(); a gift that

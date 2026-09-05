@@ -12,6 +12,17 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## The reveal wardrobe reads as furniture — 2026-09-05
+
+The tall, dark, ornate generated shell read as a coffin. A broader warm wooden cabinet
+with a flat crown, framed lilac doors, drawer, visible feet and a hanger badge makes its
+purpose legible immediately. One procedural prop now carries the entire ceremony, so
+its actual doors crack and swing instead of hiding a shell-to-carcass cut under a flash.
+Celestial inlays and gently rising golden motes add magic while keeping the furniture
+silhouette welcoming. The parts and one soft mote texture are built at boot; the reveal
+still adds no lights, downloads, geometry or textures. Reduced motion freezes the motes
+and the inlay pulse.
+
 ## The bird got a body, a perch and one size — 2026-09-01
 
 Three things were wrong with the marked tiers, all visible in one close-up of a legendary
@@ -1794,4 +1805,4 @@ price chips track instruments through their own `queuePriceChip(kind)`.
 - **`av2.*` storage keys are versioned and deliberately not migrated.** A key bump (e.g.
   `av2.mascot.v4`) is the intended way to reset returning visitors.
 
-- 2026-09-05: Give the virtual stage a wider, elevated opening frame and a named instrument chooser. Visitors can discover all four routes without deciphering the keyboard legend or guessing proximity. The chooser delegates to existing silent walking/focus logic and yields its space to close-up play controls. Brass chrome, softened spots, a drum rug and acoustic slats reinforce the theatre without adding real lights.
+- 2026-09-05: Give the virtual stage a wider, elevated opening frame, softened spots, a drum rug and acoustic slats. Keep the established HUD and direct stage interaction; the added instrument navigation and alternate HUD treatment competed with the scene and were removed after review.

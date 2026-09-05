@@ -677,15 +677,6 @@ Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar s
 
 Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop. Must remain usable while another finger is playing an instrument. With a groove sounding, the record press arms a **count-in** and the take opens on the next downbeat (§ The groove and the loop pedal); without one it records from the press. A ribbon hold records its actual sustained duration, and its glide (§ The voice and the loop pedal); if a vocal is already held when the take opens — at the pedal press, or at the downbeat a count-in lands on — capture starts at that instant, from the note the voice is on, and continues until release or loop closure.
 
----
-
-### Instrument chooser
-
-- A named **Твоя сцена** chooser offers **Піаніно / Гітара / Барабани / Вокал** on the free stage. It uses the existing walk-and-focus route, without creating an AudioContext or playing a note.
-- Desktop: compact dock above the keyboard legend, between movement and play controls. Phone portrait: below the HUD, leaving the bottom controls free. Short landscape: a single compact row. Phone targets are at least 48 px tall.
-- The current destination is highlighted and announced politely while approaching. The chooser hides for instrument entry, focus, exit, intro and modal overlays; it is disabled during a fall. Existing modal isolation and multitouch chrome guards include it.
-- Keyboard focus moves from the chosen route to the close-up exit button, then returns to the chosen instrument on exit. Named buttons complement direct stage picking and keyboard play.
-
 ## 6. UI overlays
 
 | Overlay                                   | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -1140,10 +1131,10 @@ Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 H
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fly` 0 → 0.9 s   | Camera tweens to the wardrobe; on a reroll it pops in with overshoot                                                                                                                                                                                           |
 | `settle` → 1.25 s | The wardrobe rests, doors shut. Seam glow stays neutral cream **at every tier** — no tell yet                                                                                                                                                                  |
-| `strain` → +3.8 s | The rocking escalates; the upper shell lifts off the seam and the glow leaks through the crack. From 60% through the strain the glow lerps toward the tier accent — the tell, late enough to land as a payoff. Bloom ramps with it. Five thumps, evenly spaced |
+| `strain` → +3.8 s | The rocking escalates; both doors shudder ajar and the glow leaks through the crack. From 60% through the strain the glow lerps toward the tier accent — the tell, late enough to land as a payoff. Bloom ramps with it. Five thumps, evenly spaced |
 
 **The ceremony is percussion only — no melody.** Knocking from inside the shell and a crash at the hatch. A pitched line turns the reveal into a jingle and competes with the instruments the visitor is about to play.
-| `burst` | The cap flies off; five firework bursts; footlight pulse; crash. **The config is validated, applied and written to storage on this frame.** The character lands with a scale overshoot |
+| `burst` | Both doors fling open; five firework bursts; footlight pulse; crash. **The config is validated, applied and written to storage on this frame.** The character lands with a scale overshoot |
 | `pose` +0.1 → ~1.4 s | Camera pushes onto the character; arms up, hold, relax. Legendary gets a full turn |
 | `card` +0.55 s | The card introduces the character by tier and says what the stage affords; focus moves to **ЗРОЗУМІЛО** |
 | `held` | Idle. Horizontal drag rotates the character |
@@ -1153,8 +1144,8 @@ Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 H
 - Under `prefers-reduced-motion` the whole thing collapses to about a second: no wobble, one burst, no bloom ramp, no pose. **Audio is unchanged** — it is action feedback, not ambient shimmer. The tier is still carried by the card and the accent colour.
 - A tap outside the card, or Enter / Space, skips to the reveal after a 400 ms grace so the opening tap cannot also skip it.
 - The wardrobe is **built once at boot** and kept invisible, **no lights**: a light added lazily would relink every lit program mid-ceremony, and the additive seam glow plus the bloom ramp do the same job for free.
-- **The prop is two layers.** A procedural cabinet (carcass, cornice, legs, two hinged doors) exists synchronously at boot, so the ceremony is fully playable offline and never waits on the network. A generated GLB shell (`/stage/assets/wardrobe.glb`) dresses it when it arrives, fitted to the procedural box exactly — front rotated to +z, then scaled per axis to the same W × H × D. The generated mesh is fused and cannot hinge, so it owns every shut state and hands back to the procedural carcass on the burst frame, under the flash, when the doors pass their open threshold.
-- **The dress-up window closes at the strain, not at ceremony start.** A first-run gift opens straight out of the boot fly-in; gating on "is the wardrobe visible" would mean the one visitor who actually watches a ceremony never sees the generated art. A shell that lands mid-strain waits for the ceremony to end.
+- **The prop is one continuous wardrobe**, built synchronously from geometry at boot: broad warm timber carcass, flat stepped crown with a brass hanger badge, muted lilac framed double doors, a bottom drawer and visible tapered feet. Its proportions and furniture details must read as a dressing-room closet rather than a narrow dark casket. Warm glowing moon-and-star inlays and a small field of golden motes add a restrained storybook feel. Their glow builds during anticipation without revealing the tier; reduced motion holds the motes and glow pulse still.
+- **The same solid doors carry every beat** — shut, ajar, flung open — with no generated-shell substitution or network dependency. Static details are merged by material within the carcass and each door, so only the two hinge groups animate and repeated reveals allocate no geometry or textures.
 - The wardrobe is **yawed to the ceremony camera and stood back by its own front extent**, so it reads front-on from whatever angle the visitor left the camera at, and the character lands in the doorway rather than inside the cabinet.
 
 ### The tier on stage
@@ -1243,7 +1234,7 @@ glow washes to cream under the key light unless it has somewhere darker to start
   owner stops.
 - The companion is **procedural, not generated**: a generated bird is a fused mesh whose wings
   cannot hinge, and the avian auto-rig has no flight preset to retarget — the
-  generated-asset budget belongs to static hero props like the wardrobe.
+  generated-asset budget belongs to other static hero props.
 - **A tier's presence never adds a slot to the appearance vocabulary.** It is carried by the
   companion and the weighting of traits the character already has — never by a new wearable
   (a crown, a cape, a pet *item*) added for the tier alone. A new slot has to be drawn,
@@ -1273,7 +1264,7 @@ glow washes to cream under the key light unless it has somewhere darker to start
 - Validate at `320×568`, `390×844`, `430×932`, `844×390`, and `1280×720`. The character never intersects the card or the HUD.
 - The full ceremony renders at the display frame rate, not the 15 fps modal budget.
 - On a first run the **mascot is never visible at any point before the reveal** — not during the fly-in, not for a single frame — and the wardrobe is on stage at full scale throughout the approach.
-- The wardrobe presents its front to the camera at **every** azimuth, and the ceremony still completes with the generated shell missing (procedural fallback).
+- The wardrobe presents its front to the camera at **every** azimuth, and the wardrobe requires no model download to complete the ceremony.
 - The camera moves **zero units and turns zero degrees** on the frames where the ceremony takes over from the approach, and the instruments never disappear.
 - Closing the card moves the camera **not at all**: the reveal pose already satisfies every OrbitControls limit, so control passes across without a correction. The only motion afterwards is the standard damped follow-settle.
 - **ЗРОЗУМІЛО** writes `av2.onboard.v2` and no second tip follows; closing with **✕** leaves it unwritten so the tip appears next visit.

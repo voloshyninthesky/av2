@@ -168,13 +168,11 @@ camera. That angle is session-only — not part of the saved appearance.
 
 Two more things that are easy to break:
 
-- The wardrobe (`js/scene/gift-wardrobe.js`) is **two layers**: a procedural cabinet built at
-  boot that the ceremony always runs on, and a generated GLB shell that dresses it when the
-  download lands. The generated mesh is fused, so it cannot hinge — it owns the shut states
-  and hands back to the procedural carcass on the burst frame, under the flash. Both are
-  fitted to the same box, and the dress-up waits out a running ceremony rather than
-  repainting the prop mid-reveal. The asset was made with the `threejs-3d-generator` skill;
-  its front axis is baked as a constant because the generator ignores "front facing".
+- The wardrobe (`js/scene/gift-wardrobe.js`) is a single procedural furniture prop:
+  warm timber, lilac framed doors, a bottom drawer, raised feet and a hanger badge.
+  The same doors hinge through the entire reveal; the old fused generated shell is
+  retired. Details are merged by material per rigid assembly at boot, preserving the
+  no-allocation-per-pull rule without any model download or mid-burst substitution.
 - `js/mascot/gift.js` **imports nothing**, deliberately — that is what lets
   `tests/mascot-gift.test.mjs` import it under plain `node`. It therefore spells the
   appearance vocabulary a second time, and a test reads `appearance.js` as text to keep the

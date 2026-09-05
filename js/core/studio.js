@@ -6,30 +6,30 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260905-02';
-import { buildDrumKit } from '../instruments/drums.js?v=20260905-02';
-import { buildPiano } from '../instruments/piano.js?v=20260905-02';
-import { buildGuitar } from '../instruments/guitar.js?v=20260905-02';
-import { buildMic } from '../instruments/mic.js?v=20260905-02';
-import { UI } from '../ui.js?v=20260905-02';
-import { scene, renderer } from '../view/rig.js?v=20260905-02';
+import { AudioEngine } from '../audio.js?v=20260905-05';
+import { buildDrumKit } from '../instruments/drums.js?v=20260905-05';
+import { buildPiano } from '../instruments/piano.js?v=20260905-05';
+import { buildGuitar } from '../instruments/guitar.js?v=20260905-05';
+import { buildMic } from '../instruments/mic.js?v=20260905-05';
+import { UI } from '../ui.js?v=20260905-05';
+import { scene, renderer } from '../view/rig.js?v=20260905-05';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260905-02';
-import { buildStage } from '../scene/stage.js?v=20260905-02';
-import { buildSigns } from '../scene/signs.js?v=20260905-02';
+} from './quality.js?v=20260905-05';
+import { buildStage } from '../scene/stage.js?v=20260905-05';
+import { buildSigns } from '../scene/signs.js?v=20260905-05';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260905-02';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260905-02';
-import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260905-02';
-import { buildGiftWardrobe, loadGiftWardrobeModel } from '../scene/gift-wardrobe.js?v=20260905-02';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260905-02';
+} from '../scene/lighting.js?v=20260905-05';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260905-05';
+import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260905-05';
+import { buildGiftWardrobe } from '../scene/gift-wardrobe.js?v=20260905-05';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260905-05';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -41,8 +41,8 @@ import {
   MASCOT_OUTFIT_COLORS,
   MASCOT_SMILES,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260905-02';
-import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260905-02';
+} from '../mascot/appearance.js?v=20260905-05';
+import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260905-05';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
@@ -63,13 +63,10 @@ scene.add(dust);
 export const fireworks = new Fireworks(scene);
 // Added invisible at boot for the same reason as the sign boards: renderer.compile
 // only sees what is already in the scene, and a first gift that had to link its
-// programs mid-ceremony would stall on the frame it matters most. The generated
-// shell dresses the procedural base whenever its download lands — the ceremony
-// never waits on it.
+// programs mid-ceremony would stall on the frame it matters most.
 export const giftWardrobe = buildGiftWardrobe();
 giftWardrobe.group.visible = false;
 scene.add(giftWardrobe.group);
-loadGiftWardrobeModel(giftWardrobe, '/stage/assets/wardrobe.glb');
 
 // instruments
 export const drums = buildDrumKit();

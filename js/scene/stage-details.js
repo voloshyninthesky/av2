@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { registerDimmableEmissive } from '../core/quality.js?v=20260905-02';
+import { registerDimmableEmissive } from '../core/quality.js?v=20260905-05';
 
 // Flat woven rug grounds the kit without changing its playable height or routes.
 // Repeated acoustic slats and brass rails use three draws for both stage wings.
