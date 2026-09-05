@@ -12,6 +12,12 @@ change. `git show <hash>` is the primary source; this note is the index into it,
 
 ---
 
+## More room to strum — 2026-09-05
+
+The soundhole-only hit area was too small on phones. The invisible strum plane now
+covers the body and adds side margins, while stopping below the fretboard. This makes
+existing swipes easier without changing the controls, chord selection or camera.
+
 ## The reveal wardrobe reads as furniture — 2026-09-05
 
 The tall, dark, ornate generated shell read as a coffin. A broader warm wooden cabinet

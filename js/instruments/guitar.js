@@ -13,7 +13,7 @@ import {
   lacquer,
   metal,
   std,
-} from './shared.js?v=20260905-05';
+} from './shared.js?v=20260905-06';
 
 // Where the mascot stands behind the held guitar, in guitar-group space: a
 // bigger body steps farther back so the head clears the strings. Canonical
@@ -250,8 +250,10 @@ export function buildGuitar() {
   }
 
   const STRUM_Y = 0.08;
-  const strumPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.56), hitMat);
-  strumPlane.position.set(0, STRUM_Y, 0.145);
+  // Cover the whole body, with room for a fingertip to overshoot the sides.
+  // Stop just below the fretboard (y = 0.42), so neck taps still pick frets.
+  const strumPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.94), hitMat);
+  strumPlane.position.set(0, -0.06, 0.145);
   strumPlane.visible = false;
   Object.assign(strumPlane.userData, {
     instrument: 'guitar',

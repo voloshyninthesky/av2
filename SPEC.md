@@ -377,7 +377,7 @@ The primary mental model is **two hands**: the fretting hand chooses the sound; 
 
 #### Strum and pluck
 
-- An enlarged invisible strum plane surrounds the soundhole (at least `120 × 160` CSS px on a supported phone). A stroke may start just outside the string fan.
+- An enlarged invisible strum plane covers the whole guitar body, with forgiving side margins (at least `120 × 160` CSS px on a supported phone). Its guitar-local size is `1.0 × 0.94`, centred at `y = -0.06`, ending just below the fretboard so neck taps retain their existing behaviour. A stroke may start just outside the string fan or cross nearer the bridge.
 - Only motion mainly **across** the strings counts. Motion along the strings, a body tap, headstock tap, or slow orbit gesture stays silent.
 - A stroke excites every crossed, non-muted string exactly once, at its interpolated crossing time. Bass → treble and treble → bass preserve opposite string order.
 - Reversal starts a new stroke only after direction hysteresis; moving outside the play zone cannot keep retriggering.

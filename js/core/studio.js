@@ -6,30 +6,30 @@
 // cast threaded through them, which keeps the module graph a tree.
 // ============================================================
 import * as THREE from 'three';
-import { AudioEngine } from '../audio.js?v=20260905-05';
-import { buildDrumKit } from '../instruments/drums.js?v=20260905-05';
-import { buildPiano } from '../instruments/piano.js?v=20260905-05';
-import { buildGuitar } from '../instruments/guitar.js?v=20260905-05';
-import { buildMic } from '../instruments/mic.js?v=20260905-05';
-import { UI } from '../ui.js?v=20260905-05';
-import { scene, renderer } from '../view/rig.js?v=20260905-05';
+import { AudioEngine } from '../audio.js?v=20260905-06';
+import { buildDrumKit } from '../instruments/drums.js?v=20260905-06';
+import { buildPiano } from '../instruments/piano.js?v=20260905-06';
+import { buildGuitar } from '../instruments/guitar.js?v=20260905-06';
+import { buildMic } from '../instruments/mic.js?v=20260905-06';
+import { UI } from '../ui.js?v=20260905-06';
+import { scene, renderer } from '../view/rig.js?v=20260905-06';
 import {
   adaptiveQualityScene,
   applyStageLightLevel,
   stageLightLevel,
-} from './quality.js?v=20260905-05';
-import { buildStage } from '../scene/stage.js?v=20260905-05';
-import { buildSigns } from '../scene/signs.js?v=20260905-05';
+} from './quality.js?v=20260905-06';
+import { buildStage } from '../scene/stage.js?v=20260905-06';
+import { buildSigns } from '../scene/signs.js?v=20260905-06';
 import {
   installStageEnvironment,
   buildLights,
   buildDust,
   applyLowMobileSceneBudget,
-} from '../scene/lighting.js?v=20260905-05';
-import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260905-05';
-import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260905-05';
-import { buildGiftWardrobe } from '../scene/gift-wardrobe.js?v=20260905-05';
-import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260905-05';
+} from '../scene/lighting.js?v=20260905-06';
+import { buildMascot, makeMascotPointer } from '../scene/mascot-model.js?v=20260905-06';
+import { buildMascotCompanion } from '../scene/mascot-companion.js?v=20260905-06';
+import { buildGiftWardrobe } from '../scene/gift-wardrobe.js?v=20260905-06';
+import { Fireworks, NoteBursts, bumpHitPulse } from '../scene/effects.js?v=20260905-06';
 import {
   MASCOT_BASE_SCALE,
   MASCOT_DEFAULTS,
@@ -41,8 +41,8 @@ import {
   MASCOT_OUTFIT_COLORS,
   MASCOT_SMILES,
   mascotCfg,
-} from '../mascot/appearance.js?v=20260905-05';
-import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260905-05';
+} from '../mascot/appearance.js?v=20260905-06';
+import { GIFT_TIERS_BY_ID } from '../mascot/gift.js?v=20260905-06';
 
 export const ui = new UI();
 export const audio = new AudioEngine();
