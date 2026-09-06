@@ -1154,10 +1154,19 @@ Driven from the single frame loop, never from `setTimeout` (timers clamp to ~1 H
 
 ### The tier on stage
 
-The reveal used to be the only place a tier existed; after ГОТОВО every character looked
-common. Rare and above are now accompanied by **companion birds** in the tier's accent
-colour, with the character for as long as they are kept. One bird family, and the ladder is
-the **count** — legible from the back row:
+Rare and above carry a permanent **costume insignia and companion bird**. The bird's
+species, metallic finish and landing spot distinguish the tiers; the costume repeats the
+tier with a distinct silhouette in the reveal portrait and instrument close-ups.
+
+- **Rare:** a blue diamond brooch in a pewter setting.
+- **Epic:** a winged amethyst brooch and double silver chest piping.
+- **Legendary:** a gold sunburst medallion, double gold piping and fringed shoulder braid.
+- Common keeps the small fabric badge. Insignia attach to the torso, follow its poses,
+  and are built once, merged to two material batches per tier, then toggled in place.
+  They add no lights, shadows, textures, saved fields or changes to the draw probabilities.
+
+All characters have softly rounded sneaker uppers and soles, shaped ears and brows,
+more open eye whites, welt pockets and jacket snaps. Skin tones remain independent of tier.
 
 | Tier            | Companions                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------ |
@@ -1178,7 +1187,10 @@ long / forked / fan, slimness, a dark cap; every bird is two-tone, with a paler 
 the plumage, because a single-colour blob reads as a chick in the reveal portrait) — the
 differences that carry at stage distance. The wings are real spans: flattened ellipsoids on
 shoulder pivots that flap on one axis and fold back along the flank on the other when the
-bird lands. Keep new variety in that vocabulary rather than new meshes. Their colours climb
+bird lands. Layered outer flight feathers, shaped tail feathers, pale brow markings and a
+three-feather legendary crest clarify their silhouettes. Feather details are merged per
+wing or rigid assembly at boot. Relative bird scales are 0.94 / 1.08 / 1.18 before build
+compensation, so the companions remain readable beside the costumes. Their colours climb
 a **metal ladder — pewter, silver, gold —** while the tier accent stays on the halo, which
 is where the accent belongs: an accent-coloured bird (the violet swallow was tried) reads
 as a toy, and silver stands beside pewter as plainly one rank finer while leaving gold
@@ -1216,9 +1228,9 @@ glow washes to cream under the key light unless it has somewhere darker to start
 - **Budget rules.** All three birds are built once at boot in the scene before the first
   `renderer.compile`, then only toggled and recoloured per tier: a reroll allocates no
   geometry, no texture, no program link. No new lights, no post passes, no shadow casters
-  (the curated shadow rule). Measured against common: **+10 / +12 / +11 draw calls** and
-  roughly +750 / +900 / +760 triangles at rare / epic / legendary — one bird plus one halo
-  ring (the swallow's dark cap is its extra mesh). Geometry, texture and program counts are
+  (the curated shadow rule). The detail pass keeps one active bird and one halo, plus
+  two costume material batches; wing feather layers add one draw per wing and brow markings
+  add one per bird. Geometry, texture and program counts are
   unchanged across a 20-pull stress; a metal finish is a uniform, not a relink. Replacing
   the additive aura with a creature *removed* four full-screen-blended ground layers.
 - Per-frame animation is transform-level only — positions, rotations, wing pivots. Material

@@ -13,9 +13,9 @@ import {
   perforatedTexture,
   softDiscTexture,
   contactShadowTexture,
-} from './textures.js?v=20260906-01';
-import { buildStageDetails } from './stage-details.js?v=20260906-01';
-import { buildScreen } from './screen.js?v=20260906-01';
+} from './textures.js?v=20260906-02';
+import { buildStageDetails } from './stage-details.js?v=20260906-02';
+import { buildScreen } from './screen.js?v=20260906-02';
 import {
   adaptiveQualityScene,
   stageAmbience,
@@ -23,7 +23,7 @@ import {
   registerDimmableEmissive,
   isLowEndMobileGameMode,
   canUpgradeMobileQuality,
-} from '../core/quality.js?v=20260906-01';
+} from '../core/quality.js?v=20260906-02';
 
 // ---- stage dressing: skirt, footlight hoods, proscenium, star drop,
 // upstage truss, monitor wedges, cable runs, contact shadows ----

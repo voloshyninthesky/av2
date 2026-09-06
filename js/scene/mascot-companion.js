@@ -38,7 +38,8 @@
 // mascot.group, and a second writer would fight its restore on respawn.
 // ============================================================
 import * as THREE from 'three';
-import { prefersReducedMotion } from '../core/quality.js?v=20260906-01';
+import { mergeGeometries } from '/vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
+import { prefersReducedMotion } from '../core/quality.js?v=20260906-02';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an
@@ -58,7 +59,7 @@ const HALO_SCALE = { rare: 1.0, epic: 1.1, legendary: 1.22 };
 const PLUMAGE_GLOW = { rare: 0.10, epic: 0.22, legendary: 0.30 };
 // Bird size at a 100 / 100 build. setTier divides the character's build back
 // out of these, so the bird is the same creature on every body.
-const BIRD_SCALE = { rare: 0.8, epic: 0.92, legendary: 1.0 };
+const BIRD_SCALE = { rare: 0.94, epic: 1.08, legendary: 1.18 };
 // Clearance between a perched belly and the surface it sits on.
 const PERCH_CLEARANCE = 0.004;
 
@@ -138,7 +139,7 @@ function buildBird({ crest = true, tail = 'long', cap = false, slim = false, pha
   const inkMat = new THREE.MeshStandardMaterial({ color: 0x17121c, roughness: 0.6 });
 
   const bodyScale = slim ? [0.85, 0.78, 1.38] : [0.95, 0.85, 1.25];
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), plumage);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), plumage);
   body.scale.set(...bodyScale);
   bird.add(body);
   const breastMesh = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), breast);
@@ -150,7 +151,7 @@ function buildBird({ crest = true, tail = 'long', cap = false, slim = false, pha
   const head = new THREE.Group();
   head.position.set(0, 0.075, 0.085);
   bird.add(head);
-  head.add(new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), plumage));
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(0.052, 16, 12), plumage));
   if (cap) {
     const capMesh = new THREE.Mesh(new THREE.SphereGeometry(0.054, 10, 8), inkMat);
     capMesh.scale.set(1, 0.62, 1);
@@ -162,11 +163,26 @@ function buildBird({ crest = true, tail = 'long', cap = false, slim = false, pha
   beak.position.set(0, -0.005, 0.058);
   head.add(beak);
   if (crest) {
-    const crestMesh = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.055, 5), plumage);
-    crestMesh.position.set(0, 0.052, -0.022);
-    crestMesh.rotation.x = -0.55;
+    const plumes = [-1, 0, 1].map((side) => {
+      const g = new THREE.ConeGeometry(0.012, side === 0 ? 0.085 : 0.065, 6);
+      g.rotateX(-0.45); g.rotateZ(-side * 0.32);
+      g.translate(side * 0.018, 0.066, -0.022);
+      return g;
+    });
+    const crestMesh = new THREE.Mesh(mergeGeometries(plumes), plumage);
+    plumes.forEach((g) => g.dispose());
     head.add(crestMesh);
   }
+
+  // A light brow stroke frames each dark eye, readable even on silver.
+  const brows = [-1, 1].map((side) => {
+    const g = new THREE.SphereGeometry(0.021, 8, 6);
+    g.scale(0.28, 0.2, 1);
+    g.translate(side * 0.042, 0.026, 0.024);
+    return g;
+  });
+  head.add(new THREE.Mesh(mergeGeometries(brows), breast));
+  brows.forEach((g) => g.dispose());
   for (const side of [-1, 1]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 5), inkMat);
     eye.position.set(side * 0.038, 0.014, 0.034);
@@ -179,7 +195,8 @@ function buildBird({ crest = true, tail = 'long', cap = false, slim = false, pha
   bird.add(tailGroup);
   if (tail === 'forked') {
     for (const side of [-1, 1]) {
-      const streamer = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.01, 0.14), plumage);
+      const streamer = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), plumage);
+      streamer.scale.set(0.012, 0.006, 0.105);
       streamer.position.set(side * 0.02, 0, -0.065);
       streamer.rotation.set(-0.3, side * 0.3, 0);
       tailGroup.add(streamer);
@@ -190,9 +207,15 @@ function buildBird({ crest = true, tail = 'long', cap = false, slim = false, pha
     fan.rotation.x = -0.5;
     tailGroup.add(fan);
   } else {
-    const tailMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.11), plumage);
-    tailMesh.position.set(0, 0, -0.055);
-    tailMesh.rotation.x = -0.35;
+    const feathers = [-1, 0, 1].map((side) => {
+      const g = new THREE.SphereGeometry(1, 10, 6);
+      g.scale(0.015, 0.006, crest ? 0.10 - Math.abs(side) * 0.022 : 0.052);
+      g.rotateX(-0.35); g.rotateY(-side * 0.2);
+      g.translate(side * 0.019, 0.004, crest ? -0.075 : -0.04);
+      return g;
+    });
+    const tailMesh = new THREE.Mesh(mergeGeometries(feathers), plumage);
+    feathers.forEach((g) => g.dispose());
     tailGroup.add(tailMesh);
   }
 
@@ -212,6 +235,18 @@ function buildBird({ crest = true, tail = 'long', cap = false, slim = false, pha
       wing.position.set(side * 0.075, 0, -0.008);
     }
     pivot.add(wing);
+    // Layered flight feathers give the outer wing a scalloped, tapered edge.
+    // One merged mesh per wing, still carried by the existing flap/fold pivot.
+    const feathers = [];
+    for (let i = 0; i < 4; i++) {
+      const g = new THREE.SphereGeometry(1, 8, 6);
+      g.scale(slim ? 0.057 : 0.042, 0.006, 0.013);
+      g.rotateY(side * (0.2 + i * 0.14));
+      g.translate(side * ((slim ? 0.14 : 0.115) - i * 0.012), -0.002, -0.018 - i * 0.016);
+      feathers.push(g);
+    }
+    pivot.add(new THREE.Mesh(mergeGeometries(feathers), breast));
+    feathers.forEach((g) => g.dispose());
     bird.add(pivot);
     wings[side < 0 ? 'left' : 'right'] = pivot;
   }

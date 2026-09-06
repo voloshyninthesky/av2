@@ -90,6 +90,12 @@ back (`instrument-presets` does) — the cycle is a TDZ error at boot. `main.js`
 
 ### Why the tier is drawn first
 
+The costume now repeats the tier in a permanent insignia: blue diamond, winged amethyst,
+or gold sunburst with shoulder braid. These rigid details follow the torso and merge into
+two material batches per tier. The companion retains its species and perch, with layered
+flight feathers and a more readable crest and tail. This keeps the tier visible in a
+portrait even while its bird is off to the side; the draw and saved appearance stay the same.
+
 Rarity is drawn **tier first**, then each field from that tier's own pool — never scored from
 the traits after the fact. A score model happily emits a genuinely 1-in-3000 combination that
 reads, to the eye, as a thin person with blue eyes; the gold burst then writes a cheque the

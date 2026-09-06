@@ -5,6 +5,102 @@
 // applied afterwards from the saved config.
 // ============================================================
 import * as THREE from 'three';
+import { mergeGeometries } from '/vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
+
+// Bake rigid ornament pieces by material at boot. A gem setting or feathered
+// insignia can have a shaped outline without charging one draw per detail.
+function bakeDetails(group) {
+  const batches = new Map();
+  for (const mesh of [...group.children]) {
+    mesh.updateMatrix();
+    const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrix);
+    const flat = geometry.index ? geometry.toNonIndexed() : geometry;
+    if (flat !== geometry) geometry.dispose();
+    if (!batches.has(mesh.material)) batches.set(mesh.material, []);
+    batches.get(mesh.material).push(flat);
+    mesh.geometry.dispose();
+    group.remove(mesh);
+  }
+  for (const [material, pieces] of batches) {
+    group.add(new THREE.Mesh(mergeGeometries(pieces), material));
+    pieces.forEach((piece) => piece.dispose());
+  }
+}
+
+function buildTierDress(torso) {
+  const groups = {};
+  for (const [tier, color, metal] of [
+    ['rare', 0x408ac4, 0xa7becf], ['epic', 0x973fc8, 0xd4dbe7], ['legendary', 0xdca636, 0xb98b2c],
+  ]) {
+    const group = new THREE.Group();
+    group.name = `tier-dress-${tier}`;
+    const trim = new THREE.MeshStandardMaterial({ color: metal, metalness: 0.72, roughness: 0.32 });
+    const enamel = new THREE.MeshStandardMaterial({ color, metalness: 0.22, roughness: 0.24, emissive: color, emissiveIntensity: 0.12 });
+    const add = (geo, mat, x, y, z, rz = 0) => {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y - 1.08, z);
+      mesh.rotation.z = rz;
+      group.add(mesh);
+      return mesh;
+    };
+    // One blue diamond, a winged amethyst, then a gold sunburst medallion.
+    const bx = -0.13, by = 1.2, bz = 0.304;
+    const gem = add(new THREE.OctahedronGeometry(0.046), enamel, bx, by, bz + 0.012);
+    gem.scale.set(0.78, 1, 0.38);
+    add(new THREE.TorusGeometry(0.052, 0.008, 5, tier === 'rare' ? 4 : 20), trim, bx, by, bz, tier === 'rare' ? Math.PI / 4 : 0);
+    if (tier !== 'rare') {
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+          const feather = add(new THREE.CapsuleGeometry(0.008, 0.048 - i * 0.009, 3, 5), trim,
+            bx + side * (0.047 + i * 0.014), by + 0.01 - i * 0.008, bz - 0.013, -side * (0.6 + i * 0.2));
+          feather.scale.z = 0.5;
+        }
+      }
+      // Contrasting double piping follows the jacket's existing front arc.
+      for (const y of [1.158, 1.242]) {
+        const r = y < 1.2 ? 0.308 : 0.305;
+        const profile = [new THREE.Vector2(r, y - 1.08 - 0.004), new THREE.Vector2(r, y - 1.08 + 0.004)];
+        group.add(new THREE.Mesh(new THREE.LatheGeometry(profile, 18, -0.88, 1.76), trim));
+      }
+    }
+    if (tier === 'legendary') {
+      for (let i = 0; i < 10; i++) {
+        const a = i / 10 * Math.PI * 2;
+        add(new THREE.ConeGeometry(0.009, 0.025, 4), trim,
+          bx + Math.sin(a) * 0.065, by + Math.cos(a) * 0.065, bz - 0.009, -a);
+      }
+      // Gold shoulder braid lies on the upper jacket, below the bird perch.
+      for (const side of [-1, 1]) {
+        const braid = add(new THREE.TorusGeometry(0.062, 0.012, 6, 16, Math.PI), trim,
+          side * 0.22, 1.29, 0.19, side * 0.25);
+        braid.scale.y = 1.5;
+        for (let i = 0; i < 4; i++) {
+          add(new THREE.CapsuleGeometry(0.007, 0.043, 3, 5), trim,
+            side * (0.18 + i * 0.022), 1.265 - i * 0.009, 0.208, -side * 0.22);
+        }
+      }
+    }
+    bakeDetails(group);
+    group.visible = false;
+    torso.add(group);
+    groups[tier] = group;
+  }
+  return groups;
+}
+
+function roundedSole(width, length, depth, radius) {
+  const shape = new THREE.Shape();
+  const x = width / 2, y = length / 2, r = radius;
+  shape.moveTo(-x + r, -y);
+  shape.lineTo(x - r, -y); shape.quadraticCurveTo(x, -y, x, -y + r);
+  shape.lineTo(x, y - r); shape.quadraticCurveTo(x, y, x - r, y);
+  shape.lineTo(-x + r, y); shape.quadraticCurveTo(-x, y, -x, y - r);
+  shape.lineTo(-x, -y + r); shape.quadraticCurveTo(-x, -y, -x + r, -y);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.009, bevelThickness: 0.008, curveSegments: 4 });
+  geo.translate(0, 0, -depth / 2);
+  geo.rotateX(-Math.PI / 2);
+  return geo;
+}
 
 export function makeMascotPointer() {
   const c = document.createElement('canvas');
@@ -186,6 +282,23 @@ export function buildMascot() {
   const badge = new THREE.Mesh(new THREE.CircleGeometry(0.028, 16), mats.collar);
   badge.position.set(-0.135, 1.2 - TORSO_PIVOT_Y, 0.301);
   torso.add(badge);
+  const tierDress = buildTierDress(torso);
+  // Tailored welt pockets and metal snaps share two small rigid batches.
+  const tailoring = new THREE.Group();
+  for (const side of [-1, 1]) {
+    const pocket = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.09, 3, 6), mats.panel);
+    pocket.position.set(side * 0.17, 0.956 - TORSO_PIVOT_Y, 0.239);
+    pocket.rotation.set(0, side * 0.48, -side * 0.28);
+    tailoring.add(pocket);
+  }
+  for (const y of [0.88, 1.015, 1.145, 1.28]) {
+    const snap = new THREE.Mesh(new THREE.SphereGeometry(0.010, 8, 6), silver);
+    snap.scale.z = 0.4;
+    snap.position.set(0, y - TORSO_PIVOT_Y, y > 1.24 ? 0.291 : 0.317);
+    tailoring.add(snap);
+  }
+  bakeDetails(tailoring);
+  torso.add(tailoring);
   // Saddle shoulder caps sit at the arm joins — they carry the palette's
   // shoulder slot and mask the pivot seam through every arm swing, so they
   // stay siblings of the arms (group space), not children of the torso.
@@ -209,6 +322,12 @@ export function buildMascot() {
   const face = new THREE.Mesh(new THREE.SphereGeometry(FACE_RADIUS, 24, 18), skin);
   face.position.z = 0.035;
   head.add(face);
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 8), skin);
+    ear.scale.set(0.62, 1.15, 0.7);
+    ear.position.set(side * 0.263, -0.022, 0.018);
+    head.add(ear);
+  }
   const hairCap = new THREE.Mesh(new THREE.SphereGeometry(HAIR_CAP_RADIUS, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
   hairCap.position.set(0, 0.04, 0.05);
   head.add(hairCap);
@@ -247,7 +366,7 @@ export function buildMascot() {
   const eyeShine = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const x of [-0.09, 0.09]) {
     const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), scleraMat);
-    sclera.scale.set(1.35, 0.8, 0.5);
+    sclera.scale.set(1.4, 1.03, 0.5);
     sclera.position.set(x, 0.025, 0.281);
     head.add(sclera);
     const iris = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 10), eyeMat);
@@ -261,9 +380,9 @@ export function buildMascot() {
     const shine = new THREE.Mesh(new THREE.SphereGeometry(0.0075, 6, 5), eyeShine);
     shine.position.set(x + 0.008, 0.034, 0.305);
     head.add(shine);
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.012), hairMat);
+    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.006, 0.065, 3, 6), hairMat);
     brow.position.set(x, 0.085, 0.284);
-    brow.rotation.z = -Math.sign(x) * 0.1;
+    brow.rotation.z = Math.PI / 2 - Math.sign(x) * 0.1;
     head.add(brow);
   }
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), skin);
@@ -402,7 +521,7 @@ export function buildMascot() {
   const soleMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.65 });
   const sneakerStripeGeometry = new THREE.BoxGeometry(0.022, 0.052, 0.012);
   for (const leg of [legL, legR]) {
-    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.135, 0.375), mats.shoes);
+    const sneaker = new THREE.Mesh(roundedSole(0.214, 0.35, 0.112, 0.07), mats.shoes);
     sneaker.position.set(0, -0.645, 0.075);
     sneaker.userData.majorMass = true;
     leg.add(sneaker);
@@ -410,7 +529,7 @@ export function buildMascot() {
     heel.scale.set(1.1, 0.75, 0.7);
     heel.position.set(0, -0.647, -0.078);
     leg.add(heel);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.245, 0.05, 0.41), soleMat);
+    const sole = new THREE.Mesh(roundedSole(0.232, 0.39, 0.034, 0.075), soleMat);
     sole.position.set(0, -0.705, 0.08);
     leg.add(sole);
     const toe = new THREE.Mesh(new THREE.SphereGeometry(0.105, 12, 9), mats.shoes);
@@ -459,7 +578,7 @@ export function buildMascot() {
     },
     custom: {
       mats, hairMat, skinMat: skin, hairBack, hairCap, fringe, tail, locks, accessoryGroups, headphoneMats,
-      eyeMat,
+      eyeMat, tierDress, badge,
       mouths: { soft: softSmile, wide: wideSmile, neutral: neutralMouth },
     },
   };

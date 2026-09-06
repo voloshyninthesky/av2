@@ -8,7 +8,7 @@
 // produced the event, so headless checks can tell a real funnel completion
 // from a driven one.
 // ============================================================
-import { params } from './quality.js?v=20260906-01';
+import { params } from './quality.js?v=20260906-02';
 
 const QA_RUN = ['testhooks', 'headless', 'shot'].some((flag) => params.has(flag));
 
