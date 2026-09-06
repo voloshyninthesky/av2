@@ -465,9 +465,9 @@ test('a switch repairs the audio route and never leaves the bar on a dead clock'
     'the scheduler must re-pin, since a rebuild can land between any two ticks');
 });
 
-test('the loop locks to the groove bar when one is running', () => {
+test('the loop receives groove timing only through hooks for tempo rescaling', () => {
   const loop = code('../js/play/loop.js');
-  // Both hooks default to null, which is what leaves the loop free-running.
+  // Tempo rescaling may repair tiny phase errors against the groove.
   assert.match(loop, /grooveBarSeconds:\s*\(\)\s*=>\s*null/);
   assert.match(loop, /grooveDownbeatAt:\s*\(\)\s*=>\s*null/);
   // And loop.js must never import the groove: it sits below it, so an upward

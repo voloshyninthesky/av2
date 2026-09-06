@@ -1,19 +1,19 @@
 // ============================================================
 // MULTI-INSTRUMENT LOOP PEDAL
-// A single free-running bar that every instrument can overdub into. The first
-// pass sets the loop length; later passes are quantised against the same epoch
-// and scheduled a beat ahead on the audio clock, so playback stays in time
+// A free-running loop that every instrument can overdub into. The pedal presses
+// set the exact length; later passes share that epoch and are scheduled ahead
+// on the audio clock, so playback stays in time
 // even while the main thread is busy rendering.
 // `playMusicalEvent` is the one road every note takes — pointer, ribbon,
 // keyboard and loop playback alike — which is what makes recording transparent.
 // ============================================================
-import { session } from '../core/session.js?v=20260905-06';
-import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260905-06';
-import { mascotMove } from '../mascot/state.js?v=20260905-06';
-import { play, heldPianoNotes } from './state.js?v=20260905-06';
-import { addVibe, queuePriceChip } from './vibe.js?v=20260905-06';
-import { freqFromMidi } from './harmony.js?v=20260905-06';
-import { vowelAt } from './voice.js?v=20260905-06';
+import { session } from '../core/session.js?v=20260906-01';
+import { ui, audio, drums, piano, guitar, mic } from '../core/studio.js?v=20260906-01';
+import { mascotMove } from '../mascot/state.js?v=20260906-01';
+import { play, heldPianoNotes } from './state.js?v=20260906-01';
+import { addVibe, queuePriceChip } from './vibe.js?v=20260906-01';
+import { freqFromMidi } from './harmony.js?v=20260906-01';
+import { vowelAt } from './voice.js?v=20260906-01';
 
 const loopPedal = document.getElementById('loop-pedal');
 const loopToggle = document.getElementById('loop-toggle');
@@ -35,11 +35,8 @@ let hooks = {
   captureHeldPianoIntoLoop: () => {},
   finishHeldPianoLoopCaptures: () => {},
   finalizeHeldPianoLoopCapture: () => {},
-  // The groove wheel sits above this module, so its bar arrives as a hook. All
-  // three return null whenever no groove is sounding, which is what leaves the
-  // loop free-running exactly as it was.
+  // Tempo changes can still rescale a finished take.
   grooveBarSeconds: () => null,
-  grooveBeatSeconds: () => null,
   grooveDownbeatAt: () => null,
 };
 export function initLoopPedal(next) {
@@ -47,17 +44,17 @@ export function initLoopPedal(next) {
 }
 
 // ---- multi-instrument loop pedal ----
-export const LOOP_MAX_SECONDS = 12;
-// The least runway a count-in may give before the take opens. One beat of
-// warning is a stumble, not a count-in — and zero is the finger happening to
-// land on the downbeat, which is the luck the count-in exists to replace.
-const COUNT_IN_MIN_BEATS = 2;
+export const LOOP_MAX_SECONDS = 120;
+const LOOP_MIN_SECONDS = 0.1;
+const DOUBLE_TAP_MS = 300;
+const HOLD_CLEAR_MS = 650;
+let lastPedalTap = -Infinity;
 // The groove wheel runs its own scheduler against the same audio clock. Sharing
 // these two rather than copying them is what stops the pair drifting apart the
 // first time either is tuned.
 export const LOOP_LOOKAHEAD = 0.12;
 export const LOOP_TICK_MS = 25;
-const LOOP_EVENT_LIMIT = 192;
+const LOOP_EVENT_LIMIT = 4096;
 export const loop = {
   state: 'empty',
   events: [],
@@ -69,10 +66,6 @@ export const loop = {
   activeLayer: 0,
   layerStartCount: 0,
   nextId: 1,
-  countdownStartedAt: 0,
-  countdownEndsAt: 0,
-  countdownBeat: 0,
-  countdownTimer: null,
   autoCloseTimer: null,
   schedulerTimer: null,
   scheduled: new Set(),
@@ -173,25 +166,25 @@ export function playMusicalEvent(event, { record = true, at = null, feedback = t
     // typo or an unhandled new part into a silent 120 Hz tom rather than into
     // anything a reader would notice — tests/rhythm.test.mjs now holds the
     // rhythm library's part names against this exact list.
-    if (event.part === 'kick') audio.kick(velocity, startAt);
-    else if (event.part === 'snare') audio.snare(velocity, startAt);
-    else if (event.part === 'hihat') audio.hihat(false, velocity, startAt);
-    else if (event.part === 'hihatOpen') audio.hihat(true, velocity, startAt);
-    else if (event.part === 'crash') audio.crash(velocity, startAt);
-    else if (event.part === 'tom1') audio.tom(150, velocity, startAt);
-    else if (event.part === 'tom2') audio.tom(120, velocity, startAt);
-    else if (event.part === 'floor') audio.tom(95, velocity, startAt);
+    if (event.part === 'kick') voice = audio.kick(velocity, startAt);
+    else if (event.part === 'snare') voice = audio.snare(velocity, startAt);
+    else if (event.part === 'hihat') voice = audio.hihat(false, velocity, startAt);
+    else if (event.part === 'hihatOpen') voice = audio.hihat(true, velocity, startAt);
+    else if (event.part === 'crash') voice = audio.crash(velocity, startAt);
+    else if (event.part === 'tom1') voice = audio.tom(150, velocity, startAt);
+    else if (event.part === 'tom2') voice = audio.tom(120, velocity, startAt);
+    else if (event.part === 'floor') voice = audio.tom(95, velocity, startAt);
   } else if (event.type === 'piano') {
-    audio.piano(event.freq, velocity, startAt, event.duration ?? 1.6);
+    voice = audio.piano(event.freq, velocity, startAt, event.duration ?? 1.6);
   } else if (event.type === 'guitar-pluck') {
-    audio.pluck(event.freqHz ?? event.freq, velocity, startAt, {
+    voice = audio.pluck(event.freqHz ?? event.freq, velocity, startAt, {
       stringIndex: event.stringIndex ?? 0,
       // Loop playback must survive muteGuitar() when leaving focus / falling.
       track: record,
     });
     audio.prewarmGuitar(hooks.allGuitarPitches());
   } else if (event.type === 'guitar-strum') {
-    audio.strum(event.strings ?? event.freqs, velocity, startAt, { track: record });
+    voice = audio.strum(event.strings ?? event.freqs, velocity, startAt, { track: record });
     audio.prewarmGuitar(hooks.allGuitarPitches());
   } else if (event.type === 'vocal') {
     // A sung line is a shape, not a pitch. `glide` is optional and absent on
@@ -203,11 +196,12 @@ export function playMusicalEvent(event, { record = true, at = null, feedback = t
     voice = audio.vocalTone(
       event.freq, vowelAt(event.vowel), velocity, startAt, event.duration ?? 0.68, glide,
     );
-    if (!record && voice) {
-      loop.activeVoices.add(voice);
-      const cleanupDelay = Math.max(0, (((startAt ?? audio.ctx.currentTime) - audio.ctx.currentTime) + (event.duration ?? 0.68) + 0.36) * 1000);
-      setTimeout(() => loop.activeVoices.delete(voice), cleanupDelay);
-    }
+  }
+  // Groove playback owns its voices independently of the recorded loop.
+  if (!record && voice && visualBucket === loop.visualTimers) {
+    loop.activeVoices.add(voice);
+    const cleanupDelay = Math.max(0, (((startAt ?? audio.ctx.currentTime) - audio.ctx.currentTime) + (event.duration ?? 10) + 1) * 1000);
+    setTimeout(() => loop.activeVoices.delete(voice), cleanupDelay);
   }
 
   const visualDelay = startAt === null ? 0 : Math.max(0, (startAt - audio.ctx.currentTime) * 1000);
@@ -278,20 +272,20 @@ export function resyncLoopPlayback() {
 function renderLoopState(announce = true) {
   const state = loop.state;
   loopPedal.dataset.state = state;
-  loopTools.hidden = loop.duration <= 0;
-  loopPause.textContent = state === 'paused' ? '▶' : 'Ⅱ';
+  loopTools.hidden = state === 'empty';
+  loopPause.textContent = state === 'paused' ? '▶' : '■';
   loopPause.setAttribute('aria-pressed', String(state === 'paused'));
-  loopPause.setAttribute('aria-label', state === 'paused' ? 'Продовжити loop' : 'Призупинити loop');
-  loopToggle.disabled = state === 'paused';
+  loopPause.setAttribute('aria-label', state === 'paused' ? 'Відтворити loop спочатку' : 'Зупинити loop');
+  loopPause.title = state === 'paused' ? 'Відтворити спочатку' : 'Стоп';
+  loopToggle.disabled = false;
 
   const layers = `${loop.layers} ${loopLayerWord(loop.layers)}`;
   const states = {
     empty: ['LOOP', 'ЗАПИСАТИ', 'Почати запис музичного циклу', 'Loop порожній'],
-    counting: ['ВІДЛІК', 'ГОТУЙСЯ', 'Скасувати відлік', 'Відлік до запису'],
     recording: ['ЗАПИС', 'ГРАЙ ЗАРАЗ', 'Завершити запис і відтворити loop', 'Запис першого шару'],
     playing: ['+ ШАР', layers, 'Записати новий шар поверх loop', `Loop грає, ${layers}`],
     overdubbing: ['ДУБЛЬ', 'ГРАЙ ПОВЕРХ', 'Завершити запис нового шару', `Запис нового шару, ${layers}`],
-    paused: ['LOOP', 'ПАУЗА', 'Loop призупинено', `Loop призупинено, ${layers}`],
+    paused: ['ГРАТИ', 'СТОП', 'Відтворити loop спочатку', `Loop зупинено, ${layers}`],
   };
   const [label, meta, aria, status] = states[state];
   loopLabel.textContent = label;
@@ -304,22 +298,9 @@ export function updateLoopProgress() {
   if (!audio.ctx || audio.ctx.currentTime - loop.lastUiAt < 0.08) return;
   loop.lastUiAt = audio.ctx.currentTime;
   let progress = 0;
-  if (loop.state === 'counting') {
-    const now = audio.ctx.currentTime;
-    if (now >= loop.countdownEndsAt - 0.06) {
-      // The count-in timer's frame-driven twin: setTimeout is throttled in
-      // background tabs while this loop keeps pumping (headless included), so
-      // whichever of the two arrives first opens the take. openBaseLoop-
-      // Recording clears the timer, which is what makes the pair idempotent.
-      openBaseLoopRecording(loop.countdownEndsAt);
-      return;
-    }
-    const total = loop.countdownEndsAt - loop.countdownStartedAt;
-    progress = total > 0 ? Math.min(1, (now - loop.countdownStartedAt) / total) : 0;
-    const beatsLeft = Math.max(1, Math.ceil((loop.countdownEndsAt - now) / loop.countdownBeat));
-    loopMeta.textContent = `${beatsLeft} · ГОТУЙСЯ`;
-  } else if (loop.state === 'recording') {
+  if (loop.state === 'recording') {
     const elapsed = Math.max(0, audio.ctx.currentTime - loop.recordStartedAt);
+    if (elapsed >= LOOP_MAX_SECONDS) { finishBaseLoopRecording(true); return; }
     progress = Math.min(1, elapsed / LOOP_MAX_SECONDS);
     loopMeta.textContent = `${elapsed.toFixed(1)} С · ГРАЙ`;
   } else if (loop.duration > 0) {
@@ -338,68 +319,16 @@ function startBaseLoopRecording() {
   hooks.activateAudioForSound();
   stopLoopScheduler();
   clearTimeout(loop.autoCloseTimer);
-  // Against a running groove the press ARMS rather than records: the beats
-  // count down and the take opens exactly on the next downbeat, so the first
-  // bar is the visitor's first bar, entered on beat one instead of wherever
-  // the finger landed. With no groove there is no grid to count, so the pedal
-  // records from the press exactly as it always did.
-  const beat = hooks.grooveBeatSeconds();
-  const bar = hooks.grooveBarSeconds();
-  if (beat && bar) {
-    let downbeat = hooks.grooveDownbeatAt(audio.ctx.currentTime);
-    if (downbeat - audio.ctx.currentTime < beat * COUNT_IN_MIN_BEATS) downbeat += bar;
-    beginLoopCountIn(downbeat, beat);
-    return;
-  }
   openBaseLoopRecording(audio.ctx.currentTime);
 }
 
-function beginLoopCountIn(downbeat, beat) {
-  loop.state = 'counting';
-  loop.countdownStartedAt = audio.ctx.currentTime;
-  loop.countdownEndsAt = downbeat;
-  loop.countdownBeat = beat;
-  loopProgressBar.style.width = '0%';
-  // The LED pulses in the groove's own tempo — the count the visitor hears.
-  loopPedal.style.setProperty('--count-beat', `${beat.toFixed(3)}s`);
-  // Notes played during the count-in sound but are not captured; that needs no
-  // code here, because captureLoopEvent already no-ops outside recording /
-  // overdubbing and 'counting' is neither.
-  //
-  // The flip fires a hair EARLY on purpose: an eager entrance just before beat
-  // one meant beat one, and captureLoopEvent's max(0, …) clamp lands it at
-  // offset 0 exactly. updateLoopProgress carries a frame-driven twin of this
-  // timer, because timers are throttled in background tabs while the headless
-  // frame loop keeps pumping — whichever arrives first opens the take.
-  const wait = Math.max(0, (downbeat - audio.ctx.currentTime) * 1000 - 60);
-  loop.countdownTimer = setTimeout(() => {
-    if (loop.state === 'counting') openBaseLoopRecording(loop.countdownEndsAt);
-  }, wait);
-  renderLoopState();
-  navigator.vibrate?.(18);
-}
-
-function cancelLoopCountIn() {
-  clearTimeout(loop.countdownTimer);
-  loop.countdownTimer = null;
-  loop.state = 'empty';
-  loopProgressBar.style.width = '0%';
-  renderLoopState();
-  ui.toast('Відлік скасовано', 1400);
-}
-
 function openBaseLoopRecording(startAt) {
-  clearTimeout(loop.countdownTimer);
-  loop.countdownTimer = null;
   loop.state = 'recording';
   loop.events = [];
   loop.duration = 0;
   loop.layers = 0;
   loop.activeLayer = 1;
   loop.layerStartCount = 0;
-  // Every captured offset is measured from here. After a count-in this is the
-  // downbeat itself — possibly a few ms in the future, which the offset clamp
-  // absorbs — so offsets are bar-relative with no snap-back needed.
   loop.recordStartedAt = startAt;
   loopProgressBar.style.width = '0%';
   loop.autoCloseTimer = setTimeout(() => finishBaseLoopRecording(true), LOOP_MAX_SECONDS * 1000);
@@ -411,44 +340,22 @@ function openBaseLoopRecording(startAt) {
 
 export function finishBaseLoopRecording(automatic = false) {
   if (loop.state !== 'recording') return;
+  const closedAt = audio.ctx.currentTime;
+  const rawDuration = Math.min(LOOP_MAX_SECONDS, Math.max(0, closedAt - loop.recordStartedAt));
+  // Ignore switch bounce; otherwise the two presses define the exact period.
+  if (rawDuration < LOOP_MIN_SECONDS) return;
   clearTimeout(loop.autoCloseTimer);
-  if (!loop.events.length && !play.heldLoopCapture && !heldPianoNotes.size) {
-    loop.state = 'empty';
-    loop.duration = 0;
-    renderLoopState();
-    ui.toast('Зіграй щось під час запису', 1800);
-    return;
-  }
-  const rawDuration = Math.min(LOOP_MAX_SECONDS, Math.max(0, audio.ctx.currentTime - loop.recordStartedAt));
-  // Against a groove the loop is whole bars, not a grid of eighths of a second.
-  // That grid is 16 ms out per bar at 92 BPM — half a sixteenth inside two
-  // minutes — and nothing errors or logs while it drifts: the snare you played
-  // on the backbeat is simply on the "and" when you come back to it.
-  // Round, never ceil: a finger that lifts a hair early meant this bar, and
-  // ceiling would hand back a bar of silence.
-  const grooveBar = hooks.grooveBarSeconds();
-  loop.duration = grooveBar
-    ? Math.min(
-      Math.max(1, Math.floor(LOOP_MAX_SECONDS / grooveBar)),
-      Math.max(1, Math.round(rawDuration / grooveBar)),
-    ) * grooveBar
-    : Math.max(1, Math.ceil(rawDuration / 0.125) * 0.125);
+  loop.duration = rawDuration;
   // Finalize sustain after loop length is known so held vocals cap correctly.
   hooks.finishHeldLoopCapture();
   hooks.finishHeldPianoLoopCaptures();
-  if (!loop.events.length) {
-    loop.state = 'empty';
-    loop.duration = 0;
-    renderLoopState();
-    ui.toast('Зіграй щось під час запису', 1800);
-    return;
-  }
+  // The groove schedules ahead: hits beyond the closing press are not in
+  // this take. Silence, including an entirely silent base, keeps its length.
+  loop.events = loop.events.filter((event) => event.offset < loop.duration);
+  for (const event of loop.events) event.playFromCycle = 0;
   loop.layers = 1;
   loop.state = 'playing';
-  // Forward to the groove's next downbeat, so the loop's bar one and the
-  // wheel's 12 o'clock are the same instant. Safe to sit in the future: the
-  // scheduler's floor and look-ahead guards simply idle until it arrives.
-  loop.epoch = hooks.grooveDownbeatAt(audio.ctx.currentTime + 0.08) ?? (audio.ctx.currentTime + 0.08);
+  loop.epoch = automatic ? loop.recordStartedAt + loop.duration : closedAt;
   loop.events.sort((a, b) => a.offset - b.offset);
   renderLoopState();
   startLoopScheduler();
@@ -485,9 +392,11 @@ function finishLoopOverdub() {
 }
 
 function pauseLoop() {
+  lastPedalTap = -Infinity;
+  if (loop.state === 'recording') finishBaseLoopRecording();
   if (loop.state === 'overdubbing') finishLoopOverdub();
   if (loop.state !== 'playing') return;
-  loop.pausedOffset = positiveModulo(audio.ctx.currentTime - loop.epoch, loop.duration);
+  loop.pausedOffset = 0;
   loop.state = 'paused';
   stopLoopScheduler();
   renderLoopState();
@@ -496,7 +405,7 @@ function pauseLoop() {
 function resumeLoop() {
   if (loop.state !== 'paused') return;
   hooks.activateAudioForSound();
-  loop.epoch = audio.ctx.currentTime - loop.pausedOffset;
+  loop.epoch = audio.ctx.currentTime;
   for (const event of loop.events) event.playFromCycle = 0;
   loop.state = 'playing';
   renderLoopState();
@@ -556,9 +465,8 @@ export function rescaleRecordedLoop(ratio) {
 }
 
 export function clearRecordedLoop() {
-  // Mid-count-in there is nothing recorded to clear; the press means "stand
-  // down", and the cancel toast says what actually happened.
-  if (loop.state === 'counting') { cancelLoopCountIn(); return; }
+  releasePedal();
+  lastPedalTap = -Infinity;
   clearTimeout(loop.autoCloseTimer);
   hooks.finishHeldLoopCapture();
   for (const held of heldPianoNotes) hooks.finalizeHeldPianoLoopCapture(held, { cancel: true });
@@ -580,8 +488,13 @@ export function toggleLoopRecording() {
     ui.toast('Заповни VIBE-метр, щоб відкрити loop-педаль', 1800);
     return;
   }
+  const tappedAt = performance.now();
+  if (loop.duration > 0 && loop.state !== 'paused' && tappedAt - lastPedalTap < DOUBLE_TAP_MS) {
+    pauseLoop();
+    return;
+  }
+  lastPedalTap = loop.state === 'empty' || loop.state === 'paused' ? -Infinity : tappedAt;
   if (loop.state === 'empty') startBaseLoopRecording();
-  else if (loop.state === 'counting') cancelLoopCountIn();
   else if (loop.state === 'recording') finishBaseLoopRecording();
   else if (loop.state === 'playing') startLoopOverdub();
   else if (loop.state === 'overdubbing') finishLoopOverdub();
@@ -598,7 +511,31 @@ function bindLoopPedalPress(el, fn) {
     fn(event);
   });
 }
-bindLoopPedalPress(loopToggle, toggleLoopRecording);
+let holdTimer = null;
+let heldPointer = null;
+function releasePedal(event) {
+  if (event && event.pointerId !== heldPointer) return;
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  heldPointer = null;
+}
+bindLoopPedalPress(loopToggle, (event) => {
+  if (heldPointer !== null) return;
+  heldPointer = event.pointerId;
+  const hadLoop = loop.duration > 0;
+  toggleLoopRecording();
+  if (hadLoop) holdTimer = setTimeout(() => {
+    clearRecordedLoop();
+    holdTimer = null;
+  }, HOLD_CLEAR_MS);
+});
+window.addEventListener('pointerup', releasePedal);
+window.addEventListener('pointercancel', releasePedal);
+window.addEventListener('blur', () => releasePedal());
+// Native keyboard / assistive activation emits click without pointerdown.
+for (const [node, action] of [[loopToggle, toggleLoopRecording], [loopPause, () => loop.state === 'paused' ? resumeLoop() : pauseLoop()], [loopClear, clearRecordedLoop]]) {
+  node.addEventListener('click', (event) => { if (event.detail === 0) action(); });
+}
 bindLoopPedalPress(loopPause, () => (loop.state === 'paused' ? resumeLoop() : pauseLoop()));
 bindLoopPedalPress(loopClear, clearRecordedLoop);
 renderLoopState(false);

@@ -14,9 +14,9 @@
 // is left is the capture lifecycle they all still run on, plus the one class
 // that says something is docked at the bottom of the screen.
 // ============================================================
-import { audio } from '../core/studio.js?v=20260905-06';
-import { play } from './state.js?v=20260905-06';
-import { LOOP_MAX_SECONDS, loop, captureLoopEvent } from './loop.js?v=20260905-06';
+import { audio } from '../core/studio.js?v=20260906-01';
+import { play } from './state.js?v=20260906-01';
+import { LOOP_MAX_SECONDS, loop, captureLoopEvent } from './loop.js?v=20260906-01';
 
 // The zoom guard below has to know whether the stage is live; only main.js can
 // answer that, so it arrives as a hook like every other back-reference.
@@ -58,13 +58,9 @@ export function captureHeldVocalIntoLoop() {
 
 export function deferHeldLoopEventPlayback(event) {
   if (!event || !audio.ctx || loop.duration <= 0) return;
-  // Base take closes while state is still "recording" and epoch is unset.
-  // Defer to cycle 1 so live holds do not double with the first playback.
-  // Overdub / playing use a real epoch to skip the current cycle only.
-  if (loop.state === 'recording') {
-    event.playFromCycle = Math.max(event.playFromCycle, 1);
-    return;
-  }
+  // The base take must be audible on its first replay, including notes held
+  // through the closing press. Overdubs wait until their next cycle.
+  if (loop.state === 'recording') return;
   const currentCycle = Math.max(0, Math.floor((audio.ctx.currentTime - loop.epoch) / loop.duration));
   event.playFromCycle = Math.max(event.playFromCycle, currentCycle + 1);
 }

@@ -461,10 +461,8 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 - **Recording a take over a groove records the groove.** Every scheduled hit is captured at its scheduled time, so a loop laid down over РОК contains РОК — and when the take closes the groove **stops on its own**, because the loop is playing it now and two of them is just doubling. A toast says so.
 - **A groove still earns nothing.** Its hits carry no vibe whether or not a take is running, so a groove can never fill the VIBE meter or unlock the loop pedal by itself: a machine playing itself is not the visitor earning anything.
 - Clearing the loop does not stop the groove, and stopping the groove does not touch the loop.
-- **With a groove sounding, a loop take is whole bars.** The free-running pedal quantises to an eighth of a second, which is `16 ms` out per bar at 92 BPM — half a sixteenth inside two minutes, drifting silently until the snare you played on the backbeat is on the "and". Against a groove the take rounds to the nearest whole bar instead (never up: a finger that lifts early meant _this_ bar), and the loop's downbeat is snapped to the groove's, so bar one and 12 o'clock are the same instant.
+- **The pedal presses define the loop, including over a groove.** Recording starts immediately and closing the take starts playback immediately. Preserve the exact elapsed duration and note offsets; do not round to bars, add a count-in, or wait for a downbeat. The visitor controls the seam.
 - **Changing tempo re-times the loop instead of locking the stepper.** A step scales the take by the old-to-new bar ratio — its duration, every event offset, every held note's duration and every glide point — and re-anchors the epoch preserving both phase and cycle count, so the note under the playhead stays under it, overdub layers keep their `playFromCycle` gates, and bar one stays on the wheel's 12 o'clock. The stepper reads as a speed control for the whole performance, groove and take together. Only an **open take** (recording or overdubbing) still locks it, with a toast («Темп замкнено під час запису»): captured offsets are distances in the old bar, and moving the ruler mid-measurement would bend them silently. The epoch's downbeat re-snap is a float repair capped at `10 ms` — a take recorded free and only joined by a groove later was never bar-aligned, and yanking it onto that grid by up to half a bar would be a jump the visitor did not ask for.
-- **A take over a groove starts with a count-in.** Pressing record while a groove sounds arms the pedal (**ВІДЛІК**) instead of recording: the LED pulses at the groove's own beat, the meta counts the beats down, and the take opens exactly on the next downbeat — never nearer than **two beats**, because one beat of warning is a stumble, not a count-in. Notes played during the count-in sound but are not captured; pressing the pedal again cancels («Відлік скасовано»). The first bar is therefore the visitor's first bar, entered on beat one — replacing the old snap-back of the record press to the previous downbeat.
-- With no groove sounding the pedal is unchanged in every respect — recording starts at the press, and there is no count-in because there is no grid to count.
 
 #### Drums interaction roadmap
 
@@ -472,7 +470,7 @@ The kit is what the visitor hits; the wheel is the bar it is hit inside. Focus /
 2. **More of the kit's voice:** ride, rimshot, choke, flam, and a second hi-hat degree between open and closed.
 3. **A measured `drumsFocusSafeRect()`** if the framing ever needs to reserve rather than cap.
 
-*(Items one and two of this roadmap — rescale instead of lock, and the count-in — shipped on 2026-08-16 and are specced above.)*
+*(Tempo rescaling shipped on 2026-08-16. The former automatic count-in was replaced by immediate pedal recording on 2026-09-06.)*
 
 ### Vocal performance mode
 
@@ -675,7 +673,13 @@ Playing adds vibe. Each play route carries a nominal weight (drums `4`, guitar s
 
 ### Loop pedal
 
-Unlocked once after first vibe fill. Record layers while playing; pause / clear tools. Key `L` on desktop. Must remain usable while another finger is playing an instrument. With a groove sounding, the record press arms a **count-in** and the take opens on the next downbeat (§ The groove and the loop pedal); without one it records from the press. A ribbon hold records its actual sustained duration, and its glide (§ The voice and the loop pedal); if a vocal is already held when the take opens — at the pedal press, or at the downbeat a count-in lands on — capture starts at that instant, from the note the voice is on, and continues until release or loop closure.
+Unlocked once after first vibe fill. Must remain usable while another finger is playing an instrument. The main pedal and desktop `L` use the same transport:
+
+- First tap: record immediately. Second tap: close the first take and play immediately. Subsequent taps toggle playback / overdub; overdubbing never changes the base length.
+- Two taps within `300 ms` stop an existing loop. Holding the pedal for `650 ms` clears all layers; releasing, cancelling the pointer or losing window focus cancels the hold. Explicit stop and clear buttons remain available, including during the first take. `Shift+L` clears.
+- Stop preserves the take and cancels its scheduled and sounding voices without muting live instruments or the groove. The main pedal and play button restart at the beginning. The main pedal remains enabled while stopped. Native keyboard / assistive button activation works alongside multitouch pointerdown.
+- Press-to-press timing is exact, including leading / trailing silence and silent base takes. Ignore accidental closures shorter than `100 ms`; allow sub-second loops. The safety limit is `120 seconds` / `4096 events`, with automatic closure at the time limit. Never snap the length to a grid or insert a playback delay.
+- A ribbon or piano hold records its sustained duration, including the ribbon glide (§ The voice and the loop pedal). If already held when recording starts, capture begins at that instant. Notes held through closure are finalized and included in the first replay. Groove hits scheduled beyond the closing press are excluded.
 
 ## 6. UI overlays
 
@@ -1073,7 +1077,7 @@ this site can observe — it is the conversion number.
 - The ribbon's pitch axis is monotonic and its in-key notes and midpoints are fixed points, checked in Node across all 12 keys in both modes; a wrong detent is silent-but-wrong the way a wrong voicing is.
 - A sung glide records breakpoints and replays as a curve; **a steady note records no `glide` key at all**, so pre-ribbon takes keep their event shape byte for byte.
 - The mascot's mouth follows the vowel while a note sounds and returns to the gifted character's own smile on release.
-- Recording four bars over a sounding groove yields a loop whose duration is a whole number of bars and whose downbeat coincides with 12 o'clock. Three minutes later they still coincide. `clearRecordedLoop()` does not stop the groove or swallow its pending animation.
+- A take over a sounding groove starts and closes at the pedal presses, with exact elapsed duration and immediate replay. Overdubs preserve that duration and phase. `clearRecordedLoop()` does not stop the groove or swallow its pending animation.
 - `1`–`7` play all seven kit pieces in a close-up, including the floor tom and the rack tom that `Z X C V B` cannot reach. `Space` opens the hi-hat while held and closes it on release; outside the drums close-up the same key is the guitar's downstroke and touches no cymbal. `;` `'` `` ` `` are inert outside the close-up.
 - A snare struck at its centre and at its rim are clearly different in level without clipping, and a drag across the kit is a roll with dynamics. A rim strike is quiet, never silent.
 - Reduced motion removes the cymbals' idle sway and steps the playhead beat to beat; the hit recoil and crash swing remain. A hit squashes the drum and never its stand.

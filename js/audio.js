@@ -472,6 +472,22 @@ export class AudioEngine {
 
   // ---------------- DRUMS ----------------
 
+  // Scheduled percussion needs an explicit stop handle, just like held notes.
+  _percussionVoice(sources, gains) {
+    const ctx = this.ctx;
+    return { cancel: () => {
+      const now = ctx.currentTime;
+      for (const gain of gains) {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.005);
+      }
+      for (const source of sources) {
+        try { source.stop(now + 0.005); } catch (_) { /* already ended */ }
+      }
+    } };
+  }
+
   kick(vel = 1, at = null) {
     if (this._silent()) return;
     const t = this._at(at);
@@ -491,6 +507,7 @@ export class AudioEngine {
     const ng = this.ctx.createGain();
     this._env(ng, t, 0.25 * vel, 0.001, 0.03);
     n.connect(hp).connect(ng).connect(this._bus('drums'));
+    return this._percussionVoice([osc, n], [g, ng]);
   }
 
   snare(vel = 1, at = null) {
@@ -510,6 +527,7 @@ export class AudioEngine {
     this._env(g, t, 0.32 * vel, 0.002, 0.1);
     osc.connect(g).connect(this._bus('drums'));
     osc.start(t); osc.stop(t + 0.15);
+    return this._percussionVoice([osc, n], [g, ng]);
   }
 
   hihat(open = false, vel = 1, at = null) {
@@ -522,6 +540,7 @@ export class AudioEngine {
     const g = this.ctx.createGain();
     this._env(g, t, 0.28 * vel, 0.001, dur);
     n.connect(hp).connect(g).connect(this._bus('drums'));
+    return this._percussionVoice([n], [g]);
   }
 
   crash(vel = 1, at = null) {
@@ -535,6 +554,7 @@ export class AudioEngine {
     const g = this.ctx.createGain();
     this._env(g, t, 0.4 * vel, 0.004, 1.3);
     n.connect(hp).connect(bp).connect(g).connect(this._bus('drums'));
+    return this._percussionVoice([n], [g]);
   }
 
   tom(freq = 120, vel = 1, at = null) {
@@ -548,6 +568,7 @@ export class AudioEngine {
     this._env(g, t, 0.6 * vel, 0.004, 0.42);
     osc.connect(g).connect(this._bus('drums'));
     osc.start(t); osc.stop(t + 0.5);
+    return this._percussionVoice([osc], [g]);
   }
 
   // ---------------- PIANO ----------------
@@ -655,7 +676,8 @@ export class AudioEngine {
         }, Math.max(0, (releaseAt + release + 0.08 - now) * 1000));
       },
       cancel: () => {
-        if (voice.released || !this.ctx) return;
+        if (voice.cancelled || !this.ctx) return;
+        voice.cancelled = true;
         voice.released = true;
         clearTimeout(voice.cleanupTimer);
         const now = this.ctx.currentTime;
@@ -812,6 +834,7 @@ export class AudioEngine {
     src.start(t);
     src.stop(t + src.buffer.duration + 0.04);
     const voice = { source: src, gain: g, released: false };
+    voice.cancel = () => this._releaseGuitarVoice(voice);
     if (track) {
       this._activeGuitarStrings.set(stringIndex, voice);
       src.onended = () => {
@@ -831,14 +854,16 @@ export class AudioEngine {
         ? { freqHz: item, stringIndex: index, offsetMs: index * 22 }
         : item
     ));
+    const voices = [];
     for (const stringEvent of events) {
-      this.pluck(
+      voices.push(this.pluck(
         stringEvent.freqHz,
         vel * (0.9 + Math.random() * 0.16),
         base + Math.max(0, stringEvent.offsetMs ?? 0) / 1000,
         { stringIndex: stringEvent.stringIndex, track: options.track },
-      );
+      ));
     }
+    return { cancel: () => voices.forEach((voice) => voice?.cancel?.()) };
   }
 
   // ---------------- MIC / VOCAL ----------------

@@ -1812,3 +1812,5 @@ price chips track instruments through their own `queuePriceChip(kind)`.
   `av2.mascot.v4`) is the intended way to reset returning visitors.
 
 - 2026-09-05: Give the virtual stage a wider, elevated opening frame, softened spots, a drum rug and acoustic slats. Keep the established HUD and direct stage interaction; the added instrument navigation and alternate HUD treatment competed with the scene and were removed after review.
+
+- 2026-09-06: Make the loop pedal follow a conventional record → play → overdub cycle with exact press-to-press timing. Remove automatic count-in, bar rounding and the playback delay; add double-tap stop, hold-to-clear, restart from the beginning and cancellable playback voices. Raise the short demo limit to two minutes so a played phrase determines the loop.
