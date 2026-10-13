@@ -22,14 +22,13 @@ import {
   setLowMobileQuality,
   qualityTierLabel,
   loadPostprocessingModules,
-} from '../core/quality.js?v=20260906-02';
-import { session } from '../core/session.js?v=20260906-02';
-import { renderer, scene, camera } from '../view/rig.js?v=20260906-02';
-import { applyLowMobileSceneBudget } from '../scene/lighting.js?v=20260906-02';
-import { loadedSlideCount } from '../scene/slideshow.js?v=20260906-02';
+} from '../core/quality.js?v=20261013-01';
+import { renderer, scene, camera } from '../view/rig.js?v=20261013-01';
+import { applyLowMobileSceneBudget } from '../scene/lighting.js?v=20261013-01';
+import { loadedSlideCount } from '../scene/slideshow.js?v=20261013-01';
 
 // Settling the tier resizes the renderer, which only main.js can sequence.
-let hooks = { syncRendererToWindow: () => {} };
+let hooks = { syncRendererToWindow: () => {}, cameraInMotion: () => false };
 export function initPostfx(next) {
   hooks = { ...hooks, ...next };
 }
@@ -52,8 +51,20 @@ async function warmQualitySwitch(pending) {
   qualityWarmup = true;
   try {
     if (pending) await pending;
+    // Tone mapping and output colour space are part of every program's key, and
+    // both differ between the screen and the composer's linear target. Compiled
+    // against the screen, the composer's first frame relinks them all
+    // synchronously anyway.
+    const previousTarget = renderer.getRenderTarget();
+    let compiling;
+    try {
+      if (composer) renderer.setRenderTarget(composer.readBuffer);
+      compiling = renderer.compileAsync(scene, camera);
+    } finally {
+      renderer.setRenderTarget(previousTarget);
+    }
     await Promise.race([
-      renderer.compileAsync(scene, camera),
+      compiling,
       new Promise((resolve) => { setTimeout(resolve, WARMUP_TIMEOUT_MS); }),
     ]);
   } catch (_) { /* the warm-up is an optimisation, never a gate */ }
@@ -207,10 +218,12 @@ export function updateMobileQualityProbe(frameTime) {
   // Ignore shader/texture warm-up, then take one second of actual frame pacing.
   if (elapsed > 350 && delta > 0 && delta < 100) mobileQualityProbe.samples.push(delta);
   if (elapsed < 1350 || !mobileQualityProbe.samples.length) return;
-  // The probe's window ends mid-fly-in, and a tier switch there is the one place
-  // its shader rebuild is unmissable — the camera is moving through it. Hold the
-  // verdict until the camera lands; the extra samples only sharpen it.
-  if (session.flyT >= 0) return;
+  // The probe's window ends mid-fly-in, and a tier switch while the camera is
+  // moving is the one place its shader rebuild is unmissable. Landing is not
+  // enough: on a first run the gift camera takes over the same frame. Hold the
+  // verdict until no scripted camera move is running; the extra samples only
+  // sharpen it.
+  if (hooks.cameraInMotion()) return;
   const sorted = [...mobileQualityProbe.samples].sort((a, b) => a - b);
   const p90 = sorted[Math.floor((sorted.length - 1) * 0.9)];
   if (mobileQualityProbe.phase === 'medium') {

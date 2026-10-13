@@ -1274,6 +1274,20 @@ The alternative was holding the splash until the tier settled, which buys a perf
 zoom for ~2.3 s of extra time-to-stage. Rejected: the whole commercial goal is feeling the
 studio inside a minute, and the residual hold is one frame on a still camera.
 
+**2026-10-13 — "landed" stopped meaning "still".** The gift ceremony now takes the camera
+the frame the fly-in lands, so on a first run the held verdict fired exactly as the gift
+camera started toward the wardrobe: the loop hold plus a 408 ms frame mid-move, and smooth
+on every later visit only because the GPU program cache was warm by then. Two fixes:
+
+- The gate is a `cameraInMotion()` hook from `main.js` (fly-in, gift ceremony and its camera
+  tweens, instrument-view transitions), so on a first run the switch lands behind the
+  held gift card.
+- The warm-up compiles against `composer.readBuffer`, not the screen. Tone mapping and
+  output colour space are in every program key and differ between the two, so the
+  screen-targeted `compileAsync` had warmed the wrong variants and the composer's first frame
+  relinked ~30 programs synchronously anyway. That frame dropped from 408 ms to 73 ms. What
+  is left is bloom's own pass shaders.
+
 ---
 
 ## Variant quality is a rendering pass, not a new wardrobe — 2026-08-07

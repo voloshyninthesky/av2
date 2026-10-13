@@ -517,6 +517,24 @@ export function buildMascot() {
   }
   const legL = makeLimb(-0.15, 0.76, mats.pants, 0.14, 0.64, { tipRadius: 0.112 });
   const legR = makeLimb(0.15, 0.76, mats.pants, 0.14, 0.64, { tipRadius: 0.112 });
+  // Trousers seat: the legs grow out of a hip mass instead of hanging as two
+  // posts under the jacket hem. Its top hides inside the jacket; its bottom
+  // stays shallow because seated poses rest the hip pivot (y=0.76) on the seat.
+  // Like the shoulder caps it lives in group space, so torso lean leaves it put.
+  const pelvisProfile = [
+    [0.001, 0.665], [0.16, 0.668], [0.235, 0.69], [0.27, 0.735],
+    [0.278, 0.79], [0.272, 0.86], [0.001, 0.86],
+  ].map(([r, y]) => new THREE.Vector2(r, y));
+  const pelvis = new THREE.Mesh(new THREE.LatheGeometry(pelvisProfile, 22), mats.pants);
+  pelvis.userData.majorMass = true;
+  group.add(pelvis);
+  // Ball joints at the leg pivots keep the thigh tops sealed through the walk
+  // stride and the seated fold.
+  for (const leg of [legL, legR]) {
+    const hip = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), mats.pants);
+    hip.position.copy(leg.position);
+    group.add(hip);
+  }
 
   const soleMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.65 });
   const sneakerStripeGeometry = new THREE.BoxGeometry(0.022, 0.052, 0.012);

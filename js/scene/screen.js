@@ -4,7 +4,7 @@
 // with a Ken Burns drift. `screenUniforms` is the seam the slideshow drives.
 // ============================================================
 import * as THREE from 'three';
-import { titleSlideTexture, plateTexture, backCreditTexture } from './textures.js?v=20260906-02';
+import { titleSlideTexture, plateTexture, backCreditTexture } from './textures.js?v=20261013-01';
 
 // ---- backdrop screen: shader slideshow w/ crossfade + Ken Burns ----
 export const screenUniforms = {
