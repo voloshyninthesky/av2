@@ -39,7 +39,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { mergeGeometries } from '/vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
-import { prefersReducedMotion } from '../core/quality.js?v=20261013-01';
+import { prefersReducedMotion } from '../core/quality.js?v=20261013-02';
 // Deliberately no instrument-view import: this module is loaded by
 // core/studio.js, and view/instrument-presets.js imports studio back — the
 // cycle would hit the TDZ at boot. main.js passes the "visitor is at an

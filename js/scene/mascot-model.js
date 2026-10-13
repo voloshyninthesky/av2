@@ -242,8 +242,8 @@ export function buildMascot() {
   // pivot) so the pose code's torso lean behaves exactly as it always has.
   const TORSO_PIVOT_Y = 1.08;
   const torsoProfile = [
-    [0.001, 0.785], [0.10, 0.785], [0.30, 0.79], [0.30, 0.815],
-    [0.278, 0.9], [0.272, 1.0], [0.293, 1.13], [0.284, 1.25],
+    [0.001, 0.785], [0.10, 0.785], [0.262, 0.79], [0.262, 0.815],
+    [0.248, 0.9], [0.258, 1.0], [0.293, 1.13], [0.284, 1.25],
     [0.235, 1.342], [0.155, 1.372], [0.10, 1.378], [0.001, 1.378],
   ].map(([r, y]) => new THREE.Vector2(r, y - TORSO_PIVOT_Y));
   const torso = new THREE.Mesh(new THREE.LatheGeometry(torsoProfile, 26), mats.top);
@@ -253,7 +253,7 @@ export function buildMascot() {
   // stripe, hem, collar and badge with it instead of leaving them behind.
   // Lathe phi=0 faces +Z, so front arcs are centered with phiStart=-len/2.
   const placketProfile = [
-    [0.319, 0.792], [0.319, 0.815], [0.297, 0.9], [0.291, 1.0],
+    [0.281, 0.792], [0.281, 0.815], [0.267, 0.9], [0.277, 1.0],
     [0.312, 1.13], [0.303, 1.25], [0.260, 1.33],
   ].map(([r, y]) => new THREE.Vector2(r, y - TORSO_PIVOT_Y));
   const placket = new THREE.Mesh(new THREE.LatheGeometry(placketProfile, 5, -0.12, 0.24), mats.panel);
@@ -262,7 +262,7 @@ export function buildMascot() {
     .map(([r, y]) => new THREE.Vector2(r, y - TORSO_PIVOT_Y));
   const chestStripe = new THREE.Mesh(new THREE.LatheGeometry(stripeProfile, 14, -0.575, 1.15), mats.stripes);
   torso.add(chestStripe);
-  const hemBand = new THREE.Mesh(new THREE.CylinderGeometry(0.306, 0.314, 0.065, 26, 1, true), mats.stripes);
+  const hemBand = new THREE.Mesh(new THREE.CylinderGeometry(0.271, 0.276, 0.065, 26, 1, true), mats.stripes);
   hemBand.position.y = 0.818 - TORSO_PIVOT_Y;
   torso.add(hemBand);
   // Ribbed stand collar circling the neck, parted at the front for the
@@ -287,14 +287,14 @@ export function buildMascot() {
   const tailoring = new THREE.Group();
   for (const side of [-1, 1]) {
     const pocket = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.09, 3, 6), mats.panel);
-    pocket.position.set(side * 0.17, 0.956 - TORSO_PIVOT_Y, 0.239);
+    pocket.position.set(side * 0.155, 0.956 - TORSO_PIVOT_Y, 0.218);
     pocket.rotation.set(0, side * 0.48, -side * 0.28);
     tailoring.add(pocket);
   }
-  for (const y of [0.88, 1.015, 1.145, 1.28]) {
+  for (const [y, z] of [[0.88, 0.286], [1.015, 0.29], [1.145, 0.317], [1.28, 0.291]]) {
     const snap = new THREE.Mesh(new THREE.SphereGeometry(0.010, 8, 6), silver);
     snap.scale.z = 0.4;
-    snap.position.set(0, y - TORSO_PIVOT_Y, y > 1.24 ? 0.291 : 0.317);
+    snap.position.set(0, y - TORSO_PIVOT_Y, z);
     tailoring.add(snap);
   }
   bakeDetails(tailoring);
@@ -515,15 +515,16 @@ export function buildMascot() {
     cuff.position.y = -0.445;
     pivot.add(cuff);
   }
-  const legL = makeLimb(-0.15, 0.76, mats.pants, 0.14, 0.64, { tipRadius: 0.112 });
-  const legR = makeLimb(0.15, 0.76, mats.pants, 0.14, 0.64, { tipRadius: 0.112 });
+  const LEG_RADIUS = 0.12;
+  const legL = makeLimb(-0.15, 0.76, mats.pants, LEG_RADIUS, 0.64, { tipRadius: 0.1 });
+  const legR = makeLimb(0.15, 0.76, mats.pants, LEG_RADIUS, 0.64, { tipRadius: 0.1 });
   // Trousers seat: the legs grow out of a hip mass instead of hanging as two
   // posts under the jacket hem. Its top hides inside the jacket; its bottom
   // stays shallow because seated poses rest the hip pivot (y=0.76) on the seat.
   // Like the shoulder caps it lives in group space, so torso lean leaves it put.
   const pelvisProfile = [
-    [0.001, 0.665], [0.16, 0.668], [0.235, 0.69], [0.27, 0.735],
-    [0.278, 0.79], [0.272, 0.86], [0.001, 0.86],
+    [0.001, 0.67], [0.14, 0.672], [0.205, 0.69], [0.238, 0.735],
+    [0.246, 0.79], [0.238, 0.86], [0.001, 0.86],
   ].map(([r, y]) => new THREE.Vector2(r, y));
   const pelvis = new THREE.Mesh(new THREE.LatheGeometry(pelvisProfile, 22), mats.pants);
   pelvis.userData.majorMass = true;
@@ -531,7 +532,7 @@ export function buildMascot() {
   // Ball joints at the leg pivots keep the thigh tops sealed through the walk
   // stride and the seated fold.
   for (const leg of [legL, legR]) {
-    const hip = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), mats.pants);
+    const hip = new THREE.Mesh(new THREE.SphereGeometry(LEG_RADIUS, 14, 10), mats.pants);
     hip.position.copy(leg.position);
     group.add(hip);
   }

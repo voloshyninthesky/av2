@@ -13,7 +13,7 @@ import {
   registerDimmableEmissive,
   prefersReducedMotion,
   usesLowMobileSceneBudget,
-} from '../core/quality.js?v=20261013-01';
+} from '../core/quality.js?v=20261013-02';
 
 // Render hexes for the curated color ids a sign may carry. Brighter than
 // the brand ink-on-cream palette on purpose: these glow against 0x15091f.
